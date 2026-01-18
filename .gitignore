@@ -5,6 +5,7 @@ node_modules/
 dist-electron/
 dist-react/
 dist/
+dist_out/
 release/
 
 # Logs

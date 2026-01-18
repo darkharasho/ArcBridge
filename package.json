@@ -2,12 +2,19 @@
     "name": "gw2-arc-log-uploader",
     "private": true,
     "version": "1.0.0",
+    "description": "Guild Wars 2 arcDPS Log Uploader",
+    "author": {
+        "name": "darkharasho",
+        "email": "mstephens@example.com"
+    },
     "main": "dist-electron/main/index.js",
     "scripts": {
         "dev": "concurrently \"npm run dev:electron\" \"npm run dev:react\"",
         "dev:react": "vite",
         "dev:electron": "wait-on tcp:5173 && tsc -p electron/tsconfig.json && electron .",
         "build": "tsc && vite build && tsc -p electron/tsconfig.json",
+        "build:linux": "npm run build && electron-builder --linux",
+        "build:win": "npm run build && electron-builder --win",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview"
     },
@@ -16,7 +23,9 @@
         "chokidar": "^3.5.3",
         "clsx": "^2.0.0",
         "electron-store": "^8.1.0",
+        "form-data": "^4.0.5",
         "framer-motion": "^10.16.4",
+        "html-to-image": "^1.11.13",
         "lucide-react": "^0.292.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
@@ -46,7 +55,7 @@
         "appId": "com.gw2.arc.uploader",
         "productName": "GW2 Arc Log Uploader",
         "directories": {
-            "output": "dist"
+            "output": "dist_out"
         },
         "files": [
             "dist-electron/**/*",
@@ -58,13 +67,14 @@
                 "AppImage",
                 "deb"
             ],
-            "category": "Utility"
+            "category": "Utility",
+            "icon": "public/img/logo.png"
         },
         "win": {
             "target": [
                 "nsis"
             ],
-            "icon": "resources/icon.ico"
+            "icon": "public/img/logo.png"
         },
         "nsis": {
             "oneClick": false,

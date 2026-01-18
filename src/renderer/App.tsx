@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X } from 'lucide-react';
+import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { ExpandableLogCard } from './ExpandableLogCard';
 
 function App() {
     const [logDirectory, setLogDirectory] = useState<string | null>(null);
     const [webhookUrl, setWebhookUrl] = useState<string>('');
+    const [notificationType, setNotificationType] = useState<'image' | 'embed'>('image');
     const [logs, setLogs] = useState<ILogData[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+    const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
 
     // Stats calculation
     const totalUploads = logs.length;
@@ -31,24 +34,14 @@ function App() {
                 setWebhookUrl(settings.discordWebhookUrl);
                 window.electronAPI.setDiscordWebhook(settings.discordWebhookUrl);
             }
+            if (settings.discordNotificationType) {
+                setNotificationType(settings.discordNotificationType);
+            }
         };
         loadSettings();
 
-        // Listen for detected logs (Just filepath initially)
-        /* 
-           Note: The current main process sends 'log-detected' with just path, 
-           and 'upload-complete' with full data. We rely on 'upload-complete' for the list content. 
-           We can ignore 'log-detected' for the list if we only want to show uploaded ones, 
-           or we can show a "Loading..." state.
-           For simplicity, let's just listen to upload-complete for the table.
-        */
-        // const cleanupLog = window.electronAPI.onLogDetected((path) => {
-        //      // Optional: Add temporary pending log
-        // });
-
         // Listen for status updates during upload process
         const cleanupStatus = window.electronAPI.onUploadStatus((data: ILogData) => {
-            console.log("Upload status:", data);
             setLogs((currentLogs) => {
                 const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
                 if (existingIndex >= 0) {
@@ -62,7 +55,6 @@ function App() {
         });
 
         const cleanupUpload = window.electronAPI.onUploadComplete((data: ILogData) => {
-            console.log("Upload complete:", data);
             setLogs((currentLogs) => {
                 const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
                 if (existingIndex >= 0) {
@@ -75,9 +67,44 @@ function App() {
             });
         });
 
+        const cleanupScreenshot = window.electronAPI.onRequestScreenshot(async (data: ILogData) => {
+            console.log("Screenshot requested for:", data.id);
+            setScreenshotData(data);
+
+            // Wait for render
+            setTimeout(async () => {
+                const node = document.getElementById(`log-screenshot-${data.id || data.filePath}`);
+                if (node) {
+                    try {
+                        const dataUrl = await toPng(node, {
+                            backgroundColor: '#0f172a', // Match bg-slate-900
+                            quality: 0.95,
+                            pixelRatio: 2 // High quality
+                        });
+
+                        // Convert dataUrl to Uint8Array
+                        const resp = await fetch(dataUrl);
+                        const blob = await resp.blob();
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const buffer = new Uint8Array(arrayBuffer);
+
+                        window.electronAPI.sendScreenshot(data.id, buffer);
+                        setScreenshotData(null); // Cleanup
+                    } catch (err) {
+                        console.error("Screenshot failed:", err);
+                        setScreenshotData(null);
+                    }
+                } else {
+                    console.error("Screenshot node not found");
+                    setScreenshotData(null);
+                }
+            }, 800);
+        });
+
         return () => {
             cleanupStatus();
             cleanupUpload();
+            cleanupScreenshot();
         };
     }, []);
 
@@ -89,12 +116,16 @@ function App() {
         }
     };
 
+    const handleUpdateSettings = (updates: any) => {
+        window.electronAPI.saveSettings(updates);
+    };
+
     return (
         <div className="h-screen w-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-gray-900 to-black text-white font-sans overflow-hidden flex flex-col">
             {/* Custom Title Bar */}
             <div className="h-10 shrink-0 w-full flex justify-between items-center px-4 bg-black/20 backdrop-blur-md border-b border-white/5 drag-region select-none z-50">
                 <div className="flex items-center gap-2">
-                    <img src="./icon.png" alt="Icon" className="w-4 h-4" />
+                    <img src="./img/logo.svg" alt="Icon" className="w-4 h-4" />
                     <span className="text-xs font-medium text-gray-400">GW2 Arc Log Uploader</span>
                 </div>
                 <div className="flex items-center gap-4 no-drag">
@@ -138,7 +169,6 @@ function App() {
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
-                    {/* Left Column: Stats & Config */}
                     <div className="space-y-6 overflow-y-auto pr-2">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -184,9 +214,6 @@ function App() {
                                             <FolderOpen className="w-5 h-5" />
                                         </button>
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-2 ml-1">
-                                        {logDirectory ? "Watching for new logs" : "Paste path or browse"}
-                                    </div>
                                 </div>
 
                                 <div>
@@ -204,10 +231,35 @@ function App() {
                                         />
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Notification Type</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setNotificationType('image');
+                                                handleUpdateSettings({ discordNotificationType: 'image' });
+                                            }}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'image' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            <ImageIcon className="w-4 h-4" />
+                                            <span className="text-sm font-medium">Image</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setNotificationType('embed');
+                                                handleUpdateSettings({ discordNotificationType: 'embed' });
+                                            }}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'embed' ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            <Layout className="w-4 h-4" />
+                                            <span className="text-sm font-medium">Embed</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
 
-                        {/* Recent Stats */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -220,46 +272,30 @@ function App() {
                             </div>
                             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
                                 <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Squad</div>
-                                <div className="text-2xl font-bold text-gray-200">{avgSquadSize} <span className="text-sm text-gray-500 font-normal">players</span></div>
+                                <div className="text-2xl font-bold text-gray-200">{avgSquadSize}</div>
                             </div>
                             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 col-span-2">
                                 <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Success Rate</div>
                                 <div className="text-2xl font-bold text-green-400">{successRate}%</div>
-                                <div className="w-full bg-white/10 h-1.5 rounded-full mt-2 overflow-hidden">
-                                    <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${successRate}%` }}></div>
-                                </div>
                             </div>
                         </motion.div>
                     </div>
 
-                    {/* Right Column: Recent Activity */}
                     <div className="lg:col-span-2 flex flex-col min-h-0">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
                             className={`bg-white/5 backdrop-blur-xl border ${isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'} rounded-2xl p-6 flex flex-col h-full shadow-2xl transition-all duration-300 relative`}
-                            onDragOver={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setIsDragging(true);
-                            }}
-                            onDragLeave={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setIsDragging(false);
-                            }}
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
                             onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setIsDragging(false);
+                                e.preventDefault(); e.stopPropagation(); setIsDragging(false);
                                 const files = Array.from(e.dataTransfer.files);
                                 files.forEach(file => {
                                     if (file.name.endsWith('.evtc') || file.name.endsWith('.zevtc')) {
                                         const filePath = (file as any).path;
-                                        if (filePath) {
-                                            window.electronAPI.manualUpload(filePath);
-                                        }
+                                        if (filePath) window.electronAPI.manualUpload(filePath);
                                     }
                                 });
                             }}
@@ -269,25 +305,13 @@ function App() {
                                 Recent Activity
                             </h2>
 
-                            {isDragging && (
-                                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 rounded-2xl flex flex-col items-center justify-center text-blue-400 pointer-events-none">
-                                    <UploadCloud className="w-16 h-16 mb-4 animate-bounce" />
-                                    <p className="text-xl font-bold">Drop logs to upload</p>
-                                </div>
-                            )}
-
                             <div className="flex-1 overflow-y-auto pr-2 space-y-3">
                                 <AnimatePresence mode='popLayout'>
                                     {logs.length === 0 ? (
-                                        <motion.div
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            className="h-full flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-white/5 rounded-xl"
-                                        >
-                                            <UploadCloud className="w-12 h-12 mb-3 opacity-20" />
-                                            <p>Drag & Drop logs here</p>
-                                            <p className="text-xs mt-1 opacity-50">or configure a watch directory</p>
-                                        </motion.div>
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-20">
+                                            <UploadCloud className="w-12 h-12 mb-3" />
+                                            <p>Drop logs to upload</p>
+                                        </div>
                                     ) : (
                                         logs.map((log) => (
                                             <ExpandableLogCard
@@ -304,8 +328,20 @@ function App() {
                     </div>
                 </div>
             </div>
+
+            {/* Hidden Screenshot Container */}
+            <div className="fixed top-[-9999px] left-[-9999px] pointer-events-none opacity-0 overflow-hidden">
+                {screenshotData && (
+                    <ExpandableLogCard
+                        log={screenshotData}
+                        isExpanded={true}
+                        onToggle={() => { }}
+                        screenshotMode={true}
+                    />
+                )}
+            </div>
         </div>
-    )
+    );
 }
 
-export default App
+export default App;

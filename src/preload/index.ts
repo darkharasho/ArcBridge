@@ -26,5 +26,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     windowControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.send('window-control', action),
     getSettings: () => ipcRenderer.invoke('get-settings'),
     manualUpload: (path: string) => ipcRenderer.send('manual-upload', path),
-    openExternal: (url: string) => ipcRenderer.invoke('open-external', url)
+    saveSettings: (settings: any) => ipcRenderer.send('save-settings', settings),
+    onRequestScreenshot: (callback: (data: any) => void) => {
+        ipcRenderer.on('request-screenshot', (_event, value) => callback(value))
+        return () => {
+            ipcRenderer.removeAllListeners('request-screenshot')
+        }
+    },
+    openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+    sendScreenshot: (id: string, buffer: Uint8Array) => ipcRenderer.send('send-screenshot', id, buffer)
 })

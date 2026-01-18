@@ -1,34 +1,88 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } from 'electron'
 import path from 'node:path'
 import { LogWatcher } from './watcher'
 import { Uploader } from './uploader'
 import { DiscordNotifier } from './discord';
 
-process.env.DIST = path.join(__dirname, '../../') // Points to project root from dist-electron/main/
-process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, 'public')
+const Store = require('electron-store');
+const store = new Store();
+
+process.env.DIST = path.join(__dirname, '../../')
+process.env.VITE_PUBLIC = app.isPackaged ? path.join(process.env.DIST, 'dist-react') : path.join(process.env.DIST, 'public')
 
 let win: BrowserWindow | null
+let tray: Tray | null = null
+let isQuitting = false
 let watcher: LogWatcher | null = null
 let uploader: Uploader | null = null
 let discord: DiscordNotifier | null = null
+const pendingDiscordLogs = new Map<string, { result: any, jsonDetails: any }>();
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] || 'http://localhost:5173';
 
+function createTray() {
+    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/logo.png');
+    const icon = nativeImage.createFromPath(iconPath);
+    tray = new Tray(icon.resize({ width: 16, height: 16 }));
+
+    const contextMenu = Menu.buildFromTemplate([
+        {
+            label: 'Show App',
+            click: () => {
+                win?.show();
+                win?.focus();
+            }
+        },
+        {
+            label: 'Manual Upload...',
+            click: () => {
+                if (win) {
+                    win.show();
+                    win.focus();
+                }
+            }
+        },
+        { type: 'separator' },
+        {
+            label: 'Quit',
+            click: () => {
+                isQuitting = true;
+                app.quit();
+            }
+        }
+    ]);
+
+    tray.setToolTip('GW2 Arc Log Uploader');
+    tray.setContextMenu(contextMenu);
+
+    tray.on('click', () => {
+        if (win?.isVisible()) {
+            win.hide();
+        } else {
+            win?.show();
+            win?.focus();
+        }
+    });
+}
+
 function createWindow() {
-    const Store = require('electron-store');
-    const store = new Store();
     const bounds = store.get('windowBounds') as { width: number, height: number } | undefined;
 
+    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/logo.png');
+    console.log(`[Main] Loading icon from: ${iconPath}`);
+    const appIcon = nativeImage.createFromPath(iconPath);
+
     win = new BrowserWindow({
-        icon: path.join(process.env.VITE_PUBLIC || '', 'icon.png'),
+        icon: appIcon,
         webPreferences: {
             preload: path.join(__dirname, '../preload/index.js'),
         },
-        width: bounds ? bounds.width : 1200, // Default wider as requested
+        width: bounds ? bounds.width : 1200,
         height: bounds ? bounds.height : 800,
-        frame: false, // For custom title bar
+        frame: false,
         titleBarStyle: 'hidden',
         backgroundColor: '#000000',
+        show: true
     })
 
     win.on('resize', () => {
@@ -37,23 +91,26 @@ function createWindow() {
         store.set('windowBounds', { width, height });
     });
 
+    // Handle close event to hide instead of close
+    win.on('close', (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            win?.hide();
+        }
+    });
+
     watcher = new LogWatcher();
     uploader = new Uploader();
     discord = new DiscordNotifier();
 
     watcher.on('log-detected', async (filePath: string) => {
         const fileId = path.basename(filePath);
-
-        // Send uploading status
         win?.webContents.send('upload-status', { id: fileId, filePath, status: 'uploading' });
 
-        // Perform upload
         const result = await uploader?.upload(filePath);
 
         if (result && !result.error) {
             console.log(`[Main] Upload successful: ${result.permalink}. Fetching details...`);
-
-            // Fetch detailed JSON
             let jsonDetails = await uploader?.fetchDetailedJson(result.permalink);
 
             if (!jsonDetails || jsonDetails.error) {
@@ -62,9 +119,6 @@ function createWindow() {
                 jsonDetails = await uploader?.fetchDetailedJson(result.permalink);
             }
 
-            console.log(`[Main] detailed JSON present: ${!!jsonDetails}, sending to Discord...`);
-
-            // Send discord status
             win?.webContents.send('upload-status', {
                 id: fileId,
                 filePath,
@@ -75,10 +129,16 @@ function createWindow() {
                 fightName: result.fightName
             });
 
-            // Send to Discord
-            await discord?.sendLog({ ...result, filePath }, jsonDetails);
+            const notificationType = store.get('discordNotificationType', 'image');
+            console.log(`[Main] Preparing Discord delivery. Configured type: ${notificationType}`);
 
-            // Send success status with complete data
+            if (notificationType === 'image') {
+                pendingDiscordLogs.set(result.id, { result: { ...result, filePath }, jsonDetails });
+                win?.webContents.send('request-screenshot', { ...result, filePath, details: jsonDetails });
+            } else {
+                await discord?.sendLog({ ...result, filePath, mode: 'embed' }, jsonDetails);
+            }
+
             win?.webContents.send('upload-complete', {
                 ...result,
                 filePath,
@@ -86,16 +146,10 @@ function createWindow() {
                 details: jsonDetails
             });
         } else {
-            // Send error status
-            win?.webContents.send('upload-complete', {
-                ...result,
-                filePath,
-                status: 'error'
-            });
+            win?.webContents.send('upload-complete', { ...result, filePath, status: 'error' });
         }
     });
 
-    // Test active push message to asserting that it is working
     win.webContents.on('did-finish-load', () => {
         win?.webContents.send('main-process-message', (new Date).toLocaleString())
     })
@@ -108,33 +162,34 @@ function createWindow() {
 }
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit()
-        win = null
-        watcher?.stop()
-    }
+    // Keep alive for tray
 })
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow()
+        createWindow();
+    } else {
+        win?.show();
     }
 })
 
+app.on('before-quit', () => {
+    isQuitting = true;
+});
+
 app.whenReady().then(() => {
+    createWindow();
+    createTray();
 
-    const Store = require('electron-store');
-    const store = new Store();
-
-    // Initialize/Load settings
     ipcMain.handle('get-settings', () => {
         return {
             logDirectory: store.get('logDirectory', null),
-            discordWebhookUrl: store.get('discordWebhookUrl', null)
+            discordWebhookUrl: store.get('discordWebhookUrl', null),
+            discordNotificationType: store.get('discordNotificationType', 'image')
         };
     });
 
-    ipcMain.on('save-settings', (_event, settings: { logDirectory?: string, discordWebhookUrl?: string }) => {
+    ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => {
         if (settings.logDirectory !== undefined) {
             store.set('logDirectory', settings.logDirectory);
             if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -143,63 +198,53 @@ app.whenReady().then(() => {
             store.set('discordWebhookUrl', settings.discordWebhookUrl);
             discord?.setWebhookUrl(settings.discordWebhookUrl);
         }
+        if (settings.discordNotificationType !== undefined) {
+            store.set('discordNotificationType', settings.discordNotificationType);
+        }
     });
 
     ipcMain.handle('select-directory', async () => {
         if (!win) return null;
-        const result = await dialog.showOpenDialog(win, {
-            properties: ['openDirectory']
-        });
-        if (!result.canceled && result.filePaths.length > 0) {
-            return result.filePaths[0];
-        }
+        const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
+        if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
         return null;
     });
 
     ipcMain.on('start-watching', (_event, dirPath: string) => {
         watcher?.start(dirPath);
-        store.set('logDirectory', dirPath); // Auto-save on manual start
+        store.set('logDirectory', dirPath);
     });
 
     ipcMain.on('set-discord-webhook', (_event, url: string) => {
         discord?.setWebhookUrl(url);
-        store.set('discordWebhookUrl', url); // Auto-save on manual set
+        store.set('discordWebhookUrl', url);
     });
 
     ipcMain.on('manual-upload', (_event, filePath: string) => {
-        console.log(`[Main] Manual upload requested for: ${filePath}`);
         watcher?.emit('log-detected', filePath);
     });
 
     ipcMain.on('window-control', (_event, action: 'minimize' | 'maximize' | 'close') => {
         if (!win) return;
-        switch (action) {
-            case 'minimize':
-                win.minimize();
-                break;
-            case 'maximize':
-                if (win.isMaximized()) {
-                    win.unmaximize();
-                } else {
-                    win.maximize();
-                }
-                break;
-            case 'close':
-                win.close();
-                break;
-        }
+        if (action === 'minimize') win.minimize();
+        else if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize();
+        else if (action === 'close') win.close(); // Triggers the 'close' event handler
     });
 
     ipcMain.handle('open-external', async (_event, url: string) => {
-        console.log(`[Main] Opening external URL: ${url}`);
         try {
             await shell.openExternal(url);
             return { success: true };
         } catch (err: any) {
-            console.error(`[Main] Failed to open external URL: ${err}`);
             return { success: false, error: err.message };
         }
     });
 
-    createWindow()
+    ipcMain.on('send-screenshot', async (_event, logId: string, buffer: Uint8Array) => {
+        const data = pendingDiscordLogs.get(logId);
+        if (data && discord) {
+            await discord.sendLog({ ...data.result, imageBuffer: buffer, mode: 'image' }, data.jsonDetails);
+            pendingDiscordLogs.delete(logId);
+        }
+    });
 })

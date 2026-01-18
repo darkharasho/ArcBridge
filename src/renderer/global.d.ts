@@ -6,9 +6,12 @@ export interface IElectronAPI {
     onUploadStatus: (callback: (data: any) => void) => () => void;
     setDiscordWebhook: (url: string) => void;
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
-    getSettings: () => Promise<{ logDirectory: string | null, discordWebhookUrl: string | null }>;
+    getSettings: () => Promise<{ logDirectory: string | null, discordWebhookUrl: string | null, discordNotificationType: 'image' | 'embed' }>;
     manualUpload: (path: string) => void;
+    saveSettings: (settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => void;
+    onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
+    sendScreenshot: (id: string, buffer: Uint8Array) => void;
 }
 
 declare global {

@@ -5,9 +5,10 @@ interface ExpandableLogCardProps {
     log: any;
     isExpanded: boolean;
     onToggle: () => void;
+    screenshotMode?: boolean;
 }
 
-export function ExpandableLogCard({ log, isExpanded, onToggle }: ExpandableLogCardProps) {
+export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }: ExpandableLogCardProps) {
     const details = log.details || {};
     const players = details.players || [];
     const squadPlayers = players.filter((p: any) => !p.notInSquad);
@@ -67,7 +68,6 @@ export function ExpandableLogCard({ log, isExpanded, onToggle }: ExpandableLogCa
 
     const durationSec = (details.durationMS || 0) / 1000 || 1;
     const totalIncomingDps = Math.round(totalDmgTaken / durationSec);
-    const avgEnemyDps = players.length > 0 ? Math.round(totalIncomingDps / players.length) : 0;
 
     // Helper for rendering top lists
     const TopList = ({ title, sortFn, valFn, fmtVal }: { title: string, sortFn: (a: any, b: any) => number, valFn: (p: any) => any, fmtVal: (v: any) => string }) => {
@@ -102,6 +102,93 @@ export function ExpandableLogCard({ log, isExpanded, onToggle }: ExpandableLogCa
             </div>
         );
     };
+
+    if (screenshotMode) {
+        return (
+            <div id={`log-screenshot-${log.id || log.filePath}`} className="bg-slate-900 border border-white/20 rounded-2xl overflow-hidden w-[900px] shadow-2xl p-0 m-0">
+                <div className="p-6 flex items-center gap-6 bg-white/5 border-b border-white/10">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center border-2 ${hasError ? 'bg-red-500/20 border-red-500/30 text-red-400' : 'bg-green-500/20 border-green-500/30 text-green-400'}`}>
+                        <span className="font-bold text-lg uppercase">{hasError ? 'ERR' : 'LOG'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                        <div className="flex justify-between items-start">
+                            <h4 className="text-2xl font-black text-white truncate leading-tight">{details.fightName || log.fightName || log.filePath.split(/[\\\/]/).pop()}</h4>
+                            <span className="text-lg text-blue-400 font-mono font-bold">{details.encounterDuration || log.encounterDuration || '--:--'}</span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2 text-sm font-medium text-gray-400">
+                            <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{players.length} Players {nonSquadPlayers.length > 0 ? `(${squadPlayers.length} Squad + ${nonSquadPlayers.length} Others)` : ''}</span>
+                            <span className="text-gray-600">•</span>
+                            <span>{(log.uploadTime || details.uploadTime) ? new Date((log.uploadTime || details.uploadTime) * 1000).toLocaleTimeString() : 'Just now'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-6 space-y-6 bg-black/40">
+                    <div className="grid grid-cols-2 gap-4 text-base">
+                        <div className="bg-white/5 rounded-xl p-4 border border-white/10 shadow-lg">
+                            <h5 className="font-black text-green-400 mb-3 uppercase tracking-widest text-xs border-b border-green-400/20 pb-2">Squad Summary</h5>
+                            <div className="font-mono text-gray-200 space-y-2 text-left text-sm">
+                                <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{squadPlayers.length} {nonSquadPlayers.length > 0 ? `(+${nonSquadPlayers.length})` : ''}</span></div>
+                                <div className="flex justify-between"><span>DMG:</span> <span className="text-white font-bold">{squadDmg.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>DPS:</span> <span className="text-white font-bold">{Math.round(squadDps).toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>Downs:</span> <span className="text-white font-bold">{squadDowns}</span></div>
+                                <div className="flex justify-between"><span>Deaths:</span> <span className="text-white font-bold">{squadDeaths}</span></div>
+                            </div>
+                        </div>
+                        <div className="bg-white/5 rounded-xl p-4 border border-white/10 shadow-lg">
+                            <h5 className="font-black text-red-400 mb-3 uppercase tracking-widest text-xs border-b border-red-400/20 pb-2">Enemy Summary</h5>
+                            <div className="font-mono text-gray-200 space-y-2 text-left text-sm">
+                                <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{players.length}</span></div>
+                                <div className="flex justify-between"><span>DMG:</span> <span className="text-white font-bold">{totalDmgTaken.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>DPS:</span> <span className="text-white font-bold">{totalIncomingDps.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>Downs:</span> <span className="text-white font-bold">{totalDowns}</span></div>
+                                <div className="flex justify-between"><span>Deaths:</span> <span className="text-white font-bold">{totalDeaths}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                            <h5 className="font-bold text-blue-400 mb-2 uppercase tracking-tight text-[10px]">Incoming Attack</h5>
+                            <div className="font-mono text-xs text-gray-300 text-left space-y-1">
+                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-blue-200">{totalMiss}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-blue-200">{totalBlock}</span></div>
+                                <div className="flex justify-between text-white font-bold pt-1 border-t border-white/5"><span>Total:</span> <span>{totalMiss + totalBlock + totalEvade + totalDodge}</span></div>
+                            </div>
+                        </div>
+                        <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                            <h5 className="font-bold text-purple-400 mb-2 uppercase tracking-tight text-[10px]">Incoming CC</h5>
+                            <div className="font-mono text-xs text-gray-300 text-left space-y-1">
+                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-purple-200">{totalMiss}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-purple-200">{totalBlock}</span></div>
+                                <div className="flex justify-between text-white font-bold pt-1 border-t border-white/5"><span>Total:</span> <span>{totalCCTaken}</span></div>
+                            </div>
+                        </div>
+                        <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                            <h5 className="font-bold text-orange-400 mb-2 uppercase tracking-tight text-[10px]">Incoming Strips</h5>
+                            <div className="font-mono text-xs text-gray-300 text-left space-y-1">
+                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-orange-200">{totalMiss}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-orange-200">{totalBlock}</span></div>
+                                <div className="flex justify-between text-white font-bold pt-1 border-t border-white/5"><span>Total:</span> <span>{totalStripsTaken}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <TopList title="Damage" sortFn={(a, b) => (b.dpsAll?.[0]?.damage || 0) - (a.dpsAll?.[0]?.damage || 0)} valFn={p => p.dpsAll?.[0]?.damage || 0} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Down Contribution" sortFn={(a, b) => (b.statsAll?.[0]?.downContribution || 0) - (a.statsAll?.[0]?.downContribution || 0)} valFn={p => (p.statsAll?.[0]?.downContribution || 0)} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Healing" sortFn={(a, b) => (b.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0) - (a.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0)} valFn={p => p.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Barrier" sortFn={(a, b) => (b.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0) - (a.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0)} valFn={p => p.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Cleanses" sortFn={(a, b) => (b.support?.[0]?.condiCleanse || 0) - (a.support?.[0]?.condiCleanse || 0)} valFn={p => p.support?.[0]?.condiCleanse || 0} fmtVal={v => v.toString()} />
+                        <TopList title="Strips" sortFn={(a, b) => (b.support?.[0]?.boonStrips || 0) - (a.support?.[0]?.boonStrips || 0)} valFn={p => p.support?.[0]?.boonStrips || 0} fmtVal={v => v.toString()} />
+                        <TopList title="CC" sortFn={(a, b) => (b.dpsAll?.[0]?.breakbarDamage || 0) - (a.dpsAll?.[0]?.breakbarDamage || 0)} valFn={p => p.dpsAll?.[0]?.breakbarDamage || 0} fmtVal={v => Math.round(v).toLocaleString()} />
+                        <TopList title="Stability" sortFn={(a, b) => {
+                            const aStab = a.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
+                            const bStab = b.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
+                            return bStab - aStab;
+                        }} valFn={p => p.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0} fmtVal={v => v.toLocaleString()} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <motion.div
@@ -175,7 +262,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle }: ExpandableLogCa
                                         <div className="flex justify-between"><span>Count:</span> <span>{players.length}</span></div>
                                         <div className="flex justify-between"><span>DMG:</span> <span>{totalDmgTaken.toLocaleString()}</span></div>
                                         <div className="flex justify-between"><span>DPS:</span> <span>{totalIncomingDps.toLocaleString()}</span></div>
-                                        <div className="flex justify-between"><span>Avg:</span> <span>{avgEnemyDps.toLocaleString()}</span></div>
+                                        <div className="flex justify-between"><span>Downs:</span> <span>{totalDowns}</span></div>
                                         <div className="flex justify-between"><span>Deaths:</span> <span>{totalDeaths}</span></div>
                                     </div>
                                 </div>
