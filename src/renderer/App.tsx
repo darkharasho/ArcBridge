@@ -116,6 +116,10 @@ function App() {
     }, []);
 
     useEffect(() => {
+        if (updateStatus) console.log('[Updater]', updateStatus);
+    }, [updateStatus]);
+
+    useEffect(() => {
         const cleanupMessage = window.electronAPI.onUpdateMessage((message) => setUpdateStatus(message));
         const cleanupAvailable = window.electronAPI.onUpdateAvailable(() => {
             setUpdateAvailable(true);
@@ -198,13 +202,40 @@ function App() {
                             GW2 Arc Log Uploader
                         </h1>
                     </motion.div>
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-xs font-medium px-3 py-1 bg-white/5 rounded-full border border-white/10"
-                    >
-                        v1.0.0
-                    </motion.div>
+                    <div className="flex items-center gap-3">
+                        <AnimatePresence mode="wait">
+                            {(updateAvailable || updateDownloaded) && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    className="flex items-center gap-2"
+                                >
+                                    {updateDownloaded ? (
+                                        <button
+                                            onClick={() => window.electronAPI.restartApp()}
+                                            className="flex items-center gap-2 text-xs font-medium px-3 py-1 bg-green-500/20 text-green-400 rounded-full border border-green-500/30 hover:bg-green-500/30 transition-colors"
+                                        >
+                                            <RefreshCw className="w-3 h-3" />
+                                            <span>Restart to Update</span>
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-xs font-medium px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
+                                            <RefreshCw className="w-3 h-3 animate-spin" />
+                                            <span>{updateProgress ? `${Math.round(updateProgress.percent)}%` : 'Updating...'}</span>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-xs font-medium px-3 py-1 bg-white/5 rounded-full border border-white/10"
+                        >
+                            v1.0.0
+                        </motion.div>
+                    </div>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
@@ -298,49 +329,7 @@ function App() {
                                 </div>
                             </div>
 
-                            {/* Update Status */}
-                            <div className="border-t border-white/5 pt-4 mt-4">
-                                <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Application Updates</label>
-                                <div className="bg-black/40 border border-white/5 rounded-xl p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm text-gray-300 font-medium truncate">
-                                                {updateStatus || "v1.0.0"}
-                                            </div>
-                                            {updateProgress && (
-                                                <div className="w-full bg-gray-700 h-1 mt-2 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="bg-blue-500 h-full transition-all duration-300"
-                                                        style={{ width: `${updateProgress.percent}%` }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {updateDownloaded ? (
-                                            <button
-                                                onClick={() => window.electronAPI.restartApp()}
-                                                className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
-                                                title="Restart and Install"
-                                            >
-                                                <RefreshCw className="w-5 h-5" />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setUpdateStatus('Checking for updates...');
-                                                    window.electronAPI.checkForUpdates();
-                                                }}
-                                                className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors"
-                                                title="Check for Updates"
-                                                disabled={updateAvailable}
-                                            >
-                                                <RefreshCw className={`w-5 h-5 ${updateStatus.includes('Checking') ? 'animate-spin' : ''}`} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
                         </motion.div>
 
                         <motion.div

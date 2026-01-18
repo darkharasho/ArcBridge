@@ -23,7 +23,13 @@
         "noFallthroughCasesInSwitch": true
     },
     "include": [
-        "src"
+        "src/renderer/**/*",
+        "src/shared/**/*",
+        "src/vite-env.d.ts"
+    ],
+    "exclude": [
+        "src/main/**/*",
+        "src/preload/**/*"
     ],
     "references": [
         {

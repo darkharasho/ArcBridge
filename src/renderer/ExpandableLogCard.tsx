@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import { Player } from '../shared/dpsReportTypes';
 
 interface ExpandableLogCardProps {
     log: any;
@@ -10,7 +12,9 @@ interface ExpandableLogCardProps {
 
 export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }: ExpandableLogCardProps) {
     const details = log.details || {};
-    const players = details.players || [];
+    const players: Player[] = details.players || [];
+    const targets = details.targets || [];
+    calculateAllStability(players);
     const squadPlayers = players.filter((p: any) => !p.notInSquad);
     const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
 
@@ -34,6 +38,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
     let squadDmg = 0;
     let squadDowns = 0;
     let squadDeaths = 0;
+    let squadCC = 0;
+    let squadResurrects = 0;
 
     let totalCCTaken = 0;
     let totalStripsTaken = 0;
@@ -46,6 +52,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
             if (isSquad) {
                 squadDps += p.dpsAll[0].dps;
                 squadDmg += p.dpsAll[0].damage;
+                squadCC += calculateOutCC(p); // Use accurate PlenBot calculation
+                squadResurrects += (p.support?.[0]?.resurrects || 0);
             }
         }
         if (p.defenses && p.defenses.length > 0) {
@@ -57,17 +65,35 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                 squadDowns += d.downCount;
                 squadDeaths += d.deadCount;
             }
-            totalMiss += d.missedCount || d.missCount || d.missed || 0;
-            totalBlock += d.blockedCount || d.blockCount || d.blocked || 0;
-            totalEvade += d.evadedCount || d.evadeCount || 0;
+            totalMiss += d.missedCount || 0;
+            totalBlock += d.blockedCount || 0;
+            totalEvade += d.evadedCount || 0;
             totalDodge += d.dodgeCount || 0;
-            totalCCTaken += d.interruptedCount || 0;
-            totalStripsTaken += d.boonStrips || 0;
+            // totalCCTaken += d.interruptedCount || 0; <-- Handled by PlenBot logic now
+            // totalStripsTaken += d.boonStrips || 0;
+        }
+
+        const pStats = calculateIncomingStats(p);
+        totalCCTaken += pStats.cc.total;
+        totalStripsTaken += pStats.strips.total;
+    });
+
+    // Calculate Enemy (Target) Stats - how many times we downed/killed them
+    let enemyDowns = 0;
+    let enemyDeaths = 0;
+    let enemyCount = 0;
+    targets.forEach((t: any) => {
+        if (t.isFake) return; // Skip fake targets
+        enemyCount++;
+        if (t.defenses && t.defenses.length > 0) {
+            enemyDowns += t.defenses[0].downCount || 0;
+            enemyDeaths += t.defenses[0].deadCount || 0;
         }
     });
 
+    // Calculate enemy DPS (damage they dealt to us per second)
     const durationSec = (details.durationMS || 0) / 1000 || 1;
-    const totalIncomingDps = Math.round(totalDmgTaken / durationSec);
+    const enemyDps = Math.round(totalDmgTaken / durationSec);
 
     // Helper for rendering top lists
     const TopList = ({ title, sortFn, valFn, fmtVal }: { title: string, sortFn: (a: any, b: any) => number, valFn: (p: any) => any, fmtVal: (v: any) => string }) => {
@@ -89,7 +115,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                 <div key={`${p.account}-${i}`} className="flex justify-between gap-2 border-b border-white/5 last:border-0 pb-0.5">
                                     <span className="truncate flex-1">
                                         <span className="text-gray-500 mr-1">{i + 1}</span>
-                                        {p.character_name || p.account}
+                                        {p.name || p.character_name || p.account}
                                     </span>
                                     <span className="text-right shrink-0 font-bold text-blue-400">{fmtVal(val)}</span>
                                 </div>
@@ -137,11 +163,11 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                         <div className="bg-white/5 rounded-xl p-4 border border-white/10 shadow-lg">
                             <h5 className="font-black text-red-400 mb-3 uppercase tracking-widest text-xs border-b border-red-400/20 pb-2">Enemy Summary</h5>
                             <div className="font-mono text-gray-200 space-y-2 text-left text-sm">
-                                <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{players.length}</span></div>
+                                <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{enemyCount}</span></div>
                                 <div className="flex justify-between"><span>DMG:</span> <span className="text-white font-bold">{totalDmgTaken.toLocaleString()}</span></div>
-                                <div className="flex justify-between"><span>DPS:</span> <span className="text-white font-bold">{totalIncomingDps.toLocaleString()}</span></div>
-                                <div className="flex justify-between"><span>Downs:</span> <span className="text-white font-bold">{totalDowns}</span></div>
-                                <div className="flex justify-between"><span>Deaths:</span> <span className="text-white font-bold">{totalDeaths}</span></div>
+                                <div className="flex justify-between"><span>DPS:</span> <span className="text-white font-bold">{enemyDps.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>Downs:</span> <span className="text-white font-bold">{enemyDowns}</span></div>
+                                <div className="flex justify-between"><span>Kills:</span> <span className="text-white font-bold">{enemyDeaths}</span></div>
                             </div>
                         </div>
                     </div>
@@ -173,17 +199,13 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <TopList title="Damage" sortFn={(a, b) => (b.dpsAll?.[0]?.damage || 0) - (a.dpsAll?.[0]?.damage || 0)} valFn={p => p.dpsAll?.[0]?.damage || 0} fmtVal={v => v.toLocaleString()} />
-                        <TopList title="Down Contribution" sortFn={(a, b) => (b.statsAll?.[0]?.downContribution || 0) - (a.statsAll?.[0]?.downContribution || 0)} valFn={p => (p.statsAll?.[0]?.downContribution || 0)} fmtVal={v => v.toLocaleString()} />
-                        <TopList title="Healing" sortFn={(a, b) => (b.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0) - (a.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0)} valFn={p => p.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0} fmtVal={v => v.toLocaleString()} />
-                        <TopList title="Barrier" sortFn={(a, b) => (b.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0) - (a.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0)} valFn={p => p.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Down Contribution" sortFn={(a, b) => calculateDownContribution(b) - calculateDownContribution(a)} valFn={p => calculateDownContribution(p)} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Healing" sortFn={(a, b) => calculateSquadHealing(b) - calculateSquadHealing(a)} valFn={p => calculateSquadHealing(p)} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Barrier" sortFn={(a, b) => calculateSquadBarrier(b) - calculateSquadBarrier(a)} valFn={p => calculateSquadBarrier(p)} fmtVal={v => v.toLocaleString()} />
                         <TopList title="Cleanses" sortFn={(a, b) => (b.support?.[0]?.condiCleanse || 0) - (a.support?.[0]?.condiCleanse || 0)} valFn={p => p.support?.[0]?.condiCleanse || 0} fmtVal={v => v.toString()} />
                         <TopList title="Strips" sortFn={(a, b) => (b.support?.[0]?.boonStrips || 0) - (a.support?.[0]?.boonStrips || 0)} valFn={p => p.support?.[0]?.boonStrips || 0} fmtVal={v => v.toString()} />
-                        <TopList title="CC" sortFn={(a, b) => (b.dpsAll?.[0]?.breakbarDamage || 0) - (a.dpsAll?.[0]?.breakbarDamage || 0)} valFn={p => p.dpsAll?.[0]?.breakbarDamage || 0} fmtVal={v => Math.round(v).toLocaleString()} />
-                        <TopList title="Stability" sortFn={(a, b) => {
-                            const aStab = a.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
-                            const bStab = b.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
-                            return bStab - aStab;
-                        }} valFn={p => p.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="CC" sortFn={(a, b) => calculateOutCC(b) - calculateOutCC(a)} valFn={p => calculateOutCC(p)} fmtVal={v => v.toLocaleString()} />
+                        <TopList title="Stability" sortFn={(a, b) => (b.stabGeneration || 0) - (a.stabGeneration || 0)} valFn={p => p.stabGeneration || 0} fmtVal={v => v.toLocaleString()} />
                     </div>
                 </div>
             </div>
@@ -259,11 +281,11 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                 <div className="bg-white/5 rounded-lg p-3 border border-white/5">
                                     <h5 className="font-semibold text-red-400 mb-2 uppercase tracking-wider text-[10px]">Enemy Summary</h5>
                                     <div className="font-mono text-gray-300 space-y-1">
-                                        <div className="flex justify-between"><span>Count:</span> <span>{players.length}</span></div>
+                                        <div className="flex justify-between"><span>Count:</span> <span>{enemyCount}</span></div>
                                         <div className="flex justify-between"><span>DMG:</span> <span>{totalDmgTaken.toLocaleString()}</span></div>
-                                        <div className="flex justify-between"><span>DPS:</span> <span>{totalIncomingDps.toLocaleString()}</span></div>
-                                        <div className="flex justify-between"><span>Downs:</span> <span>{totalDowns}</span></div>
-                                        <div className="flex justify-between"><span>Deaths:</span> <span>{totalDeaths}</span></div>
+                                        <div className="flex justify-between"><span>DPS:</span> <span>{enemyDps.toLocaleString()}</span></div>
+                                        <div className="flex justify-between"><span>Downs:</span> <span>{enemyDowns}</span></div>
+                                        <div className="flex justify-between"><span>Kills:</span> <span>{enemyDeaths}</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -286,6 +308,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                         <div className="flex justify-between text-gray-500"><span>Total:</span> <span className="text-gray-300">{totalCCTaken}</span></div>
                                     </div>
                                 </div>
+
                                 <div className="bg-white/5 rounded-lg p-2 border border-white/5">
                                     <h5 className="font-semibold text-orange-400 mb-1 uppercase tracking-wider text-[9px]">Incoming Strips</h5>
                                     <div className="font-mono text-[10px] text-gray-300">
@@ -306,24 +329,21 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                 />
                                 <TopList
                                     title="Down Contribution"
-                                    sortFn={(a, b) => {
-                                        const aVal = (a.statsAll?.[0]?.downContribution || 0);
-                                        const bVal = (b.statsAll?.[0]?.downContribution || 0);
-                                        return bVal - aVal;
-                                    }}
-                                    valFn={p => (p.statsAll?.[0]?.downContribution || 0)}
+                                    sortFn={(a, b) => calculateDownContribution(b) - calculateDownContribution(a)}
+                                    valFn={p => calculateDownContribution(p)}
                                     fmtVal={v => v.toLocaleString()}
                                 />
+
                                 <TopList
                                     title="Healing"
-                                    sortFn={(a, b) => (b.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0) - (a.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0)}
-                                    valFn={p => p.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0}
+                                    sortFn={(a, b) => calculateSquadHealing(b) - calculateSquadHealing(a)}
+                                    valFn={p => calculateSquadHealing(p)}
                                     fmtVal={v => v.toLocaleString()}
                                 />
                                 <TopList
                                     title="Barrier"
-                                    sortFn={(a, b) => (b.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0) - (a.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0)}
-                                    valFn={p => p.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0}
+                                    sortFn={(a, b) => calculateSquadBarrier(b) - calculateSquadBarrier(a)}
+                                    valFn={p => calculateSquadBarrier(p)}
                                     fmtVal={v => v.toLocaleString()}
                                 />
                                 <TopList
@@ -340,18 +360,14 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                 />
                                 <TopList
                                     title="CC"
-                                    sortFn={(a, b) => (b.dpsAll?.[0]?.breakbarDamage || 0) - (a.dpsAll?.[0]?.breakbarDamage || 0)}
-                                    valFn={p => p.dpsAll?.[0]?.breakbarDamage || 0}
-                                    fmtVal={v => Math.round(v).toLocaleString()}
+                                    sortFn={(a, b) => calculateOutCC(b) - calculateOutCC(a)}
+                                    valFn={p => calculateOutCC(p)}
+                                    fmtVal={v => v.toLocaleString()}
                                 />
                                 <TopList
                                     title="Stability"
-                                    sortFn={(a, b) => {
-                                        const aStab = a.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
-                                        const bStab = b.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
-                                        return bStab - aStab;
-                                    }}
-                                    valFn={p => p.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0}
+                                    sortFn={(a, b) => (b.stabGeneration || 0) - (a.stabGeneration || 0)}
+                                    valFn={p => p.stabGeneration || 0}
                                     fmtVal={v => v.toLocaleString()}
                                 />
                             </div>
@@ -387,8 +403,9 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                             </button>
                         </div>
                     </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
+                )
+                }
+            </AnimatePresence >
+        </motion.div >
     );
 }

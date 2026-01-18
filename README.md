@@ -2,6 +2,11 @@
 
 A premium, high-performance Electron application for Guild Wars 2 players to automatically upload arcdps combat logs, notify Discord, and view detailed WvW statistics in a stunning, modern interface.
 
+## TODO
+
+- [x] add in dps and damage from enemy summary
+- [ ] ensure the appimage only launches one instance of the app instead of many
+
 ## ✨ Features
 
 - **🚀 Automated Monitoring**: Automatically detects, uploads, and processes new combat logs as they are created.

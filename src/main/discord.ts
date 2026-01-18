@@ -1,5 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
+import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import { Player } from '../shared/dpsReportTypes';
 
 export class DiscordNotifier {
     private webhookUrl: string | null = null;
@@ -44,7 +46,11 @@ export class DiscordNotifier {
                 // EMBED MODE: Complex Rich Embed based on GitHub reference
                 if (jsonDetails && (jsonDetails.evtc || jsonDetails.players)) {
                     console.log('[Discord] Building Complex Rich Embed...');
-                    const players = jsonDetails.players || [];
+                    const players: Player[] = jsonDetails.players || [];
+
+                    // Pre-calculate stability
+                    calculateAllStability(players);
+
                     let embedFields: any[] = [];
 
                     // --- Helpers ---
@@ -95,15 +101,31 @@ export class DiscordNotifier {
                                 squadDeaths += d.deadCount;
                             }
 
-                            totalMiss += d.missedCount || d.missCount || d.missed || 0;
-                            totalBlock += d.blockedCount || d.blockCount || d.blocked || 0;
-                            totalEvade += d.evadedCount || d.evadeCount || 0;
+                            totalMiss += d.missedCount || 0;
+                            totalBlock += d.blockedCount || 0;
+                            totalEvade += d.evadedCount || 0;
                             totalDodge += d.dodgeCount || 0;
-                            totalCCTaken += d.interruptedCount || 0;
-                            totalStripsTaken += d.boonStrips || 0;
+                            // Uses PlenBot logic below instead of simple fields for CC/Strips
                         }
+                        const pStats = calculateIncomingStats(p);
+                        totalCCTaken += pStats.cc.total; // Use calculated total
+                        totalStripsTaken += pStats.strips.total; // Use calculated total
                         const prof = p.profession;
                         profCounts[prof] = (profCounts[prof] || 0) + 1;
+                    });
+
+                    // Calculate Enemy (Target) Stats - how many times we downed/killed them
+                    const targets = jsonDetails.targets || [];
+                    let enemyDowns = 0;
+                    let enemyDeaths = 0;
+                    let enemyCount = 0;
+                    targets.forEach((t: any) => {
+                        if (t.isFake) return; // Skip fake targets
+                        enemyCount++;
+                        if (t.defenses && t.defenses.length > 0) {
+                            enemyDowns += t.defenses[0].downCount || 0;
+                            enemyDeaths += t.defenses[0].deadCount || 0;
+                        }
                     });
 
                     // Parse Duration
@@ -112,7 +134,7 @@ export class DiscordNotifier {
 
                     // Build Description
                     let desc = `**Recorded by:** ${jsonDetails.recordedBy || 'Unknown'}\n`;
-                    desc += `**Duration:** ${jsonDetails.encounterDuration || 'Unknown'}\n`;
+                    desc += `**Duration:** ${jsonDetails.duration || jsonDetails.encounterDuration || 'Unknown'}\n`;
                     desc += `**Elite Insights version:** ${jsonDetails.eliteInsightsVersion || 'Unknown'}\n`;
                     desc += `**arcdps version:** ${jsonDetails.arcVersion || 'Unknown'}\n`;
 
@@ -134,11 +156,11 @@ export class DiscordNotifier {
                     ].join('\n');
 
                     const enemySummaryLines = [
-                        formatStatLine('Count:', players.length),
+                        formatStatLine('Count:', enemyCount),
                         formatStatLine('DMG:', fmtNum(totalDmgTaken)),
                         formatStatLine('DPS:', fmtNum(totalIncomingDps)),
-                        formatStatLine('Downs:', totalDowns),  // Changed from Avg as requested
-                        formatStatLine('Deaths:', totalDeaths)
+                        formatStatLine('Downs:', enemyDowns),
+                        formatStatLine('Kills:', enemyDeaths)
                     ].join('\n');
 
                     embedFields.push({
@@ -147,7 +169,7 @@ export class DiscordNotifier {
                         inline: true
                     });
                     embedFields.push({
-                        name: "Team Summary:",
+                        name: "Enemy Summary:",
                         value: `\`\`\`\n${enemySummaryLines}\n\`\`\``,
                         inline: true
                     });
@@ -185,7 +207,7 @@ export class DiscordNotifier {
                             const val = valFn(p);
                             if (val > 0 || (typeof val === 'string' && val !== '0' && val !== '')) {
                                 const rank = (i + 1).toString().padEnd(2);
-                                const name = (p.character_name || p.account || 'Unknown').substring(0, 14).padEnd(15);
+                                const name = (p.name || p.character_name || p.account || 'Unknown').substring(0, 14).padEnd(15);
                                 const vStr = fmtVal(val).padStart(8);
                                 str += `${rank} ${name}${vStr}\n`;
                             }
@@ -205,21 +227,21 @@ export class DiscordNotifier {
                         v => v.toLocaleString()
                     );
                     addTopList("Down Contribution",
-                        (a, b) => (b.statsAll?.[0]?.downContribution || 0) - (a.statsAll?.[0]?.downContribution || 0),
-                        p => (p.statsAll?.[0]?.downContribution || 0),
+                        (a, b) => calculateDownContribution(b) - calculateDownContribution(a),
+                        p => calculateDownContribution(p),
                         v => v.toLocaleString()
                     );
                     embedFields.push({ name: '\u200b', value: '\u200b', inline: false });
 
                     // Line 4: Healing | Barrier
                     addTopList("Healing",
-                        (a, b) => (b.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0) - (a.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0),
-                        p => p.extHealingStats?.outgoingHealingAllies?.[0]?.[0]?.healing || 0,
+                        (a, b) => calculateSquadHealing(b) - calculateSquadHealing(a),
+                        p => calculateSquadHealing(p),
                         v => v.toLocaleString()
                     );
                     addTopList("Barrier",
-                        (a, b) => (b.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0) - (a.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0),
-                        p => p.extBarrierStats?.outgoingBarrierAllies?.[0]?.[0]?.barrier || 0,
+                        (a, b) => calculateSquadBarrier(b) - calculateSquadBarrier(a),
+                        p => calculateSquadBarrier(p),
                         v => v.toLocaleString()
                     );
                     embedFields.push({ name: '\u200b', value: '\u200b', inline: false });
@@ -237,21 +259,37 @@ export class DiscordNotifier {
                     );
                     embedFields.push({ name: '\u200b', value: '\u200b', inline: false });
 
-                    // Line 6: CC | Stability
+                    // Line 6: CC
                     addTopList("CC",
-                        (a, b) => (b.dpsAll?.[0]?.breakbarDamage || 0) - (a.dpsAll?.[0]?.breakbarDamage || 0),
-                        p => p.dpsAll?.[0]?.breakbarDamage || 0,
-                        v => Math.round(v).toLocaleString()
-                    );
-                    addTopList("Stability",
-                        (a, b) => {
-                            const aStab = a.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
-                            const bStab = b.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0;
-                            return bStab - aStab;
-                        },
-                        p => p.squadBuffVolumes?.find((buff: any) => buff.id === 1122)?.buffVolumeData?.[0]?.outgoing || 0,
+                        (a, b) => calculateOutCC(b) - calculateOutCC(a),
+                        p => calculateOutCC(p),
                         v => v.toLocaleString()
                     );
+                    addTopList("Stability",
+                        (a, b) => (b.stabGeneration || 0) - (a.stabGeneration || 0),
+                        p => p.stabGeneration || 0,
+                        v => v.toLocaleString()
+                    );
+
+                    // Determine embed color based on borderland
+                    // WvW map names: "Detailed WvW - Red Desert Borderlands", "Detailed WvW - Blue Alpine Borderlands", etc.
+                    const getEmbedColor = (fightName: string): number => {
+                        const name = (fightName || '').toLowerCase();
+
+                        // Check specific borderland patterns
+                        if (name.includes('red desert') || name.includes('red borderland') || name.includes('desert borderlands')) {
+                            return 0xE74C3C; // Red
+                        } else if (name.includes('blue alpine') || name.includes('blue borderland')) {
+                            return 0x3498DB; // Blue
+                        } else if (name.includes('green alpine') || name.includes('green borderland')) {
+                            return 0x2ECC71; // Green
+                        } else if (name.includes('eternal battleground') || name.includes('ebg') || name.includes('stonemist')) {
+                            return 0xFFFFFF; // White for EBG
+                        }
+
+                        // Default: success = green, failure = red
+                        return jsonDetails.success ? 0x2ECC71 : 0xE74C3C;
+                    };
 
                     await axios.post(this.webhookUrl, {
                         username: "GW2 Arc Log Uploader",
@@ -259,7 +297,7 @@ export class DiscordNotifier {
                             title: `${jsonDetails.fightName || 'Log Uploaded'}`,
                             url: logData.permalink,
                             description: desc,
-                            color: jsonDetails.success ? 3066993 : 15158332,
+                            color: getEmbedColor(jsonDetails.fightName),
                             timestamp: new Date().toISOString(),
                             footer: {
                                 text: `GW2 Arc Log Uploader • ${new Date().toLocaleTimeString()}`

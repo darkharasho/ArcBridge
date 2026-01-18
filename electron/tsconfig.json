@@ -10,6 +10,7 @@
     },
     "include": [
         "../src/main/**/*",
+        "../src/shared/**/*",
         "../src/preload/**/*"
     ]
 }

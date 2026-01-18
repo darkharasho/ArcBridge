@@ -5,6 +5,7 @@ import { Uploader } from './uploader'
 import { DiscordNotifier } from './discord';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import { DesktopIntegrator } from './integration';
 
 // Configure autoUpdater logger
 log.transports.file.level = 'info';
@@ -214,89 +215,114 @@ app.on('before-quit', () => {
     isQuitting = true;
 });
 
-app.whenReady().then(() => {
-    createWindow();
-    createTray();
+// Single instance lock - prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
 
-    // Check for updates
-    setupAutoUpdater();
-    // Check for updates after a short delay to ensure window is ready
-    setTimeout(() => {
-        autoUpdater.checkForUpdates();
-    }, 3000);
-
-    ipcMain.on('check-for-updates', () => {
-        autoUpdater.checkForUpdates();
-    });
-
-    ipcMain.on('restart-app', () => {
-        autoUpdater.quitAndInstall();
-    });
-
-    ipcMain.handle('get-settings', () => {
-        return {
-            logDirectory: store.get('logDirectory', null),
-            discordWebhookUrl: store.get('discordWebhookUrl', null),
-            discordNotificationType: store.get('discordNotificationType', 'image')
-        };
-    });
-
-    ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => {
-        if (settings.logDirectory !== undefined) {
-            store.set('logDirectory', settings.logDirectory);
-            if (settings.logDirectory) watcher?.start(settings.logDirectory);
-        }
-        if (settings.discordWebhookUrl !== undefined) {
-            store.set('discordWebhookUrl', settings.discordWebhookUrl);
-            discord?.setWebhookUrl(settings.discordWebhookUrl);
-        }
-        if (settings.discordNotificationType !== undefined) {
-            store.set('discordNotificationType', settings.discordNotificationType);
+if (!gotTheLock) {
+    // Another instance is already running, quit this one
+    app.quit();
+} else {
+    // This is the first/primary instance
+    app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+        // Someone tried to run a second instance, focus our window instead
+        if (win) {
+            if (win.isMinimized()) win.restore();
+            win.show();
+            win.focus();
         }
     });
 
-    ipcMain.handle('select-directory', async () => {
-        if (!win) return null;
-        const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
-        if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
-        return null;
-    });
+    app.whenReady().then(async () => {
+        createWindow();
+        createTray();
 
-    ipcMain.on('start-watching', (_event, dirPath: string) => {
-        watcher?.start(dirPath);
-        store.set('logDirectory', dirPath);
-    });
-
-    ipcMain.on('set-discord-webhook', (_event, url: string) => {
-        discord?.setWebhookUrl(url);
-        store.set('discordWebhookUrl', url);
-    });
-
-    ipcMain.on('manual-upload', (_event, filePath: string) => {
-        watcher?.emit('log-detected', filePath);
-    });
-
-    ipcMain.on('window-control', (_event, action: 'minimize' | 'maximize' | 'close') => {
-        if (!win) return;
-        if (action === 'minimize') win.minimize();
-        else if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize();
-        else if (action === 'close') win.close(); // Triggers the 'close' event handler
-    });
-
-    ipcMain.handle('open-external', async (_event, url: string) => {
-        try {
-            await shell.openExternal(url);
-            return { success: true };
-        } catch (err: any) {
-            return { success: false, error: err.message };
+        // Desktop Integration for Linux AppImage
+        if (process.platform === 'linux') {
+            const integrator = new DesktopIntegrator();
+            integrator.integrate().catch(err => console.error('Integration error:', err));
         }
-    });
 
-    ipcMain.on('send-screenshot', async (_event, logId: string, buffer: Uint8Array) => {
-        const data = pendingDiscordLogs.get(logId);
-        if (data && discord) {
-            await discord.sendLog({ ...data.result, imageBuffer: buffer, mode: 'image' }, data.jsonDetails);
-            pendingDiscordLogs.delete(logId);
-        }
-    });
-})
+        // Check for updates
+        setupAutoUpdater();
+
+        // Check for updates after a short delay to ensure window is ready
+        setTimeout(() => {
+            autoUpdater.checkForUpdates();
+        }, 3000);
+
+        ipcMain.on('check-for-updates', () => {
+            autoUpdater.checkForUpdates();
+        });
+
+        ipcMain.on('restart-app', () => {
+            autoUpdater.quitAndInstall();
+        });
+
+        ipcMain.handle('get-settings', () => {
+            return {
+                logDirectory: store.get('logDirectory', null),
+                discordWebhookUrl: store.get('discordWebhookUrl', null),
+                discordNotificationType: store.get('discordNotificationType', 'image')
+            };
+        });
+
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => {
+            if (settings.logDirectory !== undefined) {
+                store.set('logDirectory', settings.logDirectory);
+                if (settings.logDirectory) watcher?.start(settings.logDirectory);
+            }
+            if (settings.discordWebhookUrl !== undefined) {
+                store.set('discordWebhookUrl', settings.discordWebhookUrl);
+                discord?.setWebhookUrl(settings.discordWebhookUrl);
+            }
+            if (settings.discordNotificationType !== undefined) {
+                store.set('discordNotificationType', settings.discordNotificationType);
+            }
+        });
+
+        ipcMain.handle('select-directory', async () => {
+            if (!win) return null;
+            const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
+            if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+            return null;
+        });
+
+        ipcMain.on('start-watching', (_event, dirPath: string) => {
+            watcher?.start(dirPath);
+            store.set('logDirectory', dirPath);
+        });
+
+        ipcMain.on('set-discord-webhook', (_event, url: string) => {
+            discord?.setWebhookUrl(url);
+            store.set('discordWebhookUrl', url);
+        });
+
+        ipcMain.on('manual-upload', (_event, filePath: string) => {
+            watcher?.emit('log-detected', filePath);
+        });
+
+        ipcMain.on('window-control', (_event, action: 'minimize' | 'maximize' | 'close') => {
+            if (!win) return;
+            if (action === 'minimize') win.minimize();
+            else if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize();
+            else if (action === 'close') win.close(); // Triggers the 'close' event handler
+        });
+
+        ipcMain.handle('open-external', async (_event, url: string) => {
+            try {
+                await shell.openExternal(url);
+                return { success: true };
+            } catch (err: any) {
+                return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.on('send-screenshot', async (_event, logId: string, buffer: Uint8Array) => {
+            const data = pendingDiscordLogs.get(logId);
+            if (data && discord) {
+                await discord.sendLog({ ...data.result, imageBuffer: buffer, mode: 'image' }, data.jsonDetails);
+                pendingDiscordLogs.delete(logId);
+            }
+        });
+    })
+}
