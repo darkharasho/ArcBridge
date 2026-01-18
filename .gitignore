@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist-electron/
+dist-react/
+dist/
+release/
+
+# Logs
+*.log
+*.evtc
+*.zevtc
+*.csv
+
+# Environment variables
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs/Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local stores
+.electron-store/
