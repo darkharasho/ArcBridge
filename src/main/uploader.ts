@@ -1,4 +1,5 @@
 import axios from 'axios';
+import https from 'https';
 import fs from 'fs';
 import FormData from 'form-data';
 
@@ -16,45 +17,67 @@ export class Uploader {
     private static API_URL = 'https://dps.report/uploadContent';
 
     async upload(filePath: string): Promise<UploadResult> {
-        try {
-            const formData = new FormData();
-            formData.append('json', '1');
-            formData.append('generator', 'ei');
-            formData.append('detailedwvw', 'true'); // Enable detailed WvW stats
-            formData.append('file', fs.createReadStream(filePath));
+        const httpsAgent = new https.Agent({ keepAlive: true });
+        const maxRetries = 3;
+        let attempt = 0;
 
-            // Optional: User Token support can be added here
+        while (attempt < maxRetries) {
+            try {
+                attempt++;
+                const formData = new FormData();
+                formData.append('json', '1');
+                formData.append('generator', 'ei');
+                formData.append('detailedwvw', 'true'); // Enable detailed WvW stats
+                formData.append('file', fs.createReadStream(filePath));
 
-            console.log(`Uploading ${filePath} to dps.report...`);
+                // Optional: User Token support can be added here
 
-            const response = await axios.post(Uploader.API_URL, formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                },
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity // Allow large files
-            });
+                console.log(`Uploading ${filePath} to dps.report (Attempt ${attempt}/${maxRetries})...`);
 
-            const data = response.data;
+                const response = await axios.post(Uploader.API_URL, formData, {
+                    headers: {
+                        ...formData.getHeaders(),
+                    },
+                    httpsAgent,
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity, // Allow large files
+                    timeout: 0 // No client-side timeout, let the server or network dictate
+                });
 
-            return {
-                id: data.id,
-                permalink: data.permalink,
-                userToken: data.userToken,
-                uploadTime: data.uploadTime || Math.floor(Date.now() / 1000),
-                encounterDuration: data.encounter?.duration,
-                fightName: data.encounter?.boss
-            };
+                const data = response.data;
 
-        } catch (error: any) {
-            console.error('Upload failed:', error);
-            return {
-                id: '',
-                permalink: '',
-                userToken: '',
-                error: error.message || 'Unknown error'
-            };
+                return {
+                    id: data.id,
+                    permalink: data.permalink,
+                    userToken: data.userToken,
+                    uploadTime: data.uploadTime || Math.floor(Date.now() / 1000),
+                    encounterDuration: data.encounter?.duration,
+                    fightName: data.encounter?.boss
+                };
+
+            } catch (error: any) {
+                console.error(`Upload attempt ${attempt} failed:`, error.message);
+
+                if (attempt >= maxRetries) {
+                    return {
+                        id: '',
+                        permalink: '',
+                        userToken: '',
+                        error: error.message || 'Unknown error'
+                    };
+                }
+
+                // Wait a bit before retrying, maybe exponential backoff could be good but static is fine for now
+                await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+            }
         }
+
+        return {
+            id: '',
+            permalink: '',
+            userToken: '',
+            error: 'Max retries exceeded'
+        };
     }
 
     async fetchDetailedJson(permalink: string): Promise<any | null> {
