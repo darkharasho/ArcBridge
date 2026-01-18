@@ -20,6 +20,8 @@ release/
 # OS generated files
 .DS_Store
 Thumbs.db
+.cache/
+.npm/
 
 # IDEs/Editors
 .vscode/
