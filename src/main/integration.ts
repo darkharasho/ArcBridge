@@ -25,66 +25,144 @@ export class DesktopIntegrator {
             return;
         }
 
-        const desktopFile = path.join(os.homedir(), '.local', 'share', 'applications', `appimagekit-${this.appName}.desktop`);
+        const safeDir = path.join(os.homedir(), 'Applications');
+        const currentDir = path.dirname(this.appImage);
+        let targetAppImage = this.appImage;
 
+        // Check if we are already in the safe directory
+        // We normalize paths to be safe
+        if (path.resolve(currentDir) !== path.resolve(safeDir)) {
+            const response = await dialog.showMessageBox({
+                type: 'question',
+                buttons: ['Yes, Install', 'No, Run Portable'],
+                defaultId: 0,
+                title: 'Install Application',
+                message: 'Do you want to install this application to your ~/Applications folder?',
+                detail: 'Installing ensures the application remains available even if you clear your downloads. It will also add it to your application menu.'
+            });
+
+            if (response.response === 0) {
+                try {
+                    // Create ~/Applications if it doesn't exist
+                    if (!fs.existsSync(safeDir)) {
+                        fs.mkdirSync(safeDir, { recursive: true });
+                    }
+
+                    // We use a fixed name for the installed AppImage to avoid multiple versions cluttering the directory
+                    // and to ensure the desktop shortcut always points to the latest installed version.
+                    const fileName = `${this.appName}.AppImage`;
+                    const destPath = path.join(safeDir, fileName);
+
+                    console.log(`[Integration] Copying ${this.appImage} to ${destPath}`);
+
+                    // Remove existing file if it exists to ensure clean replacement (though copyFileSync overwrites)
+                    if (fs.existsSync(destPath)) {
+                        try {
+                            fs.unlinkSync(destPath);
+                        } catch (e) {
+                            console.error('[Integration] Failed to remove existing AppImage before update:', e);
+                        }
+                    }
+
+                    fs.copyFileSync(this.appImage, destPath);
+                    fs.chmodSync(destPath, 0o755); // Make executable
+
+                    targetAppImage = destPath;
+
+                    await dialog.showMessageBox({
+                        type: 'info',
+                        title: 'Installation Complete',
+                        message: `The application has been copied to ${safeDir}. \n\nThe next time you launch it from your menu, it will use the installed version.`
+                    });
+
+                } catch (err: any) {
+                    console.error('[Integration] Failed to copy AppImage:', err);
+                    await dialog.showMessageBox({
+                        type: 'error',
+                        title: 'Installation Failed',
+                        message: 'Could not copy application to install folder: ' + err.message
+                    });
+                    // Fallback to pointing to the current location so at least it runs
+                }
+            }
+        }
+
+        // Now proceed with desktop integration pointing to 'targetAppImage'
+        const desktopFile = path.join(os.homedir(), '.local', 'share', 'applications', `appimagekit-${this.appName}.desktop`);
         let needsIntegration = true;
-        // Check if we need to update the integration (e.g. AppImage moved or new version)
+
         if (fs.existsSync(desktopFile)) {
             try {
                 const content = fs.readFileSync(desktopFile, 'utf-8');
-                // Check if the Exec line points to the current AppImage
-                if (content.includes(`Exec="${this.appImage}"`)) {
+                if (content.includes(`Exec="${targetAppImage}"`)) {
                     console.log('[Integration] Already integrated correctly.');
                     needsIntegration = false;
-                } else {
-                    console.log('[Integration] Desktop file exists but points to different location/version. Updating.');
                 }
             } catch (e) {
                 console.error('[Integration] Error reading existing desktop file', e);
             }
         }
 
-        if (!needsIntegration) return;
+        if (needsIntegration) {
+            // If we just installed it, we definitely want to integrate it (create menu item)
+            // If we didn't install (portable), we might ask user if they want a menu item?
+            // But simpler to just do it if we installed, or if user explicitly wants it.
 
-        const response = await dialog.showMessageBox({
-            type: 'question',
-            buttons: ['Yes', 'No'],
-            defaultId: 0,
-            title: 'Desktop Integration',
-            message: 'Do you want to add this application to your applications menu?',
-            detail: 'This will allow you to search for it in your launcher and pin it to your taskbar.'
-        });
-
-        if (response.response === 0) {
-            try {
-                this.createDesktopFile(desktopFile);
-                this.installIcon();
-
-                // Refresh desktop database and icon cache
-                // We run this asynchronously and don't block
-                const shareDir = path.join(os.homedir(), '.local', 'share');
-                exec(`update-desktop-database "${path.join(shareDir, 'applications')}"`, (error) => {
-                    if (error) console.error('[Integration] Failed to update desktop database:', error);
-                    else console.log('[Integration] Desktop database updated.');
+            // If we moved it, we definitely do it. Use 'targetAppImage'
+            if (targetAppImage !== this.appImage) {
+                // Implicitly integrate if we moved it
+                this.performIntegration(desktopFile, targetAppImage);
+            } else {
+                // We didn't move it. Ask if they want a menu shortcut anyway.
+                const response = await dialog.showMessageBox({
+                    type: 'question',
+                    buttons: ['Yes', 'No'],
+                    defaultId: 0,
+                    title: 'Desktop Integration',
+                    message: 'Do you want to add this application to your applications menu?',
+                    detail: 'This will allow you to search for it in your launcher.'
                 });
 
-                await dialog.showMessageBox({
-                    type: 'info',
-                    title: 'Integration Successful',
-                    message: 'Application has been added to your menu. You may need to wait a moment or logout/login for it to appear.'
-                });
-            } catch (err: any) {
-                console.error('[Integration] Failed to integrate:', err);
-                await dialog.showMessageBox({
-                    type: 'error',
-                    title: 'Integration Failed',
-                    message: 'Could not create desktop shortcut: ' + err.message
-                });
+                if (response.response === 0) {
+                    this.performIntegration(desktopFile, targetAppImage);
+                }
             }
         }
     }
 
-    private createDesktopFile(destPath: string) {
+    private async performIntegration(desktopFile: string, targetAppImage: string) {
+        try {
+            this.createDesktopFile(desktopFile, targetAppImage);
+            this.installIcon();
+
+            const shareDir = path.join(os.homedir(), '.local', 'share');
+            exec(`update-desktop-database "${path.join(shareDir, 'applications')}"`, (error) => {
+                if (error) console.error('[Integration] Failed to update desktop database:', error);
+            });
+
+            // Only show success message if we didn't just show an installation success message? 
+            // Or maybe just show it.
+            // Let's keep it simple and silent unless error, or maybe a small notification if possible?
+            // The previous code showed a dialog.
+
+            // If we blindly moved code here, we might lose the dialog.
+            // Let's show a dialog only if we didn't just show the "Installation Complete" dialog?
+            // Actually, "Installation Complete" implies it. 
+            // But let's verify.
+
+            console.log('[Integration] Desktop integration updated.');
+
+        } catch (err: any) {
+            console.error('[Integration] Failed to integrate:', err);
+            await dialog.showMessageBox({
+                type: 'error',
+                title: 'Integration Failed',
+                message: 'Could not create desktop shortcut: ' + err.message
+            });
+        }
+    }
+
+    private createDesktopFile(destPath: string, appPath: string) {
         // Ensure directory exists
         const dir = path.dirname(destPath);
         if (!fs.existsSync(dir)) {
@@ -93,7 +171,7 @@ export class DesktopIntegrator {
 
         const desktopContent = `[Desktop Entry]
 Name=GW2 Arc Log Uploader
-Exec="${this.appImage}" %U
+Exec="${appPath}" %U
 Terminal=false
 Type=Application
 Icon=appimagekit-${this.appName}
@@ -101,7 +179,7 @@ StartupWMClass=${this.appName}
 X-AppImage-Version=${app.getVersion()}
 Comment=Guild Wars 2 arcDPS Log Uploader
 Categories=Utility;
-TryExec=${this.appImage}
+TryExec=${appPath}
 `;
 
         fs.writeFileSync(destPath, desktopContent, { mode: 0o755 });
