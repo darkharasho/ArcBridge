@@ -12,6 +12,15 @@ export interface IElectronAPI {
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     sendScreenshot: (id: string, buffer: Uint8Array) => void;
+    // Auto Updater
+    checkForUpdates: () => void;
+    restartApp: () => void;
+    onUpdateMessage: (callback: (message: string) => void) => () => void;
+    onUpdateAvailable: (callback: (info: any) => void) => () => void;
+    onUpdateNotAvailable: (callback: (info: any) => void) => () => void;
+    onUpdateError: (callback: (err: any) => void) => () => void;
+    onDownloadProgress: (callback: (progress: any) => void) => () => void;
+    onUpdateDownloaded: (callback: (info: any) => void) => () => void;
 }
 
 declare global {

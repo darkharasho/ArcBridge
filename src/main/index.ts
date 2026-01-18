@@ -3,6 +3,12 @@ import path from 'node:path'
 import { LogWatcher } from './watcher'
 import { Uploader } from './uploader'
 import { DiscordNotifier } from './discord';
+import { autoUpdater } from 'electron-updater';
+import log from 'electron-log';
+
+// Configure autoUpdater logger
+log.transports.file.level = 'info';
+autoUpdater.logger = log;
 
 const Store = require('electron-store');
 const store = new Store();
@@ -161,6 +167,37 @@ function createWindow() {
     }
 }
 
+function setupAutoUpdater() {
+    autoUpdater.on('checking-for-update', () => {
+        log.info('Checking for update...');
+        win?.webContents.send('update-message', 'Checking for update...');
+    });
+    autoUpdater.on('update-available', (info: any) => {
+        log.info('Update available.');
+        win?.webContents.send('update-available', info);
+    });
+    autoUpdater.on('update-not-available', (info: any) => {
+        log.info('Update not available.');
+        win?.webContents.send('update-not-available', info);
+    });
+    autoUpdater.on('error', (err: any) => {
+        log.error('Error in auto-updater. ' + err);
+        win?.webContents.send('update-error', err);
+    });
+    autoUpdater.on('download-progress', (progressObj: any) => {
+        let log_message = "Download speed: " + progressObj.bytesPerSecond;
+        log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+        log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+        // log.info(log_message);
+        win?.webContents.send('download-progress', progressObj);
+    });
+    autoUpdater.on('update-downloaded', (info: any) => {
+        log.info('Update downloaded');
+        win?.webContents.send('update-downloaded', info);
+    });
+}
+
+
 app.on('window-all-closed', () => {
     // Keep alive for tray
 })
@@ -180,6 +217,21 @@ app.on('before-quit', () => {
 app.whenReady().then(() => {
     createWindow();
     createTray();
+
+    // Check for updates
+    setupAutoUpdater();
+    // Check for updates after a short delay to ensure window is ready
+    setTimeout(() => {
+        autoUpdater.checkForUpdates();
+    }, 3000);
+
+    ipcMain.on('check-for-updates', () => {
+        autoUpdater.checkForUpdates();
+    });
+
+    ipcMain.on('restart-app', () => {
+        autoUpdater.quitAndInstall();
+    });
 
     ipcMain.handle('get-settings', () => {
         return {

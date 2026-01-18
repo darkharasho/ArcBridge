@@ -34,5 +34,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
         }
     },
     openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
-    sendScreenshot: (id: string, buffer: Uint8Array) => ipcRenderer.send('send-screenshot', id, buffer)
+    sendScreenshot: (id: string, buffer: Uint8Array) => ipcRenderer.send('send-screenshot', id, buffer),
+
+    // Auto Updater
+    checkForUpdates: () => ipcRenderer.send('check-for-updates'),
+    restartApp: () => ipcRenderer.send('restart-app'),
+    onUpdateMessage: (callback: (message: string) => void) => {
+        ipcRenderer.on('update-message', (_event, value) => callback(value))
+        return () => ipcRenderer.removeAllListeners('update-message')
+    },
+    onUpdateAvailable: (callback: (info: any) => void) => {
+        ipcRenderer.on('update-available', (_event, value) => callback(value))
+        return () => ipcRenderer.removeAllListeners('update-available')
+    },
+    onUpdateNotAvailable: (callback: (info: any) => void) => {
+        ipcRenderer.on('update-not-available', (_event, value) => callback(value))
+        return () => ipcRenderer.removeAllListeners('update-not-available')
+    },
+    onUpdateError: (callback: (err: any) => void) => {
+        ipcRenderer.on('update-error', (_event, value) => callback(value))
+        return () => ipcRenderer.removeAllListeners('update-error')
+    },
+    onDownloadProgress: (callback: (progress: any) => void) => {
+        ipcRenderer.on('download-progress', (_event, value) => callback(value))
+        return () => ipcRenderer.removeAllListeners('download-progress')
+    },
+    onUpdateDownloaded: (callback: (info: any) => void) => {
+        ipcRenderer.on('update-downloaded', (_event, value) => callback(value))
+        return () => ipcRenderer.removeAllListeners('update-downloaded')
+    }
 })

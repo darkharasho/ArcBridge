@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout } from 'lucide-react';
+import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout, RefreshCw } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ExpandableLogCard } from './ExpandableLogCard';
 
@@ -11,7 +11,14 @@ function App() {
     const [logs, setLogs] = useState<ILogData[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
     const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
+
+    // Updater State
+    const [updateStatus, setUpdateStatus] = useState<string>('');
+    const [updateProgress, setUpdateProgress] = useState<any>(null);
+    const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
+    const [updateDownloaded, setUpdateDownloaded] = useState<boolean>(false);
 
     // Stats calculation
     const totalUploads = logs.length;
@@ -105,6 +112,38 @@ function App() {
             cleanupStatus();
             cleanupUpload();
             cleanupScreenshot();
+        };
+    }, []);
+
+    useEffect(() => {
+        const cleanupMessage = window.electronAPI.onUpdateMessage((message) => setUpdateStatus(message));
+        const cleanupAvailable = window.electronAPI.onUpdateAvailable(() => {
+            setUpdateAvailable(true);
+            setUpdateStatus('Update available. Downloading...');
+        });
+        const cleanupNotAvailable = window.electronAPI.onUpdateNotAvailable(() => {
+            setUpdateStatus('App is up to date.');
+            setTimeout(() => setUpdateStatus(''), 5000);
+        });
+        const cleanupError = window.electronAPI.onUpdateError((err) => {
+            setUpdateStatus('Error: ' + (err.message || err));
+        });
+        const cleanupProgress = window.electronAPI.onDownloadProgress((progress) => {
+            setUpdateProgress(progress);
+        });
+        const cleanupDownloaded = window.electronAPI.onUpdateDownloaded(() => {
+            setUpdateStatus('Update downloaded. Ready to restart.');
+            setUpdateDownloaded(true);
+            setUpdateProgress(null);
+        });
+
+        return () => {
+            cleanupMessage();
+            cleanupAvailable();
+            cleanupNotAvailable();
+            cleanupError();
+            cleanupProgress();
+            cleanupDownloaded();
         };
     }, []);
 
@@ -255,6 +294,50 @@ function App() {
                                             <Layout className="w-4 h-4" />
                                             <span className="text-sm font-medium">Embed</span>
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Update Status */}
+                            <div className="border-t border-white/5 pt-4 mt-4">
+                                <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Application Updates</label>
+                                <div className="bg-black/40 border border-white/5 rounded-xl p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm text-gray-300 font-medium truncate">
+                                                {updateStatus || "v1.0.0"}
+                                            </div>
+                                            {updateProgress && (
+                                                <div className="w-full bg-gray-700 h-1 mt-2 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="bg-blue-500 h-full transition-all duration-300"
+                                                        style={{ width: `${updateProgress.percent}%` }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {updateDownloaded ? (
+                                            <button
+                                                onClick={() => window.electronAPI.restartApp()}
+                                                className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                                                title="Restart and Install"
+                                            >
+                                                <RefreshCw className="w-5 h-5" />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setUpdateStatus('Checking for updates...');
+                                                    window.electronAPI.checkForUpdates();
+                                                }}
+                                                className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors"
+                                                title="Check for Updates"
+                                                disabled={updateAvailable}
+                                            >
+                                                <RefreshCw className={`w-5 h-5 ${updateStatus.includes('Checking') ? 'animate-spin' : ''}`} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
