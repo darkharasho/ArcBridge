@@ -26,12 +26,25 @@ export class DiscordNotifier {
             if (mode === 'image' && logData.imageBuffer) {
                 // IMAGE MODE: Plain text with suppression + PNG attachment
                 const form = new FormData();
-                const content = `**${jsonDetails?.fightName || 'Log Uploaded'}**\n<${logData.permalink}>`;
 
-                form.append('payload_json', JSON.stringify({
-                    username: "GW2 Arc Log Uploader",
-                    content: content
-                }));
+                // User Request: 
+                // 1. Stats Share (id='stats-dashboard'): Image ONLY.
+                // 2. Individual Logs: Image + dps.report Link.
+
+                let content = '';
+                if (logData.id !== 'stats-dashboard') {
+                    content = `**${jsonDetails?.fightName || 'Log Uploaded'}**\n[dps.report](${logData.permalink})`;
+                }
+
+                const payload: any = {
+                    username: "GW2 Arc Log Uploader"
+                };
+
+                if (content) {
+                    payload.content = content;
+                }
+
+                form.append('payload_json', JSON.stringify(payload));
 
                 form.append('file', Buffer.from(logData.imageBuffer), {
                     filename: 'log_summary.png',
@@ -73,7 +86,12 @@ export class DiscordNotifier {
                     let squadDeaths = 0;
 
                     let totalCCTaken = 0;
+                    let totalCCMissed = 0;
+                    let totalCCBlocked = 0;
+
                     let totalStripsTaken = 0;
+                    let totalStripsMissed = 0;
+                    let totalStripsBlocked = 0;
 
                     const profCounts: { [key: string]: number } = {};
 
@@ -108,23 +126,41 @@ export class DiscordNotifier {
                             // Uses PlenBot logic below instead of simple fields for CC/Strips
                         }
                         const pStats = calculateIncomingStats(p);
-                        totalCCTaken += pStats.cc.total; // Use calculated total
-                        totalStripsTaken += pStats.strips.total; // Use calculated total
+                        totalCCTaken += pStats.cc.total;
+                        totalCCMissed += pStats.cc.missed;
+                        totalCCBlocked += pStats.cc.blocked;
+
+                        totalStripsTaken += pStats.strips.total;
+                        totalStripsMissed += pStats.strips.missed;
+                        totalStripsBlocked += pStats.strips.blocked;
+
                         const prof = p.profession;
                         profCounts[prof] = (profCounts[prof] || 0) + 1;
                     });
 
-                    // Calculate Enemy (Target) Stats - how many times we downed/killed them
+                    // Calculate Enemy (Target) Stats - how many times WE downed/killed them
+                    // We aggregate from player statsTargets, which records what each player did to targets
                     const targets = jsonDetails.targets || [];
                     let enemyDowns = 0;
                     let enemyDeaths = 0;
                     let enemyCount = 0;
+
+                    // Count non-fake targets
                     targets.forEach((t: any) => {
-                        if (t.isFake) return; // Skip fake targets
-                        enemyCount++;
-                        if (t.defenses && t.defenses.length > 0) {
-                            enemyDowns += t.defenses[0].downCount || 0;
-                            enemyDeaths += t.defenses[0].deadCount || 0;
+                        if (!t.isFake) enemyCount++;
+                    });
+
+                    // Aggregate downed/killed from statsTargets
+                    players.forEach((p: any) => {
+                        if (p.notInSquad) return; // Only count squad contributions
+                        if (p.statsTargets && p.statsTargets.length > 0) {
+                            p.statsTargets.forEach((targetStats: any) => {
+                                if (targetStats && targetStats.length > 0) {
+                                    const st = targetStats[0]; // Phase 0
+                                    enemyDowns += st.downed || 0;
+                                    enemyDeaths += st.killed || 0;
+                                }
+                            });
                         }
                     });
 
@@ -190,12 +226,12 @@ export class DiscordNotifier {
                     });
                     embedFields.push({
                         name: "Incoming CC:",
-                        value: `\`\`\`\n${formatIncoming(totalMiss, totalBlock, totalCCTaken)}\n\`\`\``,
+                        value: `\`\`\`\n${formatIncoming(totalCCMissed, totalCCBlocked, totalCCTaken)}\n\`\`\``,
                         inline: true
                     });
                     embedFields.push({
                         name: "Incoming Strips:",
-                        value: `\`\`\`\n${formatIncoming(totalMiss, totalBlock, totalStripsTaken)}\n\`\`\``,
+                        value: `\`\`\`\n${formatIncoming(totalStripsMissed, totalStripsBlocked, totalStripsTaken)}\n\`\`\``,
                         inline: true
                     });
 

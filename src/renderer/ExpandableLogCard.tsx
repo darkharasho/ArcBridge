@@ -42,7 +42,12 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
     let squadResurrects = 0;
 
     let totalCCTaken = 0;
+    let totalCCMissed = 0;
+    let totalCCBlocked = 0;
+
     let totalStripsTaken = 0;
+    let totalStripsMissed = 0;
+    let totalStripsBlocked = 0;
 
     players.forEach((p: any) => {
         const isSquad = !p.notInSquad;
@@ -75,19 +80,37 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
 
         const pStats = calculateIncomingStats(p);
         totalCCTaken += pStats.cc.total;
+        totalCCMissed += pStats.cc.missed;
+        totalCCBlocked += pStats.cc.blocked;
+
         totalStripsTaken += pStats.strips.total;
+        totalStripsMissed += pStats.strips.missed;
+        totalStripsBlocked += pStats.strips.blocked;
     });
 
-    // Calculate Enemy (Target) Stats - how many times we downed/killed them
+    // Calculate Enemy (Target) Stats - how many times WE downed/killed them
+    // We aggregate from player statsTargets, which records what each player did to targets
     let enemyDowns = 0;
     let enemyDeaths = 0;
     let enemyCount = 0;
+
+    // Count non-fake targets
     targets.forEach((t: any) => {
-        if (t.isFake) return; // Skip fake targets
-        enemyCount++;
-        if (t.defenses && t.defenses.length > 0) {
-            enemyDowns += t.defenses[0].downCount || 0;
-            enemyDeaths += t.defenses[0].deadCount || 0;
+        if (!t.isFake) enemyCount++;
+    });
+
+    // Aggregate downed/killed from statsTargets
+    players.forEach((p: any) => {
+        if (p.notInSquad) return; // Only count squad contributions
+        if (p.statsTargets && p.statsTargets.length > 0) {
+            // statsTargets[targetIndex] contains stats for that target
+            p.statsTargets.forEach((targetStats: any) => {
+                if (targetStats && targetStats.length > 0) {
+                    const st = targetStats[0]; // Phase 0
+                    enemyDowns += st.downed || 0;
+                    enemyDeaths += st.killed || 0;
+                }
+            });
         }
     });
 
@@ -183,16 +206,16 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                             <h5 className="font-bold text-purple-400 mb-2 uppercase tracking-tight text-[10px]">Incoming CC</h5>
                             <div className="font-mono text-xs text-gray-300 text-left space-y-1">
-                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-purple-200">{totalMiss}</span></div>
-                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-purple-200">{totalBlock}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-purple-200">{totalCCMissed}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-purple-200">{totalCCBlocked}</span></div>
                                 <div className="flex justify-between text-white font-bold pt-1 border-t border-white/5"><span>Total:</span> <span>{totalCCTaken}</span></div>
                             </div>
                         </div>
                         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                             <h5 className="font-bold text-orange-400 mb-2 uppercase tracking-tight text-[10px]">Incoming Strips</h5>
                             <div className="font-mono text-xs text-gray-300 text-left space-y-1">
-                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-orange-200">{totalMiss}</span></div>
-                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-orange-200">{totalBlock}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-orange-200">{totalStripsMissed}</span></div>
+                                <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-orange-200">{totalStripsBlocked}</span></div>
                                 <div className="flex justify-between text-white font-bold pt-1 border-t border-white/5"><span>Total:</span> <span>{totalStripsTaken}</span></div>
                             </div>
                         </div>
@@ -303,8 +326,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                 <div className="bg-white/5 rounded-lg p-2 border border-white/5">
                                     <h5 className="font-semibold text-purple-400 mb-1 uppercase tracking-wider text-[9px]">Incoming CC</h5>
                                     <div className="font-mono text-[10px] text-gray-300">
-                                        <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-gray-300">{totalMiss}</span></div>
-                                        <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-gray-300">{totalBlock}</span></div>
+                                        <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-gray-300">{totalCCMissed}</span></div>
+                                        <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-gray-300">{totalCCBlocked}</span></div>
                                         <div className="flex justify-between text-gray-500"><span>Total:</span> <span className="text-gray-300">{totalCCTaken}</span></div>
                                     </div>
                                 </div>
@@ -312,8 +335,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode }:
                                 <div className="bg-white/5 rounded-lg p-2 border border-white/5">
                                     <h5 className="font-semibold text-orange-400 mb-1 uppercase tracking-wider text-[9px]">Incoming Strips</h5>
                                     <div className="font-mono text-[10px] text-gray-300">
-                                        <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-gray-300">{totalMiss}</span></div>
-                                        <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-gray-300">{totalBlock}</span></div>
+                                        <div className="flex justify-between text-gray-500"><span>Miss:</span> <span className="text-gray-300">{totalStripsMissed}</span></div>
+                                        <div className="flex justify-between text-gray-500"><span>Block:</span> <span className="text-gray-300">{totalStripsBlocked}</span></div>
                                         <div className="flex justify-between text-gray-500"><span>Total:</span> <span className="text-gray-300">{totalStripsTaken}</span></div>
                                     </div>
                                 </div>

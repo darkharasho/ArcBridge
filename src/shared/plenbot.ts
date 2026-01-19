@@ -372,6 +372,10 @@ export function calculateIncomingStats(player: Player): { strips: { total: numbe
             }
         }
     }
+    strips.total = Math.round(strips.total);
+    strips.missed = Math.round(strips.missed);
+    strips.blocked = Math.round(strips.blocked);
+
     return { strips, cc };
 }
 

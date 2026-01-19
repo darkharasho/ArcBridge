@@ -12,6 +12,7 @@ export interface DPSReportJSON {
     durationMS: number;
     fightName: string;
     success: boolean;
+    skillMap?: { [key: string]: { name: string; icon: string } };
 }
 
 export interface Target {
@@ -34,6 +35,7 @@ export interface Player {
     elite_spec: number;
     group: number;
     dpsAll: StatsAll[];
+    statsAll?: StatsAll[]; // Contains stackDist (distance to tag)
     defenses: Defenses[];
     support: Support[];
     extHealingStats?: {
@@ -57,6 +59,7 @@ export interface StatsAll {
     damage: number;
     breakbarDamage: number;
     downContribution?: number; // Added back as optional
+    stackDist?: number;
 }
 
 // Correct Defenses interface based on standard Elite Insights JSON

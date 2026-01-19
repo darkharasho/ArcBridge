@@ -26,7 +26,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     windowControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.send('window-control', action),
     getSettings: () => ipcRenderer.invoke('get-settings'),
     manualUpload: (path: string) => ipcRenderer.send('manual-upload', path),
+    manualUploadBatch: (paths: string[]) => ipcRenderer.send('manual-upload-batch', paths),
     saveSettings: (settings: any) => ipcRenderer.send('save-settings', settings),
+    getLogs: () => ipcRenderer.invoke('get-logs'),
+    saveLogs: (logs: any[]) => ipcRenderer.send('save-logs', logs),
     onRequestScreenshot: (callback: (data: any) => void) => {
         ipcRenderer.on('request-screenshot', (_event, value) => callback(value))
         return () => {
@@ -62,5 +65,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onUpdateDownloaded: (callback: (info: any) => void) => {
         ipcRenderer.on('update-downloaded', (_event, value) => callback(value))
         return () => ipcRenderer.removeAllListeners('update-downloaded')
-    }
+    },
+    sendStatsScreenshot: (buffer: Uint8Array) => ipcRenderer.send('send-stats-screenshot', buffer)
 })
