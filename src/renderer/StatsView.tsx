@@ -106,6 +106,9 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             calculateAllStability(players);
 
             players.forEach(p => {
+                // Only process squad members, not allies
+                if (p.notInSquad) return;
+
                 // Determine Identity
                 const account = p.account || 'Unknown';
                 // We key by account to aggregate totals across characters

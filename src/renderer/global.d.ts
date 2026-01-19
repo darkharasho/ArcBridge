@@ -1,3 +1,9 @@
+export interface IWebhook {
+    id: string;
+    name: string;
+    url: string;
+}
+
 export interface IElectronAPI {
     selectDirectory: () => Promise<string | null>;
     startWatching: (path: string) => void;
@@ -6,10 +12,22 @@ export interface IElectronAPI {
     onUploadStatus: (callback: (data: any) => void) => () => void;
     setDiscordWebhook: (url: string) => void;
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
-    getSettings: () => Promise<{ logDirectory: string | null, discordWebhookUrl: string | null, discordNotificationType: 'image' | 'embed' }>;
+    getSettings: () => Promise<{
+        logDirectory: string | null;
+        discordWebhookUrl: string | null;
+        discordNotificationType: 'image' | 'embed';
+        webhooks: IWebhook[];
+        selectedWebhookId: string | null;
+    }>;
     manualUpload: (path: string) => void;
     manualUploadBatch: (paths: string[]) => void;
-    saveSettings: (settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => void;
+    saveSettings: (settings: {
+        logDirectory?: string | null;
+        discordWebhookUrl?: string | null;
+        discordNotificationType?: 'image' | 'embed';
+        webhooks?: IWebhook[];
+        selectedWebhookId?: string | null;
+    }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     sendScreenshot: (id: string, buffer: Uint8Array) => void;

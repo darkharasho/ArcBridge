@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout, RefreshCw, Trophy } from 'lucide-react';
+import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout, RefreshCw, Trophy, ChevronDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ExpandableLogCard } from './ExpandableLogCard';
 import { StatsView } from './StatsView';
+import { WebhookModal, Webhook } from './WebhookModal';
 
 function App() {
     const [logDirectory, setLogDirectory] = useState<string | null>(null);
-    const [webhookUrl, setWebhookUrl] = useState<string>('');
     const [notificationType, setNotificationType] = useState<'image' | 'embed'>('image');
     const [logs, setLogs] = useState<ILogData[]>([]);
     const [isDragging, setIsDragging] = useState(false);
@@ -26,6 +26,11 @@ function App() {
 
     // App Version
     const [appVersion, setAppVersion] = useState<string>('...');
+
+    // Webhook Management
+    const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+    const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
+    const [webhookModalOpen, setWebhookModalOpen] = useState(false);
 
     // Persistence removed
 
@@ -50,12 +55,14 @@ function App() {
                 setLogDirectory(settings.logDirectory);
                 window.electronAPI.startWatching(settings.logDirectory);
             }
-            if (settings.discordWebhookUrl) {
-                setWebhookUrl(settings.discordWebhookUrl);
-                window.electronAPI.setDiscordWebhook(settings.discordWebhookUrl);
-            }
             if (settings.discordNotificationType) {
                 setNotificationType(settings.discordNotificationType);
+            }
+            if (settings.webhooks) {
+                setWebhooks(settings.webhooks);
+            }
+            if (settings.selectedWebhookId) {
+                setSelectedWebhookId(settings.selectedWebhookId);
             }
 
             // Load app version
@@ -315,17 +322,31 @@ function App() {
 
                                     <div>
                                         <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Discord Webhook</label>
-                                        <div className="bg-black/40 border border-white/5 rounded-xl p-2 flex items-center gap-3 hover:border-blue-500/50 transition-colors">
-                                            <input
-                                                type="text"
-                                                value={webhookUrl}
-                                                placeholder="https://discord.com/api/webhooks/..."
-                                                className="flex-1 bg-transparent border-none text-sm text-gray-300 placeholder-gray-600 focus:ring-0 px-2"
-                                                onChange={(e) => {
-                                                    setWebhookUrl(e.target.value);
-                                                    window.electronAPI.setDiscordWebhook(e.target.value);
-                                                }}
-                                            />
+                                        <div className="flex gap-2">
+                                            <div className="flex-1 min-w-0 bg-black/40 border border-white/5 rounded-xl p-2 flex items-center gap-2 hover:border-purple-500/50 transition-colors">
+                                                <select
+                                                    value={selectedWebhookId || ''}
+                                                    onChange={(e) => {
+                                                        const id = e.target.value || null;
+                                                        setSelectedWebhookId(id);
+                                                        handleUpdateSettings({ selectedWebhookId: id });
+                                                    }}
+                                                    className="flex-1 bg-transparent border-none text-sm text-gray-300 focus:ring-0 cursor-pointer appearance-none"
+                                                >
+                                                    <option value="" className="bg-gray-900">No webhook selected</option>
+                                                    {webhooks.map(w => (
+                                                        <option key={w.id} value={w.id} className="bg-gray-900">{w.name}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="w-4 h-4 text-gray-500 shrink-0 pointer-events-none" />
+                                            </div>
+                                            <button
+                                                onClick={() => setWebhookModalOpen(true)}
+                                                className="shrink-0 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl px-3 flex items-center justify-center gap-2 transition-colors"
+                                                title="Manage Webhooks"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     </div>
 
@@ -479,6 +500,22 @@ function App() {
                     />
                 )}
             </div>
+
+            {/* Webhook Management Modal */}
+            <WebhookModal
+                isOpen={webhookModalOpen}
+                onClose={() => setWebhookModalOpen(false)}
+                webhooks={webhooks}
+                onSave={(newWebhooks) => {
+                    setWebhooks(newWebhooks);
+                    handleUpdateSettings({ webhooks: newWebhooks });
+                    // If the selected webhook was deleted, clear selection
+                    if (selectedWebhookId && !newWebhooks.find(w => w.id === selectedWebhookId)) {
+                        setSelectedWebhookId(null);
+                        handleUpdateSettings({ selectedWebhookId: null });
+                    }
+                }}
+            />
         </div >
     );
 }

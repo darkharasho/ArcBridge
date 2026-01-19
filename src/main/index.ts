@@ -320,7 +320,9 @@ if (!gotTheLock) {
             return {
                 logDirectory: store.get('logDirectory', null),
                 discordWebhookUrl: store.get('discordWebhookUrl', null),
-                discordNotificationType: store.get('discordNotificationType', 'image')
+                discordNotificationType: store.get('discordNotificationType', 'image'),
+                webhooks: store.get('webhooks', []),
+                selectedWebhookId: store.get('selectedWebhookId', null)
             };
         });
 
@@ -332,7 +334,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed', webhooks?: any[], selectedWebhookId?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -343,6 +345,19 @@ if (!gotTheLock) {
             }
             if (settings.discordNotificationType !== undefined) {
                 store.set('discordNotificationType', settings.discordNotificationType);
+            }
+            if (settings.webhooks !== undefined) {
+                store.set('webhooks', settings.webhooks);
+            }
+            if (settings.selectedWebhookId !== undefined) {
+                store.set('selectedWebhookId', settings.selectedWebhookId);
+                // Update the active webhook URL based on selected ID
+                const webhooks = store.get('webhooks', []) as any[];
+                const selected = webhooks.find((w: any) => w.id === settings.selectedWebhookId);
+                if (selected) {
+                    store.set('discordWebhookUrl', selected.url);
+                    discord?.setWebhookUrl(selected.url);
+                }
             }
         });
 
