@@ -110,6 +110,12 @@ function createWindow() {
     uploader = new Uploader();
     discord = new DiscordNotifier();
 
+    // Initialize Discord config
+    const webhookUrl = store.get('discordWebhookUrl');
+    if (webhookUrl && typeof webhookUrl === 'string') {
+        discord.setWebhookUrl(webhookUrl);
+    }
+
     watcher.on('log-detected', async (filePath: string) => {
         const fileId = path.basename(filePath);
         win?.webContents.send('upload-status', { id: fileId, filePath, status: 'uploading' });
@@ -266,6 +272,14 @@ if (!gotTheLock) {
             };
         });
 
+        // Clear logs from store to improve boot time (persistence removed)
+        if (store.has('logs')) {
+            console.log('[Main] Clearing persistent logs to improve startup time.');
+            store.delete('logs');
+        }
+
+        // Removed get-logs and save-logs handlers
+
         ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
@@ -301,6 +315,18 @@ if (!gotTheLock) {
             watcher?.emit('log-detected', filePath);
         });
 
+        ipcMain.on('manual-upload-batch', (_event, filePaths: string[]) => {
+            console.log(`[Main] Received batch of ${filePaths.length} logs.`);
+            // Process sequentially to avoid overwhelming the system
+            (async () => {
+                for (const filePath of filePaths) {
+                    watcher?.emit('log-detected', filePath);
+                    // Small delay to allow UI updates to breathe
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            })();
+        });
+
         ipcMain.on('window-control', (_event, action: 'minimize' | 'maximize' | 'close') => {
             if (!win) return;
             if (action === 'minimize') win.minimize();
@@ -322,6 +348,28 @@ if (!gotTheLock) {
             if (data && discord) {
                 await discord.sendLog({ ...data.result, imageBuffer: buffer, mode: 'image' }, data.jsonDetails);
                 pendingDiscordLogs.delete(logId);
+            }
+        });
+
+        ipcMain.on('send-stats-screenshot', async (_event, buffer: Uint8Array) => {
+            if (discord) {
+                // We create a dummy log entry for the generalized stats
+                const dummyLog: any = {
+                    id: 'stats-dashboard',
+                    fightName: 'Weekly Statistics',
+                    encounterDuration: 'Summary',
+                    uploadTime: Math.floor(Date.now() / 1000),
+                    permalink: 'https://dps.report',
+                    imageBuffer: buffer,
+                    mode: 'image'
+                };
+                // We pass a dummy jsonDetails for the title
+                try {
+                    await discord.sendLog(dummyLog, { fightName: 'Aggregated Statistics' });
+                    console.log('[Main] Stats screenshot sent to Discord.');
+                } catch (e) {
+                    console.error('[Main] Failed to send stats screenshot:', e);
+                }
             }
         });
     })

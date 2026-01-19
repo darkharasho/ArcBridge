@@ -8,10 +8,13 @@ export interface IElectronAPI {
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
     getSettings: () => Promise<{ logDirectory: string | null, discordWebhookUrl: string | null, discordNotificationType: 'image' | 'embed' }>;
     manualUpload: (path: string) => void;
+    manualUploadBatch: (paths: string[]) => void;
     saveSettings: (settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'embed' }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     sendScreenshot: (id: string, buffer: Uint8Array) => void;
+    getLogs: () => Promise<ILogData[]>;
+    saveLogs: (logs: ILogData[]) => void;
     // Auto Updater
     checkForUpdates: () => void;
     restartApp: () => void;
@@ -21,6 +24,7 @@ export interface IElectronAPI {
     onUpdateError: (callback: (err: any) => void) => () => void;
     onDownloadProgress: (callback: (progress: any) => void) => () => void;
     onUpdateDownloaded: (callback: (info: any) => void) => () => void;
+    sendStatsScreenshot: (buffer: Uint8Array) => void;
 }
 
 declare global {
@@ -34,6 +38,9 @@ declare global {
         filePath: string;
         status?: 'uploading' | 'discord' | 'success' | 'error';
         error?: string;
+        uploadTime?: number;
+        encounterDuration?: string;
+        fightName?: string;
         details?: {
             fightName: string;
             encounterDuration: string;
