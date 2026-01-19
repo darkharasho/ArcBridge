@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind } from 'lucide-react';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip } from 'recharts';
 import { toPng } from 'html-to-image';
 import { calculateAllStability, calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
@@ -37,6 +37,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             totalDist: number;
             distCount: number;
             dodges: number;
+            profession: string;
         }
 
         const playerStats = new Map<string, PlayerStats>();
@@ -132,11 +133,13 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                         logsJoined: 0,
                         totalDist: 0,
                         distCount: 0,
-                        dodges: 0
+                        dodges: 0,
+                        profession: p.profession || 'Unknown'
                     });
                 }
 
                 const s = playerStats.get(key)!;
+                if (p.profession) s.profession = p.profession;
                 s.logsJoined++;
 
                 // Aggregate Metrics
@@ -268,6 +271,77 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         });
 
         if (closestToTag.value === 999999) closestToTag.value = 0;
+
+        // --- Calculate MVP ---
+        // --- Calculate MVP ---
+        let mvp = {
+            player: 'None',
+            account: 'None',
+            reason: 'No sufficient data',
+            score: -1,
+            profession: 'Unknown',
+            color: '#64748b',
+            topStats: [] as { name: string, val: string, ratio: number }[]
+        };
+
+        let totalScoreSum = 0;
+
+        playerStats.forEach(stat => {
+            let score = 0;
+            const contributions: { name: string, ratio: number, value: number, fmt: string }[] = [];
+
+            const check = (val: number, maxVal: number, name: string) => {
+                if (maxVal > 0) {
+                    const ratio = val / maxVal;
+                    score += ratio;
+                    contributions.push({ name, ratio, value: val, fmt: Math.round(val).toLocaleString() });
+                }
+            };
+
+            check(stat.healing, maxHealing.value, 'Healing');
+            check(stat.barrier, maxBarrier.value, 'Barrier');
+            check(stat.cleanses, maxCleanses.value, 'Cleanses');
+            check(stat.strips, maxStrips.value, 'Strips');
+            check(stat.stab, maxStab.value, 'Stability');
+            check(stat.cc, maxCC.value, 'CC');
+            check(stat.downContrib, maxDownContrib.value, 'Revives');
+            check(stat.dodges, maxDodges.value, 'Dodging');
+
+            totalScoreSum += score;
+
+            if (score > mvp.score) {
+                // Determine reason based on top contributions
+                contributions.sort((a, b) => b.ratio - a.ratio);
+                const top3 = contributions.slice(0, 3);
+
+                let reason = 'Consistent all-round performance';
+                if (top3.length > 0) {
+                    const best = top3[0];
+                    if (best.ratio >= 1) {
+                        reason = `Top Rank in ${best.name}`;
+                        if (top3.length > 1 && top3[1].ratio > 0.8) {
+                            reason += ` & High ${top3[1].name}`;
+                        }
+                    } else if (best.ratio > 0.8) {
+                        reason = `High ${best.name} & ${top3[1]?.name || 'Performance'}`;
+                    } else {
+                        reason = `Versatile: ${best.name}, ${top3[1]?.name}`;
+                    }
+                }
+
+                mvp = {
+                    player: stat.name,
+                    account: stat.account,
+                    reason,
+                    score,
+                    profession: stat.profession,
+                    color: getProfessionColor(stat.profession),
+                    topStats: top3.map(c => ({ name: c.name, val: c.fmt, ratio: c.ratio }))
+                };
+            }
+        });
+
+        const avgMvpScore = playerStats.size > 0 ? totalScoreSum / playerStats.size : 0;
 
         // Sort Skills
         const topSkills = Object.values(skillDamageMap)
@@ -427,7 +501,10 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             mapData,
             squadClassData,
             enemyClassData,
-            maxDodges
+
+            maxDodges,
+            mvp,
+            avgMvpScore
         };
     }, [logs]);
 
@@ -576,6 +653,53 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                         <Trophy className="w-5 h-5 text-yellow-400" />
                         Top Players (Total Accumulated Stats)
                     </h3>
+                    <div className="mb-6">
+                        <div className="bg-gradient-to-r from-yellow-500/20 via-orange-500/10 to-transparent border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden group">
+                            {/* Glow Effect */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-yellow-500/20 transition-all" />
+
+                            <div className="flex items-center gap-6 relative z-10">
+                                <div className="hidden sm:flex items-center justify-center w-20 h-20 rounded-full bg-yellow-500/20 border border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
+                                    <Crown className="w-10 h-10 text-yellow-400" />
+                                </div>
+
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+                                        <span className="text-yellow-500 font-bold uppercase tracking-widest text-xs">Squad MVP</span>
+                                    </div>
+                                    <div className="text-3xl font-black text-white mb-2 flex items-center gap-3">
+                                        {stats.mvp.account}
+                                        <span className="text-lg font-medium text-gray-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                                            {stats.mvp.profession}
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-300 italic flex items-center gap-2 mb-3">
+                                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500/50" />
+                                        "{stats.mvp.reason}"
+                                    </p>
+
+                                    {/* Top Stats Breakdown */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {stats.mvp.topStats && stats.mvp.topStats.map((stat: any, i: number) => (
+                                            <div key={i} className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs">
+                                                <span className="text-yellow-200 font-bold">{stat.name}</span>
+                                                <span className="text-white font-mono">{stat.val}</span>
+                                                <span className="text-yellow-500/50 text-[10px]">({Math.round(stat.ratio * 100)}%)</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="hidden lg:block text-right">
+                                    <div className="text-yellow-500/40 font-mono text-sm uppercase tracking-wider font-bold">Contribution Score</div>
+                                    <div className="text-4xl font-black text-yellow-500/80">{stats.mvp.score > 0 ? stats.mvp.score.toFixed(1) : '-'}</div>
+                                    <div className="text-xs text-yellow-500/30 font-mono mt-1">Avg: {stats.avgMvpScore.toFixed(1)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         <LeaderCard icon={HelpingHand} title="Down Contribution" data={stats.maxDownContrib} color="red" />
                         <LeaderCard icon={Shield} title="Total Barrier" data={stats.maxBarrier} color="yellow" />
