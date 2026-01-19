@@ -2,11 +2,6 @@
 
 A premium, high-performance Electron application for Guild Wars 2 players to automatically upload arcdps combat logs, notify Discord, and view detailed WvW statistics in a stunning, modern interface.
 
-## TODO
-
-- [x] add in dps and damage from enemy summary
-- [ ] ensure the appimage only launches one instance of the app instead of many
-
 ## ✨ Features
 
 - **🚀 Automated Monitoring**: Automatically detects, uploads, and processes new combat logs as they are created.
@@ -19,6 +14,17 @@ A premium, high-performance Electron application for Guild Wars 2 players to aut
 - **💬 Discord Integration**: Real-time notifications with detailed embed summaries, matching the aesthetics of the local UI.
 - **🌐 Browser Fallback**: One-click to open full reports on `dps.report` in your default system browser.
 - **📦 Drag & Drop Support**: Manually upload individual log files simply by dragging them into the app.
+
+## 🖼️ Screenshots
+<img width="1043" height="800" alt="image" src="https://github.com/user-attachments/assets/4d1fe5ab-6859-4037-a615-c43e81eb2f4c" /> <img width="1043" height="800" alt="image" src="https://github.com/user-attachments/assets/6537006b-a187-4604-b39e-bf375b0802b3" /> <img width="1043" height="800" alt="image" src="https://github.com/user-attachments/assets/dcdcd232-047f-4a03-8be6-7c5f7213c899" />
+
+### Choose whether to post a native discord embed or a generated image
+<img width="537" height="1259" alt="image" src="https://github.com/user-attachments/assets/4feba70b-1d05-4796-a452-a68aaa700c6b" /> <img width="1800" height="2444" alt="image" src="https://github.com/user-attachments/assets/ba52192d-8b9b-4473-bfb9-55de9a9e79be" />
+
+### Higscores calculated on the fly and postable automatically to discord
+<img width="1792" height="4320" alt="image" src="https://github.com/user-attachments/assets/0ac030ae-c894-469e-bfff-a746dedad97e" />
+
+
 
 ## 🛠️ Technology Stack
 
