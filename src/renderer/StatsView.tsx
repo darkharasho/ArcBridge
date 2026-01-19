@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair } from 'lucide-react';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip } from 'recharts';
 import { toPng } from 'html-to-image';
 import { calculateAllStability, calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
-import { Player } from '../shared/dpsReportTypes';
+import { Player, Target } from '../shared/dpsReportTypes';
+import { getProfessionColor } from '../shared/professionUtils';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -34,6 +36,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             logsJoined: number;
             totalDist: number;
             distCount: number;
+            dodges: number;
         }
 
         const playerStats = new Map<string, PlayerStats>();
@@ -128,7 +131,8 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                         cc: 0,
                         logsJoined: 0,
                         totalDist: 0,
-                        distCount: 0
+                        distCount: 0,
+                        dodges: 0
                     });
                 }
 
@@ -157,6 +161,11 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                         s.totalDist += dist;
                         s.distCount++;
                     }
+                }
+
+                // Dodges
+                if (p.defenses && p.defenses.length > 0) {
+                    s.dodges += p.defenses[0].dodgeCount || 0;
                 }
 
                 // Outgoing Skill Aggregation
@@ -235,6 +244,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         let maxHealing = { ...emptyLeader };
         let maxBarrier = { ...emptyLeader };
         let maxCC = { ...emptyLeader };
+        let maxDodges = { ...emptyLeader };
         let closestToTag = { value: 999999, player: '-', count: 0 }; // Min is better
 
         playerStats.forEach(stat => {
@@ -247,6 +257,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             if (stat.healing > maxHealing.value) maxHealing = { value: stat.healing, ...pInfo };
             if (stat.barrier > maxBarrier.value) maxBarrier = { value: stat.barrier, ...pInfo };
             if (stat.cc > maxCC.value) maxCC = { value: stat.cc, ...pInfo };
+            if (stat.dodges > maxDodges.value) maxDodges = { value: stat.dodges, ...pInfo };
 
             if (stat.distCount > 0) {
                 const avgDist = stat.totalDist / stat.distCount;
@@ -271,6 +282,125 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         const squadKDR = totalSquadDeaths > 0 ? (totalSquadKills / totalSquadDeaths).toFixed(2) : totalSquadKills > 0 ? '∞' : '0.00';
         const enemyKDR = totalEnemyDeaths > 0 ? (totalEnemyKills / totalEnemyDeaths).toFixed(2) : totalEnemyKills > 0 ? '∞' : '0.00';
 
+        // Class Distribution (Squad)
+        const squadClassCounts: Record<string, number> = {};
+        // Class Distribution (Enemies)
+        const enemyClassCounts: Record<string, number> = {};
+
+        // Unique Composition Set: Tracks "AccountName-Profession"
+        // If a player plays Guardian in 5 logs, they count ONCE as Guardian.
+        // If they play Guardian in 3 and Necro in 2, they count ONCE as Guardian and ONCE as Necro.
+        const uniqueSquadComposition = new Set<string>();
+
+        validLogs.forEach(log => {
+            const details = log.details;
+            if (!details) return;
+            const players = details.players as unknown as Player[];
+            const targets = details.targets as unknown as Target[];
+
+            // Squad Classes
+            players.forEach(p => {
+                if (!p.notInSquad) {
+                    const prof = p.profession || 'Unknown';
+                    const account = p.account || p.name; // Fallback if account missing
+                    const key = `${account}-${prof}`;
+                    uniqueSquadComposition.add(key);
+                }
+            });
+
+            // Enemy Classes
+            if (targets) {
+                targets.forEach(t => {
+                    if (!t.isFake) {
+                        const rawName = t.name || 'Unknown';
+                        // Clean up name: remove " pl-1234", " (Account)", ids, etc.
+                        let cleanName = rawName
+                            .replace(/\s+pl-\d+$/i, '')
+                            .replace(/\s*\([^)]*\)/, '')
+                            .trim();
+
+                        enemyClassCounts[cleanName] = (enemyClassCounts[cleanName] || 0) + 1;
+                    }
+                });
+            }
+        });
+
+        // Calculate Squad Counts from Unique Set
+        uniqueSquadComposition.forEach(entry => {
+            const [, prof] = entry.split('-');
+            squadClassCounts[prof] = (squadClassCounts[prof] || 0) + 1;
+        });
+
+        // Format for Charts
+        // Format for Charts - Explicit Sort
+        const squadClassData = Object.entries(squadClassCounts)
+            .map(([name, count]) => ({
+                name,
+                value: Number(count),
+                color: getProfessionColor(name)
+            }))
+            .sort((a, b) => {
+                const diff = b.value - a.value;
+                if (diff !== 0) return diff;
+                return a.name.localeCompare(b.name);
+            })
+            .slice(0, 10);
+
+        const enemyClassData = Object.entries(enemyClassCounts)
+            .map(([name, count]) => ({
+                name,
+                value: Number(count),
+                color: getProfessionColor(name)
+            }))
+            .sort((a, b) => {
+                const diff = b.value - a.value;
+                if (diff !== 0) return diff;
+                return a.name.localeCompare(b.name);
+            })
+            .slice(0, 10);
+
+        // Map/Borderland Distribution
+        const mapCounts: Record<string, number> = {};
+        validLogs.forEach(log => {
+            let mapName = 'Unknown';
+            const details = log.details;
+            if (details) {
+                // Check explicit zone field if available (in some EI versions)
+                if (details.zone) {
+                    mapName = details.zone;
+                } else if (details.fightName) {
+                    const fn = details.fightName.toLowerCase();
+                    if (fn.includes('eternal') || fn.includes(' eb')) mapName = 'Eternal Battlegrounds';
+                    else if (fn.includes('blue') && (fn.includes('alpine') || fn.includes('borderlands'))) mapName = 'Blue Borderlands';
+                    else if (fn.includes('green') && (fn.includes('alpine') || fn.includes('borderlands'))) mapName = 'Green Borderlands';
+                    else if (fn.includes('red') || fn.includes('desert')) mapName = 'Red Borderlands';
+                    else if (fn.includes('alpine')) mapName = 'Green Borderlands'; // Fallback for generic "Alpine" often implies home/green
+                    else if (fn.includes('edge') || fn.includes('mists')) mapName = 'Edge of the Mists';
+                    else if (fn.includes('armistice')) mapName = 'Armistice Bastion';
+                    else if (fn.includes('obsidian')) mapName = 'Obsidian Sanctum';
+                    else if (fn.includes('world vs world')) mapName = 'World vs World (Generic)';
+                }
+            }
+            mapCounts[mapName] = (mapCounts[mapName] || 0) + 1;
+        });
+
+        // Map Colors
+        const mapColors: Record<string, string> = {
+            'Eternal Battlegrounds': '#ffffff', // White
+            'Blue Borderlands': '#3b82f6', // Blue
+            'Green Borderlands': '#10b981', // Emerald
+            'Red Borderlands': '#ef4444', // Red
+            'Edge of the Mists': '#a855f7', // Purple
+            'Armistice Bastion': '#ec4899', // Pink
+            'Obsidian Sanctum': '#f59e0b', // Amber
+            'World vs World (Generic)': '#64748b', // Slate
+            'Unknown': '#475569' // Slate-600
+        };
+
+        const mapData = Object.entries(mapCounts)
+            .map(([name, value]) => ({ name, value, color: mapColors[name] || '#64748b' }))
+            .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+
         return {
             total,
             wins,
@@ -292,7 +422,12 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             maxCC,
             closestToTag,
             topSkills,
-            topIncomingSkills
+            topIncomingSkills,
+
+            mapData,
+            squadClassData,
+            enemyClassData,
+            maxDodges
         };
     }, [logs]);
 
@@ -445,6 +580,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                         <LeaderCard icon={HelpingHand} title="Down Contribution" data={stats.maxDownContrib} color="red" />
                         <LeaderCard icon={Shield} title="Total Barrier" data={stats.maxBarrier} color="yellow" />
                         <LeaderCard icon={Activity} title="Total Healing" data={stats.maxHealing} color="green" />
+                        <LeaderCard icon={Wind} title="Total Dodges" data={stats.maxDodges} color="cyan" />
                         <LeaderCard icon={Zap} title="Total Strips" data={stats.maxStrips} color="purple" />
                         <LeaderCard icon={Flame} title="Total Cleanses" data={stats.maxCleanses} color="blue" />
                         <LeaderCard icon={Hammer} title="Total CC" data={stats.maxCC} color="pink" />
@@ -454,7 +590,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                 </div>
 
                 {/* Top Skills Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                     {/* Outgoing Skills */}
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
                         <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
@@ -519,6 +655,154 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                                 <div className="text-center text-gray-500 italic py-4">No incoming damage data available</div>
                             )}
                         </div>
+                    </div>
+                </div>
+
+                {/* Class Distribution Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 page-break-avoid">
+                    {/* Squad Composition */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-green-400" />
+                            Squad Composition
+                        </h3>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats.squadClassData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                    >
+                                        {stats.squadClassData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                    <ChartLegend
+                                        layout="vertical"
+                                        verticalAlign="middle"
+                                        align="right"
+                                        wrapperStyle={{ fontSize: '12px' }}
+                                        payload={stats.squadClassData.map(item => ({
+                                            id: item.name,
+                                            type: 'square',
+                                            value: item.name,
+                                            color: item.color,
+                                            payload: item
+                                        }))}
+                                        formatter={(value: any, entry: any) => (
+                                            <span className="text-gray-300 font-medium ml-1">
+                                                {value} <span className="text-gray-500">({entry.payload.value})</span>
+                                            </span>
+                                        )}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Enemy Composition */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+                            <Skull className="w-5 h-5 text-red-400" />
+                            Enemy Composition (Top 10)
+                        </h3>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats.enemyClassData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                    >
+                                        {stats.enemyClassData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                    <ChartLegend
+                                        layout="vertical"
+                                        verticalAlign="middle"
+                                        align="right"
+                                        wrapperStyle={{ fontSize: '12px' }}
+                                        payload={stats.enemyClassData.map(item => ({
+                                            id: item.name,
+                                            type: 'square',
+                                            value: item.name,
+                                            color: item.color,
+                                            payload: item
+                                        }))}
+                                        formatter={(value: any, entry: any) => (
+                                            <span className="text-gray-300 font-medium ml-1">
+                                                {value} <span className="text-gray-500">({entry.payload.value})</span>
+                                            </span>
+                                        )}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Map Distribution Pie Chart */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid">
+                    <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
+                        <MapIcon className="w-5 h-5 text-blue-400" />
+                        Map Distribution
+                    </h3>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={stats.mapData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {stats.mapData.map((entry: any, index: number) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
+                                    itemStyle={{ color: '#fff' }}
+                                />
+                                <ChartLegend
+                                    verticalAlign="bottom"
+                                    height={36}
+                                    payload={stats.mapData.map(item => ({
+                                        id: item.name,
+                                        type: 'square',
+                                        value: item.name,
+                                        color: item.color,
+                                        payload: item
+                                    }))}
+                                    formatter={(value: any, entry: any) => (
+                                        <span className="text-gray-300 font-medium ml-1">
+                                            {value} <span className="text-gray-500">({entry.payload.value})</span>
+                                        </span>
+                                    )}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
             </div>
