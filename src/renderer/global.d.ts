@@ -34,6 +34,21 @@ export interface IEmbedStatSettings {
     classDisplay: 'off' | 'short' | 'emoji';
 }
 
+export interface IMvpWeights {
+    downContribution: number;
+    healing: number;
+    cleanses: number;
+    strips: number;
+    stability: number;
+    cc: number;
+    revives: number;
+    distanceToTag: number;
+    participation: number;
+    dodging: number;
+    dps: number;
+    damage: number;
+}
+
 // Default embed stat settings
 export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showSquadSummary: true,
@@ -60,6 +75,21 @@ export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     classDisplay: 'off',
 };
 
+export const DEFAULT_MVP_WEIGHTS: IMvpWeights = {
+    downContribution: 1,
+    healing: 1,
+    cleanses: 1,
+    strips: 1,
+    stability: 1,
+    cc: 0.7,
+    revives: 0.7,
+    distanceToTag: 0.7,
+    participation: 0.7,
+    dodging: 0.4,
+    dps: 0.2,
+    damage: 0.2
+};
+
 export interface IElectronAPI {
     selectDirectory: () => Promise<string | null>;
     startWatching: (path: string) => void;
@@ -77,6 +107,7 @@ export interface IElectronAPI {
         dpsReportToken: string | null;
         closeBehavior: 'minimize' | 'quit';
         embedStatSettings: IEmbedStatSettings;
+        mvpWeights: IMvpWeights;
     }>;
     manualUpload: (path: string) => void;
     manualUploadBatch: (paths: string[]) => void;
@@ -89,6 +120,7 @@ export interface IElectronAPI {
         dpsReportToken?: string | null;
         closeBehavior?: 'minimize' | 'quit';
         embedStatSettings?: IEmbedStatSettings;
+        mvpWeights?: IMvpWeights;
     }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;

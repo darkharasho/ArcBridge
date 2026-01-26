@@ -545,6 +545,20 @@ if (!gotTheLock) {
             maxTopListRows: 10,
             classDisplay: 'off',
         };
+        const DEFAULT_MVP_WEIGHTS = {
+            downContribution: 1,
+            healing: 1,
+            cleanses: 1,
+            strips: 1,
+            stability: 1,
+            cc: 0.7,
+            revives: 0.7,
+            distanceToTag: 0.7,
+            participation: 0.7,
+            dodging: 0.4,
+            dps: 0.2,
+            damage: 0.2
+        };
 
         ipcMain.handle('get-settings', () => {
             return {
@@ -555,7 +569,8 @@ if (!gotTheLock) {
                 selectedWebhookId: store.get('selectedWebhookId', null),
                 dpsReportToken: store.get('dpsReportToken', null),
                 closeBehavior: store.get('closeBehavior', 'minimize'),
-                embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS)
+                embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS),
+                mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) }
             };
         });
 
@@ -567,7 +582,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -602,6 +617,9 @@ if (!gotTheLock) {
             if (settings.embedStatSettings !== undefined) {
                 store.set('embedStatSettings', settings.embedStatSettings);
                 discord?.setEmbedStatSettings(settings.embedStatSettings);
+            }
+            if (settings.mvpWeights !== undefined) {
+                store.set('mvpWeights', settings.mvpWeights);
             }
         });
 

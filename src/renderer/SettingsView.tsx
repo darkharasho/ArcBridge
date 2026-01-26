@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles } from 'lucide-react';
-import { IEmbedStatSettings, DEFAULT_EMBED_STATS } from './global.d';
+import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IMvpWeights } from './global.d';
 
 interface SettingsViewProps {
     onBack: () => void;
     onEmbedStatSettingsSaved?: (settings: IEmbedStatSettings) => void;
     onOpenWhatsNew?: () => void;
+    onMvpWeightsSaved?: (weights: IMvpWeights) => void;
 }
 
 // Toggle switch component
@@ -67,10 +68,11 @@ function SettingsSection({ title, icon: Icon, children, delay = 0 }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
+    const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
     const [isSaving, setIsSaving] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [showSaved, setShowSaved] = useState(false);
@@ -81,6 +83,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
             setDpsReportToken(settings.dpsReportToken || '');
             setCloseBehavior(settings.closeBehavior || 'minimize');
             setEmbedStats({ ...DEFAULT_EMBED_STATS, ...(settings.embedStatSettings || {}) });
+            setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
             setHasLoaded(true);
         };
         loadSettings();
@@ -92,9 +95,11 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
         window.electronAPI.saveSettings({
             dpsReportToken: dpsReportToken || null,
             closeBehavior,
-            embedStatSettings: embedStats
+            embedStatSettings: embedStats,
+            mvpWeights: mvpWeights
         });
         onEmbedStatSettingsSaved?.(embedStats);
+        onMvpWeightsSaved?.(mvpWeights);
 
         setTimeout(() => {
             setIsSaving(false);
@@ -109,7 +114,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
             saveSettings();
         }, 300);
         return () => clearTimeout(timeout);
-    }, [dpsReportToken, closeBehavior, embedStats, hasLoaded]);
+    }, [dpsReportToken, closeBehavior, embedStats, mvpWeights, hasLoaded]);
 
     const updateEmbedStat = (key: keyof IEmbedStatSettings, value: boolean) => {
         setEmbedStats(prev => ({ ...prev, [key]: value }));
@@ -119,6 +124,13 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
         const clamped = Math.min(10, Math.max(1, Math.floor(value)));
         setEmbedStats(prev => ({ ...prev, maxTopListRows: clamped }));
     };
+
+    const updateMvpWeight = (key: keyof IMvpWeights, value: number) => {
+        const clamped = Math.min(1, Math.max(0, Math.round(value / 0.05) * 0.05));
+        setMvpWeights(prev => ({ ...prev, [key]: clamped }));
+    };
+
+    const formatWeight = (value: number) => value.toFixed(2);
 
     const updateClassDisplay = (value: IEmbedStatSettings['classDisplay']) => {
         setEmbedStats(prev => ({ ...prev, classDisplay: value }));
@@ -424,6 +436,53 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
                         <Sparkles className="w-4 h-4" />
                         View What's New
                     </button>
+                </SettingsSection>
+
+                {/* Close Behavior Section */}
+                <SettingsSection title="MVP Weighting" icon={BarChart3} delay={0.18}>
+                    <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm text-gray-400">
+                            Adjust how each stat influences MVP scoring. 0 disables a stat.
+                        </p>
+                        <button
+                            onClick={() => setMvpWeights(DEFAULT_MVP_WEIGHTS)}
+                            className="text-xs font-semibold text-blue-300 hover:text-blue-200 transition-colors"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {([
+                            { key: 'downContribution', label: 'Down Contribution' },
+                            { key: 'healing', label: 'Healing' },
+                            { key: 'cleanses', label: 'Cleanses' },
+                            { key: 'strips', label: 'Strips' },
+                            { key: 'stability', label: 'Stability' },
+                            { key: 'cc', label: 'CC' },
+                            { key: 'revives', label: 'Revives' },
+                            { key: 'distanceToTag', label: 'Distance to Tag' },
+                            { key: 'participation', label: 'Participation' },
+                            { key: 'dodging', label: 'Dodging' },
+                            { key: 'dps', label: 'DPS' },
+                            { key: 'damage', label: 'Damage' }
+                        ] as Array<{ key: keyof IMvpWeights; label: string }>).map(item => (
+                            <div key={item.key} className="flex items-center gap-3 py-2">
+                                <div className="flex-1 text-sm text-gray-200">{item.label}</div>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={1}
+                                    step={0.05}
+                                    value={mvpWeights[item.key]}
+                                    onChange={(e) => updateMvpWeight(item.key, Number(e.target.value))}
+                                    className="flex-1 accent-blue-400"
+                                />
+                                <div className="w-12 text-right text-xs text-gray-300 font-mono">
+                                    {formatWeight(mvpWeights[item.key])}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </SettingsSection>
 
                 {/* Close Behavior Section */}

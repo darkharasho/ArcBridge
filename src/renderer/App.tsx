@@ -9,7 +9,7 @@ import { WebhookModal, Webhook } from './WebhookModal';
 import { UpdateErrorModal } from './UpdateErrorModal';
 import { Terminal } from './Terminal';
 import { Terminal as TerminalIcon } from 'lucide-react';
-import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
+import { DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IEmbedStatSettings, IMvpWeights } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
 
 function App() {
@@ -19,6 +19,7 @@ function App() {
     const [isDragging, setIsDragging] = useState(false);
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
     const [embedStatSettings, setEmbedStatSettings] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
+    const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
 
     const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
 
@@ -101,6 +102,9 @@ function App() {
             }
             if (settings.embedStatSettings) {
                 setEmbedStatSettings({ ...DEFAULT_EMBED_STATS, ...settings.embedStatSettings });
+            }
+            if (settings.mvpWeights) {
+                setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...settings.mvpWeights });
             }
 
             const whatsNew = await window.electronAPI.getWhatsNew();
@@ -419,11 +423,12 @@ function App() {
                 </header>
 
                 {view === 'stats' ? (
-                    <StatsView logs={logs} onBack={() => setView('dashboard')} />
+                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} />
                 ) : view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}
                         onEmbedStatSettingsSaved={setEmbedStatSettings}
+                        onMvpWeightsSaved={setMvpWeights}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
                 ) : (

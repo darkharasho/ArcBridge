@@ -5,13 +5,15 @@ import { toPng } from 'html-to-image';
 import { calculateAllStability, calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
+import { DEFAULT_MVP_WEIGHTS, IMvpWeights } from './global.d';
 
 interface StatsViewProps {
     logs: ILogData[];
     onBack: () => void;
+    mvpWeights?: IMvpWeights;
 }
 
-export function StatsView({ logs, onBack }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [sharing, setSharing] = useState(false);
 
     const stats = useMemo(() => {
@@ -38,6 +40,9 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             distCount: number;
             dodges: number;
             profession: string;
+            damage: number;
+            dps: number;
+            revives: number;
         }
 
         const playerStats = new Map<string, PlayerStats>();
@@ -143,7 +148,10 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                         totalDist: 0,
                         distCount: 0,
                         dodges: 0,
-                        profession: p.profession || 'Unknown'
+                        profession: p.profession || 'Unknown',
+                        damage: 0,
+                        dps: 0,
+                        revives: 0
                     });
                 }
 
@@ -178,6 +186,13 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                 // Dodges
                 if (p.defenses && p.defenses.length > 0) {
                     s.dodges += p.defenses[0].dodgeCount || 0;
+                }
+
+                s.revives += p.support?.[0]?.resurrects || 0;
+
+                if (p.dpsAll && p.dpsAll.length > 0) {
+                    s.damage += p.dpsAll[0].damage || 0;
+                    s.dps += p.dpsAll[0].dps || 0;
                 }
 
                 // Outgoing Skill Aggregation
@@ -257,7 +272,11 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         let maxBarrier = { ...emptyLeader };
         let maxCC = { ...emptyLeader };
         let maxDodges = { ...emptyLeader };
+        let maxLogsJoined = 0;
         let closestToTag = { value: 999999, player: '-', count: 0, profession: 'Unknown' }; // Min is better
+        let maxDamage = { ...emptyLeader };
+        let maxDps = { ...emptyLeader };
+        let maxRevives = { ...emptyLeader };
 
         playerStats.forEach(stat => {
             const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown' };
@@ -270,6 +289,10 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
             if (stat.barrier > maxBarrier.value) maxBarrier = { value: stat.barrier, ...pInfo };
             if (stat.cc > maxCC.value) maxCC = { value: stat.cc, ...pInfo };
             if (stat.dodges > maxDodges.value) maxDodges = { value: stat.dodges, ...pInfo };
+            if (stat.damage > maxDamage.value) maxDamage = { value: stat.damage, ...pInfo };
+            if (stat.dps > maxDps.value) maxDps = { value: stat.dps, ...pInfo };
+            if (stat.revives > maxRevives.value) maxRevives = { value: stat.revives, ...pInfo };
+            if (stat.logsJoined > maxLogsJoined) maxLogsJoined = stat.logsJoined;
 
             if (stat.distCount > 0) {
                 const avgDist = stat.totalDist / stat.distCount;
@@ -297,24 +320,53 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
 
         playerStats.forEach(stat => {
             let score = 0;
-            const contributions: { name: string, ratio: number, value: number, fmt: string }[] = [];
+            const contributions: { name: string, ratio: number, value: number, fmt: string, rank: number }[] = [];
 
-            const check = (val: number, maxVal: number, name: string) => {
+            const formatCompactNumber = (value: number) => {
+                const abs = Math.abs(value);
+                if (abs >= 1_000_000) {
+                    return `${(value / 1_000_000).toFixed(2)}m`;
+                }
+                if (abs >= 1_000) {
+                    return `${(value / 1_000).toFixed(abs >= 100_000 ? 0 : 1)}k`;
+                }
+                return Math.round(value).toLocaleString();
+            };
+
+            const weights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+
+            const check = (val: number, maxVal: number, name: string, weight = 1) => {
                 if (maxVal > 0) {
                     const ratio = val / maxVal;
-                    score += ratio;
-                    contributions.push({ name, ratio, value: val, fmt: Math.round(val).toLocaleString() });
+                    score += ratio * weight;
+                    const rank = Math.round(1 / Math.max(ratio, 0.0001));
+                    contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
+                }
+            };
+            const checkLowerIsBetter = (val: number, bestVal: number, name: string, weight = 1) => {
+                if (bestVal > 0 && val > 0) {
+                    const ratio = bestVal / val;
+                    score += ratio * weight;
+                    const rank = Math.round(1 / Math.max(ratio, 0.0001));
+                    contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
                 }
             };
 
-            check(stat.healing, maxHealing.value, 'Healing');
-            check(stat.barrier, maxBarrier.value, 'Barrier');
-            check(stat.cleanses, maxCleanses.value, 'Cleanses');
-            check(stat.strips, maxStrips.value, 'Strips');
-            check(stat.stab, maxStab.value, 'Stability');
-            check(stat.cc, maxCC.value, 'CC');
-            check(stat.downContrib, maxDownContrib.value, 'Revives');
-            check(stat.dodges, maxDodges.value, 'Dodging');
+            check(stat.downContrib, maxDownContrib.value, 'Down Contribution', weights.downContribution);
+            check(stat.healing, maxHealing.value, 'Healing', weights.healing);
+            check(stat.cleanses, maxCleanses.value, 'Cleanses', weights.cleanses);
+            check(stat.strips, maxStrips.value, 'Strips', weights.strips);
+            check(stat.stab, maxStab.value, 'Stability', weights.stability);
+            check(stat.cc, maxCC.value, 'CC', weights.cc);
+            check(stat.revives, maxRevives.value, 'Revives', weights.revives);
+            check(stat.logsJoined, maxLogsJoined, 'Participation', weights.participation);
+            check(stat.dodges, maxDodges.value, 'Dodging', weights.dodging);
+            check(stat.dps, maxDps.value, 'DPS', weights.dps);
+            check(stat.damage, maxDamage.value, 'Damage', weights.damage);
+            if (stat.distCount > 0) {
+                const avgDist = stat.totalDist / stat.distCount;
+                checkLowerIsBetter(avgDist, closestToTag.value, 'Distance to Tag', weights.distanceToTag);
+            }
 
             totalScoreSum += score;
 
@@ -345,7 +397,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                     score,
                     profession: stat.profession,
                     color: getProfessionColor(stat.profession),
-                    topStats: top3.map(c => ({ name: c.name, val: c.fmt, ratio: c.ratio }))
+                    topStats: top3.map(c => ({ name: c.name, val: c.fmt, ratio: c.rank }))
                 };
             }
         });
@@ -737,13 +789,27 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
 
                                     {/* Top Stats Breakdown */}
                                     <div className="flex flex-wrap gap-2">
-                                        {stats.mvp.topStats && stats.mvp.topStats.map((stat: any, i: number) => (
-                                            <div key={i} className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs">
-                                                <span className="text-yellow-200 font-bold">{stat.name}</span>
-                                                <span className="text-white font-mono">{stat.val}</span>
-                                                <span className="text-yellow-500/50 text-[10px]">({Math.round(stat.ratio * 100)}%)</span>
-                                            </div>
-                                        ))}
+                                        {stats.mvp.topStats && stats.mvp.topStats.map((stat: any, i: number) => {
+                                            const rank = Math.max(1, Math.round(stat.ratio));
+                                            const mod100 = rank % 100;
+                                            const mod10 = rank % 10;
+                                            const suffix = mod100 >= 11 && mod100 <= 13
+                                                ? 'th'
+                                                : mod10 === 1
+                                                    ? 'st'
+                                                    : mod10 === 2
+                                                        ? 'nd'
+                                                        : mod10 === 3
+                                                            ? 'rd'
+                                                            : 'th';
+                                            return (
+                                                <div key={i} className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs">
+                                                    <span className="text-yellow-200 font-bold">{stat.name}</span>
+                                                    <span className="text-white font-mono">{stat.val}</span>
+                                                    <span className="text-yellow-500/50 text-[10px]">({rank}{suffix})</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
