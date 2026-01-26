@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Toolti
 import { toPng } from 'html-to-image';
 import { calculateAllStability, calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
 import { Player, Target } from '../shared/dpsReportTypes';
-import { getProfessionColor } from '../shared/professionUtils';
+import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -247,7 +247,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         const avgEnemies = total > 0 ? Math.round(totalEnemiesAccum / total) : 0;
 
         // Find Leaders
-        const emptyLeader = { value: 0, player: '-', count: 0 };
+        const emptyLeader = { value: 0, player: '-', count: 0, profession: 'Unknown' };
 
         let maxDownContrib = { ...emptyLeader };
         let maxCleanses = { ...emptyLeader };
@@ -257,10 +257,10 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         let maxBarrier = { ...emptyLeader };
         let maxCC = { ...emptyLeader };
         let maxDodges = { ...emptyLeader };
-        let closestToTag = { value: 999999, player: '-', count: 0 }; // Min is better
+        let closestToTag = { value: 999999, player: '-', count: 0, profession: 'Unknown' }; // Min is better
 
         playerStats.forEach(stat => {
-            const pInfo = { player: stat.account, count: stat.logsJoined };
+            const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown' };
 
             if (stat.downContrib > maxDownContrib.value) maxDownContrib = { value: stat.downContrib, ...pInfo };
             if (stat.cleanses > maxCleanses.value) maxCleanses = { value: stat.cleanses, ...pInfo };
@@ -568,6 +568,7 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
 
     const LeaderCard = ({ icon: Icon, title, data, color, unit = '' }: any) => {
         const classes = colorClasses[color] || colorClasses.blue;
+        const iconPath = getProfessionIconPath(data.profession || 'Unknown');
         return (
             <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-3 group hover:bg-white/10 transition-colors">
                 <div className="flex items-center gap-4">
@@ -582,7 +583,12 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                     </div>
                 </div>
                 <div className="flex flex-col border-t border-white/5 pt-2">
-                    <div className="text-sm font-medium text-blue-300 truncate">{data.player || '-'}</div>
+                    <div className="flex items-center gap-2 min-w-0">
+                        {iconPath && (
+                            <img src={iconPath} alt={data.profession || 'Unknown'} className="w-4 h-4 shrink-0" />
+                        )}
+                        <div className="text-sm font-medium text-blue-300 truncate">{data.player || '-'}</div>
+                    </div>
                     <div className="text-xs text-gray-500 truncate">{data.count ? `${data.count} logs` : '-'}</div>
                 </div>
             </div>
@@ -679,6 +685,13 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                                     </div>
                                     <div className="text-3xl font-black text-white mb-2 flex items-center gap-3">
                                         {stats.mvp.account}
+                                        {getProfessionIconPath(stats.mvp.profession) && (
+                                            <img
+                                                src={getProfessionIconPath(stats.mvp.profession) as string}
+                                                alt={stats.mvp.profession}
+                                                className="w-6 h-6"
+                                            />
+                                        )}
                                         <span className="text-lg font-medium text-gray-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
                                             {stats.mvp.profession}
                                         </span>

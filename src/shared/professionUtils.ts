@@ -187,6 +187,19 @@ export function getProfessionEmoji(profession: string): string {
     return PROFESSION_EMOJI[base] || PROFESSION_EMOJI.Unknown;
 }
 
+export function getProfessionIconPath(profession: string): string | null {
+    if (!profession) return null;
+    const direct = PROFESSION_COLORS[profession] ? profession : null;
+    if (direct && direct !== 'Unknown') {
+        return `/img/class-icons/${direct}.png`;
+    }
+    const base = getProfessionBase(profession);
+    if (base && base !== 'Unknown') {
+        return `/img/class-icons/${base}.png`;
+    }
+    return null;
+}
+
 const SUPERSCRIPT_MAP: Record<string, string> = {
     a: 'ᵃ',
     b: 'ᵇ',

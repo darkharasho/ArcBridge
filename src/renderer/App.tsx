@@ -67,6 +67,7 @@ function App() {
         embedStatSettings.showDeaths,
         embedStatSettings.showDodges
     ].filter(Boolean).length;
+    const showClassIcons = notificationType === 'image' || notificationType === 'image-beta';
 
 
     // Stats calculation
@@ -648,6 +649,7 @@ function App() {
                                                     isExpanded={expandedLogId === log.filePath}
                                                     onToggle={() => setExpandedLogId(expandedLogId === log.filePath ? null : log.filePath)}
                                                     embedStatSettings={embedStatSettings}
+                                                    useClassIcons={showClassIcons}
                                                 />
                                             ))
                                         )}
@@ -671,6 +673,7 @@ function App() {
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'squad' }}
                                 embedStatSettings={embedStatSettings}
+                                useClassIcons={showClassIcons}
                             />
                         )}
                         {embedStatSettings.showEnemySummary && (
@@ -681,6 +684,7 @@ function App() {
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'enemy' }}
                                 embedStatSettings={embedStatSettings}
+                                useClassIcons={showClassIcons}
                             />
                         )}
                         {embedStatSettings.showIncomingStats && (
@@ -692,6 +696,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-attacks' }}
                                     embedStatSettings={embedStatSettings}
+                                    useClassIcons={showClassIcons}
                                 />
                                 <ExpandableLogCard
                                     log={screenshotData}
@@ -700,6 +705,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-cc' }}
                                     embedStatSettings={embedStatSettings}
+                                    useClassIcons={showClassIcons}
                                 />
                                 <ExpandableLogCard
                                     log={screenshotData}
@@ -708,6 +714,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-strips' }}
                                     embedStatSettings={embedStatSettings}
+                                    useClassIcons={showClassIcons}
                                 />
                                 <ExpandableLogCard
                                     log={screenshotData}
@@ -716,6 +723,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-blank' }}
                                     embedStatSettings={embedStatSettings}
+                                    useClassIcons={showClassIcons}
                                 />
                             </>
                         )}
@@ -728,6 +736,7 @@ function App() {
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'toplist', tileIndex: index }}
                                 embedStatSettings={embedStatSettings}
+                                useClassIcons={showClassIcons}
                             />
                         ))}
                     </>
@@ -739,6 +748,7 @@ function App() {
                             onToggle={() => { }}
                             screenshotMode={true}
                             embedStatSettings={embedStatSettings}
+                            useClassIcons={showClassIcons}
                         />
                     )
                 )}

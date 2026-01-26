@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
 import { Player } from '../shared/dpsReportTypes';
 import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
-import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
+import { getProfessionAbbrev, getProfessionEmoji, getProfessionIconPath } from '../shared/professionUtils';
 
 interface ExpandableLogCardProps {
     log: any;
@@ -11,6 +11,7 @@ interface ExpandableLogCardProps {
     onToggle: () => void;
     screenshotMode?: boolean;
     embedStatSettings?: IEmbedStatSettings;
+    useClassIcons?: boolean;
     screenshotSection?: {
         type: 'summary' | 'toplists' | 'tile';
         start?: number;
@@ -22,7 +23,7 @@ interface ExpandableLogCardProps {
     };
 }
 
-export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, embedStatSettings, screenshotSection }: ExpandableLogCardProps) {
+export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, embedStatSettings, screenshotSection, useClassIcons }: ExpandableLogCardProps) {
     const details = log.details || {};
     const players: Player[] = details.players || [];
     const targets = details.targets || [];
@@ -158,6 +159,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, e
     const clampTopRows = (value: number) => Math.min(10, Math.max(1, Math.floor(value)));
     const maxTopRows = clampTopRows(settings.maxTopListRows ?? 5);
     const classDisplay = settings.classDisplay ?? 'off';
+    const showClassIcons = classDisplay === 'emoji' && useClassIcons;
     const getClassToken = (p: any) => {
         if (classDisplay === 'short') {
             return getProfessionAbbrev(p.profession || 'Unknown');
@@ -190,7 +192,19 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, e
                                         <span className="text-gray-500 w-5 shrink-0 text-right">{i + 1}</span>
                                         {getClassToken(p) && (
                                             <span className="text-gray-400 w-10 shrink-0 text-center text-[10px] leading-none">
-                                                {classDisplay === 'emoji' ? getClassToken(p) : `[${getClassToken(p)}]`}
+                                                {showClassIcons ? (
+                                                    getProfessionIconPath(p.profession || 'Unknown') ? (
+                                                        <img
+                                                            src={getProfessionIconPath(p.profession || 'Unknown') as string}
+                                                            alt={p.profession || 'Unknown'}
+                                                            className="w-4 h-4 inline-block"
+                                                        />
+                                                    ) : (
+                                                        getClassToken(p)
+                                                    )
+                                                ) : (
+                                                    classDisplay === 'emoji' ? getClassToken(p) : `[${getClassToken(p)}]`
+                                                )}
                                             </span>
                                         )}
                                         <span className="truncate">
