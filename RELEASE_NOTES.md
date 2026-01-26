@@ -11,10 +11,12 @@
 - New **Tiled** notification mode for Discord
 - Each stat table renders as its own image tile, optimized for Discord previews
 - Incoming stats grouped into a single post with a 2x2 grid
+ - Optional class icons next to player names in image/tiled mode when class display is set to Emoji
 
 ### ⚙️ Top List Control
 - Add a **Max rows per list** setting (1–10) for top lists
 - Default-Disabled extra stats expanded (resurrects, distance to tag, kills, downs, breakbar damage, damage taken, deaths, dodges)
+- New **Class display** option for top lists: Off, Short name, or Emoji
 
 ## 🛠 Improvements & Fixes
 
@@ -22,6 +24,10 @@
 - Smarter embed splitting so a top 10 list never gets split across embeds
 - Inline field padding to keep 2-column layout consistent
 - Distance to tag now uses commander distance when available for accuracy
+- Optional class abbreviations or emojis can be shown as the first column in top lists
+
+### 📊 Stats Dashboard
+- Class icons now appear next to player names in leader cards and the MVP header
 
 ---
 
