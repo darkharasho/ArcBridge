@@ -595,6 +595,14 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
         );
     };
 
+    const sortByCountDesc = (a: any, b: any) => {
+        const diff = (b?.value || 0) - (a?.value || 0);
+        if (diff !== 0) return diff;
+        return String(a?.name || '').localeCompare(String(b?.name || ''));
+    };
+    const sortedSquadClassData = [...stats.squadClassData].sort(sortByCountDesc);
+    const sortedEnemyClassData = [...stats.enemyClassData].sort(sortByCountDesc);
+
     return (
         <div className="h-full flex flex-col p-8 w-full max-w-6xl mx-auto overflow-hidden">
             {/* Header */}
@@ -812,47 +820,50 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                             <Users className="w-5 h-5 text-green-400" />
                             Squad Composition
                         </h3>
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={stats.squadClassData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                    >
-                                        {stats.squadClassData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                    <ChartLegend
-                                        layout="vertical"
-                                        verticalAlign="middle"
-                                        align="right"
-                                        wrapperStyle={{ fontSize: '12px' }}
-                                        // @ts-ignore
-                                        payload={stats.squadClassData.map(item => ({
-                                            id: item.name,
-                                            type: 'square',
-                                            value: item.name,
-                                            color: item.color,
-                                            payload: item
-                                        }))}
-                                        formatter={(value: any, entry: any) => (
-                                            <span className="text-gray-300 font-medium ml-1">
-                                                {value} <span className="text-gray-500">({entry.payload.value})</span>
-                                            </span>
-                                        )}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
+                        <div className="grid grid-cols-[1fr_150px] h-[300px] gap-4">
+                            <div className="h-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={sortedSquadClassData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                        >
+                                            {sortedSquadClassData.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
+                                            itemStyle={{ color: '#fff' }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="w-full h-full overflow-y-auto pr-1 flex items-center">
+                                <div className="space-y-1.5 text-[11px] mx-auto">
+                                    {sortedSquadClassData.map((entry: any) => (
+                                        <div key={entry.name} className="flex items-center gap-2 text-gray-300">
+                                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                                            {getProfessionIconPath(entry.name) ? (
+                                                <img
+                                                    src={getProfessionIconPath(entry.name) as string}
+                                                    alt={entry.name}
+                                                    className="w-4 h-4 shrink-0"
+                                                />
+                                            ) : (
+                                                <span className="inline-block w-4 h-4 rounded-sm border border-white/10" />
+                                            )}
+                                            <span className="truncate">{entry.name}</span>
+                                            <span className="text-gray-500">({entry.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -862,47 +873,50 @@ export function StatsView({ logs, onBack }: StatsViewProps) {
                             <Skull className="w-5 h-5 text-red-400" />
                             Enemy Composition (Top 10)
                         </h3>
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={stats.enemyClassData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                    >
-                                        {stats.enemyClassData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                    <ChartLegend
-                                        layout="vertical"
-                                        verticalAlign="middle"
-                                        align="right"
-                                        wrapperStyle={{ fontSize: '12px' }}
-                                        // @ts-ignore
-                                        payload={stats.enemyClassData.map(item => ({
-                                            id: item.name,
-                                            type: 'square',
-                                            value: item.name,
-                                            color: item.color,
-                                            payload: item
-                                        }))}
-                                        formatter={(value: any, entry: any) => (
-                                            <span className="text-gray-300 font-medium ml-1">
-                                                {value} <span className="text-gray-500">({entry.payload.value})</span>
-                                            </span>
-                                        )}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
+                        <div className="grid grid-cols-[1fr_150px] h-[300px] gap-4">
+                            <div className="h-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={sortedEnemyClassData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                        >
+                                            {sortedEnemyClassData.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
+                                            itemStyle={{ color: '#fff' }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="w-full h-full overflow-y-auto pr-1 flex items-center">
+                                <div className="space-y-1.5 text-[11px] mx-auto">
+                                    {sortedEnemyClassData.map((entry: any) => (
+                                        <div key={entry.name} className="flex items-center gap-2 text-gray-300">
+                                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                                            {getProfessionIconPath(entry.name) ? (
+                                                <img
+                                                    src={getProfessionIconPath(entry.name) as string}
+                                                    alt={entry.name}
+                                                    className="w-4 h-4 shrink-0"
+                                                />
+                                            ) : (
+                                                <span className="inline-block w-4 h-4 rounded-sm border border-white/10" />
+                                            )}
+                                            <span className="truncate">{entry.name}</span>
+                                            <span className="text-gray-500">({entry.value})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
