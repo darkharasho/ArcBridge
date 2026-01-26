@@ -324,7 +324,7 @@ export class DiscordNotifier {
 
                     // --- Top Lists Helper ---
                     const addTopList = (title: string, sortFn: (a: any, b: any) => number, valFn: (p: any) => any, fmtVal: (v: any) => string) => {
-                        const top = [...players].sort(sortFn).slice(0, maxTopRows);
+                        const top = [...players].filter((p: any) => !p.notInSquad).sort(sortFn).slice(0, maxTopRows);
                         const classDisplay = settings.classDisplay ?? 'off';
                         const getClassToken = (p: any) => {
                             if (classDisplay === 'short') {

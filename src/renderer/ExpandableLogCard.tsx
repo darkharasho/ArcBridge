@@ -172,7 +172,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, e
 
     // Helper for rendering top lists
     const TopList = ({ title, sortFn, valFn, fmtVal, fullHeight }: { title: string, sortFn: (a: any, b: any) => number, valFn: (p: any) => any, fmtVal: (v: any) => string, fullHeight?: boolean }) => {
-        const top = [...players].sort(sortFn).slice(0, maxTopRows);
+        const top = [...squadPlayers].sort(sortFn).slice(0, maxTopRows);
         const hasData = top.some(p => {
             const val = valFn(p);
             return val > 0 || (typeof val === 'string' && val !== '0');
