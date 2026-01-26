@@ -120,6 +120,10 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
         setEmbedStats(prev => ({ ...prev, maxTopListRows: clamped }));
     };
 
+    const updateClassDisplay = (value: IEmbedStatSettings['classDisplay']) => {
+        setEmbedStats(prev => ({ ...prev, classDisplay: value }));
+    };
+
     // Helper to enable/disable all stats in a category
     const setAllTopLists = (enabled: boolean) => {
         setEmbedStats(prev => ({
@@ -261,6 +265,38 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew 
                             <div className="min-w-8 shrink-0 text-right text-sm text-gray-300 font-mono">
                                 {embedStats.maxTopListRows}
                             </div>
+                        </div>
+                    </div>
+                    <div className="mb-4 pb-4 border-b border-white/10">
+                        <label className="text-xs text-gray-500 block mb-2">Class display</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <button
+                                onClick={() => updateClassDisplay('off')}
+                                className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${embedStats.classDisplay === 'off'
+                                    ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                    : 'bg-black/20 text-gray-400 border-white/10 hover:text-gray-200'
+                                    }`}
+                            >
+                                Off
+                            </button>
+                            <button
+                                onClick={() => updateClassDisplay('short')}
+                                className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${embedStats.classDisplay === 'short'
+                                    ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                    : 'bg-black/20 text-gray-400 border-white/10 hover:text-gray-200'
+                                    }`}
+                            >
+                                Short name
+                            </button>
+                            <button
+                                onClick={() => updateClassDisplay('emoji')}
+                                className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${embedStats.classDisplay === 'emoji'
+                                    ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                    : 'bg-black/20 text-gray-400 border-white/10 hover:text-gray-200'
+                                    }`}
+                            >
+                                Emoji
+                            </button>
                         </div>
                     </div>
                     <div className="flex justify-end mb-2">

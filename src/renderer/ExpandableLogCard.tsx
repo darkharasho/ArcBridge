@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
 import { Player } from '../shared/dpsReportTypes';
 import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
+import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 
 interface ExpandableLogCardProps {
     log: any;
@@ -156,6 +157,16 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, e
 
     const clampTopRows = (value: number) => Math.min(10, Math.max(1, Math.floor(value)));
     const maxTopRows = clampTopRows(settings.maxTopListRows ?? 5);
+    const classDisplay = settings.classDisplay ?? 'off';
+    const getClassToken = (p: any) => {
+        if (classDisplay === 'short') {
+            return getProfessionAbbrev(p.profession || 'Unknown');
+        }
+        if (classDisplay === 'emoji') {
+            return getProfessionEmoji(p.profession || 'Unknown');
+        }
+        return '';
+    };
 
     // Helper for rendering top lists
     const TopList = ({ title, sortFn, valFn, fmtVal, fullHeight }: { title: string, sortFn: (a: any, b: any) => number, valFn: (p: any) => any, fmtVal: (v: any) => string, fullHeight?: boolean }) => {
@@ -175,9 +186,16 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, e
                             if (val <= 0 && (typeof val !== 'string' || val === '0')) return null;
                             return (
                                 <div key={`${p.account}-${i}`} className="flex justify-between gap-2 border-b border-white/5 last:border-0 pb-0.5">
-                                    <span className="truncate flex-1">
-                                        <span className="text-gray-500 mr-1">{i + 1}</span>
-                                        {p.name || p.character_name || p.account}
+                                    <span className="flex-1 min-w-0 flex items-center gap-2">
+                                        <span className="text-gray-500 w-5 shrink-0 text-right">{i + 1}</span>
+                                        {getClassToken(p) && (
+                                            <span className="text-gray-400 w-10 shrink-0 text-center text-[10px] leading-none">
+                                                {classDisplay === 'emoji' ? getClassToken(p) : `[${getClassToken(p)}]`}
+                                            </span>
+                                        )}
+                                        <span className="truncate">
+                                            {p.name || p.character_name || p.account}
+                                        </span>
                                     </span>
                                     <span className="text-right shrink-0 font-bold text-blue-400">{fmtVal(val)}</span>
                                 </div>

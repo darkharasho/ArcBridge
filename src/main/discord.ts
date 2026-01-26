@@ -1,6 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 import { Player } from '../shared/dpsReportTypes';
 
 // Embed stat settings interface
@@ -25,6 +26,7 @@ export interface IEmbedStatSettings {
     showDeaths: boolean;
     showDodges: boolean;
     maxTopListRows: number;
+    classDisplay: 'off' | 'short' | 'emoji';
 }
 
 // Default settings - all enabled except additional stats
@@ -49,6 +51,7 @@ const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showDeaths: false,
     showDodges: false,
     maxTopListRows: 10,
+    classDisplay: 'off',
 };
 
 // Discord embed limits
@@ -322,6 +325,16 @@ export class DiscordNotifier {
                     // --- Top Lists Helper ---
                     const addTopList = (title: string, sortFn: (a: any, b: any) => number, valFn: (p: any) => any, fmtVal: (v: any) => string) => {
                         const top = [...players].sort(sortFn).slice(0, maxTopRows);
+                        const classDisplay = settings.classDisplay ?? 'off';
+                        const getClassToken = (p: any) => {
+                            if (classDisplay === 'short') {
+                                return getProfessionAbbrev(p.profession || 'Unknown');
+                            }
+                            if (classDisplay === 'emoji') {
+                                return getProfessionEmoji(p.profession || 'Unknown');
+                            }
+                            return '';
+                        };
 
                         // Calculate the maximum value width for this specific list
                         let maxValueWidth = 0;
@@ -339,7 +352,7 @@ export class DiscordNotifier {
                         const RANK_WIDTH = 3; // "10 " = 3 chars
                         const MIN_SEPARATOR = 1; // At least 1 space between name and value
                         const availableWidth = MAX_LINE_WIDTH - RANK_WIDTH - MIN_SEPARATOR;
-                        const nameWidth = availableWidth - maxValueWidth;
+                        const nameWidth = Math.max(0, availableWidth - maxValueWidth);
 
                         let str = "";
                         top.forEach((p, i) => {
@@ -347,7 +360,13 @@ export class DiscordNotifier {
                             if (val > 0 || (typeof val === 'string' && val !== '0' && val !== '')) {
                                 const rank = (i + 1).toString().padEnd(2);
                                 const fullName = p.name || p.character_name || p.account || 'Unknown';
-                                const name = fullName.substring(0, nameWidth).padEnd(nameWidth);
+                                const classToken = getClassToken(p);
+                                const classCell = classToken
+                                    ? (classDisplay === 'emoji' ? `${classToken} ` : `[${classToken}] `)
+                                    : '';
+                                const availableNameWidth = Math.max(0, nameWidth - classCell.length);
+                                const trimmedName = fullName.substring(0, availableNameWidth).padEnd(availableNameWidth);
+                                const name = `${classCell}${trimmedName}`.padEnd(nameWidth);
                                 const vStr = formattedValues[i].padStart(maxValueWidth);
                                 str += `${rank} ${name} ${vStr}\n`;
                             }

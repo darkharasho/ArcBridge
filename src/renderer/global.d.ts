@@ -31,6 +31,7 @@ export interface IEmbedStatSettings {
     showDeaths: boolean;
     showDodges: boolean;
     maxTopListRows: number;
+    classDisplay: 'off' | 'short' | 'emoji';
 }
 
 // Default embed stat settings
@@ -56,6 +57,7 @@ export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showDeaths: false,
     showDodges: false,
     maxTopListRows: 10,
+    classDisplay: 'off',
 };
 
 export interface IElectronAPI {

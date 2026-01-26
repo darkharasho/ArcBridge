@@ -440,6 +440,7 @@ if (!gotTheLock) {
             showDeaths: false,
             showDodges: false,
             maxTopListRows: 10,
+            classDisplay: 'off',
         };
 
         ipcMain.handle('get-settings', () => {
