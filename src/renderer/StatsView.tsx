@@ -1948,24 +1948,6 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="flex flex-wrap gap-2 justify-end">
-                                        {([
-                                            { value: 'total', label: 'Total Gen' },
-                                            { value: 'average', label: 'Gen/Sec' },
-                                            { value: 'uptime', label: 'Uptime' }
-                                        ] as const).map((option) => (
-                                            <button
-                                                key={option.value}
-                                                onClick={() => setActiveBoonMetric(option.value)}
-                                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
-                                                    ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
-                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
-                                                    }`}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
 
                                 {filteredBoonTables.length === 0 ? (
@@ -2004,6 +1986,24 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                                                             <div className="text-xs uppercase tracking-widest text-gray-500">
                                                                 {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
                                                             </div>
+                                                        </div>
+                                                        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                            {([
+                                                                { value: 'total', label: 'Total Gen' },
+                                                                { value: 'average', label: 'Gen/Sec' },
+                                                                { value: 'uptime', label: 'Uptime' }
+                                                            ] as const).map((option) => (
+                                                                <button
+                                                                    key={option.value}
+                                                                    onClick={() => setActiveBoonMetric(option.value)}
+                                                                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
+                                                                        ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                                        : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                                        }`}
+                                                                >
+                                                                    {option.label}
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                         <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                             <div>Player</div>
