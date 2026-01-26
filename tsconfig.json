@@ -24,6 +24,7 @@
     },
     "include": [
         "src/renderer/**/*",
+        "src/web/**/*",
         "src/shared/**/*",
         "src/vite-env.d.ts"
     ],

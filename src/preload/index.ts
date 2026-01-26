@@ -75,5 +75,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sendStatsScreenshot: (buffer: Uint8Array) => ipcRenderer.send('send-stats-screenshot', buffer),
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
     getWhatsNew: () => ipcRenderer.invoke('get-whats-new'),
-    setLastSeenVersion: (version: string) => ipcRenderer.invoke('set-last-seen-version', version)
+    setLastSeenVersion: (version: string) => ipcRenderer.invoke('set-last-seen-version', version),
+    startGithubOAuth: () => ipcRenderer.invoke('start-github-oauth'),
+    onGithubAuthComplete: (callback: (data: any) => void) => {
+        ipcRenderer.on('github-auth-complete', (_event, value) => callback(value));
+        return () => ipcRenderer.removeAllListeners('github-auth-complete');
+    },
+    getGithubRepos: () => ipcRenderer.invoke('get-github-repos'),
+    createGithubRepo: (params: { name: string; branch?: string }) => ipcRenderer.invoke('create-github-repo', params),
+    uploadWebReport: (payload: { meta: any; stats: any }) => ipcRenderer.invoke('upload-web-report', payload),
+    getGithubPagesBuildStatus: () => ipcRenderer.invoke('get-github-pages-build-status'),
+    onWebUploadStatus: (callback: (data: any) => void) => {
+        ipcRenderer.on('web-upload-status', (_event, value) => callback(value));
+        return () => ipcRenderer.removeAllListeners('web-upload-status');
+    }
 })

@@ -108,6 +108,11 @@ export interface IElectronAPI {
         closeBehavior: 'minimize' | 'quit';
         embedStatSettings: IEmbedStatSettings;
         mvpWeights: IMvpWeights;
+        githubRepoOwner?: string | null;
+        githubRepoName?: string | null;
+        githubBranch?: string | null;
+        githubPagesBaseUrl?: string | null;
+        githubToken?: string | null;
     }>;
     manualUpload: (path: string) => void;
     manualUploadBatch: (paths: string[]) => void;
@@ -121,6 +126,11 @@ export interface IElectronAPI {
         closeBehavior?: 'minimize' | 'quit';
         embedStatSettings?: IEmbedStatSettings;
         mvpWeights?: IMvpWeights;
+        githubRepoOwner?: string | null;
+        githubRepoName?: string | null;
+        githubBranch?: string | null;
+        githubPagesBaseUrl?: string | null;
+        githubToken?: string | null;
     }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
@@ -147,6 +157,13 @@ export interface IElectronAPI {
         releaseNotes: string | null;
     }>;
     setLastSeenVersion: (version: string) => Promise<void>;
+    startGithubOAuth: () => Promise<{ success: boolean; error?: string; userCode?: string; verificationUri?: string }>;
+    onGithubAuthComplete: (callback: (data: { success: boolean; token?: string; error?: string }) => void) => () => void;
+    getGithubRepos: () => Promise<{ success: boolean; repos?: Array<{ full_name: string; name: string; owner: string }> ; error?: string }>;
+    createGithubRepo: (params: { name: string; branch?: string }) => Promise<{ success: boolean; repo?: { full_name: string; owner: string; name: string; pagesUrl?: string }; error?: string }>;
+    uploadWebReport: (payload: { meta: any; stats: any }) => Promise<{ success: boolean; url?: string; error?: string }>;
+    getGithubPagesBuildStatus: () => Promise<{ success: boolean; status?: string; updatedAt?: string; errorMessage?: string; error?: string }>;
+    onWebUploadStatus: (callback: (data: { stage: string; message?: string; progress?: number }) => void) => () => void;
 }
 
 declare global {

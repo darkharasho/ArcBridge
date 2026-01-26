@@ -12,16 +12,20 @@
         "dev": "concurrently \"npm run dev:electron\" \"npm run dev:react\"",
         "dev:react": "vite",
         "dev:electron": "wait-on tcp:5173 && tsc -p electron/tsconfig.json && electron .",
-        "clean": "rm -rf dist-electron dist-react dist_out",
-        "build": "npm run clean && tsc && vite build && tsc -p electron/tsconfig.json",
+        "clean": "rm -rf dist-electron dist-react dist-web dist_out",
+        "build": "npm run clean && tsc && vite build && vite build --config vite.web.config.ts && tsc -p electron/tsconfig.json",
+        "build:web": "vite build --config vite.web.config.ts",
         "build:linux": "npm run build && electron-builder --linux",
         "build:win": "npm run build && electron-builder --win",
         "build:all": "npm run build && electron-builder --linux --win",
+        "build:github": "npm run build && electron-builder --publish always",
+        "prebuild:github": "npm run generate:release-notes",
+        "generate:release-notes": "node scripts/generate-release-notes.mjs",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "fixture:json": "bash scripts/generate-json-fixture.sh",
-    "validate:boons": "node scripts/boon-validate.js"
-  },
+        "preview": "vite preview",
+        "fixture:json": "bash scripts/generate-json-fixture.sh",
+        "validate:boons": "node scripts/boon-validate.js"
+    },
     "dependencies": {
         "axios": "^1.6.0",
         "chokidar": "^3.5.3",
@@ -80,6 +84,7 @@
         "files": [
             "dist-electron/**/*",
             "dist-react/**/*",
+            "dist-web/**/*",
             "package.json",
             "RELEASE_NOTES.md"
         ],

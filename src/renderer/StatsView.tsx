@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
 import { calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
@@ -12,6 +12,8 @@ interface StatsViewProps {
     logs: ILogData[];
     onBack: () => void;
     mvpWeights?: IMvpWeights;
+    precomputedStats?: any;
+    embedded?: boolean;
 }
 
 const OFFENSE_METRICS: Array<{
@@ -112,7 +114,7 @@ const HEALING_METRICS: Array<{
     { id: 'downedHealingPerSecond', label: 'Downed Healing Per Second', baseField: 'downedHealing', perSecond: true, decimals: 1 }
 ];
 
-export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded = false }: StatsViewProps) {
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
     const [activeBoonTab, setActiveBoonTab] = useState<string | null>(null);
@@ -132,6 +134,14 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [offenseViewMode, setOffenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [defenseViewMode, setDefenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [supportViewMode, setSupportViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
+    const [uploadingWeb, setUploadingWeb] = useState(false);
+    const [webUploadMessage, setWebUploadMessage] = useState<string | null>(null);
+    const [webUploadStage, setWebUploadStage] = useState<string | null>(null);
+    const [webUploadProgress, setWebUploadProgress] = useState<number | null>(null);
+    const [webUploadDetail, setWebUploadDetail] = useState<string | null>(null);
+    const [webUploadUrl, setWebUploadUrl] = useState<string | null>(null);
+    const [webUploadBuildStatus, setWebUploadBuildStatus] = useState<'idle' | 'checking' | 'building' | 'built' | 'errored' | 'unknown'>('idle');
+    const [webCopyStatus, setWebCopyStatus] = useState<'idle' | 'copied'>('idle');
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -140,6 +150,9 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
         });
 
     const stats = useMemo(() => {
+        if (precomputedStats) {
+            return precomputedStats;
+        }
         const validLogs = logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details);
         const total = validLogs.length;
 
@@ -1226,7 +1239,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             avgMvpScore,
             leaderboards
         };
-    }, [logs]);
+    }, [logs, precomputedStats]);
 
     const filteredBoonTables = useMemo(() => {
         const term = boonSearch.trim().toLowerCase();
@@ -1264,7 +1277,101 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
         }
     }, [filteredSpecialTables, activeSpecialTab]);
 
+    const buildReportMeta = () => {
+        const commanderSet = new Set<string>();
+        let firstStart: Date | null = null;
+        let lastEnd: Date | null = null;
+
+        logs.forEach((log) => {
+            const details = log.details;
+            if (!details) return;
+            const timeStart = details.timeStartStd || details.timeStart || details.uploadTime || log.uploadTime;
+            const timeEnd = details.timeEndStd || details.timeEnd || details.uploadTime || log.uploadTime;
+            const startDate = timeStart ? new Date(timeStart) : null;
+            const endDate = timeEnd ? new Date(timeEnd) : null;
+            if (startDate && !Number.isNaN(startDate.getTime())) {
+                if (!firstStart || startDate < firstStart) firstStart = startDate;
+            }
+            if (endDate && !Number.isNaN(endDate.getTime())) {
+                if (!lastEnd || endDate > lastEnd) lastEnd = endDate;
+            }
+            const players = (details.players || []) as any[];
+            players.forEach((player) => {
+                if (player?.notInSquad) return;
+                if (player?.hasCommanderTag) {
+                    const name = player?.name || player?.account || 'Unknown';
+                    commanderSet.add(name);
+                }
+            });
+        });
+
+        const commanders = Array.from(commanderSet).sort((a, b) => a.localeCompare(b));
+        const safeStart = firstStart || new Date();
+        const safeEnd = lastEnd || safeStart;
+        const dateStart = safeStart.toISOString();
+        const dateEnd = safeEnd.toISOString();
+        const dateLabel = `${safeStart.toLocaleString()} - ${safeEnd.toLocaleString()}`;
+
+        const pad = (value: number) => String(value).padStart(2, '0');
+        const reportId = `${safeStart.getFullYear()}${pad(safeStart.getMonth() + 1)}${pad(safeStart.getDate())}-${pad(safeStart.getHours())}${pad(safeStart.getMinutes())}${pad(safeStart.getSeconds())}-${Math.random().toString(36).slice(2, 6)}`;
+
+        return {
+            id: reportId,
+            title: commanders.length ? commanders.join(', ') : 'Unknown Commander',
+            commanders,
+            dateStart,
+            dateEnd,
+            dateLabel,
+            generatedAt: new Date().toISOString()
+        };
+    };
+
+    const handleWebUpload = async () => {
+        if (embedded) return;
+        if (!window.electronAPI?.uploadWebReport) {
+            setWebUploadMessage('Web upload is not available in this build.');
+            return;
+        }
+        setUploadingWeb(true);
+        setWebUploadMessage('Preparing report...');
+        setWebUploadStage('Preparing report');
+        setWebUploadProgress(0);
+        setWebUploadUrl(null);
+        setWebUploadBuildStatus('idle');
+        try {
+            const meta = buildReportMeta();
+            const result = await window.electronAPI.uploadWebReport({
+                meta,
+                stats
+            });
+            if (result?.success) {
+                const url = result.url || '';
+                setWebUploadUrl(url);
+                setWebUploadMessage(`Uploaded: ${url || 'GitHub Pages'}`);
+                setWebUploadStage('Upload complete');
+                setWebUploadProgress(100);
+                setWebUploadBuildStatus('checking');
+            } else {
+                setWebUploadMessage(result?.error || 'Upload failed.');
+                setWebUploadStage('Upload failed');
+                setWebUploadBuildStatus('idle');
+            }
+        } catch (err: any) {
+            setWebUploadMessage(err?.message || 'Upload failed.');
+            setWebUploadStage('Upload failed');
+            setWebUploadBuildStatus('idle');
+        } finally {
+            setUploadingWeb(false);
+            setTimeout(() => {
+                setWebUploadStage(null);
+                setWebUploadProgress(null);
+                setWebUploadDetail(null);
+            }, 2500);
+        }
+    };
+
     const handleShare = async () => {
+        if (embedded || !window.electronAPI?.sendStatsScreenshot) return;
         setSharing(true);
         const node = document.getElementById('stats-dashboard-container');
         if (node) {
@@ -1309,6 +1416,63 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
         }
         setTimeout(() => setSharing(false), 2000);
     };
+
+    useEffect(() => {
+        if (!window.electronAPI?.onWebUploadStatus) return;
+        const unsubscribe = window.electronAPI.onWebUploadStatus((data) => {
+            if (!data) return;
+            setWebUploadStage(data.stage || 'Uploading');
+            if (typeof data.progress === 'number') {
+                setWebUploadProgress(data.progress);
+            }
+            if (data.message) {
+                setWebUploadDetail(data.message);
+            }
+        });
+        return unsubscribe;
+    }, []);
+
+    useEffect(() => {
+        if (webUploadBuildStatus !== 'checking' && webUploadBuildStatus !== 'building') return;
+        if (!window.electronAPI?.getGithubPagesBuildStatus) {
+            setWebUploadBuildStatus('unknown');
+            return;
+        }
+        let attempts = 0;
+        const interval = setInterval(async () => {
+            attempts += 1;
+            try {
+                const resp = await window.electronAPI.getGithubPagesBuildStatus();
+                if (resp?.success) {
+                    const status = String(resp.status || '').toLowerCase();
+                    if (status === 'built' || status === 'success') {
+                        setWebUploadBuildStatus('built');
+                        clearInterval(interval);
+                        return;
+                    }
+                    if (status === 'errored' || status === 'error' || status === 'failed') {
+                        setWebUploadBuildStatus('errored');
+                        clearInterval(interval);
+                        return;
+                    }
+                    setWebUploadBuildStatus('building');
+                } else if (resp?.error) {
+                    setWebUploadBuildStatus('unknown');
+                    clearInterval(interval);
+                    return;
+                }
+            } catch {
+                setWebUploadBuildStatus('unknown');
+                clearInterval(interval);
+                return;
+            }
+            if (attempts >= 18) {
+                setWebUploadBuildStatus('unknown');
+                clearInterval(interval);
+            }
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [webUploadBuildStatus]);
 
     const colorClasses: Record<string, { bg: string; text: string }> = {
         red: { bg: 'bg-red-500/20', text: 'text-red-400' },
@@ -1394,17 +1558,26 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const sortedSquadClassData = [...stats.squadClassData].sort(sortByCountDesc);
     const sortedEnemyClassData = [...stats.enemyClassData].sort(sortByCountDesc);
 
+    const containerClass = embedded
+        ? 'min-h-screen flex flex-col p-1 w-full max-w-6xl mx-auto'
+        : 'h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
+    const scrollContainerClass = embedded
+        ? 'space-y-6 min-h-0 bg-[#0f172a] p-4 rounded-xl'
+        : 'flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-[#0f172a] p-4 rounded-xl';
+
     return (
-        <div className="h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden">
+        <div className={containerClass}>
             {/* Header */}
             <div className="flex items-center justify-between mb-3 shrink-0">
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={onBack}
-                        className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-                    >
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
+                    {!embedded && (
+                        <button
+                            onClick={onBack}
+                            className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                        >
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
+                    )}
                     <div className="space-y-0">
                         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                             <Trophy className="w-6 h-6 text-yellow-500" />
@@ -1415,17 +1588,105 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         </p>
                     </div>
                 </div>
-                <button
-                    onClick={handleShare}
-                    disabled={sharing}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                    <Share2 className="w-4 h-4" />
-                    {sharing ? 'Sharing...' : 'Share to Discord'}
-                </button>
+                {!embedded && (
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleWebUpload}
+                            disabled={uploadingWeb}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                        >
+                            <UploadCloud className="w-4 h-4" />
+                            {uploadingWeb ? 'Uploading...' : 'Upload to Web'}
+                        </button>
+                        <button
+                            onClick={handleShare}
+                            disabled={sharing}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                        >
+                            <Share2 className="w-4 h-4" />
+                            {sharing ? 'Sharing...' : 'Share to Discord'}
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div id="stats-dashboard-container" className="flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-[#0f172a] p-4 rounded-xl">
+            {!embedded && webUploadMessage && (
+                <div className="mb-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center justify-between gap-3">
+                    <div className="text-xs text-gray-300 flex items-center gap-2">
+                        <span className="uppercase tracking-widest text-[10px] text-cyan-300/70">Uploaded</span>
+                        <button
+                            onClick={() => {
+                                const url = webUploadUrl || webUploadMessage.replace(/^Uploaded:\s*/i, '').trim();
+                                if (url && window.electronAPI?.openExternal) {
+                                    window.electronAPI.openExternal(url);
+                                }
+                            }}
+                            className="text-cyan-200 hover:text-cyan-100 underline underline-offset-2"
+                        >
+                            {webUploadUrl || webUploadMessage.replace(/^Uploaded:\s*/i, '')}
+                        </button>
+                        {webUploadBuildStatus !== 'idle' && (
+                            <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${webUploadBuildStatus === 'built'
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                : webUploadBuildStatus === 'errored'
+                                    ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                    : webUploadBuildStatus === 'unknown'
+                                        ? 'bg-white/5 text-gray-400 border-white/10'
+                                        : 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                }`}>
+                                {(webUploadBuildStatus === 'checking' || webUploadBuildStatus === 'building') && (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                )}
+                                {webUploadBuildStatus === 'built' && <CheckCircle2 className="w-3 h-3" />}
+                                {webUploadBuildStatus === 'errored' && <XCircle className="w-3 h-3" />}
+                                {webUploadBuildStatus === 'built'
+                                    ? 'Build ready'
+                                    : webUploadBuildStatus === 'errored'
+                                        ? 'Build failed'
+                                        : webUploadBuildStatus === 'unknown'
+                                            ? 'Build status unknown'
+                                            : 'Building…'}
+                            </span>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => {
+                            const url = webUploadUrl || webUploadMessage.replace(/^Uploaded:\s*/i, '').trim();
+                            if (url) {
+                                navigator.clipboard.writeText(url);
+                                setWebCopyStatus('copied');
+                                setTimeout(() => setWebCopyStatus('idle'), 1200);
+                            }
+                        }}
+                        className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                    >
+                        {webCopyStatus === 'copied' ? 'Copied' : 'Copy URL'}
+                    </button>
+                </div>
+            )}
+
+            {!embedded && (uploadingWeb || webUploadStage) && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg">
+                    <div className="w-full max-w-md bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl">
+                        <div className="text-sm uppercase tracking-widest text-cyan-300/70">Web Upload</div>
+                        <div className="text-2xl font-bold text-white mt-2">{webUploadStage || 'Uploading'}</div>
+                        <div className="text-sm text-gray-400 mt-2">
+                            {webUploadDetail || webUploadMessage || 'Working...'}
+                        </div>
+                        <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
+                                style={{ width: `${webUploadProgress ?? (uploadingWeb ? 35 : 100)}%` }}
+                            />
+                        </div>
+                        <div className="text-xs text-gray-500 mt-2">
+                            {typeof webUploadProgress === 'number' ? `${Math.round(webUploadProgress)}%` : 'Preparing...'}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div id="stats-dashboard-container" className={scrollContainerClass}>
 
                 {/* Wins/Losses Big Cards with embedded Averages and KDR */}
                 <div className="grid grid-cols-2 gap-4">

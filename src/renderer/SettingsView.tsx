@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles } from 'lucide-react';
+import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IMvpWeights } from './global.d';
 
 interface SettingsViewProps {
@@ -73,17 +73,44 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
+    const [githubRepoName, setGithubRepoName] = useState('');
+    const [githubBranch, setGithubBranch] = useState('main');
+    const [githubPagesBaseUrl, setGithubPagesBaseUrl] = useState('');
+    const [githubToken, setGithubToken] = useState('');
+    const [githubAuthStatus, setGithubAuthStatus] = useState<'idle' | 'pending' | 'connected' | 'error'>('idle');
+    const [githubAuthMessage, setGithubAuthMessage] = useState<string | null>(null);
+    const [githubUserCode, setGithubUserCode] = useState<string | null>(null);
+    const [githubVerificationUri, setGithubVerificationUri] = useState<string | null>(null);
+    const [githubRepos, setGithubRepos] = useState<Array<{ full_name: string; name: string; owner: string }>>([]);
+    const [githubRepoSearch, setGithubRepoSearch] = useState('');
+    const [githubRepoMode, setGithubRepoMode] = useState<'select' | 'create'>('select');
+    const [loadingRepos, setLoadingRepos] = useState(false);
+    const [githubRepoError, setGithubRepoError] = useState<string | null>(null);
+    const [creatingRepo, setCreatingRepo] = useState(false);
+    const [githubRepoStatus, setGithubRepoStatus] = useState<string | null>(null);
+    const [githubRepoStatusKind, setGithubRepoStatusKind] = useState<'idle' | 'success' | 'error' | 'pending'>('idle');
     const [isSaving, setIsSaving] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [showSaved, setShowSaved] = useState(false);
 
     useEffect(() => {
         const loadSettings = async () => {
+            if (!window.electronAPI?.getSettings) {
+                setHasLoaded(true);
+                return;
+            }
             const settings = await window.electronAPI.getSettings();
             setDpsReportToken(settings.dpsReportToken || '');
             setCloseBehavior(settings.closeBehavior || 'minimize');
             setEmbedStats({ ...DEFAULT_EMBED_STATS, ...(settings.embedStatSettings || {}) });
             setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
+            setGithubRepoName(settings.githubRepoName || '');
+            setGithubBranch(settings.githubBranch || 'main');
+            setGithubPagesBaseUrl(settings.githubPagesBaseUrl || '');
+            setGithubToken(settings.githubToken || '');
+            if (settings.githubToken) {
+                setGithubAuthStatus('connected');
+            }
             setHasLoaded(true);
         };
         loadSettings();
@@ -92,11 +119,15 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const saveSettings = () => {
         setIsSaving(true);
         setShowSaved(false);
-        window.electronAPI.saveSettings({
+        window.electronAPI?.saveSettings?.({
             dpsReportToken: dpsReportToken || null,
             closeBehavior,
             embedStatSettings: embedStats,
-            mvpWeights: mvpWeights
+            mvpWeights: mvpWeights,
+            githubRepoName: githubRepoName || null,
+            githubBranch: githubBranch || 'main',
+            githubPagesBaseUrl: githubPagesBaseUrl || null,
+            githubToken: githubToken || null
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
@@ -114,7 +145,96 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             saveSettings();
         }, 300);
         return () => clearTimeout(timeout);
-    }, [dpsReportToken, closeBehavior, embedStats, mvpWeights, hasLoaded]);
+    }, [
+        dpsReportToken,
+        closeBehavior,
+        embedStats,
+        mvpWeights,
+        githubRepoName,
+        githubBranch,
+        githubPagesBaseUrl,
+        githubToken,
+        hasLoaded
+    ]);
+
+    useEffect(() => {
+        if (!window.electronAPI?.onGithubAuthComplete) return;
+        const unsubscribe = window.electronAPI.onGithubAuthComplete((data) => {
+            if (data?.success) {
+                setGithubToken(data.token || '');
+                setGithubAuthStatus('connected');
+                setGithubAuthMessage('Connected to GitHub.');
+                setTimeout(() => {
+                    setGithubUserCode(null);
+                    setGithubVerificationUri(null);
+                }, 1200);
+            } else {
+                setGithubAuthStatus('error');
+                setGithubAuthMessage(data?.error || 'GitHub authentication failed.');
+            }
+            setTimeout(() => setGithubAuthMessage(null), 3000);
+        });
+        return unsubscribe;
+    }, []);
+
+    const refreshGithubRepos = async () => {
+        if (!window.electronAPI?.getGithubRepos) return;
+        setLoadingRepos(true);
+        const result = await window.electronAPI.getGithubRepos();
+        if (result?.success && result.repos) {
+            setGithubRepos(result.repos);
+        }
+        setLoadingRepos(false);
+    };
+
+    const handleCreateGithubRepo = async () => {
+        if (!window.electronAPI?.createGithubRepo) return;
+        if (githubAuthStatus !== 'connected') {
+            setGithubRepoError('Connect GitHub first.');
+            return;
+        }
+        const error = validateRepoName(githubRepoName);
+        if (error) {
+            setGithubRepoError(error);
+            return;
+        }
+        setCreatingRepo(true);
+        setGithubRepoStatusKind('pending');
+        setGithubRepoStatus('Creating repository...');
+        const result = await window.electronAPI.createGithubRepo({ name: githubRepoName, branch: githubBranch });
+        if (result?.success && result.repo) {
+            setGithubRepoError(null);
+            setGithubRepoMode('select');
+            setGithubPagesBaseUrl(result.repo.pagesUrl || githubPagesBaseUrl);
+            await refreshGithubRepos();
+            setGithubRepoStatusKind('success');
+            setGithubRepoStatus(`Created ${result.repo.full_name}`);
+        } else {
+            const message = result?.error || 'Failed to create repository.';
+            setGithubRepoError(message);
+            setGithubRepoStatusKind('error');
+            setGithubRepoStatus(message);
+        }
+        setCreatingRepo(false);
+        setTimeout(() => {
+            setGithubRepoStatus(null);
+            setGithubRepoStatusKind('idle');
+        }, 3000);
+    };
+
+    useEffect(() => {
+        if (githubAuthStatus === 'connected') {
+            refreshGithubRepos();
+        }
+    }, [githubAuthStatus]);
+
+    const validateRepoName = (value: string) => {
+        if (!value) return 'Repository name is required.';
+        if (!/^[A-Za-z0-9._-]+$/.test(value)) return 'Use letters, numbers, ., _, or - only.';
+        if (value.startsWith('.') || value.endsWith('.')) return 'Name cannot start or end with a dot.';
+        if (value.endsWith('.git')) return 'Name cannot end with .git.';
+        return null;
+    };
 
     const updateEmbedStat = (key: keyof IEmbedStatSettings, value: boolean) => {
         setEmbedStats(prev => ({ ...prev, [key]: value }));
@@ -134,6 +254,27 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
 
     const updateClassDisplay = (value: IEmbedStatSettings['classDisplay']) => {
         setEmbedStats(prev => ({ ...prev, classDisplay: value }));
+    };
+
+    const handleGithubConnect = async () => {
+        if (!window.electronAPI?.startGithubOAuth) {
+            setGithubAuthStatus('error');
+            setGithubAuthMessage('GitHub OAuth is unavailable.');
+            return;
+        }
+        setGithubAuthStatus('pending');
+        setGithubAuthMessage('Waiting for GitHub authorization...');
+        const result = await window.electronAPI.startGithubOAuth();
+        if (!result?.success) {
+            setGithubAuthStatus('error');
+            setGithubAuthMessage(result?.error || 'Failed to start GitHub OAuth.');
+            return;
+        }
+        setGithubUserCode(result.userCode || null);
+        setGithubVerificationUri(result.verificationUri || null);
+        if (result.verificationUri) {
+            window.electronAPI?.openExternal?.(result.verificationUri);
+        }
     };
 
     // Helper to enable/disable all stats in a category
@@ -215,7 +356,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         Optional: Add your dps.report user token to associate uploads with your account.
                         You can find your token at{' '}
                         <button
-                            onClick={() => window.electronAPI.openExternal('https://dps.report/getUserToken')}
+                            onClick={() => window.electronAPI?.openExternal?.('https://dps.report/getUserToken')}
                             className="text-blue-400 hover:text-blue-300 underline transition-colors"
                         >
                             dps.report/getUserToken
@@ -228,6 +369,189 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         placeholder="Enter your dps.report token..."
                         className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-gray-300 placeholder-gray-600 focus:border-blue-500/50 focus:outline-none transition-colors"
                     />
+                </SettingsSection>
+
+                {/* GitHub Pages Hosting */}
+                <SettingsSection title="GitHub Pages Web Reports" icon={Cloud} delay={0.08}>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Connect a GitHub OAuth App to publish web reports to GitHub Pages.
+                    </p>
+                    <div className="text-xs text-gray-500 mb-4">
+                        Sign in with GitHub (device flow). We will create a repo and enable Pages automatically if needed.
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <div className="md:col-span-2 bg-black/30 border border-white/10 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-xs uppercase tracking-widest text-gray-500">Repository</div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setGithubRepoMode('select')}
+                                        className={`px-2 py-1 rounded-full text-[10px] border ${githubRepoMode === 'select'
+                                            ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                            : 'bg-white/5 text-gray-400 border-white/10'
+                                            }`}
+                                    >
+                                        Choose Existing
+                                    </button>
+                                    <button
+                                        onClick={() => setGithubRepoMode('create')}
+                                        className={`px-2 py-1 rounded-full text-[10px] border ${githubRepoMode === 'create'
+                                            ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                            : 'bg-white/5 text-gray-400 border-white/10'
+                                            }`}
+                                    >
+                                        Create New
+                                    </button>
+                                </div>
+                            </div>
+
+                            {githubRepoMode === 'select' ? (
+                                <>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <input
+                                            type="text"
+                                            value={githubRepoSearch}
+                                            onChange={(e) => setGithubRepoSearch(e.target.value)}
+                                            placeholder="Search repositories..."
+                                            className="flex-1 bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-cyan-400/50 focus:outline-none"
+                                        />
+                                        <button
+                                            onClick={refreshGithubRepos}
+                                            className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300"
+                                            title="Refresh repos"
+                                        >
+                                            <RefreshCw className={`w-4 h-4 ${loadingRepos ? 'animate-spin' : ''}`} />
+                                        </button>
+                                    </div>
+                                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                                        {(githubRepos.length ? githubRepos : [{ full_name: '', name: '', owner: '' }])
+                                            .filter((repo) => repo.full_name.toLowerCase().includes(githubRepoSearch.trim().toLowerCase()))
+                                            .sort((a, b) => {
+                                                if (a.name === githubRepoName) return -1;
+                                                if (b.name === githubRepoName) return 1;
+                                                return a.full_name.localeCompare(b.full_name);
+                                            })
+                                            .map((repo, idx) => (
+                                                <button
+                                                    key={`${repo.full_name}-${idx}`}
+                                                    onClick={() => setGithubRepoName(repo.name)}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${githubRepoName === repo.name
+                                                        ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {repo.full_name || 'No repos loaded'}
+                                                </button>
+                                            ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={githubRepoName}
+                                        onChange={(e) => {
+                                            const next = e.target.value.trim();
+                                            setGithubRepoName(next);
+                                            setGithubRepoError(validateRepoName(next));
+                                        }}
+                                        placeholder="New repository name"
+                                        className={`flex-1 bg-black/40 border rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none ${githubRepoError ? 'border-rose-500/60 focus:border-rose-500/80' : 'border-white/5 focus:border-cyan-400/50'}`}
+                                    />
+                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Plus className="w-4 h-4 text-cyan-300" />
+                                    </div>
+                                    <button
+                                        onClick={handleCreateGithubRepo}
+                                        disabled={creatingRepo || !!githubRepoError || githubAuthStatus !== 'connected'}
+                                        className="px-3 py-2 rounded-lg text-xs font-semibold border bg-cyan-600/20 text-cyan-200 border-cyan-500/40 disabled:opacity-50"
+                                    >
+                                        {creatingRepo ? 'Creating...' : 'Create Now'}
+                                    </button>
+                                </div>
+                            )}
+                            {githubRepoMode === 'create' && githubRepoError && (
+                                <div className="text-xs text-rose-400 mt-2">{githubRepoError}</div>
+                            )}
+                            {githubRepoMode === 'create' && githubRepoStatus && (
+                                <div className={`text-xs mt-2 ${githubRepoStatusKind === 'success'
+                                    ? 'text-emerald-300'
+                                    : githubRepoStatusKind === 'error'
+                                        ? 'text-rose-400'
+                                        : 'text-cyan-300'
+                                    }`}
+                                >
+                                    {githubRepoStatus}
+                                </div>
+                            )}
+                        </div>
+
+                        <input
+                            type="text"
+                            value={githubBranch}
+                            onChange={(e) => setGithubBranch(e.target.value)}
+                            placeholder="Branch (default: main)"
+                            className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-gray-300 placeholder-gray-600 focus:border-cyan-400/50 focus:outline-none transition-colors"
+                        />
+                        <input
+                            type="text"
+                            value={githubPagesBaseUrl}
+                            onChange={(e) => setGithubPagesBaseUrl(e.target.value)}
+                            placeholder="Pages Base URL (auto if empty)"
+                            className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-gray-300 placeholder-gray-600 focus:border-cyan-400/50 focus:outline-none transition-colors"
+                        />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                        <button
+                            onClick={handleGithubConnect}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors"
+                        >
+                            <LinkIcon className="w-4 h-4" />
+                            {githubAuthStatus === 'connected' ? 'Re-connect GitHub' : 'Connect GitHub'}
+                        </button>
+                        <div className={`text-xs px-3 py-1 rounded-full border ${githubAuthStatus === 'connected'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : githubAuthStatus === 'pending'
+                                ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                : 'bg-white/5 text-gray-400 border-white/10'
+                            }`}
+                        >
+                            {githubAuthStatus === 'connected' ? 'Connected' : githubAuthStatus === 'pending' ? 'Waiting for OAuth...' : 'Not connected'}
+                        </div>
+                        <div className="ml-auto">
+                            <button
+                                onClick={() => {
+                                    setGithubToken('');
+                                    setGithubAuthStatus('idle');
+                                    setGithubAuthMessage('Disconnected from GitHub.');
+                                    setGithubRepos([]);
+                                    setGithubRepoName('');
+                                    setGithubPagesBaseUrl('');
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold border border-white/10 transition-colors"
+                            >
+                                Disconnect
+                            </button>
+                        </div>
+                        {githubAuthMessage && (
+                            <div className="text-xs text-gray-400">{githubAuthMessage}</div>
+                        )}
+                    </div>
+                    {githubUserCode && githubVerificationUri && (
+                        <div className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 mb-3 animate-[fadeUp_0.6s_ease-out]">
+                            <div className="text-xs uppercase tracking-widest text-gray-500 mb-1">Authorize in Browser</div>
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="font-mono text-lg text-white">{githubUserCode}</div>
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(githubUserCode)}
+                                    className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                                >
+                                    Copy Code
+                                </button>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{githubVerificationUri}</div>
+                        </div>
+                    )}
                 </SettingsSection>
 
                 {/* Discord Embed Stats - Summary Sections */}

@@ -12,6 +12,19 @@ body,
     padding: 0;
 }
 
+html.web-report,
+body.web-report {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+}
+
+body.web-report #root {
+    min-height: 100%;
+    height: auto;
+    overflow: visible;
+}
+
 .drag-region {
     -webkit-app-region: drag;
 }

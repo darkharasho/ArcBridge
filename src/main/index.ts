@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } f
 import fs from 'fs'
 import path from 'node:path'
 import https from 'node:https'
+import { createHash } from 'node:crypto'
+import { spawn } from 'node:child_process'
 import { LogWatcher } from './watcher'
 import { Uploader } from './uploader'
 import { DiscordNotifier } from './discord';
@@ -71,6 +73,8 @@ let watcher: LogWatcher | null = null
 let uploader: Uploader | null = null
 let discord: DiscordNotifier | null = null
 const pendingDiscordLogs = new Map<string, { result: any, jsonDetails: any }>();
+const GITHUB_PROTOCOL = 'gw2-arc-log-uploader';
+const GITHUB_DEVICE_CLIENT_ID = process.env.GITHUB_DEVICE_CLIENT_ID || 'Ov23liFh1ih9LAcnLACw';
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] || 'http://localhost:5173';
 
@@ -171,6 +175,454 @@ const fetchGithubReleaseNotesRange = async (currentVersion: string, lastSeenVers
             resolve(null);
         });
     });
+};
+
+const sendGithubAuthResult = (payload: { success: boolean; token?: string; error?: string }) => {
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('github-auth-complete', payload);
+    }
+};
+
+const requestGithubDeviceCode = (scope: string): Promise<{ deviceCode?: string; userCode?: string; verificationUri?: string; interval?: number; error?: string }> => {
+    if (!GITHUB_DEVICE_CLIENT_ID) {
+        return Promise.resolve({ error: 'GitHub device client ID is not configured.' });
+    }
+    const postData = new URLSearchParams({
+        client_id: GITHUB_DEVICE_CLIENT_ID,
+        scope
+    }).toString();
+
+    return new Promise((resolve) => {
+        const req = https.request(
+            {
+                method: 'POST',
+                hostname: 'github.com',
+                path: '/login/device/code',
+                headers: {
+                    'User-Agent': 'gw2-arc-log-uploader',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(postData)
+                }
+            },
+            (res) => {
+                let data = '';
+                res.setEncoding('utf8');
+                res.on('data', (chunk) => (data += chunk));
+                res.on('end', () => {
+                    try {
+                        const payload = JSON.parse(data);
+                        if (payload?.device_code) {
+                            resolve({
+                                deviceCode: payload.device_code,
+                                userCode: payload.user_code,
+                                verificationUri: payload.verification_uri,
+                                interval: payload.interval
+                            });
+                        } else {
+                            resolve({ error: payload?.error_description || 'Failed to start GitHub device flow.' });
+                        }
+                    } catch {
+                        resolve({ error: 'Failed to parse GitHub device flow response.' });
+                    }
+                });
+            }
+        );
+        req.on('error', () => resolve({ error: 'GitHub device flow request failed.' }));
+        req.write(postData);
+        req.end();
+    });
+};
+
+const pollGithubDeviceToken = async (deviceCode: string, intervalSeconds: number): Promise<{ token?: string; error?: string }> => {
+    const postData = new URLSearchParams({
+        client_id: GITHUB_DEVICE_CLIENT_ID,
+        device_code: deviceCode,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+    }).toString();
+
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    let intervalMs = Math.max(1000, intervalSeconds * 1000);
+
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+        const result = await new Promise<{ token?: string; error?: string; errorCode?: string }>((resolve) => {
+            const req = https.request(
+                {
+                    method: 'POST',
+                    hostname: 'github.com',
+                    path: '/login/oauth/access_token',
+                    headers: {
+                        'User-Agent': 'gw2-arc-log-uploader',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Length': Buffer.byteLength(postData)
+                    }
+                },
+                (res) => {
+                    let data = '';
+                    res.setEncoding('utf8');
+                    res.on('data', (chunk) => (data += chunk));
+                    res.on('end', () => {
+                        try {
+                            const payload = JSON.parse(data);
+                            if (payload?.access_token) {
+                                resolve({ token: payload.access_token });
+                            } else if (payload?.error) {
+                                resolve({ errorCode: payload.error, error: payload.error_description || payload.error });
+                            } else {
+                                resolve({ error: 'Unknown device auth response.' });
+                            }
+                        } catch {
+                            resolve({ error: 'Failed to parse device token response.' });
+                        }
+                    });
+                }
+            );
+            req.on('error', () => resolve({ error: 'GitHub token polling failed.' }));
+            req.write(postData);
+            req.end();
+        });
+
+        if (result.token) return { token: result.token };
+        if (result.errorCode === 'authorization_pending') {
+            await wait(intervalMs);
+            continue;
+        }
+        if (result.errorCode === 'slow_down') {
+            intervalMs += 5000;
+            await wait(intervalMs);
+            continue;
+        }
+        if (result.errorCode === 'expired_token') {
+            return { error: 'Authorization expired. Please try again.' };
+        }
+        return { error: result.error || 'Device authorization failed.' };
+    }
+    return { error: 'Authorization timed out.' };
+};
+
+const encodeGitPath = (value: string) =>
+    value.split('/').map((part) => encodeURIComponent(part)).join('/');
+
+const githubApiRequest = (method: string, apiPath: string, token: string, body?: any): Promise<{ status: number; data: any }> => {
+    const payload = body ? JSON.stringify(body) : null;
+    return new Promise((resolve, reject) => {
+        const req = https.request(
+            {
+                method,
+                hostname: 'api.github.com',
+                path: apiPath,
+                headers: {
+                    'User-Agent': 'gw2-arc-log-uploader',
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': `Bearer ${token}`,
+                    ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {})
+                }
+            },
+            (res) => {
+                let data = '';
+                res.setEncoding('utf8');
+                res.on('data', (chunk) => (data += chunk));
+                res.on('end', () => {
+                    try {
+                        const parsed = data ? JSON.parse(data) : null;
+                        resolve({ status: res.statusCode || 0, data: parsed });
+                    } catch {
+                        resolve({ status: res.statusCode || 0, data: null });
+                    }
+                });
+            }
+        );
+        req.on('error', (err) => reject(err));
+        if (payload) req.write(payload);
+        req.end();
+    });
+};
+
+const getGithubFile = async (owner: string, repo: string, filePath: string, branch: string, token: string) => {
+    const apiPath = `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/contents/${encodeGitPath(filePath)}?ref=${encodeURIComponent(branch)}`;
+    const resp = await githubApiRequest('GET', apiPath, token);
+    if (resp.status === 404) return null;
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) loading ${filePath}`);
+    }
+    return resp.data;
+};
+
+const getGithubTree = async (owner: string, repo: string, treeSha: string, token: string) => {
+    const resp = await githubApiRequest('GET', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/trees/${encodeGitPath(treeSha)}?recursive=1`, token);
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) loading tree`);
+    }
+    return resp.data;
+};
+
+const getGithubRef = async (owner: string, repo: string, branch: string, token: string) => {
+    const resp = await githubApiRequest('GET', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/ref/heads/${encodeGitPath(branch)}`, token);
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) loading ref`);
+    }
+    return resp.data;
+};
+
+const getGithubCommit = async (owner: string, repo: string, commitSha: string, token: string) => {
+    const resp = await githubApiRequest('GET', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/commits/${encodeGitPath(commitSha)}`, token);
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) loading commit`);
+    }
+    return resp.data;
+};
+
+const getGithubPagesLatestBuild = async (owner: string, repo: string, token: string) => {
+    const resp = await githubApiRequest('GET', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/pages/builds/latest`, token);
+    if (resp.status === 404) return null;
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) loading Pages build status`);
+    }
+    return resp.data;
+};
+
+const createGithubBlob = async (owner: string, repo: string, token: string, contentBase64: string) => {
+    const resp = await githubApiRequest('POST', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/blobs`, token, {
+        content: contentBase64,
+        encoding: 'base64'
+    });
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) creating blob`);
+    }
+    return resp.data;
+};
+
+const createGithubTree = async (owner: string, repo: string, token: string, baseTree: string, entries: Array<{ path: string; sha: string }>) => {
+    const resp = await githubApiRequest('POST', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/trees`, token, {
+        base_tree: baseTree,
+        tree: entries.map((entry) => ({
+            path: entry.path,
+            mode: '100644',
+            type: 'blob',
+            sha: entry.sha
+        }))
+    });
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) creating tree`);
+    }
+    return resp.data;
+};
+
+const createGithubCommit = async (owner: string, repo: string, token: string, message: string, treeSha: string, parentSha: string) => {
+    const resp = await githubApiRequest('POST', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/commits`, token, {
+        message,
+        tree: treeSha,
+        parents: [parentSha]
+    });
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) creating commit`);
+    }
+    return resp.data;
+};
+
+const updateGithubRef = async (owner: string, repo: string, branch: string, token: string, commitSha: string) => {
+    const resp = await githubApiRequest('PATCH', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/git/refs/heads/${encodeGitPath(branch)}`, token, {
+        sha: commitSha,
+        force: false
+    });
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) updating ref`);
+    }
+    return resp.data;
+};
+
+const computeGitBlobSha = (content: Buffer) => {
+    return createHash('sha1').update(`blob ${content.length}\0`).update(content).digest('hex');
+};
+
+const listGithubRepos = async (token: string) => {
+    const repos: Array<{ full_name: string; name: string; owner: string }> = [];
+    let page = 1;
+    while (page <= 5) {
+        const resp = await githubApiRequest('GET', `/user/repos?per_page=100&page=${page}`, token);
+        if (resp.status >= 300) {
+            throw new Error(`GitHub API error (${resp.status}) loading repos`);
+        }
+        if (!Array.isArray(resp.data) || resp.data.length === 0) break;
+        resp.data.forEach((repo: any) => {
+            if (!repo || !repo.full_name) return;
+            repos.push({
+                full_name: repo.full_name,
+                name: repo.name,
+                owner: repo.owner?.login || ''
+            });
+        });
+        if (resp.data.length < 100) break;
+        page += 1;
+    }
+    return repos;
+};
+
+const putGithubFile = async (owner: string, repo: string, filePath: string, branch: string, token: string, contentBase64: string, message: string, sha?: string) => {
+    const apiPath = `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/contents/${encodeGitPath(filePath)}`;
+    const body: any = {
+        message,
+        content: contentBase64,
+        branch
+    };
+    if (sha) body.sha = sha;
+    const resp = await githubApiRequest('PUT', apiPath, token, body);
+    if (resp.status >= 300) {
+        const detail = resp.data?.message || 'Unknown error';
+        throw new Error(`GitHub API error (${resp.status}) writing ${filePath}: ${detail}`);
+    }
+    return resp.data;
+};
+
+const getGithubUser = async (token: string) => {
+    const resp = await githubApiRequest('GET', '/user', token);
+    if (resp.status >= 300) {
+        throw new Error(`GitHub API error (${resp.status}) loading user`);
+    }
+    return resp.data;
+};
+
+const isValidRepoName = (value: string) => /^[A-Za-z0-9._-]+$/.test(value) && !value.startsWith('.') && !value.endsWith('.') && !value.endsWith('.git');
+
+const ensureGithubRepo = async (owner: string, repo: string, token: string) => {
+    if (!isValidRepoName(repo)) {
+        throw new Error('Invalid repository name.');
+    }
+    try {
+        const resp = await githubApiRequest('GET', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}`, token);
+        if (resp.status === 200) return resp.data;
+        if (resp.status !== 404) {
+            throw new Error(`GitHub API error (${resp.status}) checking repo`);
+        }
+    } catch (err) {
+        throw err;
+    }
+    const createResp = await githubApiRequest('POST', '/user/repos', token, {
+        name: repo,
+        private: false,
+        auto_init: true,
+        description: 'GW2 Arc Log Reports'
+    });
+    if (createResp.status >= 300) {
+        const detail = createResp.data?.message || 'Unknown error';
+        throw new Error(`GitHub API error (${createResp.status}) creating repo: ${detail}`);
+    }
+    return createResp.data;
+};
+
+const createGithubRepo = async (owner: string, repo: string, token: string) => {
+    if (!isValidRepoName(repo)) {
+        throw new Error('Invalid repository name.');
+    }
+    const resp = await githubApiRequest('POST', '/user/repos', token, {
+        name: repo,
+        private: false,
+        auto_init: true,
+        description: 'GW2 Arc Log Reports'
+    });
+    if (resp.status >= 300) {
+        const detail = resp.data?.message || 'Unknown error';
+        throw new Error(`GitHub API error (${resp.status}) creating repo: ${detail}`);
+    }
+    return resp.data;
+};
+
+const ensureGithubPages = async (owner: string, repo: string, branch: string, token: string) => {
+    const pagesResp = await githubApiRequest('GET', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/pages`, token);
+    if (pagesResp.status === 200) {
+        return pagesResp.data;
+    }
+    if (pagesResp.status !== 404) {
+        throw new Error(`GitHub API error (${pagesResp.status}) checking Pages`);
+    }
+    const createResp = await githubApiRequest('POST', `/repos/${encodeGitPath(owner)}/${encodeGitPath(repo)}/pages`, token, {
+        source: { branch, path: '/' }
+    });
+    if (createResp.status >= 300) {
+        const detail = createResp.data?.message || 'Unknown error';
+        throw new Error(`GitHub API error (${createResp.status}) enabling Pages: ${detail}`);
+    }
+    return createResp.data;
+};
+
+const collectFiles = (dir: string) => {
+    const result: Array<{ absPath: string; relPath: string }> = [];
+    const walk = (current: string) => {
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        entries.forEach((entry) => {
+            const absPath = path.join(current, entry.name);
+            const relPath = path.relative(dir, absPath).replace(/\\/g, '/');
+            if (entry.isDirectory()) {
+                walk(absPath);
+            } else {
+                result.push({ absPath, relPath });
+            }
+        });
+    };
+    walk(dir);
+    return result;
+};
+
+const copyDir = (src: string, dest: string) => {
+    fs.mkdirSync(dest, { recursive: true });
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    entries.forEach((entry) => {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+            copyDir(srcPath, destPath);
+        } else {
+            fs.copyFileSync(srcPath, destPath);
+        }
+    });
+};
+
+const sendWebUploadStatus = (stage: string, message?: string, progress?: number) => {
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('web-upload-status', { stage, message, progress });
+    }
+};
+
+const buildWebTemplate = async (appRoot: string) => {
+    return new Promise<{ ok: boolean; error?: string }>((resolve) => {
+        const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+        const child = spawn(npmCmd, ['run', 'build:web'], { cwd: appRoot });
+        let stdout = '';
+        let stderr = '';
+        child.stdout?.on('data', (chunk) => {
+            stdout += chunk.toString();
+        });
+        child.stderr?.on('data', (chunk) => {
+            stderr += chunk.toString();
+        });
+        child.on('error', (err) => resolve({ ok: false, error: err.message }));
+        child.on('close', (code) => {
+            if (code === 0) {
+                resolve({ ok: true });
+                return;
+            }
+            const tail = (stderr || stdout).split('\n').slice(-6).join('\n').trim();
+            resolve({ ok: false, error: tail || `build:web exited with code ${code}` });
+        });
+    });
+};
+
+const getWebRoot = () => {
+    if (app.isPackaged) {
+        return app.getAppPath();
+    }
+    const candidates = [
+        process.cwd(),
+        path.resolve(__dirname, '../../../'),
+        path.resolve(__dirname, '../../'),
+    ];
+    for (const candidate of candidates) {
+        if (fs.existsSync(path.join(candidate, 'package.json'))) {
+            return candidate;
+        }
+    }
+    return process.cwd();
 };
 
 function createTray() {
@@ -401,6 +853,10 @@ app.on('before-quit', () => {
     isQuitting = true;
 });
 
+app.on('open-url', (event) => {
+    event.preventDefault();
+});
+
 // Single instance lock - prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -409,7 +865,7 @@ if (!gotTheLock) {
     app.quit();
 } else {
     // This is the first/primary instance
-    app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+    app.on('second-instance', (_event, commandLine, _workingDirectory) => {
         // Someone tried to run a second instance, focus our window instead
         if (win) {
             if (win.isMinimized()) win.restore();
@@ -419,6 +875,11 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(async () => {
+        if (process.defaultApp && process.argv.length >= 2) {
+            app.setAsDefaultProtocolClient(GITHUB_PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+        } else {
+            app.setAsDefaultProtocolClient(GITHUB_PROTOCOL);
+        }
         createWindow();
         createTray();
 
@@ -570,7 +1031,12 @@ if (!gotTheLock) {
                 dpsReportToken: store.get('dpsReportToken', null),
                 closeBehavior: store.get('closeBehavior', 'minimize'),
                 embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS),
-                mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) }
+                mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) },
+                githubRepoOwner: store.get('githubRepoOwner', null),
+                githubRepoName: store.get('githubRepoName', null),
+                githubBranch: store.get('githubBranch', 'main'),
+                githubPagesBaseUrl: store.get('githubPagesBaseUrl', null),
+                githubToken: store.get('githubToken', null)
             };
         });
 
@@ -582,7 +1048,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -605,6 +1071,9 @@ if (!gotTheLock) {
                 if (selected) {
                     store.set('discordWebhookUrl', selected.url);
                     discord?.setWebhookUrl(selected.url);
+                } else {
+                    store.set('discordWebhookUrl', null);
+                    discord?.setWebhookUrl('');
                 }
             }
             if (settings.dpsReportToken !== undefined) {
@@ -620,6 +1089,21 @@ if (!gotTheLock) {
             }
             if (settings.mvpWeights !== undefined) {
                 store.set('mvpWeights', settings.mvpWeights);
+            }
+            if (settings.githubRepoOwner !== undefined) {
+                store.set('githubRepoOwner', settings.githubRepoOwner);
+            }
+            if (settings.githubRepoName !== undefined) {
+                store.set('githubRepoName', settings.githubRepoName);
+            }
+            if (settings.githubBranch !== undefined) {
+                store.set('githubBranch', settings.githubBranch);
+            }
+            if (settings.githubPagesBaseUrl !== undefined) {
+                store.set('githubPagesBaseUrl', settings.githubPagesBaseUrl);
+            }
+            if (settings.githubToken !== undefined) {
+                store.set('githubToken', settings.githubToken);
             }
         });
 
@@ -669,6 +1153,273 @@ if (!gotTheLock) {
                 return { success: true };
             } catch (err: any) {
                 return { success: false, error: err.message };
+            }
+        });
+
+        ipcMain.handle('get-github-repos', async () => {
+            try {
+                const token = store.get('githubToken') as string | undefined;
+                if (!token) {
+                    return { success: false, error: 'GitHub not connected.' };
+                }
+                const repos = await listGithubRepos(token);
+                return { success: true, repos };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to load repos.' };
+            }
+        });
+
+        ipcMain.handle('create-github-repo', async (_event, params: { name: string; branch?: string }) => {
+            try {
+                const token = store.get('githubToken') as string | undefined;
+                if (!token) {
+                    return { success: false, error: 'GitHub not connected.' };
+                }
+                const user = await getGithubUser(token);
+                const owner = user?.login;
+                if (!owner) {
+                    return { success: false, error: 'Unable to determine GitHub username.' };
+                }
+                const repoName = params.name?.trim();
+                if (!repoName) {
+                    return { success: false, error: 'Repository name is required.' };
+                }
+                const repo = await createGithubRepo(owner, repoName, token);
+                const branch = params.branch || 'main';
+                const pagesInfo = await ensureGithubPages(owner, repoName, branch, token);
+                const pagesUrl = pagesInfo?.html_url || `https://${owner}.github.io/${repoName}`;
+                store.set('githubRepoOwner', owner);
+                store.set('githubRepoName', repoName);
+                store.set('githubPagesBaseUrl', pagesUrl);
+                return {
+                    success: true,
+                    repo: {
+                        full_name: repo?.full_name || `${owner}/${repoName}`,
+                        owner,
+                        name: repoName,
+                        pagesUrl
+                    }
+                };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to create repository.' };
+            }
+        });
+
+        ipcMain.handle('get-github-pages-build-status', async () => {
+            try {
+                const token = store.get('githubToken') as string | undefined;
+                const owner = store.get('githubRepoOwner') as string | undefined;
+                const repo = store.get('githubRepoName') as string | undefined;
+                if (!owner || !repo) {
+                    return { success: false, error: 'Repository not configured.' };
+                }
+                if (!token) {
+                    return { success: false, error: 'GitHub not connected.' };
+                }
+                const build = await getGithubPagesLatestBuild(owner, repo, token);
+                if (!build) {
+                    return { success: false, error: 'No Pages builds found.' };
+                }
+                return {
+                    success: true,
+                    status: build.status || 'unknown',
+                    updatedAt: build.updated_at || build.created_at,
+                    errorMessage: build.error?.message
+                };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to load Pages build status.' };
+            }
+        });
+
+        ipcMain.handle('start-github-oauth', async () => {
+            const result = await requestGithubDeviceCode('repo');
+            if (!result.deviceCode) {
+                return { success: false, error: result.error || 'Failed to start GitHub device flow.' };
+            }
+            pollGithubDeviceToken(result.deviceCode, result.interval || 5)
+                .then((tokenResult) => {
+                    if (tokenResult.token) {
+                        store.set('githubToken', tokenResult.token);
+                        sendGithubAuthResult({ success: true, token: tokenResult.token });
+                    } else {
+                        sendGithubAuthResult({ success: false, error: tokenResult.error || 'Device auth failed.' });
+                    }
+                })
+                .catch((err) => {
+                    sendGithubAuthResult({ success: false, error: err?.message || 'Device auth failed.' });
+                });
+            return {
+                success: true,
+                userCode: result.userCode,
+                verificationUri: result.verificationUri
+            };
+        });
+
+        ipcMain.handle('upload-web-report', async (_event, payload: { meta: any; stats: any }) => {
+            try {
+                sendWebUploadStatus('Preparing', 'Validating settings...', 5);
+                const token = store.get('githubToken') as string | undefined;
+                const owner = store.get('githubRepoOwner') as string | undefined;
+                const repo = store.get('githubRepoName') as string | undefined;
+                const branch = (store.get('githubBranch') as string | undefined) || 'main';
+                let baseUrl = (store.get('githubPagesBaseUrl') as string | undefined) || '';
+                if (!token) {
+                    return { success: false, error: 'Missing GitHub token. Connect GitHub first.' };
+                }
+                if (!owner || !repo) {
+                    return { success: false, error: 'Select or create a repository in Settings first.' };
+                }
+
+                sendWebUploadStatus('Preparing', 'Ensuring Pages configuration...', 15);
+                const pagesInfo = await ensureGithubPages(owner, repo, branch, token);
+                if (!baseUrl && pagesInfo?.html_url) {
+                    baseUrl = pagesInfo.html_url;
+                    store.set('githubPagesBaseUrl', baseUrl);
+                } else if (!baseUrl) {
+                    baseUrl = `https://${owner}.github.io/${repo}`;
+                    store.set('githubPagesBaseUrl', baseUrl);
+                }
+
+                sendWebUploadStatus('Preparing', 'Checking web template...', 25);
+                const appRoot = getWebRoot();
+                sendWebUploadStatus('Preparing', `Using web root: ${appRoot}`, 27);
+                const templateDir = path.join(appRoot, 'dist-web');
+                if (app.isPackaged && !fs.existsSync(templateDir)) {
+                    return { success: false, error: 'Web template missing from the app build.' };
+                }
+                if (!app.isPackaged) {
+                    sendWebUploadStatus('Building', 'Generating web template...', 30);
+                    const built = await buildWebTemplate(appRoot);
+                    if (!built.ok || !fs.existsSync(templateDir)) {
+                        sendWebUploadStatus('Build failed', built.error || 'Failed to generate web template.', 30);
+                        return { success: false, error: built.error || 'Failed to generate the web template automatically.' };
+                    }
+                }
+
+                const reportMeta = {
+                    ...payload.meta,
+                    appVersion: app.getVersion()
+                };
+
+                sendWebUploadStatus('Packaging', 'Preparing report bundle...', 40);
+                const stagingRoot = path.join(app.getPath('userData'), 'web-report-staging', reportMeta.id);
+                fs.rmSync(stagingRoot, { recursive: true, force: true });
+                fs.mkdirSync(stagingRoot, { recursive: true });
+                fs.writeFileSync(path.join(stagingRoot, 'report.json'), JSON.stringify({ meta: reportMeta, stats: payload.stats }, null, 2));
+                const redirectHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=../../?report=${reportMeta.id}" />
+    <title>Redirecting...</title>
+  </head>
+  <body>
+    <script>
+      window.location.replace('../../?report=${reportMeta.id}');
+    </script>
+    <p>Redirecting to report...</p>
+  </body>
+</html>
+`;
+                fs.writeFileSync(path.join(stagingRoot, 'index.html'), redirectHtml);
+
+                const reportUrl = baseUrl
+                    ? `${baseUrl.replace(/\/$/, '')}/?report=${reportMeta.id}`
+                    : `./?report=${reportMeta.id}`;
+                const indexEntry = {
+                    id: reportMeta.id,
+                    title: reportMeta.title,
+                    commanders: reportMeta.commanders || [],
+                    dateStart: reportMeta.dateStart,
+                    dateEnd: reportMeta.dateEnd,
+                    dateLabel: reportMeta.dateLabel,
+                    url: reportUrl
+                };
+
+                let existingIndex: any[] = [];
+                try {
+                    const existing = await getGithubFile(owner, repo, 'reports/index.json', branch, token);
+                    if (existing?.content) {
+                        const decoded = Buffer.from(existing.content, 'base64').toString('utf8');
+                        existingIndex = JSON.parse(decoded);
+                    }
+                } catch (err) {
+                    existingIndex = [];
+                }
+
+                const mergedIndex = [indexEntry, ...(Array.isArray(existingIndex) ? existingIndex.filter((entry) => entry?.id !== reportMeta.id) : [])];
+
+                sendWebUploadStatus('Uploading', 'Preparing upload bundle...', 55);
+                const headRef = await getGithubRef(owner, repo, branch, token);
+                const headSha = headRef?.object?.sha;
+                if (!headSha) {
+                    throw new Error('Unable to resolve repository branch head.');
+                }
+                const headCommit = await getGithubCommit(owner, repo, headSha, token);
+                const baseTreeSha = headCommit?.tree?.sha;
+                if (!baseTreeSha) {
+                    throw new Error('Unable to resolve repository tree.');
+                }
+                const treeData = await getGithubTree(owner, repo, baseTreeSha, token);
+                const treeEntries = Array.isArray(treeData?.tree) ? treeData.tree : [];
+                const treeMap = new Map<string, string>();
+                treeEntries.forEach((entry: any) => {
+                    if (entry?.path && entry?.sha && entry?.type === 'blob') {
+                        treeMap.set(entry.path, entry.sha);
+                    }
+                });
+
+                const pendingEntries: Array<{ path: string; contentBase64: string; blobSha: string }> = [];
+                const queueFile = (repoPath: string, content: Buffer) => {
+                    const blobSha = computeGitBlobSha(content);
+                    const existingSha = treeMap.get(repoPath);
+                    if (existingSha && existingSha === blobSha) return;
+                    pendingEntries.push({
+                        path: repoPath,
+                        contentBase64: content.toString('base64'),
+                        blobSha
+                    });
+                };
+
+                const rootFiles = collectFiles(templateDir);
+                for (const file of rootFiles) {
+                    const repoPath = file.relPath;
+                    const content = fs.readFileSync(file.absPath);
+                    queueFile(repoPath, content);
+                }
+
+                const reportFiles = collectFiles(stagingRoot);
+                for (const file of reportFiles) {
+                    const repoPath = `reports/${reportMeta.id}/${file.relPath}`;
+                    const content = fs.readFileSync(file.absPath);
+                    queueFile(repoPath, content);
+                }
+
+                const indexBuffer = Buffer.from(JSON.stringify(mergedIndex, null, 2));
+                queueFile('reports/index.json', indexBuffer);
+
+                if (pendingEntries.length === 0) {
+                    sendWebUploadStatus('Complete', 'No changes to upload.', 100);
+                    return { success: true, url: reportUrl };
+                }
+
+                sendWebUploadStatus('Uploading', 'Uploading changes...', 75);
+                const blobEntries: Array<{ path: string; sha: string }> = [];
+                for (const entry of pendingEntries) {
+                    const blob = await createGithubBlob(owner, repo, token, entry.contentBase64);
+                    blobEntries.push({ path: entry.path, sha: blob.sha });
+                }
+
+                sendWebUploadStatus('Finalizing', 'Publishing commit...', 90);
+                const newTree = await createGithubTree(owner, repo, token, baseTreeSha, blobEntries);
+                const commitMessage = `Update web report ${reportMeta.id}`;
+                const newCommit = await createGithubCommit(owner, repo, token, commitMessage, newTree.sha, headSha);
+                await updateGithubRef(owner, repo, branch, token, newCommit.sha);
+
+                sendWebUploadStatus('Complete', 'Web report uploaded.', 100);
+                return { success: true, url: reportUrl };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Upload failed.' };
             }
         });
 
