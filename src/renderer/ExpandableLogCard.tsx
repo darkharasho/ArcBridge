@@ -28,7 +28,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, screenshotMode, e
     const players: Player[] = details.players || [];
     const targets = details.targets || [];
     const settings = embedStatSettings || DEFAULT_EMBED_STATS;
-    calculateAllStability(players);
+    calculateAllStability(players, { durationMS: details.durationMS, buffMap: details.buffMap });
     const squadPlayers = players.filter((p: any) => !p.notInSquad);
     const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
 

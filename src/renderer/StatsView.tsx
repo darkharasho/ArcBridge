@@ -5,6 +5,7 @@ import { toPng } from 'html-to-image';
 import { calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
+import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue, getPlayerBoonGenerationMs } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, IMvpWeights } from './global.d';
 
 interface StatsViewProps {
@@ -17,6 +18,8 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
     const [activeBoonTab, setActiveBoonTab] = useState<string | null>(null);
+    const [activeBoonCategory, setActiveBoonCategory] = useState<BoonCategory>('totalBuffs');
+    const [activeBoonMetric, setActiveBoonMetric] = useState<BoonMetric>('total');
     const [activeSpecialTab, setActiveSpecialTab] = useState<string | null>(null);
 
     const stats = useMemo(() => {
@@ -81,10 +84,17 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             };
 
             // Squad/Enemy Counts
-            const squadCount = players.filter(p => !p.notInSquad).length;
+            const squadPlayers = players.filter(p => !p.notInSquad);
+            const squadCount = squadPlayers.length;
             const enemyCount = targets.filter((t: any) => !t.isFake).length;
             totalSquadSizeAccum += squadCount;
             totalEnemiesAccum += enemyCount;
+
+            const groupCounts = new Map<number, number>();
+            squadPlayers.forEach((player) => {
+                const group = player.group ?? 0;
+                groupCounts.set(group, (groupCounts.get(group) || 0) + 1);
+            });
 
             // 1. Calculate Win/Loss based on Downs/Deaths
             let squadDownsDeaths = 0;
@@ -172,10 +182,26 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                 s.healing += calculateSquadHealing(p);
                 s.barrier += calculateSquadBarrier(p);
                 s.cc += calculateOutCC(p);
-                const stabOut = (p.squadBuffVolumes || [])
-                    .filter((buff) => buff.id === 1122)
-                    .reduce((sum, buff) => sum + (buff?.buffVolumeData || []).reduce((acc, entry) => acc + (entry?.outgoing || 0), 0), 0);
-                s.stab += stabOut;
+                const groupCount = groupCounts.get(p.group ?? 0) || 1;
+                const stabSelf = getPlayerBoonGenerationMs(
+                    p,
+                    'selfBuffs',
+                    1122,
+                    details.durationMS || 0,
+                    groupCount,
+                    squadCount,
+                    details.buffMap || {},
+                );
+                const stabSquad = getPlayerBoonGenerationMs(
+                    p,
+                    'squadBuffs',
+                    1122,
+                    details.durationMS || 0,
+                    groupCount,
+                    squadCount,
+                    details.buffMap || {},
+                );
+                s.stab += (stabSelf.generationMs + stabSquad.generationMs) / 1000;
 
                 // Stack Distance (Distance to Tag)
                 // statsAll[0] contains the stackDist field in Elite Insights JSON
@@ -704,7 +730,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             return !excluded.includes(lowered);
         };
 
-        const boonTotals: Record<string, { id: number; name: string; total: number; rows: Record<string, { account: string; profession: string; total: number; duration: number }> }> = {};
+        const { boonTables } = buildBoonTables(validLogs);
         const specialTotals: Record<string, { id: number; name: string; total: number; rows: Record<string, { account: string; profession: string; total: number; duration: number }> }> = {};
         validLogs.forEach(log => {
             const details = log.details;
@@ -733,34 +759,6 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                 }
                 return gen;
             };
-
-            // Boons: use squadBuffVolumes (total generation across allies)
-            players.forEach(player => {
-                if (player.notInSquad) return;
-                const account = player.account || player.name || 'Unknown';
-                const profession = player.profession || 'Unknown';
-                (player.squadBuffVolumes || []).forEach((buff) => {
-                    const outgoing = (buff?.buffVolumeData || []).reduce((sum, entry) => sum + (entry?.outgoing || 0), 0);
-                    if (!outgoing) return;
-                    const info = getBuffInfo(details, buff.id);
-                    if (info.classification !== 'Boon') return;
-                    const key = String(buff.id);
-                    if (!boonTotals[key]) {
-                        boonTotals[key] = {
-                            id: buff.id,
-                            name: info.name,
-                            total: 0,
-                            rows: {}
-                        };
-                    }
-                    boonTotals[key].total += outgoing;
-                    if (!boonTotals[key].rows[account]) {
-                        boonTotals[key].rows[account] = { account, profession, total: 0, duration: 0 };
-                    }
-                    boonTotals[key].rows[account].total += outgoing;
-                    boonTotals[key].rows[account].duration += durationSec;
-                });
-            });
 
             // Special buffs: use buffUptimes statesPerSource when available (captures shared applications)
             players.forEach(player => {
@@ -798,20 +796,6 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                 });
             });
         });
-
-        const boonTables = Object.values(boonTotals)
-            .map((boon) => ({
-                id: String(boon.id),
-                name: boon.name,
-                total: boon.total,
-                rows: Object.values(boon.rows)
-                    .map((row) => ({
-                        ...row,
-                        perSecond: row.duration > 0 ? row.total / row.duration : 0
-                    }))
-                    .sort((a, b) => b.total - a.total || a.account.localeCompare(b.account))
-            }))
-            .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 
         const specialTables = Object.values(specialTotals)
             .map((buff) => ({
@@ -1578,6 +1562,43 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         <div className="text-center text-gray-500 italic py-8">No boon data available</div>
                     ) : (
                         <>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {([
+                                    { value: 'selfBuffs', label: 'Self' },
+                                    { value: 'groupBuffs', label: 'Group' },
+                                    { value: 'squadBuffs', label: 'Squad' },
+                                    { value: 'totalBuffs', label: 'Total' }
+                                ] as const).map((option) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => setActiveBoonCategory(option.value)}
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonCategory === option.value
+                                            ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                            }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {([
+                                    { value: 'total', label: 'Total Gen' },
+                                    { value: 'average', label: 'Gen/Sec' },
+                                    { value: 'uptime', label: 'Uptime' }
+                                ] as const).map((option) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => setActiveBoonMetric(option.value)}
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
+                                            ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                            }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="flex flex-wrap gap-2 mb-4">
                                 {stats.boonTables.map((boon: any) => (
                                     <button
@@ -1595,14 +1616,24 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                             {stats.boonTables.map((boon: any) => (
                                 activeBoonTab === boon.id ? (
                                     <div key={boon.id} className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                        <div className="grid grid-cols-[1.5fr_1fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                             <div>Player</div>
-                                            <div className="text-right">Total</div>
-                                            <div className="text-right">Per Sec</div>
+                                            <div className="text-right">
+                                                {activeBoonMetric === 'total'
+                                                    ? 'Total'
+                                                    : activeBoonMetric === 'average'
+                                                        ? 'Gen/Sec'
+                                                        : 'Uptime'}
+                                            </div>
                                         </div>
                                         <div className="max-h-64 overflow-y-auto">
-                                            {boon.rows.map((row: any, idx: number) => (
-                                                <div key={`${boon.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                            {[...boon.rows]
+                                                .sort((a: any, b: any) => (
+                                                    getBoonMetricValue(b, activeBoonCategory, boon.stacking, activeBoonMetric)
+                                                    - getBoonMetricValue(a, activeBoonCategory, boon.stacking, activeBoonMetric)
+                                                ))
+                                                .map((row: any, idx: number) => (
+                                                <div key={`${boon.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         {getProfessionIconPath(row.profession) && (
                                                             <img
@@ -1614,10 +1645,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                                                         <span className="truncate">{row.account}</span>
                                                     </div>
                                                     <div className="text-right font-mono text-gray-300">
-                                                        {Math.round(row.total).toLocaleString()}
-                                                    </div>
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {row.perSecond.toFixed(1)}
+                                                        {formatBoonMetricDisplay(row, activeBoonCategory, boon.stacking, activeBoonMetric)}
                                                     </div>
                                                 </div>
                                             ))}

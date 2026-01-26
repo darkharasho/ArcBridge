@@ -133,7 +133,7 @@ export class DiscordNotifier {
                     const settings = this.embedStatSettings;
 
                     // Pre-calculate stability
-                    calculateAllStability(players);
+                    calculateAllStability(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
 
                     let embedFields: any[] = [];
 

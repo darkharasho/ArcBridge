@@ -13,6 +13,7 @@ export interface DPSReportJSON {
     fightName: string;
     success: boolean;
     skillMap?: { [key: string]: { name: string; icon: string } };
+    buffMap?: { [key: string]: { name: string; stacking: boolean; icon?: string; classification?: string } };
 }
 
 export interface Target {
@@ -45,6 +46,12 @@ export interface Player {
         outgoingBarrierAllies?: { barrier: number }[][];
     };
     squadBuffVolumes?: SquadBuffVolume[];
+    selfBuffs?: BuffGeneration[];
+    groupBuffs?: BuffGeneration[];
+    squadBuffs?: BuffGeneration[];
+    selfBuffsActive?: BuffGeneration[];
+    groupBuffsActive?: BuffGeneration[];
+    squadBuffsActive?: BuffGeneration[];
     buffUptimes?: BuffUptimes[];
     totalDamageDist?: TotalDamageDist[][];
     totalDamageTaken?: TotalDamageTaken[][];
@@ -52,6 +59,7 @@ export interface Player {
     notInSquad?: boolean;
     account?: string;
     stabGeneration?: number; // Calculated field
+    activeTimes?: number[];
 }
 
 export interface StatsAll {
@@ -79,6 +87,11 @@ export interface Defenses {
 export interface SquadBuffVolume {
     id: number;
     buffVolumeData: { outgoing: number }[];
+}
+
+export interface BuffGeneration {
+    id: number;
+    buffData?: { generation?: number; wasted?: number }[];
 }
 
 export interface BuffUptimes {

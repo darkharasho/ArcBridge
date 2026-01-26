@@ -1,4 +1,5 @@
 import { Player } from './dpsReportTypes';
+import { getPlayerBoonGenerationMs } from './boonGeneration';
 
 export interface CCMapEntry {
     category: string[];
@@ -421,36 +422,33 @@ export function calculateOutCC(player: Player): number {
 }
 
 // Global pass function
-export function calculateAllStability(players: Player[]) {
-    const generationValid: { [name: string]: number } = {};
+export function calculateAllStability(
+    players: Player[],
+    context?: { durationMS?: number; buffMap?: Record<string, any> }
+) {
+    const durationMs = context?.durationMS || 0;
+    const buffMap = context?.buffMap || {};
+    const squadPlayers = players.filter((p) => !p.notInSquad);
+    const squadCount = squadPlayers.length;
+    const groupCounts = new Map<number, number>();
 
-    players.forEach(p => {
-        if (!p.buffUptimes) return;
-        const stabBoons = p.buffUptimes.filter(b => b.id === 1122);
-        for (const boon of stabBoons) {
-            for (const [sourceName, states] of Object.entries(boon.statesPerSource)) {
-                let lastState = 0;
-                let gen = 0;
-                for (const state of states) {
-                    if (state[1] > lastState) {
-                        gen += (state[1] - lastState);
-                    }
-                    lastState = state[1];
-                }
-                if (!generationValid[sourceName]) generationValid[sourceName] = 0;
-                generationValid[sourceName] += gen;
-            }
-        }
+    squadPlayers.forEach((player) => {
+        const group = player.group ?? 0;
+        groupCounts.set(group, (groupCounts.get(group) || 0) + 1);
     });
 
-    // Assign to players
-    players.forEach(p => {
-        // dps.report 'name' in Player is the character name usually keying the source.
-        // We check p.name primarily.
-        const key = p.name || p.character_name;
-        if (generationValid[key]) {
-            p.stabGeneration = generationValid[key];
-        }
+    squadPlayers.forEach((player) => {
+        const groupCount = groupCounts.get(player.group ?? 0) || 1;
+        const { generationMs } = getPlayerBoonGenerationMs(
+            player,
+            'squadBuffs',
+            1122,
+            durationMs,
+            groupCount,
+            squadCount,
+            buffMap,
+        );
+        player.stabGeneration = generationMs / 1000;
     });
 }
 
