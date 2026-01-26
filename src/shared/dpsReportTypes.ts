@@ -143,7 +143,15 @@ export interface StatsTarget {
 
 export interface Support {
     condiCleanse: number;
+    condiCleanseTime?: number;
     condiCleanseSelf: number;
+    condiCleanseTimeSelf?: number;
     boonStrips: number;
+    boonStripsTime?: number;
+    boonStripDownContribution?: number;
+    boonStripDownContributionTime?: number;
+    stunBreak?: number;
+    removedStunDuration?: number;
     resurrects: number;
+    resurrectTime?: number;
 }

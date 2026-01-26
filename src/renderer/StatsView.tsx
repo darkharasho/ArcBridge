@@ -77,6 +77,26 @@ const DEFENSE_METRICS: Array<{
     { id: 'receivedCrowdControl', label: 'Crowd Control (Incoming)', field: 'receivedCrowdControl' }
 ];
 
+const SUPPORT_METRICS: Array<{
+    id: string;
+    label: string;
+    field: string;
+    isTime?: boolean;
+}> = [
+    { id: 'condiCleanse', label: 'Condition Cleanses', field: 'condiCleanse' },
+    { id: 'condiCleanseTime', label: 'Condition Cleanse Time', field: 'condiCleanseTime', isTime: true },
+    { id: 'condiCleanseSelf', label: 'Condition Cleanse Self', field: 'condiCleanseSelf' },
+    { id: 'condiCleanseTimeSelf', label: 'Condition Cleanse Time Self', field: 'condiCleanseTimeSelf', isTime: true },
+    { id: 'boonStrips', label: 'Boon Strips', field: 'boonStrips' },
+    { id: 'boonStripsTime', label: 'Boon Strips Time', field: 'boonStripsTime', isTime: true },
+    { id: 'boonStripDownContribution', label: 'Boon Strip Down Contribution', field: 'boonStripDownContribution' },
+    { id: 'boonStripDownContributionTime', label: 'Boon Strip Down Contribution Time', field: 'boonStripDownContributionTime', isTime: true },
+    { id: 'stunBreak', label: 'Stun Breaks', field: 'stunBreak' },
+    { id: 'removedStunDuration', label: 'Removed Stun Duration', field: 'removedStunDuration', isTime: true },
+    { id: 'resurrects', label: 'Resurrects', field: 'resurrects' },
+    { id: 'resurrectTime', label: 'Resurrect Time', field: 'resurrectTime', isTime: true }
+];
+
 export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
@@ -88,10 +108,13 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [specialSearch, setSpecialSearch] = useState('');
     const [offenseSearch, setOffenseSearch] = useState('');
     const [defenseSearch, setDefenseSearch] = useState('');
+    const [supportSearch, setSupportSearch] = useState('');
     const [activeOffenseStat, setActiveOffenseStat] = useState<string>('damage');
     const [activeDefenseStat, setActiveDefenseStat] = useState<string>('damageTaken');
+    const [activeSupportStat, setActiveSupportStat] = useState<string>('condiCleanse');
     const [offenseViewMode, setOffenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [defenseViewMode, setDefenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
+    const [supportViewMode, setSupportViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -129,6 +152,8 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             offenseRateWeights: Record<string, number>;
             defenseActiveMs: number;
             defenseTotals: Record<string, number>;
+            supportActiveMs: number;
+            supportTotals: Record<string, number>;
             profession: string;
             damage: number;
             dps: number;
@@ -136,6 +161,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
         }
 
         const playerStats = new Map<string, PlayerStats>();
+        const supportTimeSanityFields = new Set(['boonStripsTime', 'condiCleanseTime', 'condiCleanseTimeSelf']);
 
         // --- Skill Aggregation ---
         // skillId -> { name, damage, hits }
@@ -250,6 +276,8 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         offenseRateWeights: {},
                         defenseActiveMs: 0,
                         defenseTotals: {},
+                        supportActiveMs: 0,
+                        supportTotals: {},
                         profession: p.profession || 'Unknown',
                         damage: 0,
                         dps: 0,
@@ -318,6 +346,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                     ? p.activeTimes[0]
                     : details.durationMS || 0;
                 s.defenseActiveMs += activeMs;
+                s.supportActiveMs += activeMs;
 
                 if (p.defenses && p.defenses.length > 0) {
                     const defenses = p.defenses[0] as any;
@@ -325,6 +354,18 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         const value = Number(defenses[metric.field] ?? 0);
                         if (!Number.isFinite(value)) return;
                         s.defenseTotals[metric.id] = (s.defenseTotals[metric.id] || 0) + value;
+                    });
+                }
+
+                if (p.support && p.support.length > 0) {
+                    const support = p.support[0] as any;
+                    SUPPORT_METRICS.forEach((metric) => {
+                        let value = Number(support[metric.field] ?? 0);
+                        if (!Number.isFinite(value)) return;
+                        if (supportTimeSanityFields.has(metric.field) && value > 999999) {
+                            value = 0;
+                        }
+                        s.supportTotals[metric.id] = (s.supportTotals[metric.id] || 0) + value;
                     });
                 }
 
@@ -511,6 +552,12 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             profession: stat.profession || 'Unknown',
             activeMs: stat.defenseActiveMs || 0,
             defenseTotals: stat.defenseTotals
+        }));
+        const supportPlayers = playerEntries.map(({ stat }) => ({
+            account: stat.account,
+            profession: stat.profession || 'Unknown',
+            activeMs: stat.supportActiveMs || 0,
+            supportTotals: stat.supportTotals
         }));
 
         playerEntries.forEach(({ stat }) => {
@@ -1070,6 +1117,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             specialTables,
             offensePlayers,
             defensePlayers,
+            supportPlayers,
 
             maxDodges,
             mvp,
@@ -2139,6 +2187,123 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                                                                         ? row.per1s
                                                                         : row.per60s;
                                                                 return formatWithCommas(value, 2);
+                                                            })()}
+                                                        </div>
+                                                        <div className="text-right font-mono text-gray-400">
+                                                            {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Support - Detailed Table */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
+                        <HelpingHand className="w-5 h-5 text-emerald-300" />
+                        Support - Detailed
+                    </h3>
+                    {stats.supportPlayers.length === 0 ? (
+                        <div className="text-center text-gray-500 italic py-8">No support stats available</div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+                            <div className="bg-black/20 border border-white/5 rounded-xl p-3">
+                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
+                                <input
+                                    value={supportSearch}
+                                    onChange={(e) => setSupportSearch(e.target.value)}
+                                    placeholder="Search..."
+                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                />
+                                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                    {SUPPORT_METRICS.filter((metric) =>
+                                        metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
+                                    ).map((metric) => (
+                                        <button
+                                            key={metric.id}
+                                            onClick={() => setActiveSupportStat(metric.id)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSupportStat === metric.id
+                                                ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                }`}
+                                        >
+                                            {metric.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                                {(() => {
+                                    const metric = SUPPORT_METRICS.find((entry) => entry.id === activeSupportStat) || SUPPORT_METRICS[0];
+                                    const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
+                                    const rows = [...stats.supportPlayers]
+                                        .map((row: any) => ({
+                                            ...row,
+                                            total: row.supportTotals?.[metric.id] || 0,
+                                            per1s: (row.supportTotals?.[metric.id] || 0) / totalSeconds(row),
+                                            per60s: ((row.supportTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
+                                        }))
+                                        .sort((a, b) => b.total - a.total || a.account.localeCompare(b.account));
+
+                                    return (
+                                        <>
+                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
+                                                <div className="text-xs uppercase tracking-widest text-gray-500">Support</div>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                {([
+                                                    { value: 'total', label: 'Total' },
+                                                    { value: 'per1s', label: 'Stat/1s' },
+                                                    { value: 'per60s', label: 'Stat/60s' }
+                                                ] as const).map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        onClick={() => setSupportViewMode(option.value)}
+                                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${supportViewMode === option.value
+                                                            ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                            }`}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div>Player</div>
+                                                <div className="text-right">
+                                                    {supportViewMode === 'total' ? 'Total' : supportViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
+                                                </div>
+                                                <div className="text-right">Fight Time</div>
+                                            </div>
+                                            <div className="max-h-80 overflow-y-auto">
+                                                {rows.map((row: any, idx: number) => (
+                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            {getProfessionIconPath(row.profession) && (
+                                                                <img
+                                                                    src={getProfessionIconPath(row.profession) as string}
+                                                                    alt={row.profession}
+                                                                    className="w-4 h-4 shrink-0"
+                                                                />
+                                                            )}
+                                                            <span className="truncate">{row.account}</span>
+                                                        </div>
+                                                        <div className="text-right font-mono text-gray-300">
+                                                            {(() => {
+                                                                const value = supportViewMode === 'total'
+                                                                    ? row.total
+                                                                    : supportViewMode === 'per1s'
+                                                                        ? row.per1s
+                                                                        : row.per60s;
+                                                                const decimals = metric.isTime ? 1 : 2;
+                                                                return formatWithCommas(value, decimals);
                                                             })()}
                                                         </div>
                                                         <div className="text-right font-mono text-gray-400">
