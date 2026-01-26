@@ -20,7 +20,9 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [activeBoonTab, setActiveBoonTab] = useState<string | null>(null);
     const [activeBoonCategory, setActiveBoonCategory] = useState<BoonCategory>('totalBuffs');
     const [activeBoonMetric, setActiveBoonMetric] = useState<BoonMetric>('total');
+    const [boonSearch, setBoonSearch] = useState('');
     const [activeSpecialTab, setActiveSpecialTab] = useState<string | null>(null);
+    const [specialSearch, setSpecialSearch] = useState('');
 
     const stats = useMemo(() => {
         const validLogs = logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details);
@@ -875,29 +877,41 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
         };
     }, [logs]);
 
+    const filteredBoonTables = useMemo(() => {
+        const term = boonSearch.trim().toLowerCase();
+        if (!term) return stats.boonTables;
+        return stats.boonTables.filter((boon: any) => boon.name.toLowerCase().includes(term));
+    }, [stats.boonTables, boonSearch]);
+    const filteredSpecialTables = useMemo(() => {
+        const term = specialSearch.trim().toLowerCase();
+        const sorted = [...stats.specialTables].sort((a: any, b: any) => a.name.localeCompare(b.name));
+        if (!term) return sorted;
+        return sorted.filter((buff: any) => buff.name.toLowerCase().includes(term));
+    }, [stats.specialTables, specialSearch]);
+
     useEffect(() => {
-        if (!stats.boonTables || stats.boonTables.length === 0) {
+        if (!filteredBoonTables || filteredBoonTables.length === 0) {
             if (activeBoonTab !== null) {
                 setActiveBoonTab(null);
             }
             return;
         }
-        if (!activeBoonTab || !stats.boonTables.some((tab: any) => tab.id === activeBoonTab)) {
-            setActiveBoonTab(stats.boonTables[0].id);
+        if (!activeBoonTab || !filteredBoonTables.some((tab: any) => tab.id === activeBoonTab)) {
+            setActiveBoonTab(filteredBoonTables[0].id);
         }
-    }, [stats.boonTables, activeBoonTab]);
+    }, [filteredBoonTables, activeBoonTab]);
 
     useEffect(() => {
-        if (!stats.specialTables || stats.specialTables.length === 0) {
+        if (!filteredSpecialTables || filteredSpecialTables.length === 0) {
             if (activeSpecialTab !== null) {
                 setActiveSpecialTab(null);
             }
             return;
         }
-        if (!activeSpecialTab || !stats.specialTables.some((tab: any) => tab.id === activeSpecialTab)) {
-            setActiveSpecialTab(stats.specialTables[0].id);
+        if (!activeSpecialTab || !filteredSpecialTables.some((tab: any) => tab.id === activeSpecialTab)) {
+            setActiveSpecialTab(filteredSpecialTables[0].id);
         }
-    }, [stats.specialTables, activeSpecialTab]);
+    }, [filteredSpecialTables, activeSpecialTab]);
 
     const handleShare = async () => {
         setSharing(true);
@@ -1562,97 +1576,125 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         <div className="text-center text-gray-500 italic py-8">No boon data available</div>
                     ) : (
                         <>
-                            <div className="flex flex-wrap gap-2 mb-3">
-                                {([
-                                    { value: 'selfBuffs', label: 'Self' },
-                                    { value: 'groupBuffs', label: 'Group' },
-                                    { value: 'squadBuffs', label: 'Squad' },
-                                    { value: 'totalBuffs', label: 'Total' }
-                                ] as const).map((option) => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => setActiveBoonCategory(option.value)}
-                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonCategory === option.value
-                                            ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
-                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
-                                            }`}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {([
-                                    { value: 'total', label: 'Total Gen' },
-                                    { value: 'average', label: 'Gen/Sec' },
-                                    { value: 'uptime', label: 'Uptime' }
-                                ] as const).map((option) => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => setActiveBoonMetric(option.value)}
-                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
-                                            ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
-                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
-                                            }`}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {stats.boonTables.map((boon: any) => (
-                                    <button
-                                        key={boon.id}
-                                        onClick={() => setActiveBoonTab(boon.id)}
-                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonTab === boon.id
-                                            ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
-                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
-                                            }`}
-                                    >
-                                        {boon.name}
-                                    </button>
-                                ))}
-                            </div>
-                            {stats.boonTables.map((boon: any) => (
-                                activeBoonTab === boon.id ? (
-                                    <div key={boon.id} className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="grid grid-cols-[1.5fr_1fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                            <div>Player</div>
-                                            <div className="text-right">
-                                                {activeBoonMetric === 'total'
-                                                    ? 'Total'
-                                                    : activeBoonMetric === 'average'
-                                                        ? 'Gen/Sec'
-                                                        : 'Uptime'}
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex flex-wrap gap-2 justify-center">
+                                        {([
+                                            { value: 'selfBuffs', label: 'Self' },
+                                            { value: 'groupBuffs', label: 'Group' },
+                                            { value: 'squadBuffs', label: 'Squad' },
+                                            { value: 'totalBuffs', label: 'Total' }
+                                        ] as const).map((option) => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setActiveBoonCategory(option.value)}
+                                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonCategory === option.value
+                                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 justify-end">
+                                        {([
+                                            { value: 'total', label: 'Total Gen' },
+                                            { value: 'average', label: 'Gen/Sec' },
+                                            { value: 'uptime', label: 'Uptime' }
+                                        ] as const).map((option) => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setActiveBoonMetric(option.value)}
+                                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
+                                                    ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {filteredBoonTables.length === 0 ? (
+                                    <div className="text-center text-gray-500 italic py-8">No boons match this filter</div>
+                                ) : (
+                                    <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+                                        <div className="bg-black/20 border border-white/5 rounded-xl p-3">
+                                            <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
+                                            <input
+                                                value={boonSearch}
+                                                onChange={(e) => setBoonSearch(e.target.value)}
+                                                placeholder="Search..."
+                                                className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                            />
+                                            <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                                                {filteredBoonTables.map((boon: any) => (
+                                                    <button
+                                                        key={boon.id}
+                                                        onClick={() => setActiveBoonTab(boon.id)}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeBoonTab === boon.id
+                                                            ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                            : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                            }`}
+                                                    >
+                                                        {boon.name}
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="max-h-64 overflow-y-auto">
-                                            {[...boon.rows]
-                                                .sort((a: any, b: any) => (
-                                                    getBoonMetricValue(b, activeBoonCategory, boon.stacking, activeBoonMetric)
-                                                    - getBoonMetricValue(a, activeBoonCategory, boon.stacking, activeBoonMetric)
-                                                ))
-                                                .map((row: any, idx: number) => (
-                                                <div key={`${boon.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        {getProfessionIconPath(row.profession) && (
-                                                            <img
-                                                                src={getProfessionIconPath(row.profession) as string}
-                                                                alt={row.profession}
-                                                                className="w-4 h-4 shrink-0"
-                                                            />
-                                                        )}
-                                                        <span className="truncate">{row.account}</span>
+                                        <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                                            {filteredBoonTables.map((boon: any) => (
+                                                activeBoonTab === boon.id ? (
+                                                    <div key={boon.id}>
+                                                        <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                            <div className="text-sm font-semibold text-gray-200">{boon.name}</div>
+                                                            <div className="text-xs uppercase tracking-widest text-gray-500">
+                                                                {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-[1.5fr_1fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                            <div>Player</div>
+                                                            <div className="text-right">
+                                                                {activeBoonMetric === 'total'
+                                                                    ? 'Total'
+                                                                    : activeBoonMetric === 'average'
+                                                                        ? 'Gen/Sec'
+                                                                        : 'Uptime'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="max-h-64 overflow-y-auto">
+                                                            {[...boon.rows]
+                                                                .sort((a: any, b: any) => (
+                                                                    getBoonMetricValue(b, activeBoonCategory, boon.stacking, activeBoonMetric)
+                                                                    - getBoonMetricValue(a, activeBoonCategory, boon.stacking, activeBoonMetric)
+                                                                ))
+                                                                .map((row: any, idx: number) => (
+                                                                <div key={`${boon.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        {getProfessionIconPath(row.profession) && (
+                                                                            <img
+                                                                                src={getProfessionIconPath(row.profession) as string}
+                                                                                alt={row.profession}
+                                                                                className="w-4 h-4 shrink-0"
+                                                                            />
+                                                                        )}
+                                                                        <span className="truncate">{row.account}</span>
+                                                                    </div>
+                                                                    <div className="text-right font-mono text-gray-300">
+                                                                        {formatBoonMetricDisplay(row, activeBoonCategory, boon.stacking, activeBoonMetric)}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {formatBoonMetricDisplay(row, activeBoonCategory, boon.stacking, activeBoonMetric)}
-                                                    </div>
-                                                </div>
+                                                ) : null
                                             ))}
                                         </div>
                                     </div>
-                                ) : null
-                            ))}
+                                )}
+                            </div>
                         </>
                     )}
                 </div>
@@ -1667,52 +1709,74 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         <div className="text-center text-gray-500 italic py-8">No special buff data available</div>
                     ) : (
                         <>
-                            <div className="mb-4">
-                                <select
-                                    value={activeSpecialTab || ''}
-                                    onChange={(e) => setActiveSpecialTab(e.target.value)}
-                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none"
-                                >
-                                    {stats.specialTables.map((buff: any) => (
-                                        <option key={buff.id} value={buff.id} className="bg-gray-900">
-                                            {buff.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            {stats.specialTables.map((buff: any) => (
-                                activeSpecialTab === buff.id ? (
-                                    <div key={buff.id} className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                            <div>Player</div>
-                                            <div className="text-right">Total</div>
-                                            <div className="text-right">Per Sec</div>
-                                        </div>
-                                        <div className="max-h-64 overflow-y-auto">
-                                            {buff.rows.map((row: any, idx: number) => (
-                                                <div key={`${buff.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        {getProfessionIconPath(row.profession) && (
-                                                            <img
-                                                                src={getProfessionIconPath(row.profession) as string}
-                                                                alt={row.profession}
-                                                                className="w-4 h-4 shrink-0"
-                                                            />
-                                                        )}
-                                                        <span className="truncate">{row.account}</span>
-                                                    </div>
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {Math.round(row.total).toLocaleString()}
-                                                    </div>
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {row.perSecond.toFixed(1)}
-                                                    </div>
-                                                </div>
+                            {filteredSpecialTables.length === 0 ? (
+                                <div className="text-center text-gray-500 italic py-8">No special buffs match this filter</div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+                                    <div className="bg-black/20 border border-white/5 rounded-xl p-3">
+                                        <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Special Buffs</div>
+                                        <input
+                                            value={specialSearch}
+                                            onChange={(e) => setSpecialSearch(e.target.value)}
+                                            placeholder="Search..."
+                                            className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                        />
+                                        <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                                            {filteredSpecialTables.map((buff: any) => (
+                                                <button
+                                                    key={buff.id}
+                                                    onClick={() => setActiveSpecialTab(buff.id)}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSpecialTab === buff.id
+                                                        ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {buff.name}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
-                                ) : null
-                            ))}
+                                    <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                                        {filteredSpecialTables.map((buff: any) => (
+                                            activeSpecialTab === buff.id ? (
+                                                <div key={buff.id}>
+                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                        <div className="text-sm font-semibold text-gray-200">{buff.name}</div>
+                                                        <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
+                                                    </div>
+                                                    <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                        <div>Player</div>
+                                                        <div className="text-right">Total</div>
+                                                        <div className="text-right">Per Sec</div>
+                                                    </div>
+                                                    <div className="max-h-64 overflow-y-auto">
+                                                        {buff.rows.map((row: any, idx: number) => (
+                                                            <div key={`${buff.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {getProfessionIconPath(row.profession) && (
+                                                                        <img
+                                                                            src={getProfessionIconPath(row.profession) as string}
+                                                                            alt={row.profession}
+                                                                            className="w-4 h-4 shrink-0"
+                                                                        />
+                                                                    )}
+                                                                    <span className="truncate">{row.account}</span>
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {Math.round(row.total).toLocaleString()}
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {row.perSecond.toFixed(1)}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : null
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
