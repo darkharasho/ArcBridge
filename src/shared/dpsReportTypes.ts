@@ -40,7 +40,7 @@ export interface Player {
     defenses: Defenses[];
     support: Support[];
     extHealingStats?: {
-        outgoingHealingAllies?: { healing: number }[][];
+        outgoingHealingAllies?: { healing: number; downedHealing?: number }[][];
     };
     extBarrierStats?: {
         outgoingBarrierAllies?: { barrier: number }[][];

@@ -97,6 +97,21 @@ const SUPPORT_METRICS: Array<{
     { id: 'resurrectTime', label: 'Resurrect Time', field: 'resurrectTime', isTime: true }
 ];
 
+const HEALING_METRICS: Array<{
+    id: string;
+    label: string;
+    baseField: 'healing' | 'barrier' | 'downedHealing';
+    perSecond: boolean;
+    decimals: number;
+}> = [
+    { id: 'healing', label: 'Healing', baseField: 'healing', perSecond: false, decimals: 0 },
+    { id: 'healingPerSecond', label: 'Healing Per Second', baseField: 'healing', perSecond: true, decimals: 2 },
+    { id: 'barrier', label: 'Barrier', baseField: 'barrier', perSecond: false, decimals: 0 },
+    { id: 'barrierPerSecond', label: 'Barrier Per Second', baseField: 'barrier', perSecond: true, decimals: 2 },
+    { id: 'downedHealing', label: 'Downed Healing', baseField: 'downedHealing', perSecond: false, decimals: 0 },
+    { id: 'downedHealingPerSecond', label: 'Downed Healing Per Second', baseField: 'downedHealing', perSecond: true, decimals: 1 }
+];
+
 export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
@@ -112,6 +127,8 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
     const [activeOffenseStat, setActiveOffenseStat] = useState<string>('damage');
     const [activeDefenseStat, setActiveDefenseStat] = useState<string>('damageTaken');
     const [activeSupportStat, setActiveSupportStat] = useState<string>('condiCleanse');
+    const [activeHealingMetric, setActiveHealingMetric] = useState<string>('healing');
+    const [healingCategory, setHealingCategory] = useState<'total' | 'squad' | 'group' | 'self' | 'offSquad'>('total');
     const [offenseViewMode, setOffenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [defenseViewMode, setDefenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [supportViewMode, setSupportViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
@@ -154,6 +171,8 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             defenseTotals: Record<string, number>;
             supportActiveMs: number;
             supportTotals: Record<string, number>;
+            healingActiveMs: number;
+            healingTotals: Record<string, number>;
             profession: string;
             damage: number;
             dps: number;
@@ -278,6 +297,8 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                         defenseTotals: {},
                         supportActiveMs: 0,
                         supportTotals: {},
+                        healingActiveMs: 0,
+                        healingTotals: {},
                         profession: p.profession || 'Unknown',
                         damage: 0,
                         dps: 0,
@@ -347,6 +368,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                     : details.durationMS || 0;
                 s.defenseActiveMs += activeMs;
                 s.supportActiveMs += activeMs;
+                s.healingActiveMs += activeMs;
 
                 if (p.defenses && p.defenses.length > 0) {
                     const defenses = p.defenses[0] as any;
@@ -366,6 +388,77 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                             value = 0;
                         }
                         s.supportTotals[metric.id] = (s.supportTotals[metric.id] || 0) + value;
+                    });
+                }
+
+                const addHealingTotal = (key: string, value: number) => {
+                    if (!Number.isFinite(value)) return;
+                    s.healingTotals[key] = (s.healingTotals[key] || 0) + value;
+                };
+
+                if (p.extHealingStats?.outgoingHealingAllies && Array.isArray(p.extHealingStats.outgoingHealingAllies)) {
+                    const healerName = p.name || '';
+                    const healerGroup = p.group;
+                    p.extHealingStats.outgoingHealingAllies.forEach((healTarget, index) => {
+                        const targetPlayer = players[index];
+                        if (!targetPlayer) return;
+                        const phase = Array.isArray(healTarget) ? healTarget[0] : null;
+                        if (!phase) return;
+                        const totalHealing = Number(phase.healing ?? 0);
+                        const downedHealing = Number(phase.downedHealing ?? 0);
+                        if (!Number.isFinite(totalHealing) || !Number.isFinite(downedHealing)) return;
+                        const outgoingHealing = totalHealing - downedHealing;
+                        if (!(outgoingHealing || downedHealing)) return;
+
+                        addHealingTotal('healing', outgoingHealing);
+                        addHealingTotal('downedHealing', downedHealing);
+
+                        if (targetPlayer.notInSquad) {
+                            addHealingTotal('offSquadHealing', outgoingHealing);
+                            addHealingTotal('offSquadDownedHealing', downedHealing);
+                        } else {
+                            addHealingTotal('squadHealing', outgoingHealing);
+                            addHealingTotal('squadDownedHealing', downedHealing);
+                        }
+
+                        if (targetPlayer.group === healerGroup) {
+                            addHealingTotal('groupHealing', outgoingHealing);
+                            addHealingTotal('groupDownedHealing', downedHealing);
+                        }
+
+                        if (targetPlayer.name === healerName) {
+                            addHealingTotal('selfHealing', outgoingHealing);
+                            addHealingTotal('selfDownedHealing', downedHealing);
+                        }
+                    });
+                }
+
+                if (p.extBarrierStats?.outgoingBarrierAllies && Array.isArray(p.extBarrierStats.outgoingBarrierAllies)) {
+                    const healerName = p.name || '';
+                    const healerGroup = p.group;
+                    p.extBarrierStats.outgoingBarrierAllies.forEach((barrierTarget, index) => {
+                        const targetPlayer = players[index];
+                        if (!targetPlayer) return;
+                        const phase = Array.isArray(barrierTarget) ? barrierTarget[0] : null;
+                        if (!phase) return;
+                        const outgoingBarrier = Number(phase.barrier ?? 0);
+                        if (!Number.isFinite(outgoingBarrier) || outgoingBarrier === 0) return;
+
+                        addHealingTotal('barrier', outgoingBarrier);
+
+                        if (targetPlayer.notInSquad) {
+                            addHealingTotal('offSquadBarrier', outgoingBarrier);
+                        } else {
+                            addHealingTotal('squadBarrier', outgoingBarrier);
+                        }
+
+                        if (targetPlayer.group === healerGroup) {
+                            addHealingTotal('groupBarrier', outgoingBarrier);
+                        }
+
+                        if (targetPlayer.name === healerName) {
+                            addHealingTotal('selfBarrier', outgoingBarrier);
+                        }
                     });
                 }
 
@@ -558,6 +651,12 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             profession: stat.profession || 'Unknown',
             activeMs: stat.supportActiveMs || 0,
             supportTotals: stat.supportTotals
+        }));
+        const healingPlayers = playerEntries.map(({ stat }) => ({
+            account: stat.account,
+            profession: stat.profession || 'Unknown',
+            activeMs: stat.healingActiveMs || 0,
+            healingTotals: stat.healingTotals
         }));
 
         playerEntries.forEach(({ stat }) => {
@@ -1118,6 +1217,7 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
             offensePlayers,
             defensePlayers,
             supportPlayers,
+            healingPlayers,
 
             maxDodges,
             mvp,
@@ -2311,6 +2411,122 @@ export function StatsView({ logs, onBack, mvpWeights }: StatsViewProps) {
                                                         </div>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Healing Stats Table */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-lime-300" />
+                        Healing Stats
+                    </h3>
+                    {stats.healingPlayers.length === 0 ? (
+                        <div className="text-center text-gray-500 italic py-8">No healing stats available</div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+                            <div className="bg-black/20 border border-white/5 rounded-xl p-3">
+                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Healing Tabs</div>
+                                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                    {HEALING_METRICS.map((metric) => (
+                                        <button
+                                            key={metric.id}
+                                            onClick={() => setActiveHealingMetric(metric.id)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeHealingMetric === metric.id
+                                                ? 'bg-lime-500/20 text-lime-200 border-lime-500/40'
+                                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                }`}
+                                        >
+                                            {metric.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                                {(() => {
+                                    const metric = HEALING_METRICS.find((entry) => entry.id === activeHealingMetric) || HEALING_METRICS[0];
+                                    const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
+                                    const prefix = healingCategory === 'total'
+                                        ? ''
+                                        : healingCategory === 'offSquad'
+                                            ? 'offSquad'
+                                            : healingCategory;
+                                    const fieldName = prefix
+                                        ? `${prefix}${metric.baseField[0].toUpperCase()}${metric.baseField.slice(1)}`
+                                        : metric.baseField;
+                                    const rows = [...stats.healingPlayers]
+                                        .filter((row: any) => Object.values(row.healingTotals || {}).some((val: any) => Number(val) > 0))
+                                        .map((row: any) => {
+                                            const baseValue = Number(row.healingTotals?.[fieldName] ?? 0);
+                                            const value = metric.perSecond ? baseValue / totalSeconds(row) : baseValue;
+                                            return {
+                                                ...row,
+                                                value
+                                            };
+                                        })
+                                        .sort((a, b) => b.value - a.value || a.account.localeCompare(b.account));
+
+                                    return (
+                                        <>
+                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
+                                                <div className="text-xs uppercase tracking-widest text-gray-500">Healing</div>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                {([
+                                                    { value: 'total', label: 'Total' },
+                                                    { value: 'squad', label: 'Squad' },
+                                                    { value: 'group', label: 'Group' },
+                                                    { value: 'self', label: 'Self' },
+                                                    { value: 'offSquad', label: 'OffSquad' }
+                                                ] as const).map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        onClick={() => setHealingCategory(option.value)}
+                                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${healingCategory === option.value
+                                                            ? 'bg-lime-500/20 text-lime-200 border-lime-500/40'
+                                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                            }`}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div>Player</div>
+                                                <div className="text-right">{metric.label}</div>
+                                                <div className="text-right">Fight Time</div>
+                                            </div>
+                                            <div className="max-h-80 overflow-y-auto">
+                                                {rows.length === 0 ? (
+                                                    <div className="px-4 py-6 text-sm text-gray-500 italic">No healing data for this view</div>
+                                                ) : (
+                                                    rows.map((row: any, idx: number) => (
+                                                        <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {getProfessionIconPath(row.profession) && (
+                                                                    <img
+                                                                        src={getProfessionIconPath(row.profession) as string}
+                                                                        alt={row.profession}
+                                                                        className="w-4 h-4 shrink-0"
+                                                                    />
+                                                                )}
+                                                                <span className="truncate">{row.account}</span>
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {formatWithCommas(row.value, metric.decimals)}
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-400">
+                                                                {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
                                         </>
                                     );
