@@ -10,6 +10,7 @@ import { UpdateErrorModal } from './UpdateErrorModal';
 import { Terminal } from './Terminal';
 import { Terminal as TerminalIcon } from 'lucide-react';
 import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
+import { WhatsNewModal } from './WhatsNewModal';
 
 function App() {
     const [logDirectory, setLogDirectory] = useState<string | null>(null);
@@ -37,6 +38,9 @@ function App() {
 
     // App Version
     const [appVersion, setAppVersion] = useState<string>('...');
+    const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+    const [whatsNewVersion, setWhatsNewVersion] = useState<string>('');
+    const [whatsNewNotes, setWhatsNewNotes] = useState<string | null>(null);
 
     // Webhook Management
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
@@ -98,9 +102,13 @@ function App() {
                 setEmbedStatSettings({ ...DEFAULT_EMBED_STATS, ...settings.embedStatSettings });
             }
 
-            // Load app version
-            const version = await window.electronAPI.getAppVersion();
-            setAppVersion(version);
+            const whatsNew = await window.electronAPI.getWhatsNew();
+            setAppVersion(whatsNew.version);
+            setWhatsNewVersion(whatsNew.version);
+            setWhatsNewNotes(whatsNew.releaseNotes);
+            if (whatsNew.version && whatsNew.version !== whatsNew.lastSeenVersion) {
+                setWhatsNewOpen(true);
+            }
         };
         loadSettings();
 
@@ -287,6 +295,13 @@ function App() {
         window.electronAPI.saveSettings(updates);
     };
 
+    const handleWhatsNewClose = async () => {
+        setWhatsNewOpen(false);
+        if (whatsNewVersion) {
+            await window.electronAPI.setLastSeenVersion(whatsNewVersion);
+        }
+    };
+
     return (
         <div className="h-screen w-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-gray-900 to-black text-white font-sans overflow-hidden flex flex-col">
             {/* Custom Title Bar */}
@@ -408,6 +423,7 @@ function App() {
                     <SettingsView
                         onBack={() => setView('dashboard')}
                         onEmbedStatSettingsSaved={setEmbedStatSettings}
+                        onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
@@ -749,6 +765,13 @@ function App() {
                 isOpen={showUpdateErrorModal}
                 onClose={() => setShowUpdateErrorModal(false)}
                 error={updateError}
+            />
+
+            <WhatsNewModal
+                isOpen={whatsNewOpen}
+                onClose={handleWhatsNewClose}
+                version={whatsNewVersion}
+                releaseNotes={whatsNewNotes}
             />
 
             {/* Terminal */}

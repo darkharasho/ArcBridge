@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } from 'electron'
+import fs from 'fs'
 import path from 'node:path'
 import { LogWatcher } from './watcher'
 import { Uploader } from './uploader'
@@ -395,6 +396,26 @@ if (!gotTheLock) {
 
         ipcMain.handle('get-app-version', () => {
             return app.getVersion();
+        });
+
+        ipcMain.handle('get-whats-new', () => {
+            const version = app.getVersion();
+            const lastSeenVersion = store.get('lastSeenVersion', null) as string | null;
+            const basePath = app.isPackaged ? process.resourcesPath : process.cwd();
+            const notesPath = path.join(basePath, 'RELEASE_NOTES.md');
+            let releaseNotes: string | null = null;
+            try {
+                const rawNotes = fs.readFileSync(notesPath, 'utf8');
+                const nextHeaderIndex = rawNotes.indexOf('\n# Release Notes', 1);
+                releaseNotes = nextHeaderIndex > -1 ? rawNotes.slice(0, nextHeaderIndex).trim() : rawNotes.trim();
+            } catch (err) {
+                console.warn('[Main] Failed to read release notes:', err);
+            }
+            return { version, lastSeenVersion, releaseNotes };
+        });
+
+        ipcMain.handle('set-last-seen-version', (_event, version: string) => {
+            store.set('lastSeenVersion', version);
         });
 
         // Default embed stat settings

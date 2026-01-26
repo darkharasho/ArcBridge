@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users } from 'lucide-react';
+import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_EMBED_STATS } from './global.d';
 
 interface SettingsViewProps {
     onBack: () => void;
     onEmbedStatSettingsSaved?: (settings: IEmbedStatSettings) => void;
+    onOpenWhatsNew?: () => void;
 }
 
 // Toggle switch component
@@ -66,7 +67,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0 }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
@@ -377,6 +378,20 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved }: SettingsViewP
                             />
                         </div>
                     </div>
+                </SettingsSection>
+
+                {/* Close Behavior Section */}
+                <SettingsSection title="What's New" icon={Sparkles} delay={0.18}>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Review the latest update notes and feature changes.
+                    </p>
+                    <button
+                        onClick={() => onOpenWhatsNew?.()}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm font-medium text-blue-200 hover:bg-blue-500/20 transition-colors"
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        View What's New
+                    </button>
                 </SettingsSection>
 
                 {/* Close Behavior Section */}

@@ -107,6 +107,12 @@ export interface IElectronAPI {
     onUpdateDownloaded: (callback: (info: any) => void) => () => void;
     sendStatsScreenshot: (buffer: Uint8Array) => void;
     getAppVersion: () => Promise<string>;
+    getWhatsNew: () => Promise<{
+        version: string;
+        lastSeenVersion: string | null;
+        releaseNotes: string | null;
+    }>;
+    setLastSeenVersion: (version: string) => Promise<void>;
 }
 
 declare global {
