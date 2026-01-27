@@ -964,25 +964,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             })), true)
         };
 
-        const buildRankMap = (items: Array<{ key: string; value: number }>, higherIsBetter: boolean) => {
-            const sorted = [...items].sort((a, b) => {
-                const diff = higherIsBetter ? b.value - a.value : a.value - b.value;
-                if (diff !== 0) return diff;
-                return a.key.localeCompare(b.key);
-            });
-            const ranks: Record<string, number> = {};
-            let lastValue: number | null = null;
-            let lastRank = 0;
-            sorted.forEach((item, index) => {
-                if (lastValue === null || item.value !== lastValue) {
-                    lastRank = index + 1;
-                    lastValue = item.value;
-                }
-                ranks[item.key] = lastRank;
-            });
-            return ranks;
-        };
-
         // rankMaps removed: MVP now references leaderboards for rank consistency.
 
         // --- Calculate MVP ---
