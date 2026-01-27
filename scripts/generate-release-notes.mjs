@@ -189,7 +189,12 @@ try {
 }
 
 const existingBody = existingNotes.replace(/^# Release Notes\\s*/i, '').trim();
-const sections = [newSection.trim(), existingBody].filter(Boolean);
+const versionHeader = `Version v${version} —`;
+const existingSections = existingBody
+    ? existingBody.split(/\n(?=Version v)/).map((section) => section.trim()).filter(Boolean)
+    : [];
+const filteredSections = existingSections.filter((section) => !section.startsWith(versionHeader));
+const sections = [newSection.trim(), ...filteredSections].filter(Boolean);
 const finalNotes = `# Release Notes\n\n${sections.join('\n\n')}\n`;
 
 fs.writeFileSync(releaseNotesPath, finalNotes, 'utf8');
