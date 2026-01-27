@@ -222,7 +222,7 @@ const fetchGithubReleaseNotesRange = async (currentVersion: string, lastSeenVers
                                 if (lastSeen && compareVersion(release.version, lastSeen) <= 0) return false;
                                 return true;
                             })
-                            .sort((a, b) => compareVersion(a.version!, b.version!));
+                            .sort((a, b) => compareVersion(b.version!, a.version!));
 
                         if (selected.length === 0) {
                             resolve(null);
