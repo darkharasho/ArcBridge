@@ -114,6 +114,7 @@ export interface IElectronAPI {
         githubPagesBaseUrl?: string | null;
         githubToken?: string | null;
         githubWebTheme?: string | null;
+        githubLogoPath?: string | null;
     }>;
     manualUpload: (path: string) => void;
     manualUploadBatch: (paths: string[]) => void;
@@ -133,6 +134,7 @@ export interface IElectronAPI {
         githubPagesBaseUrl?: string | null;
         githubToken?: string | null;
         githubWebTheme?: string | null;
+        githubLogoPath?: string | null;
     }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;

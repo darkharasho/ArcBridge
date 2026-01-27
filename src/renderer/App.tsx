@@ -51,7 +51,6 @@ function App() {
 
     // File picker modal state
     const [filePickerOpen, setFilePickerOpen] = useState(false);
-    const [filePickerFolder, setFilePickerFolder] = useState<string | null>(null);
     const [filePickerAvailable, setFilePickerAvailable] = useState<Array<{ path: string; name: string; mtimeMs: number; size: number }>>([]);
     const [filePickerSelected, setFilePickerSelected] = useState<Set<string>>(new Set());
     const [filePickerFilter, setFilePickerFilter] = useState('');
@@ -270,8 +269,8 @@ function App() {
 
     useEffect(() => {
         if (!filePickerOpen) return;
-        loadLogFiles(filePickerFolder || logDirectory);
-    }, [filePickerOpen, filePickerFolder, logDirectory]);
+        loadLogFiles(logDirectory);
+    }, [filePickerOpen, logDirectory]);
 
     useEffect(() => {
         const cleanupMessage = window.electronAPI.onUpdateMessage((message) => setUpdateStatus(message));
@@ -340,17 +339,6 @@ function App() {
             setFilePickerError(err?.message || 'Failed to load logs.');
         } finally {
             setFilePickerLoading(false);
-        }
-    };
-
-    const handlePickFolder = async () => {
-        const path = await window.electronAPI.selectDirectory();
-        if (path) {
-            setFilePickerFolder(path);
-            setLogDirectory(path);
-            window.electronAPI.startWatching(path);
-            setFilePickerSelected(new Set());
-            await loadLogFiles(path);
         }
     };
 
@@ -927,7 +915,7 @@ function App() {
                                         <div className="text-xs uppercase tracking-widest text-gray-500">Available Logs</div>
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => loadLogFiles(filePickerFolder || logDirectory)}
+                                                onClick={() => loadLogFiles(logDirectory)}
                                                 className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white"
                                             >
                                                 Refresh

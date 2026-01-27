@@ -50,20 +50,6 @@ try {
     lastTag = '';
 }
 
-try {
-    const existingTags = exec('git tag').split('\n').map((tag) => tag.trim()).filter(Boolean);
-    if (existingTags.includes(nextTag)) {
-        console.log(`Tag ${nextTag} already exists. Skipping tag creation.`);
-    } else {
-        exec(`git tag ${nextTag}`);
-        exec(`git push origin ${nextTag}`);
-        console.log(`Created and pushed tag ${nextTag}.`);
-    }
-} catch (err) {
-    console.error(`Failed to create/push tag ${nextTag}:`, err?.message || err);
-    process.exit(1);
-}
-
 const range = lastTag ? `${lastTag}..HEAD` : '';
 let commits = '';
 try {
@@ -80,13 +66,15 @@ const commitLines = commits
 const prompt = [
     `You are writing friendly release notes for the "GW2 Arc Log Uploader" app.`,
     `Version: v${version}.`,
-    `Please produce concise, user-facing notes with these sections and markdown headings:`,
-    `## Highlights`,
-    `## Improvements`,
-    `## Fixes`,
-    `## Breaking Changes`,
+    `Use ONLY the commit summary provided below (git log ${lastTag || 'project start'}..HEAD). Do not infer or add features not explicitly listed.`,
+    `Please produce concise, user-facing notes with these sections and markdown headings (include tasteful emojis in the headings and a few bullets):`,
+    `## 🌟 Highlights`,
+    `## 🛠️ Improvements`,
+    `## 🧯 Fixes`,
+    `## ⚠️ Breaking Changes`,
     `If a section has no items, write "None." under it.`,
     `Keep to 3-6 bullets per section max, avoid raw commit hashes, and translate technical phrasing into user-friendly language.`,
+    `If a commit message is vague or unclear, summarize it conservatively without guessing details.`,
     '',
     `Commit summary since ${lastTag || 'project start'}:`,
     commitLines.length ? commitLines.map((line) => `- ${line}`).join('\n') : '- No commits found.'
@@ -98,13 +86,13 @@ const body = {
         {
             role: 'system',
             content: [
-                { type: 'text', text: 'You generate polished release notes for end users.' }
+                { type: 'input_text', text: 'You generate polished release notes for end users.' }
             ]
         },
         {
             role: 'user',
             content: [
-                { type: 'text', text: prompt }
+                { type: 'input_text', text: prompt }
             ]
         }
     ],
@@ -168,3 +156,32 @@ const finalNotes = [
 
 fs.writeFileSync(releaseNotesPath, finalNotes, 'utf8');
 console.log(`Release notes written to ${releaseNotesPath}`);
+
+try {
+    const status = exec('git status --porcelain');
+    if (status.split('\n').some((line) => line.includes('RELEASE_NOTES.md'))) {
+        exec('git add RELEASE_NOTES.md');
+        exec(`git commit -m "Update release notes v${version}"`);
+        exec('git push');
+        console.log('Committed and pushed RELEASE_NOTES.md.');
+    } else {
+        console.log('RELEASE_NOTES.md unchanged. Skipping commit.');
+    }
+} catch (err) {
+    console.error(`Failed to commit/push RELEASE_NOTES.md:`, err?.message || err);
+    process.exit(1);
+}
+
+try {
+    const existingTags = exec('git tag').split('\n').map((tag) => tag.trim()).filter(Boolean);
+    if (existingTags.includes(nextTag)) {
+        console.log(`Tag ${nextTag} already exists. Skipping tag creation.`);
+    } else {
+        exec(`git tag ${nextTag}`);
+        exec(`git push origin ${nextTag}`);
+        console.log(`Created and pushed tag ${nextTag}.`);
+    }
+} catch (err) {
+    console.error(`Failed to create/push tag ${nextTag}:`, err?.message || err);
+    process.exit(1);
+}

@@ -38,6 +38,7 @@ export interface Player {
     group: number;
     dpsAll: StatsAll[];
     statsAll?: StatsAll[]; // Contains stackDist (distance to tag)
+    dpsTargets?: StatsTarget[][];
     defenses: Defenses[];
     support: Support[];
     extHealingStats?: {

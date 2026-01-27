@@ -210,6 +210,9 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             healingActiveMs: number;
             healingTotals: Record<string, number>;
             profession: string;
+            professions: Set<string>;
+            professionList?: string[];
+            professionTimeMs: Record<string, number>;
             damage: number;
             dps: number;
             revives: number;
@@ -237,7 +240,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             if (!details) return;
             const players = details.players as unknown as Player[];
             const targets = details.targets || [];
-            const durationSec = details.durationMS ? details.durationMS / 1000 : 0;
             const replayMeta = (details as any).combatReplayMetaData || {};
             const inchesToPixel = typeof replayMeta?.inchToPixel === 'number' && replayMeta.inchToPixel > 0
                 ? replayMeta.inchToPixel
@@ -251,7 +253,10 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 if (!Array.isArray(value)) return [];
                 return value
                     .map((entry) => (Array.isArray(entry) ? [Number(entry[0]), Number(entry[1])] as [number, number] : null))
-                    .filter((entry): entry is [number, number] => Boolean(entry) && Number.isFinite(entry[0]) && Number.isFinite(entry[1]));
+                    .filter((entry): entry is [number, number] => {
+                        if (!entry) return false;
+                        return Number.isFinite(entry[0]) && Number.isFinite(entry[1]);
+                    });
             };
 
             let commanderTagPositions: Array<[number, number]> = [];
@@ -268,13 +273,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     }
                 });
             }
-
-            const safePosition = (positions: Array<[number, number]>, idx: number) => {
-                if (!positions.length) return [0, 0] as [number, number];
-                if (idx < positions.length) return positions[idx];
-                if (idx - 1 < positions.length) return positions[idx - 1];
-                return positions[positions.length - 1];
-            };
 
             const avgDistance = (
                 positions: Array<[number, number]>,
@@ -319,9 +317,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         const positionMark = Math.max(0, Math.floor(deathKey / pollingRate)) - playerOffset;
                         for (const [downKey, downValue] of playerDowns) {
                             if (deathKey !== downValue) continue;
-
-                            const [x1, y1] = safePosition(playerPositions, positionMark);
-                            const [x2, y2] = safePosition(commanderTagPositions, positionMark);
                             const playerDeadPoll = deadTag && downKey > deadTagMark
                                 ? Math.max(1, Math.floor(deadTagMark / pollingRate))
                                 : positionMark;
@@ -600,11 +595,12 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     if (metric.id === 'downContributionPercent') {
                         return;
                     }
-                    if (!metric.field) return;
+                    const field = metric.field;
+                    if (!field) return;
                     const source = metric.source || 'statsTargets';
                     if (source === 'statsAll') {
                         if (!statsAll) return;
-                        let value = Number(statsAll[metric.field] ?? 0);
+                        let value = Number(statsAll[field] ?? 0);
                         if (!Number.isFinite(value)) return;
                         if (metric.isRate) {
                             const denomField = metric.denomField || metric.weightField;
@@ -620,7 +616,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     }
                     if (source === 'dpsTargets') {
                         if (dpsTargetsList.length === 0 && statsAll) {
-                            const fallbackValue = Number(statsAll[metric.field] ?? 0);
+                            const fallbackValue = Number(statsAll[field] ?? 0);
                             if (Number.isFinite(fallbackValue)) {
                                 s.offenseTotals[metric.id] = (s.offenseTotals[metric.id] || 0) + fallbackValue;
                             }
@@ -629,7 +625,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         dpsTargetsList.forEach((targetEntry: any) => {
                             const target = targetEntry?.[0];
                             if (!target) return;
-                            const value = Number(target[metric.field] ?? 0);
+                            const value = Number(target[field] ?? 0);
                             if (!Number.isFinite(value)) return;
                             s.offenseTotals[metric.id] = (s.offenseTotals[metric.id] || 0) + value;
                         });
@@ -637,7 +633,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     }
 
                     if (statsTargetsList.length === 0 && statsAll) {
-                        let value = Number(statsAll[metric.field] ?? 0);
+                        let value = Number(statsAll[field] ?? 0);
                         if (!Number.isFinite(value)) return;
                         if (metric.isRate) {
                             const denomField = metric.denomField || metric.weightField;
@@ -655,7 +651,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     statsTargetsList.forEach((targetEntry: any) => {
                         const target = targetEntry?.[0];
                         if (!target) return;
-                        let value = Number(target[metric.field] ?? 0);
+                        let value = Number(target[field] ?? 0);
                         if (!Number.isFinite(value)) return;
                         if (metric.isRate) {
                             const denomField = metric.denomField || metric.weightField;
@@ -1635,7 +1631,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
     };
 
-    const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active, rows, onClose, formatValue }: any) => {
+    const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active, rows, formatValue }: any) => {
         const classes = colorClasses[color] || colorClasses.blue;
         return (
             <div
@@ -1709,13 +1705,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         ? {
             backgroundColor: 'rgba(3, 7, 18, 0.75)',
             backgroundImage: 'linear-gradient(160deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.04) 70%)'
-        }
-        : undefined;
-
-    const embeddedStatCardStyle: CSSProperties | undefined = embedded
-        ? {
-            backgroundImage: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.26), rgba(15, 23, 42, 0.8) 70%)',
-            borderColor: 'rgba(var(--accent-rgb), 0.35)'
         }
         : undefined;
 
@@ -2028,7 +2017,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             {...card}
                                             active={isActive}
                                             onClick={() => setExpandedLeader((prev) => (prev === card.statKey ? null : card.statKey))}
-                                            onClose={() => setExpandedLeader(null)}
                                             rows={rows}
                                             formatValue={formatValue}
                                         />
@@ -2049,7 +2037,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                             Top Outgoing Damage Skills
                         </h3>
                         <div className="space-y-4">
-                            {stats.topSkills.map((skill, i) => (
+                            {stats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                                     <div className="flex-1">
@@ -2082,7 +2070,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                             Top Incoming Damage Skills
                         </h3>
                         <div className="space-y-4">
-                            {stats.topIncomingSkills.map((skill, i) => (
+                            {stats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                                     <div className="flex-1">
@@ -2249,7 +2237,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             const point = payload?.[0]?.payload;
                                             return point?.label ? `Log ${point.index} • ${point.label}` : `Log ${_value}`;
                                         }}
-                                        formatter={(value: any, name: string) => [
+                                        formatter={(value: any, name?: string) => [
                                             value,
                                             name === 'allies' ? 'Allies' : 'Enemies'
                                         ]}
