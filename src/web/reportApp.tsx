@@ -291,8 +291,7 @@ export function ReportApp() {
         const tocItems = [
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'top-players', label: 'Top Players', icon: Trophy },
-            { id: 'top-skills-outgoing', label: 'Top Skills (Out)', icon: Swords },
-            { id: 'top-skills-incoming', label: 'Top Skills (In)', icon: Shield },
+            { id: 'top-skills-outgoing', label: 'Top Skills', icon: Swords },
             { id: 'timeline', label: 'Squad vs Enemy', icon: Activity },
             { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon },
             { id: 'boon-output', label: 'Boon Output', icon: Sparkles },
@@ -338,7 +337,7 @@ export function ReportApp() {
                 </div>
                 <div className={`fixed inset-0 z-20 bg-black/40 backdrop-blur-sm transition-opacity lg:hidden ${tocOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setTocOpen(false)} />
                 <aside
-                    className={`fixed z-30 top-0 bottom-0 w-72 max-w-[80vw] transition-transform duration-300 lg:hidden ${tocOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                    className={`fixed z-30 top-0 bottom-0 w-64 max-w-[80vw] transition-transform duration-300 lg:hidden ${tocOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 >
                     <div className="h-full bg-white/5 border-r border-white/10 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.45)] flex flex-col">
                         <div className="px-5 pt-6 pb-4 flex items-center justify-between">
@@ -374,7 +373,7 @@ export function ReportApp() {
                         </div>
                     </div>
                 </aside>
-                <aside className="hidden lg:flex fixed inset-y-0 left-0 w-72 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
+                <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
                     <div className="flex flex-col w-full">
                         <div className="px-6 pt-6 pb-5">
                             <div className="flex items-center gap-3">
@@ -407,7 +406,7 @@ export function ReportApp() {
                         </div>
                     </div>
                 </aside>
-                <div className="max-w-6xl mx-auto px-6 py-6 lg:ml-72">
+                <div className="max-w-6xl mx-auto px-6 py-6 lg:ml-[18rem]">
                     <div className={`${glassCard} p-6 mb-6`} style={glassCardStyle}>
                         <div className="mb-4">
                             <a

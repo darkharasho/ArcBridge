@@ -1003,6 +1003,15 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             topStats: { name: string, val: string, ratio: number }[];
         }> = [];
 
+        const getRankFromLeaderboard = (
+            leaderboard: Array<{ rank: number; account: string }> | undefined,
+            account: string
+        ) => {
+            if (!leaderboard?.length) return 0;
+            const entry = leaderboard.find((row) => row.account === account);
+            return entry?.rank || 0;
+        };
+
         playerEntries.forEach(({ key, stat }) => {
             let score = 0;
             const contributions: { name: string, ratio: number, value: number, fmt: string, rank: number }[] = [];
@@ -1020,37 +1029,37 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
             const weights = mvpWeights || DEFAULT_MVP_WEIGHTS;
 
-            const check = (val: number, maxVal: number, name: string, weight = 1, rankMap?: Record<string, number>) => {
+            const check = (val: number, maxVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
                 if (maxVal > 0) {
                     const ratio = val / maxVal;
                     score += ratio * weight;
-                    const rank = rankMap?.[key] || 0;
+                    const rank = getRankFromLeaderboard(leaderboard, stat.account);
                     contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
                 }
             };
-            const checkLowerIsBetter = (val: number, bestVal: number, name: string, weight = 1, rankMap?: Record<string, number>) => {
+            const checkLowerIsBetter = (val: number, bestVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
                 if (bestVal > 0 && val > 0) {
                     const ratio = bestVal / val;
                     score += ratio * weight;
-                    const rank = rankMap?.[key] || 0;
+                    const rank = getRankFromLeaderboard(leaderboard, stat.account);
                     contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
                 }
             };
 
-            check(stat.downContrib, maxDownContrib.value, 'Down Contribution', weights.downContribution, rankMaps.downContrib);
-            check(stat.healing, maxHealing.value, 'Healing', weights.healing, rankMaps.healing);
-            check(stat.cleanses, maxCleanses.value, 'Cleanses', weights.cleanses, rankMaps.cleanses);
-            check(stat.strips, maxStrips.value, 'Strips', weights.strips, rankMaps.strips);
-            check(stat.stab, maxStab.value, 'Stability', weights.stability, rankMaps.stability);
-            check(stat.cc, maxCC.value, 'CC', weights.cc, rankMaps.cc);
-            check(stat.revives, maxRevives.value, 'Revives', weights.revives, rankMaps.revives);
-            check(stat.logsJoined, maxLogsJoined, 'Participation', weights.participation, rankMaps.participation);
-            check(stat.dodges, maxDodges.value, 'Dodging', weights.dodging, rankMaps.dodging);
-            check(stat.dps, maxDps.value, 'DPS', weights.dps, rankMaps.dps);
-            check(stat.damage, maxDamage.value, 'Damage', weights.damage, rankMaps.damage);
+            check(stat.downContrib, maxDownContrib.value, 'Down Contribution', weights.downContribution, leaderboards.downContrib);
+            check(stat.healing, maxHealing.value, 'Healing', weights.healing, leaderboards.healing);
+            check(stat.cleanses, maxCleanses.value, 'Cleanses', weights.cleanses, leaderboards.cleanses);
+            check(stat.strips, maxStrips.value, 'Strips', weights.strips, leaderboards.strips);
+            check(stat.stab, maxStab.value, 'Stability', weights.stability, leaderboards.stability);
+            check(stat.cc, maxCC.value, 'CC', weights.cc, leaderboards.cc);
+            check(stat.revives, maxRevives.value, 'Revives', weights.revives, leaderboards.revives);
+            check(stat.logsJoined, maxLogsJoined, 'Participation', weights.participation, leaderboards.participation);
+            check(stat.dodges, maxDodges.value, 'Dodging', weights.dodging, leaderboards.dodges);
+            check(stat.dps, maxDps.value, 'DPS', weights.dps, leaderboards.dps);
+            check(stat.damage, maxDamage.value, 'Damage', weights.damage, leaderboards.damage);
             if (!stat.isCommander && stat.distCount > 0) {
                 const avgDist = stat.totalDist / stat.distCount;
-                checkLowerIsBetter(avgDist, closestToTag.value, 'Distance to Tag', weights.distanceToTag, rankMaps.distanceToTag);
+                checkLowerIsBetter(avgDist, closestToTag.value, 'Distance to Tag', weights.distanceToTag, leaderboards.closestToTag);
             }
 
             totalScoreSum += score;
