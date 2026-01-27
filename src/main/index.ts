@@ -118,8 +118,13 @@ const processLogFile = async (filePath: string) => {
             if (shouldSendDiscord) {
                 try {
                     if (notificationType === 'image' || notificationType === 'image-beta') {
-                        pendingDiscordLogs.set(result.id, { result: { ...result, filePath }, jsonDetails });
-                        win?.webContents.send('request-screenshot', { ...result, filePath, details: jsonDetails, mode: notificationType });
+                        const logKey = result.id || filePath;
+                        if (!logKey) {
+                            console.error('[Main] Discord notification skipped: missing log identifier.');
+                        } else {
+                            pendingDiscordLogs.set(logKey, { result: { ...result, filePath, id: logKey }, jsonDetails });
+                            win?.webContents.send('request-screenshot', { ...result, id: logKey, filePath, details: jsonDetails, mode: notificationType });
+                        }
                     } else {
                         await discord?.sendLog({ ...result, filePath, mode: 'embed' }, jsonDetails);
                     }
@@ -617,6 +622,28 @@ const ensureGithubPages = async (owner: string, repo: string, branch: string, to
         throw new Error(`GitHub API error (${createResp.status}) enabling Pages: ${detail}`);
     }
     return createResp.data;
+};
+
+const normalizePagesPath = (value?: string | null) => {
+    if (!value) return '';
+    let pathValue = String(value).trim();
+    if (!pathValue || pathValue === '/' || pathValue === '.') return '';
+    pathValue = pathValue.replace(/^\/+|\/+$/g, '');
+    return pathValue;
+};
+
+const withPagesPath = (pagesPath: string, repoPath: string) => {
+    if (!pagesPath) return repoPath;
+    return `${pagesPath}/${repoPath}`.replace(/\/{2,}/g, '/');
+};
+
+const getStoredPagesPath = () => normalizePagesPath(store.get('githubPagesSourcePath', '') as string);
+
+const resolvePagesSource = async (owner: string, repo: string, branch: string, token: string) => {
+    const pagesInfo = await ensureGithubPages(owner, repo, branch, token);
+    const pagesPath = normalizePagesPath(pagesInfo?.source?.path);
+    store.set('githubPagesSourcePath', pagesPath);
+    return { pagesInfo, pagesPath };
 };
 
 const collectFiles = (dir: string) => {
@@ -1266,7 +1293,17 @@ if (!gotTheLock) {
                 if (!owner || !repo) {
                     return { success: false, error: 'Repository not configured.' };
                 }
-                const existing = await getGithubFile(owner, repo, 'reports/index.json', branch, token);
+                let pagesPath = getStoredPagesPath();
+                if (!pagesPath) {
+                    try {
+                        const resolved = await resolvePagesSource(owner, repo, branch, token);
+                        pagesPath = resolved.pagesPath;
+                    } catch {
+                        pagesPath = '';
+                    }
+                }
+                const indexPath = withPagesPath(pagesPath, 'reports/index.json');
+                const existing = await getGithubFile(owner, repo, indexPath, branch, token);
                 if (!existing?.content) {
                     return { success: true, reports: [] };
                 }
@@ -1294,6 +1331,16 @@ if (!gotTheLock) {
                 if (ids.length === 0) {
                     return { success: false, error: 'No reports selected.' };
                 }
+                let pagesPath = getStoredPagesPath();
+                if (!pagesPath) {
+                    try {
+                        const resolved = await resolvePagesSource(owner, repo, branch, token);
+                        pagesPath = resolved.pagesPath;
+                    } catch {
+                        pagesPath = '';
+                    }
+                }
+                const pagesPrefix = pagesPath ? `${pagesPath}/` : '';
 
                 const headRef = await getGithubRef(owner, repo, branch, token);
                 const headSha = headRef?.object?.sha;
@@ -1309,13 +1356,13 @@ if (!gotTheLock) {
                 const treeEntries = Array.isArray(treeData?.tree) ? treeData.tree : [];
                 const pathsToDelete = new Set<string>();
                 ids.forEach((id) => {
-                    pathsToDelete.add(`reports/${id}/`);
+                    pathsToDelete.add(`${pagesPrefix}reports/${id}/`);
                 });
                 const deleteEntries: Array<{ path: string; sha: string | null }> = [];
                 treeEntries.forEach((entry: any) => {
                     if (!entry?.path || entry?.type !== 'blob') return;
                     for (const id of ids) {
-                        if (entry.path.startsWith(`reports/${id}/`)) {
+                        if (entry.path.startsWith(`${pagesPrefix}reports/${id}/`)) {
                             deleteEntries.push({ path: entry.path, sha: null });
                             break;
                         }
@@ -1324,7 +1371,7 @@ if (!gotTheLock) {
 
                 let existingIndex: any[] = [];
                 try {
-                    const existing = await getGithubFile(owner, repo, 'reports/index.json', branch, token);
+                    const existing = await getGithubFile(owner, repo, withPagesPath(pagesPath, 'reports/index.json'), branch, token);
                     if (existing?.content) {
                         const decoded = Buffer.from(existing.content, 'base64').toString('utf8');
                         existingIndex = JSON.parse(decoded);
@@ -1340,7 +1387,7 @@ if (!gotTheLock) {
 
                 const commitEntries = [
                     ...deleteEntries,
-                    { path: 'reports/index.json', sha: indexBlob.sha }
+                    { path: withPagesPath(pagesPath, 'reports/index.json'), sha: indexBlob.sha }
                 ];
 
                 const newTree = await createGithubTree(owner, repo, token, baseTreeSha, commitEntries);
@@ -1372,11 +1419,12 @@ if (!gotTheLock) {
                 }
                 const repo = await createGithubRepo(owner, repoName, token);
                 const branch = params.branch || 'main';
-                const pagesInfo = await ensureGithubPages(owner, repoName, branch, token);
+                const { pagesInfo, pagesPath } = await resolvePagesSource(owner, repoName, branch, token);
                 const pagesUrl = pagesInfo?.html_url || `https://${owner}.github.io/${repoName}`;
                 store.set('githubRepoOwner', owner);
                 store.set('githubRepoName', repoName);
                 store.set('githubPagesBaseUrl', pagesUrl);
+                store.set('githubPagesSourcePath', pagesPath);
                 return {
                     success: true,
                     repo: {
@@ -1429,6 +1477,14 @@ if (!gotTheLock) {
                 if (!owner || !repo) {
                     return { success: false, error: 'Select or create a repository in Settings first.' };
                 }
+                let pagesPath = getStoredPagesPath();
+                try {
+                    const resolved = await resolvePagesSource(owner, repo, branch, token);
+                    pagesPath = resolved.pagesPath;
+                } catch {
+                    pagesPath = getStoredPagesPath();
+                }
+                const pagesPrefix = pagesPath ? `${pagesPath}/` : '';
 
                 const headRef = await getGithubRef(owner, repo, branch, token);
                 const headSha = headRef?.object?.sha;
@@ -1449,9 +1505,9 @@ if (!gotTheLock) {
                 treeEntries.forEach((entry: any) => {
                     if (entry?.path && entry?.sha && entry?.type === 'blob') {
                         treeMap.set(entry.path, entry.sha);
-                        if (entry.path === 'index.html') hasIndex = true;
-                        if (entry.path.startsWith('assets/')) hasAssets = true;
-                        if (entry.path.startsWith('img/class-icons/')) hasClassIcons = true;
+                        if (entry.path === `${pagesPrefix}index.html`) hasIndex = true;
+                        if (entry.path.startsWith(`${pagesPrefix}assets/`)) hasAssets = true;
+                        if (entry.path.startsWith(`${pagesPrefix}img/class-icons/`)) hasClassIcons = true;
                     }
                 });
 
@@ -1486,7 +1542,7 @@ if (!gotTheLock) {
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
                     const content = fs.readFileSync(file.absPath);
-                    queueFile(file.relPath, content);
+                    queueFile(withPagesPath(pagesPath, file.relPath), content);
                 }
 
                 if (pendingEntries.length === 0) {
@@ -1526,6 +1582,13 @@ if (!gotTheLock) {
                 if (!logoPath || !fs.existsSync(logoPath)) {
                     return { success: false, error: 'Logo file not found.' };
                 }
+                let pagesPath = getStoredPagesPath();
+                try {
+                    const resolved = await resolvePagesSource(owner, repo, branch, token);
+                    pagesPath = resolved.pagesPath;
+                } catch {
+                    pagesPath = getStoredPagesPath();
+                }
 
                 const headRef = await getGithubRef(owner, repo, branch, token);
                 const headSha = headRef?.object?.sha;
@@ -1560,8 +1623,8 @@ if (!gotTheLock) {
 
                 const logoBuffer = fs.readFileSync(logoPath);
                 const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
-                queueFile('logo.png', logoBuffer);
-                queueFile('logo.json', logoJson);
+                queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
+                queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
 
                 if (pendingEntries.length === 0) {
                     return { success: true, updated: false };
@@ -1597,6 +1660,13 @@ if (!gotTheLock) {
                 if (!owner || !repo) {
                     return { success: false, error: 'Select or create a repository in Settings first.' };
                 }
+                let pagesPath = getStoredPagesPath();
+                try {
+                    const resolved = await resolvePagesSource(owner, repo, branch, token);
+                    pagesPath = resolved.pagesPath;
+                } catch {
+                    pagesPath = getStoredPagesPath();
+                }
 
                 const themeId = payload?.themeId
                     || (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string)
@@ -1606,7 +1676,7 @@ if (!gotTheLock) {
                 sendGithubThemeStatus('Preparing', 'Loading report index...', 15);
                 let reportIds: string[] = [];
                 try {
-                    const indexFile = await getGithubFile(owner, repo, 'reports/index.json', branch, token);
+                    const indexFile = await getGithubFile(owner, repo, withPagesPath(pagesPath, 'reports/index.json'), branch, token);
                     if (indexFile?.content) {
                         const decoded = Buffer.from(indexFile.content, 'base64').toString('utf8');
                         const parsed = JSON.parse(decoded);
@@ -1651,9 +1721,9 @@ if (!gotTheLock) {
                 };
 
                 const themeBuffer = Buffer.from(JSON.stringify(selectedTheme, null, 2));
-                queueFile('theme.json', themeBuffer);
+                queueFile(withPagesPath(pagesPath, 'theme.json'), themeBuffer);
                 reportIds.forEach((id) => {
-                    queueFile(`reports/${id}/theme.json`, themeBuffer);
+                    queueFile(withPagesPath(pagesPath, `reports/${id}/theme.json`), themeBuffer);
                 });
 
                 if (pendingEntries.length === 0) {
@@ -1722,7 +1792,7 @@ if (!gotTheLock) {
                 }
 
                 sendWebUploadStatus('Preparing', 'Ensuring Pages configuration...', 15);
-                const pagesInfo = await ensureGithubPages(owner, repo, branch, token);
+                const { pagesInfo, pagesPath } = await resolvePagesSource(owner, repo, branch, token);
                 if (!baseUrl && pagesInfo?.html_url) {
                     baseUrl = pagesInfo.html_url;
                     store.set('githubPagesBaseUrl', baseUrl);
@@ -1730,6 +1800,7 @@ if (!gotTheLock) {
                     baseUrl = `https://${owner}.github.io/${repo}`;
                     store.set('githubPagesBaseUrl', baseUrl);
                 }
+                store.set('githubPagesSourcePath', pagesPath);
 
                 sendWebUploadStatus('Preparing', 'Checking web template...', 25);
                 const appRoot = getWebRoot();
@@ -1814,7 +1885,7 @@ if (!gotTheLock) {
 
                 let existingIndex: any[] = [];
                 try {
-                    const existing = await getGithubFile(owner, repo, 'reports/index.json', branch, token);
+                    const existing = await getGithubFile(owner, repo, withPagesPath(pagesPath, 'reports/index.json'), branch, token);
                     if (existing?.content) {
                         const decoded = Buffer.from(existing.content, 'base64').toString('utf8');
                         existingIndex = JSON.parse(decoded);
@@ -1861,28 +1932,28 @@ if (!gotTheLock) {
                 for (const file of rootFiles) {
                     const repoPath = file.relPath;
                     const content = fs.readFileSync(file.absPath);
-                    queueFile(repoPath, content);
+                    queueFile(withPagesPath(pagesPath, repoPath), content);
                 }
 
                 const reportFiles = collectFiles(stagingRoot);
                 for (const file of reportFiles) {
-                    const repoPath = `reports/${reportMeta.id}/${file.relPath}`;
+                    const repoPath = withPagesPath(pagesPath, `reports/${reportMeta.id}/${file.relPath}`);
                     const content = fs.readFileSync(file.absPath);
                     queueFile(repoPath, content);
                 }
 
                 const indexBuffer = Buffer.from(JSON.stringify(mergedIndex, null, 2));
-                queueFile('reports/index.json', indexBuffer);
+                queueFile(withPagesPath(pagesPath, 'reports/index.json'), indexBuffer);
                 if (selectedTheme) {
                     const themeBuffer = Buffer.from(JSON.stringify(selectedTheme, null, 2));
-                    queueFile('theme.json', themeBuffer);
+                    queueFile(withPagesPath(pagesPath, 'theme.json'), themeBuffer);
                 }
                 const logoPath = store.get('githubLogoPath') as string | undefined;
                 if (logoPath && fs.existsSync(logoPath)) {
                 const logoBuffer = fs.readFileSync(logoPath);
-                queueFile('logo.png', logoBuffer);
+                queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
                 const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
-                queueFile('logo.json', logoJson);
+                queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
                 }
 
                 if (pendingEntries.length === 0) {

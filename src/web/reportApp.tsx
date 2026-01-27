@@ -1,7 +1,23 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { StatsView } from '../renderer/StatsView';
 import { DEFAULT_WEB_THEME, WebTheme } from '../shared/webThemes';
-import { ShieldCheck, CalendarDays, Users, ExternalLink } from 'lucide-react';
+import {
+    ShieldCheck,
+    CalendarDays,
+    Users,
+    ExternalLink,
+    LayoutDashboard,
+    Trophy,
+    Swords,
+    Shield,
+    Activity,
+    Map as MapIcon,
+    Sparkles,
+    HelpingHand,
+    HeartPulse,
+    Star,
+    PanelLeft
+} from 'lucide-react';
 
 interface ReportMeta {
     id: string;
@@ -130,7 +146,20 @@ export function ReportApp() {
     const [searchTerm, setSearchTerm] = useState('');
     const [theme, setTheme] = useState<WebTheme | null>(null);
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
-    const basePath = useMemo(() => (window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`), []);
+    const [tocOpen, setTocOpen] = useState(false);
+    const basePath = useMemo(() => {
+        let pathName = window.location.pathname || '/';
+        if (pathName.endsWith('/index.html')) {
+            pathName = pathName.slice(0, -'/index.html'.length);
+        }
+        if (pathName.includes('/reports/')) {
+            pathName = pathName.replace(/\/reports\/[^/]+\/?$/, '');
+        }
+        if (!pathName.endsWith('/')) {
+            pathName = `${pathName}/`;
+        }
+        return pathName;
+    }, []);
     const resolvedTheme = theme ?? DEFAULT_WEB_THEME;
     const accentRgb = resolvedTheme.rgb;
     const accentVars = {
@@ -155,11 +184,29 @@ export function ReportApp() {
             setReportPathHint(reportPath);
         }
 
+        const normalizeCommanderDistance = (payload: ReportPayload) => {
+            const commanders = new Set((payload?.meta?.commanders || []).map((name) => String(name)));
+            if (commanders.size === 0) return payload;
+            const stats: any = payload.stats;
+            if (stats?.leaderboards?.closestToTag) {
+                stats.leaderboards.closestToTag = stats.leaderboards.closestToTag.map((entry: any) => {
+                    if (commanders.has(String(entry?.account))) {
+                        return { ...entry, value: 0 };
+                    }
+                    return entry;
+                });
+            }
+            if (stats?.closestToTag?.player && commanders.has(String(stats.closestToTag.player))) {
+                stats.closestToTag = { ...stats.closestToTag, value: 0 };
+            }
+            return payload;
+        };
+
         fetch(reportPath, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
-                setReport(data);
+                setReport(normalizeCommanderDistance(data));
             })
             .catch(() => {
                 if (reportId) {
@@ -241,6 +288,31 @@ export function ReportApp() {
     }, [sortedIndex, searchTerm]);
 
     if (report) {
+        const tocItems = [
+            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+            { id: 'top-players', label: 'Top Players', icon: Trophy },
+            { id: 'top-skills-outgoing', label: 'Top Skills (Out)', icon: Swords },
+            { id: 'top-skills-incoming', label: 'Top Skills (In)', icon: Shield },
+            { id: 'timeline', label: 'Squad vs Enemy', icon: Activity },
+            { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon },
+            { id: 'boon-output', label: 'Boon Output', icon: Sparkles },
+            { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
+            { id: 'defense-detailed', label: 'Defense Detailed', icon: ShieldCheck },
+            { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
+            { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
+            { id: 'special-buffs', label: 'Special Buffs', icon: Star }
+        ];
+        const handleTocClick = (id: string) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (history.replaceState) {
+                    history.replaceState(null, '', `#${id}`);
+                }
+            } else {
+                window.location.hash = id;
+            }
+        };
         return (
             <div
                 className="min-h-screen text-white relative overflow-x-hidden"
@@ -264,7 +336,78 @@ export function ReportApp() {
                         style={{ backgroundColor: 'var(--accent-glow-soft)' }}
                     />
                 </div>
-                <div className="max-w-6xl mx-auto px-6 py-6">
+                <div className={`fixed inset-0 z-20 bg-black/40 backdrop-blur-sm transition-opacity lg:hidden ${tocOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setTocOpen(false)} />
+                <aside
+                    className={`fixed z-30 top-0 bottom-0 w-72 max-w-[80vw] transition-transform duration-300 lg:hidden ${tocOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                >
+                    <div className="h-full bg-white/5 border-r border-white/10 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.45)] flex flex-col">
+                        <div className="px-5 pt-6 pb-4 flex items-center justify-between">
+                            <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">Contents</div>
+                            <button
+                                onClick={() => setTocOpen(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                                aria-label="Close table of contents"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <nav className="px-3 pb-6 space-y-1.5 text-sm overflow-y-auto">
+                            {tocItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => {
+                                            handleTocClick(item.id);
+                                            setTocOpen(false);
+                                        }}
+                                        className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-gray-200 border border-transparent hover:border-white/10 hover:bg-white/10 transition-colors"
+                                    >
+                                        <Icon className="w-4 h-4 text-[color:var(--accent)]" />
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                        <div className="mt-auto px-5 py-4 text-xs text-gray-500">
+                            Scroll the report and tap a section to jump.
+                        </div>
+                    </div>
+                </aside>
+                <aside className="hidden lg:flex fixed inset-y-0 left-0 w-72 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
+                    <div className="flex flex-col w-full">
+                        <div className="px-6 pt-6 pb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-[color:var(--accent)]">
+                                    <LayoutDashboard className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">GW2 Reports</div>
+                                    <div className="text-sm font-semibold text-white">Navigation</div>
+                                </div>
+                            </div>
+                        </div>
+                        <nav className="px-4 space-y-1.5 text-sm flex-1 overflow-y-auto">
+                            {tocItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => handleTocClick(item.id)}
+                                        className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-200 border border-transparent hover:border-white/10 hover:bg-white/10 transition-colors"
+                                    >
+                                        <Icon className="w-4 h-4 text-[color:var(--accent)]" />
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                        <div className="px-6 py-5 text-xs text-gray-500 border-t border-white/10">
+                            Scroll to explore the report sections.
+                        </div>
+                    </div>
+                </aside>
+                <div className="max-w-6xl mx-auto px-6 py-6 lg:ml-72">
                     <div className={`${glassCard} p-6 mb-6`} style={glassCardStyle}>
                         <div className="mb-4">
                             <a
@@ -289,6 +432,13 @@ export function ReportApp() {
                                     <div className="text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => setTocOpen(true)}
+                                className="lg:hidden px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 hover:border-white/30 transition-colors flex items-center gap-2"
+                            >
+                                <PanelLeft className="w-4 h-4" />
+                                Contents
+                            </button>
                             <div className="flex flex-wrap gap-3">
                                 <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2">
                                     <CalendarDays className="w-4 h-4 text-[color:var(--accent)]" />
@@ -305,7 +455,9 @@ export function ReportApp() {
                             </div>
                         </div>
                     </div>
-                    <StatsView logs={[]} onBack={() => {}} mvpWeights={undefined} precomputedStats={report.stats} embedded />
+                    <div className="flex-1 min-w-0">
+                        <StatsView logs={[]} onBack={() => {}} mvpWeights={undefined} precomputedStats={report.stats} embedded />
+                    </div>
                 </div>
             </div>
         );

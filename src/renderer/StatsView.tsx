@@ -33,7 +33,7 @@ const renderProfessionIcon = (
         <span className="relative inline-flex shrink-0" title={title}>
             <img src={iconPath} alt={resolvedProfession || 'Unknown'} className={`${className} shrink-0`} />
             {showMultiDot && (
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-300 ring-2 ring-[#0f172a]" />
+                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-300 ring-1 ring-[#0f172a]" />
             )}
         </span>
     );
@@ -213,6 +213,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             professions: Set<string>;
             professionList?: string[];
             professionTimeMs: Record<string, number>;
+            isCommander: boolean;
             damage: number;
             dps: number;
             revives: number;
@@ -299,6 +300,9 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     playerDistToTag = distToCom === 'Infinity' ? 0 : Math.round(Number(distToCom));
                 } else if (stackDist !== undefined && stackDist !== null) {
                     playerDistToTag = Math.round(Number(stackDist)) || 0;
+                }
+                if (p.hasCommanderTag) {
+                    return 0;
                 }
 
                 const combatData = p.combatReplayData;
@@ -418,6 +422,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         professions: new Set<string>(),
                         professionTimeMs: {} as Record<string, number>,
                         profession: p.profession || 'Unknown',
+                        isCommander: false,
                         damage: 0,
                         dps: 0,
                         revives: 0
@@ -425,6 +430,9 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 }
 
                 const s = playerStats.get(key)!;
+                if (p.hasCommanderTag) {
+                    s.isCommander = true;
+                }
                 if (p.profession) {
                     s.profession = p.profession;
                     if (p.profession && p.profession !== 'Unknown') {
@@ -822,7 +830,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             if (stat.revives > maxRevives.value) maxRevives = { value: stat.revives, ...pInfo };
             if (stat.logsJoined > maxLogsJoined) maxLogsJoined = stat.logsJoined;
 
-            if (stat.distCount > 0) {
+            if (!stat.isCommander && stat.distCount > 0) {
                 const avgDist = stat.totalDist / stat.distCount;
                 if (avgDist > 0 && avgDist < closestToTag.value) {
                     closestToTag = { value: avgDist, ...pInfo };
@@ -913,13 +921,19 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 professionList: stat.professionList,
                 value: stat.stab
             })), true),
-            closestToTag: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
-            })).filter(item => Number.isFinite(item.value)), false)
+            closestToTag: buildLeaderboard(
+                playerEntries
+                    .filter(({ stat }) => !stat.isCommander)
+                    .map(({ key, stat }) => ({
+                        key,
+                        account: stat.account,
+                        profession: stat.profession,
+                        professionList: stat.professionList,
+                        value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
+                    }))
+                    .filter(item => Number.isFinite(item.value)),
+                false
+            )
         };
 
         const buildRankMap = (items: Array<{ key: string; value: number }>, higherIsBetter: boolean) => {
@@ -953,10 +967,16 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             dodging: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.dodges })), true),
             dps: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.dps })), true),
             damage: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.damage })), true),
-            distanceToTag: buildRankMap(playerEntries.map(({ key, stat }) => ({
-                key,
-                value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
-            })).filter(item => Number.isFinite(item.value)), false)
+            distanceToTag: buildRankMap(
+                playerEntries
+                    .filter(({ stat }) => !stat.isCommander)
+                    .map(({ key, stat }) => ({
+                        key,
+                        value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
+                    }))
+                    .filter(item => Number.isFinite(item.value)),
+                false
+            )
         };
 
         // --- Calculate MVP ---
@@ -1028,7 +1048,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             check(stat.dodges, maxDodges.value, 'Dodging', weights.dodging, rankMaps.dodging);
             check(stat.dps, maxDps.value, 'DPS', weights.dps, rankMaps.dps);
             check(stat.damage, maxDamage.value, 'Damage', weights.damage, rankMaps.damage);
-            if (stat.distCount > 0) {
+            if (!stat.isCommander && stat.distCount > 0) {
                 const avgDist = stat.totalDist / stat.distCount;
                 checkLowerIsBetter(avgDist, closestToTag.value, 'Distance to Tag', weights.distanceToTag, rankMaps.distanceToTag);
             }
@@ -1832,7 +1852,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             <div id="stats-dashboard-container" className={scrollContainerClass} style={scrollContainerStyle}>
 
                 {/* Wins/Losses Big Cards with embedded Averages and KDR */}
-                <div className="grid grid-cols-2 gap-4">
+                <div id="overview" className="grid grid-cols-2 gap-4 scroll-mt-24">
                     <div
                         className="bg-gradient-to-br from-green-500/20 to-emerald-900/20 border border-green-500/30 rounded-2xl p-6 flex flex-col items-center justify-center relative"
                     >
@@ -1870,7 +1890,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Records Grid */}
-                <div>
+                <div id="top-players" className="scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <Trophy className="w-5 h-5 text-yellow-400" />
                         Top Players (Total Accumulated Stats)
@@ -2031,7 +2051,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 {/* Top Skills Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                     {/* Outgoing Skills */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                    <div id="top-skills-outgoing" className="bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24">
                         <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
                             <Swords className="w-5 h-5 text-orange-400" />
                             Top Outgoing Damage Skills
@@ -2064,7 +2084,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     </div>
 
                     {/* Incoming Skills */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                    <div id="top-skills-incoming" className="bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24">
                         <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
                             <Shield className="w-5 h-5 text-red-500" />
                             Top Incoming Damage Skills
@@ -2207,7 +2227,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Squad vs Enemy Size Timeline */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid">
+                <div id="timeline" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
                         <Users className="w-5 h-5 text-green-400" />
                         Squad vs Enemy Size
@@ -2265,7 +2285,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Map Distribution Pie Chart */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid">
+                <div id="map-distribution" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
                         <MapIcon className="w-5 h-5 text-blue-400" />
                         Map Distribution
@@ -2313,7 +2333,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Boon Output Tables */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                <div id="boon-output" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <ShieldCheck className="w-5 h-5 text-cyan-400" />
                         Boon Output
@@ -2446,7 +2466,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Offensive - Detailed Table */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                <div id="offense-detailed" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <Swords className="w-5 h-5 text-rose-300" />
                         Offenses - Detailed
@@ -2585,7 +2605,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Defenses - Detailed Table */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                <div id="defense-detailed" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <Shield className="w-5 h-5 text-sky-300" />
                         Defenses - Detailed
@@ -2707,7 +2727,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Support - Detailed Table */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                <div id="support-detailed" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <HelpingHand className="w-5 h-5 text-emerald-300" />
                         Support - Detailed
@@ -2830,7 +2850,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Healing Stats Table */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                <div id="healing-stats" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <Activity className="w-5 h-5 text-lime-300" />
                         Healing Stats
@@ -2942,7 +2962,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Special Buff Output Tables */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude">
+                <div id="special-buffs" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-purple-300" />
                         Special Buffs

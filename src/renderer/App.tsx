@@ -161,16 +161,71 @@ function App() {
         });
 
         const cleanupScreenshot = window.electronAPI.onRequestScreenshot(async (data: ILogData) => {
-            console.log("Screenshot requested for:", data.id);
-            setScreenshotData(data);
+            const logKey = data.id || data.filePath;
+            console.log("Screenshot requested for:", logKey);
+            if (!logKey) {
+                console.error('Screenshot request missing log identifier.');
+                return;
+            }
+            setScreenshotData({ ...data, id: logKey });
+
+            const escapeSelector = (value: string) => {
+                if (typeof window !== 'undefined' && (window as any).CSS?.escape) {
+                    return (window as any).CSS.escape(value);
+                }
+                return value.replace(/"/g, '\\"');
+            };
+
+            const waitForNodes = async (selector: string, expectedCount: number, timeoutMs: number) => {
+                const start = performance.now();
+                while (performance.now() - start < timeoutMs) {
+                    const nodes = Array.from(document.querySelectorAll(selector));
+                    if (nodes.length >= expectedCount) {
+                        return nodes;
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                }
+                return Array.from(document.querySelectorAll(selector));
+            };
+
+            const waitForNode = async (nodeId: string, timeoutMs: number) => {
+                const start = performance.now();
+                while (performance.now() - start < timeoutMs) {
+                    const node = document.getElementById(nodeId);
+                    if (node) return node;
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                }
+                return document.getElementById(nodeId);
+            };
 
             // Wait for render
             setTimeout(async () => {
                 const mode = (data as any)?.mode || 'image';
                 if (mode === 'image-beta') {
-                    const nodes = Array.from(document.querySelectorAll(`[data-screenshot-id="${data.id || data.filePath}"]`));
+                    const selector = `[data-screenshot-id="${escapeSelector(logKey)}"]`;
+                    const expectedCount = (embedStatSettings.showSquadSummary ? 1 : 0)
+                        + (embedStatSettings.showEnemySummary ? 1 : 0)
+                        + (embedStatSettings.showIncomingStats ? 4 : 0)
+                        + enabledTopListCount;
+                    const nodes = await waitForNodes(selector, Math.max(1, expectedCount), 5000);
                     if (nodes.length === 0) {
-                        console.error("Screenshot nodes not found");
+                        console.error("Screenshot nodes not found, falling back to full card.");
+                        const fallbackNode = await waitForNode(`log-screenshot-${logKey}`, 1500);
+                        if (fallbackNode) {
+                            try {
+                                const dataUrl = await toPng(fallbackNode, {
+                                    backgroundColor: '#0f172a',
+                                    quality: 0.95,
+                                    pixelRatio: 3
+                                });
+                                const resp = await fetch(dataUrl);
+                                const blob = await resp.blob();
+                                const arrayBuffer = await blob.arrayBuffer();
+                                window.electronAPI.sendScreenshot(logKey, new Uint8Array(arrayBuffer));
+                            } catch (err) {
+                                console.error("Fallback screenshot failed:", err);
+                            }
+                        }
                         setScreenshotData(null);
                         return;
                     }
@@ -220,14 +275,14 @@ function App() {
                         if (currentPair.length > 0) {
                             groups.push(currentPair);
                         }
-                        window.electronAPI.sendScreenshotsGroups(data.id, groups);
+                        window.electronAPI.sendScreenshotsGroups(logKey, groups);
                         setScreenshotData(null);
                     } catch (err) {
                         console.error("Screenshot failed:", err);
                         setScreenshotData(null);
                     }
                 } else {
-                    const node = document.getElementById(`log-screenshot-${data.id || data.filePath}`);
+                    const node = await waitForNode(`log-screenshot-${logKey}`, 2000);
                     if (node) {
                         try {
                             const dataUrl = await toPng(node, {
@@ -242,7 +297,7 @@ function App() {
                             const arrayBuffer = await blob.arrayBuffer();
                             const buffer = new Uint8Array(arrayBuffer);
 
-                            window.electronAPI.sendScreenshot(data.id, buffer);
+                            window.electronAPI.sendScreenshot(logKey, buffer);
                             setScreenshotData(null); // Cleanup
                         } catch (err) {
                             console.error("Screenshot failed:", err);
@@ -863,6 +918,14 @@ function App() {
                                 useClassIcons={showClassIcons}
                             />
                         ))}
+                        <ExpandableLogCard
+                            log={screenshotData}
+                            isExpanded={true}
+                            onToggle={() => { }}
+                            screenshotMode={true}
+                            embedStatSettings={embedStatSettings}
+                            useClassIcons={showClassIcons}
+                        />
                     </>
                 ) : (
                     screenshotData && (

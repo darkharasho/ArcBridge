@@ -67,10 +67,28 @@ const commitLines = commits
     .map((line) => line.trim())
     .filter(Boolean);
 
+let diffStat = '';
+let diffPatch = '';
+try {
+    diffStat = exec(`git diff ${range} --stat`);
+} catch {
+    diffStat = '';
+}
+try {
+    diffPatch = exec(`git diff ${range} --unified=2 --no-color`);
+} catch {
+    diffPatch = '';
+}
+
+const maxPatchChars = 12000;
+const trimmedPatch = diffPatch.length > maxPatchChars
+    ? `${diffPatch.slice(0, maxPatchChars)}\n... (diff truncated)`
+    : diffPatch;
+
 const prompt = [
     `You are writing friendly release notes for the "GW2 Arc Log Uploader" app.`,
     `Version: v${version}.`,
-    `Use ONLY the commit summary provided below (git log ${lastTag || 'project start'}..HEAD). Do not infer or add features not explicitly listed.`,
+    `Use ONLY the commit summary and diff provided below (git log ${lastTag || 'project start'}..HEAD and git diff). Do not infer or add features not explicitly listed.`,
     `Please produce concise, user-facing notes with these sections and markdown headings (include emojis in headings and sprinkle a few emojis in bullets):`,
     `## 🌟 Highlights`,
     `## 🛠️ Improvements`,
@@ -81,7 +99,13 @@ const prompt = [
     `If a commit message is vague or unclear, summarize it conservatively without guessing details.`,
     '',
     `Commit summary since ${lastTag || 'project start'}:`,
-    commitLines.length ? commitLines.map((line) => `- ${line}`).join('\n') : '- No commits found.'
+    commitLines.length ? commitLines.map((line) => `- ${line}`).join('\n') : '- No commits found.',
+    '',
+    `Diff summary (git diff ${range || 'HEAD'} --stat):`,
+    diffStat || 'No diff stats found.',
+    '',
+    `Code changes (git diff ${range || 'HEAD'} --unified=2):`,
+    trimmedPatch || 'No diff found.'
 ].join('\n');
 
 const body = {
@@ -149,14 +173,24 @@ const dateLabel = new Date().toLocaleDateString('en-US', {
     day: 'numeric'
 });
 
-const finalNotes = [
-    `# Release Notes`,
-    ``,
+const newSection = [
     `Version v${version} — ${dateLabel}`,
     ``,
-    outputText.trim(),
-    ``
+    outputText.trim()
 ].join('\n');
+
+let existingNotes = '';
+try {
+    if (fs.existsSync(releaseNotesPath)) {
+        existingNotes = fs.readFileSync(releaseNotesPath, 'utf8');
+    }
+} catch {
+    existingNotes = '';
+}
+
+const existingBody = existingNotes.replace(/^# Release Notes\\s*/i, '').trim();
+const sections = [newSection.trim(), existingBody].filter(Boolean);
+const finalNotes = `# Release Notes\n\n${sections.join('\n\n')}\n`;
 
 fs.writeFileSync(releaseNotesPath, finalNotes, 'utf8');
 console.log(`Release notes written to ${releaseNotesPath}`);

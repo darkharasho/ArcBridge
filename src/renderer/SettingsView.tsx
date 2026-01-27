@@ -120,6 +120,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const inferredPagesUrl = githubRepoOwner && githubRepoName
         ? `https://${githubRepoOwner}.github.io/${githubRepoName}`
         : '';
+    const lastSavedPagesUrlRef = useRef<string | null>(null);
     const logoSyncInFlightRef = useRef(false);
     const queuedLogoPathRef = useRef<string | null>(null);
     const orderedThemes = useMemo(() => {
@@ -333,6 +334,15 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             refreshGithubRepos();
         }
     }, [githubAuthStatus]);
+
+    useEffect(() => {
+        if (!hasLoaded) return;
+        if (!inferredPagesUrl) return;
+        if (!window.electronAPI?.saveSettings) return;
+        if (lastSavedPagesUrlRef.current === inferredPagesUrl) return;
+        lastSavedPagesUrlRef.current = inferredPagesUrl;
+        window.electronAPI.saveSettings({ githubPagesBaseUrl: inferredPagesUrl });
+    }, [inferredPagesUrl, hasLoaded]);
 
     useEffect(() => {
         if (!hasLoaded) return;
@@ -673,6 +683,56 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                     <div className="text-xs text-gray-500 mb-4">
                         Sign in with GitHub (device flow). We will create a repo and enable Pages automatically if needed.
                     </div>
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <button
+                            onClick={handleGithubConnect}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors"
+                        >
+                            <LinkIcon className="w-4 h-4" />
+                            {githubAuthStatus === 'connected' ? 'Re-connect GitHub' : 'Connect GitHub'}
+                        </button>
+                        <div className={`text-xs px-3 py-1 rounded-full border ${githubAuthStatus === 'connected'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : githubAuthStatus === 'pending'
+                                ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                : 'bg-white/5 text-gray-400 border-white/10'
+                            }`}
+                        >
+                            {githubAuthStatus === 'connected' ? 'Connected' : githubAuthStatus === 'pending' ? 'Waiting for OAuth...' : 'Not connected'}
+                        </div>
+                        <div className="ml-auto">
+                            <button
+                                onClick={() => {
+                                    setGithubToken('');
+                                    setGithubAuthStatus('idle');
+                                    setGithubAuthMessage('Disconnected from GitHub.');
+                                    setGithubRepos([]);
+                                    setGithubRepoName('');
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold border border-white/10 transition-colors"
+                            >
+                                Disconnect
+                            </button>
+                        </div>
+                        {githubAuthMessage && (
+                            <div className="text-xs text-gray-400">{githubAuthMessage}</div>
+                        )}
+                    </div>
+                    {githubUserCode && githubVerificationUri && (
+                        <div className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 mb-4 animate-[fadeUp_0.6s_ease-out]">
+                            <div className="text-xs uppercase tracking-widest text-gray-500 mb-1">Authorize in Browser</div>
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="font-mono text-lg text-white">{githubUserCode}</div>
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(githubUserCode)}
+                                    className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                                >
+                                    Copy Code
+                                </button>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{githubVerificationUri}</div>
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                         <div className="md:col-span-2 bg-black/30 border border-white/10 rounded-xl p-3">
                             <div className="flex items-center justify-between mb-2">
@@ -886,56 +946,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 mb-3">
-                        <button
-                            onClick={handleGithubConnect}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors"
-                        >
-                            <LinkIcon className="w-4 h-4" />
-                            {githubAuthStatus === 'connected' ? 'Re-connect GitHub' : 'Connect GitHub'}
-                        </button>
-                        <div className={`text-xs px-3 py-1 rounded-full border ${githubAuthStatus === 'connected'
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                            : githubAuthStatus === 'pending'
-                                ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
-                                : 'bg-white/5 text-gray-400 border-white/10'
-                            }`}
-                        >
-                            {githubAuthStatus === 'connected' ? 'Connected' : githubAuthStatus === 'pending' ? 'Waiting for OAuth...' : 'Not connected'}
-                        </div>
-                        <div className="ml-auto">
-                            <button
-                                onClick={() => {
-                                    setGithubToken('');
-                                    setGithubAuthStatus('idle');
-                                    setGithubAuthMessage('Disconnected from GitHub.');
-                                    setGithubRepos([]);
-                                    setGithubRepoName('');
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold border border-white/10 transition-colors"
-                            >
-                                Disconnect
-                            </button>
-                        </div>
-                        {githubAuthMessage && (
-                            <div className="text-xs text-gray-400">{githubAuthMessage}</div>
-                        )}
-                    </div>
-                    {githubUserCode && githubVerificationUri && (
-                        <div className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 mb-3 animate-[fadeUp_0.6s_ease-out]">
-                            <div className="text-xs uppercase tracking-widest text-gray-500 mb-1">Authorize in Browser</div>
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="font-mono text-lg text-white">{githubUserCode}</div>
-                                <button
-                                    onClick={() => navigator.clipboard.writeText(githubUserCode)}
-                                    className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
-                                >
-                                    Copy Code
-                                </button>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">{githubVerificationUri}</div>
-                        </div>
-                    )}
                 </SettingsSection>
 
                 {/* Discord Embed Stats - Summary Sections */}
