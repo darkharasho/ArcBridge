@@ -167,6 +167,8 @@ export interface IElectronAPI {
     listLogFiles: (payload: { dir: string }) => Promise<{ success: boolean; files?: Array<{ path: string; name: string; mtimeMs: number; size: number }>; error?: string }>;
     createGithubRepo: (params: { name: string; branch?: string }) => Promise<{ success: boolean; repo?: { full_name: string; owner: string; name: string; pagesUrl?: string }; error?: string }>;
     ensureGithubTemplate: () => Promise<{ success: boolean; updated?: boolean; error?: string }>;
+    selectGithubLogo: () => Promise<string | null>;
+    applyGithubLogo: (payload?: { logoPath?: string }) => Promise<{ success: boolean; updated?: boolean; error?: string }>;
     applyGithubTheme: (payload?: { themeId?: string }) => Promise<{ success: boolean; error?: string }>;
     uploadWebReport: (payload: { meta: any; stats: any }) => Promise<{ success: boolean; url?: string; error?: string }>;
     getGithubPagesBuildStatus: () => Promise<{ success: boolean; status?: string; updatedAt?: string; errorMessage?: string; error?: string }>;

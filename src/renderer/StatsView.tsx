@@ -16,6 +16,29 @@ interface StatsViewProps {
     embedded?: boolean;
 }
 
+const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
+
+const renderProfessionIcon = (
+    profession: string | undefined,
+    professionList?: string[],
+    className = 'w-4 h-4'
+) => {
+    const list = (professionList || []).filter(Boolean);
+    const resolvedProfession = profession === 'Multi' && list.length > 0 ? list[0] : profession;
+    const iconPath = getProfessionIconPath(resolvedProfession || 'Unknown');
+    if (!iconPath) return null;
+    const title = list.length > 1 ? `Multi: ${list.join(', ')}` : (list[0] || resolvedProfession || 'Unknown');
+    const showMultiDot = list.length > 1;
+    return (
+        <span className="relative inline-flex shrink-0" title={title}>
+            <img src={iconPath} alt={resolvedProfession || 'Unknown'} className={`${className} shrink-0`} />
+            {showMultiDot && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-300 ring-2 ring-[#0f172a]" />
+            )}
+        </span>
+    );
+};
+
 const OFFENSE_METRICS: Array<{
     id: string;
     label: string;
@@ -312,6 +335,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         supportTotals: {},
                         healingActiveMs: 0,
                         healingTotals: {},
+                        professions: new Set<string>(),
+                        professionTimeMs: {} as Record<string, number>,
                         profession: p.profession || 'Unknown',
                         damage: 0,
                         dps: 0,
@@ -320,7 +345,16 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 }
 
                 const s = playerStats.get(key)!;
-                if (p.profession) s.profession = p.profession;
+                if (p.profession) {
+                    s.profession = p.profession;
+                    if (p.profession && p.profession !== 'Unknown') {
+                        s.professions.add(p.profession);
+                        const activeMs = Array.isArray(p.activeTimes) && typeof p.activeTimes[0] === 'number'
+                            ? p.activeTimes[0]
+                            : details.durationMS || 0;
+                        s.professionTimeMs[p.profession] = (s.professionTimeMs[p.profession] || 0) + activeMs;
+                    }
+                }
                 s.logsJoined++;
 
                 // Aggregate Metrics
@@ -627,7 +661,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         const avgEnemies = total > 0 ? Math.round(totalEnemiesAccum / total) : 0;
 
         // Find Leaders
-        const emptyLeader = { value: 0, player: '-', count: 0, profession: 'Unknown' };
+        const emptyLeader = { value: 0, player: '-', count: 0, profession: 'Unknown', professionList: [] as string[] };
 
         let maxDownContrib = { ...emptyLeader };
         let maxCleanses = { ...emptyLeader };
@@ -638,15 +672,33 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         let maxCC = { ...emptyLeader };
         let maxDodges = { ...emptyLeader };
         let maxLogsJoined = 0;
-        let closestToTag = { value: 999999, player: '-', count: 0, profession: 'Unknown' }; // Min is better
+        let closestToTag = { value: 999999, player: '-', count: 0, profession: 'Unknown', professionList: [] as string[] }; // Min is better
         let maxDamage = { ...emptyLeader };
         let maxDps = { ...emptyLeader };
         let maxRevives = { ...emptyLeader };
+
+        playerStats.forEach((stat) => {
+            const list = Array.from(stat.professions || []).filter((prof) => prof && prof !== 'Unknown');
+            stat.professionList = list;
+            if (list.length > 0) {
+                let primary = list[0];
+                let maxTime = stat.professionTimeMs?.[primary] || 0;
+                list.forEach((prof) => {
+                    const time = stat.professionTimeMs?.[prof] || 0;
+                    if (time > maxTime) {
+                        maxTime = time;
+                        primary = prof;
+                    }
+                });
+                stat.profession = primary;
+            }
+        });
 
         const playerEntries = Array.from(playerStats.entries()).map(([key, stat]) => ({ key, stat }));
         const offensePlayers = playerEntries.map(({ stat }) => ({
             account: stat.account,
             profession: stat.profession || 'Unknown',
+            professionList: stat.professionList,
             totalFightMs: stat.totalFightMs || 0,
             offenseTotals: stat.offenseTotals,
             offenseRateWeights: stat.offenseRateWeights,
@@ -656,24 +708,27 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         const defensePlayers = playerEntries.map(({ stat }) => ({
             account: stat.account,
             profession: stat.profession || 'Unknown',
+            professionList: stat.professionList,
             activeMs: stat.defenseActiveMs || 0,
             defenseTotals: stat.defenseTotals
         }));
         const supportPlayers = playerEntries.map(({ stat }) => ({
             account: stat.account,
             profession: stat.profession || 'Unknown',
+            professionList: stat.professionList,
             activeMs: stat.supportActiveMs || 0,
             supportTotals: stat.supportTotals
         }));
         const healingPlayers = playerEntries.map(({ stat }) => ({
             account: stat.account,
             profession: stat.profession || 'Unknown',
+            professionList: stat.professionList,
             activeMs: stat.healingActiveMs || 0,
             healingTotals: stat.healingTotals
         }));
 
         playerEntries.forEach(({ stat }) => {
-            const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown' };
+            const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown', professionList: stat.professionList || [] };
 
             if (stat.downContrib > maxDownContrib.value) maxDownContrib = { value: stat.downContrib, ...pInfo };
             if (stat.cleanses > maxCleanses.value) maxCleanses = { value: stat.cleanses, ...pInfo };
@@ -698,7 +753,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
         if (closestToTag.value === 999999) closestToTag.value = 0;
 
-        const buildLeaderboard = (items: Array<{ key: string; account: string; profession: string; value: number }>, higherIsBetter: boolean) => {
+        const buildLeaderboard = (items: Array<{ key: string; account: string; profession: string; professionList?: string[]; value: number }>, higherIsBetter: boolean) => {
             const filtered = items.filter(item => Number.isFinite(item.value) && item.value > 0);
             const sorted = filtered.sort((a, b) => {
                 const diff = higherIsBetter ? b.value - a.value : a.value - b.value;
@@ -716,6 +771,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     rank: lastRank,
                     account: item.account,
                     profession: item.profession,
+                    professionList: item.professionList,
                     value: item.value
                 };
             });
@@ -726,54 +782,63 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.downContrib
             })), true),
             barrier: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.barrier
             })), true),
             healing: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.healing
             })), true),
             dodges: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.dodges
             })), true),
             strips: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.strips
             })), true),
             cleanses: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.cleanses
             })), true),
             cc: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.cc
             })), true),
             stability: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.stab
             })), true),
             closestToTag: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                 key,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
             })).filter(item => Number.isFinite(item.value)), false)
         };
@@ -823,6 +888,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             reason: 'No sufficient data',
             score: -1,
             profession: 'Unknown',
+            professionList: [] as string[],
             color: '#64748b',
             topStats: [] as { name: string, val: string, ratio: number }[]
         };
@@ -832,6 +898,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             player: string;
             account: string;
             profession: string;
+            professionList?: string[];
             score: number;
             reason: string;
             topStats: { name: string, val: string, ratio: number }[];
@@ -911,6 +978,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 player: stat.name,
                 account: stat.account,
                 profession: stat.profession,
+                professionList: stat.professionList,
                 score,
                 reason,
                 topStats: top3.map(c => ({ name: c.name, val: c.fmt, ratio: c.rank }))
@@ -930,6 +998,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 reason: top.reason,
                 score: top.score,
                 profession: top.profession,
+                professionList: top.professionList || [],
                 color: getProfessionColor(top.profession),
                 topStats: top.topStats
             };
@@ -1246,36 +1315,34 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         if (!term) return stats.boonTables;
         return stats.boonTables.filter((boon: any) => boon.name.toLowerCase().includes(term));
     }, [stats.boonTables, boonSearch]);
+    const activeBoonTable = useMemo(() => {
+        if (!activeBoonTab) return null;
+        return stats.boonTables.find((boon: any) => boon.id === activeBoonTab) ?? null;
+    }, [stats.boonTables, activeBoonTab]);
     const filteredSpecialTables = useMemo(() => {
         const term = specialSearch.trim().toLowerCase();
         const sorted = [...stats.specialTables].sort((a: any, b: any) => a.name.localeCompare(b.name));
         if (!term) return sorted;
         return sorted.filter((buff: any) => buff.name.toLowerCase().includes(term));
     }, [stats.specialTables, specialSearch]);
+    const activeSpecialTable = useMemo(() => {
+        if (!activeSpecialTab) return null;
+        return stats.specialTables.find((buff: any) => buff.id === activeSpecialTab) ?? null;
+    }, [stats.specialTables, activeSpecialTab]);
 
     useEffect(() => {
-        if (!filteredBoonTables || filteredBoonTables.length === 0) {
-            if (activeBoonTab !== null) {
-                setActiveBoonTab(null);
-            }
-            return;
+        if (!stats.boonTables || stats.boonTables.length === 0) return;
+        if (!activeBoonTab || !stats.boonTables.some((tab: any) => tab.id === activeBoonTab)) {
+            setActiveBoonTab(stats.boonTables[0].id);
         }
-        if (!activeBoonTab || !filteredBoonTables.some((tab: any) => tab.id === activeBoonTab)) {
-            setActiveBoonTab(filteredBoonTables[0].id);
-        }
-    }, [filteredBoonTables, activeBoonTab]);
+    }, [stats.boonTables, activeBoonTab]);
 
     useEffect(() => {
-        if (!filteredSpecialTables || filteredSpecialTables.length === 0) {
-            if (activeSpecialTab !== null) {
-                setActiveSpecialTab(null);
-            }
-            return;
+        if (!stats.specialTables || stats.specialTables.length === 0) return;
+        if (!activeSpecialTab || !stats.specialTables.some((tab: any) => tab.id === activeSpecialTab)) {
+            setActiveSpecialTab(stats.specialTables[0].id);
         }
-        if (!activeSpecialTab || !filteredSpecialTables.some((tab: any) => tab.id === activeSpecialTab)) {
-            setActiveSpecialTab(filteredSpecialTables[0].id);
-        }
-    }, [filteredSpecialTables, activeSpecialTab]);
+    }, [stats.specialTables, activeSpecialTab]);
 
     const buildReportMeta = () => {
         const commanderSet = new Set<string>();
@@ -1487,7 +1554,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
     const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active, rows, onClose, formatValue }: any) => {
         const classes = colorClasses[color] || colorClasses.blue;
-        const iconPath = getProfessionIconPath(data.profession || 'Unknown');
         return (
             <div
                 role="button"
@@ -1514,9 +1580,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
                 <div className="flex flex-col border-t border-white/5 pt-2">
                     <div className="flex items-center gap-2 min-w-0">
-                        {iconPath && (
-                            <img src={iconPath} alt={data.profession || 'Unknown'} className="w-4 h-4 shrink-0" />
-                        )}
+                        {renderProfessionIcon(data.profession || 'Unknown', data.professionList, 'w-4 h-4')}
                         <div className="text-sm font-medium text-blue-300 truncate">{data.player || '-'}</div>
                     </div>
                     <div className="text-xs text-gray-500 truncate">{data.count ? `${data.count} logs` : '-'}</div>
@@ -1529,13 +1593,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                 {rows.map((row: any) => (
                                     <div key={`${title}-${row.rank}-${row.account}`} className="flex items-center gap-2 text-xs text-gray-300">
                                         <div className="w-6 text-right text-gray-500">{row.rank}</div>
-                                        {getProfessionIconPath(row.profession) && (
-                                            <img
-                                                src={getProfessionIconPath(row.profession) as string}
-                                                alt={row.profession}
-                                                className="w-4 h-4 shrink-0"
-                                            />
-                                        )}
+                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
                                         <div className="flex-1 truncate">{row.account}</div>
                                         <div className="text-gray-400 font-mono">{formatValue ? formatValue(row.value) : row.value}</div>
                                     </div>
@@ -1762,13 +1820,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     </div>
                                     <div className="text-3xl font-black text-white mb-2 flex items-center gap-3">
                                         {stats.mvp.account}
-                                        {getProfessionIconPath(stats.mvp.profession) && (
-                                            <img
-                                                src={getProfessionIconPath(stats.mvp.profession) as string}
-                                                alt={stats.mvp.profession}
-                                                className="w-6 h-6"
-                                            />
-                                        )}
+                                        {renderProfessionIcon(stats.mvp.profession, stats.mvp.professionList, 'w-6 h-6')}
                                         <span className="text-lg font-medium text-gray-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
                                             {stats.mvp.profession}
                                         </span>
@@ -1831,13 +1883,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    {entry.data && getProfessionIconPath(entry.data.profession) && (
-                                        <img
-                                            src={getProfessionIconPath(entry.data.profession) as string}
-                                            alt={entry.data.profession}
-                                            className="w-6 h-6"
-                                        />
-                                    )}
+                                    {entry.data && renderProfessionIcon(entry.data.profession, entry.data.professionList, 'w-6 h-6')}
                                     <div className="min-w-0 flex-1">
                                         <div className="text-lg font-semibold text-white truncate">
                                             {entry.data?.account || '—'}
@@ -2229,7 +2275,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                                    <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                                    <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
                                         <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
                                         <input
                                             value={boonSearch}
@@ -2237,7 +2283,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             placeholder="Search..."
                                             className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                         />
-                                        <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                        <div className={sidebarListClass}>
                                             {filteredBoonTables.length === 0 ? (
                                                 <div className="text-center text-gray-500 italic py-6 text-xs">No boons match this filter</div>
                                             ) : (
@@ -2257,77 +2303,69 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                         </div>
                                     </div>
                                     <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
-                                        {filteredBoonTables.length === 0 ? (
-                                            <div className="px-4 py-10 text-center text-gray-500 italic text-sm">No boons match this filter</div>
+                                        {!activeBoonTable ? (
+                                            <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a boon to view details</div>
                                         ) : (
-                                            filteredBoonTables.map((boon: any) => (
-                                                activeBoonTab === boon.id ? (
-                                                    <div key={boon.id}>
-                                                        <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                            <div className="text-sm font-semibold text-gray-200">{boon.name}</div>
-                                                            <div className="text-xs uppercase tracking-widest text-gray-500">
-                                                                {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
-                                                            {([
-                                                                { value: 'total', label: 'Total Gen' },
-                                                                { value: 'average', label: 'Gen/Sec' },
-                                                                { value: 'uptime', label: 'Uptime' }
-                                                            ] as const).map((option) => (
-                                                                <button
-                                                                    key={option.value}
-                                                                    onClick={() => setActiveBoonMetric(option.value)}
-                                                                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
-                                                                        ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
-                                                                        : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
-                                                                        }`}
-                                                                >
-                                                                    {option.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                        <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                            <div>Player</div>
-                                                            <div className="text-right">
-                                                                {activeBoonMetric === 'total'
-                                                                    ? 'Total'
-                                                                    : activeBoonMetric === 'average'
-                                                                        ? 'Gen/Sec'
-                                                                        : 'Uptime'}
-                                                            </div>
-                                                            <div className="text-right">Fight Time</div>
-                                                        </div>
-                                                        <div className="max-h-64 overflow-y-auto">
-                                                            {[...boon.rows]
-                                                                .sort((a: any, b: any) => (
-                                                                    getBoonMetricValue(b, activeBoonCategory, boon.stacking, activeBoonMetric)
-                                                                    - getBoonMetricValue(a, activeBoonCategory, boon.stacking, activeBoonMetric)
-                                                                ))
-                                                                .map((row: any, idx: number) => (
-                                                                    <div key={`${boon.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                                        <div className="flex items-center gap-2 min-w-0">
-                                                                            {getProfessionIconPath(row.profession) && (
-                                                                                <img
-                                                                                    src={getProfessionIconPath(row.profession) as string}
-                                                                                    alt={row.profession}
-                                                                                    className="w-4 h-4 shrink-0"
-                                                                                />
-                                                                            )}
-                                                                            <span className="truncate">{row.account}</span>
-                                                                        </div>
-                                                                        <div className="text-right font-mono text-gray-300">
-                                                                            {formatBoonMetricDisplay(row, activeBoonCategory, boon.stacking, activeBoonMetric)}
-                                                                        </div>
-                                                                        <div className="text-right font-mono text-gray-400">
-                                                                            {row.activeTimeMs ? `${(row.activeTimeMs / 1000).toFixed(1)}s` : '-'}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                        </div>
+                                            <div>
+                                                <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                    <div className="text-sm font-semibold text-gray-200">{activeBoonTable.name}</div>
+                                                    <div className="text-xs uppercase tracking-widest text-gray-500">
+                                                        {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
                                                     </div>
-                                                ) : null
-                                            ))
+                                                </div>
+                                                <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                    {([
+                                                        { value: 'total', label: 'Total Gen' },
+                                                        { value: 'average', label: 'Gen/Sec' },
+                                                        { value: 'uptime', label: 'Uptime' }
+                                                    ] as const).map((option) => (
+                                                        <button
+                                                            key={option.value}
+                                                            onClick={() => setActiveBoonMetric(option.value)}
+                                                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${activeBoonMetric === option.value
+                                                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                                }`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                    <div className="text-center">#</div>
+                                                    <div>Player</div>
+                                                    <div className="text-right">
+                                                        {activeBoonMetric === 'total'
+                                                            ? 'Total'
+                                                            : activeBoonMetric === 'average'
+                                                                ? 'Gen/Sec'
+                                                                : 'Uptime'}
+                                                    </div>
+                                                    <div className="text-right">Fight Time</div>
+                                                </div>
+                                                <div className="max-h-64 overflow-y-auto">
+                                                    {[...activeBoonTable.rows]
+                                                        .sort((a: any, b: any) => (
+                                                            getBoonMetricValue(b, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
+                                                            - getBoonMetricValue(a, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
+                                                        ))
+                                                        .map((row: any, idx: number) => (
+                                                            <div key={`${activeBoonTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                    <span className="truncate">{row.account}</span>
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {formatBoonMetricDisplay(row, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)}
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-400">
+                                                                    {row.activeTimeMs ? `${(row.activeTimeMs / 1000).toFixed(1)}s` : '-'}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -2346,7 +2384,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         <div className="text-center text-gray-500 italic py-8">No offensive stats available</div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Offensive Tabs</div>
                                 <input
                                     value={offenseSearch}
@@ -2354,7 +2392,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     placeholder="Search..."
                                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                 />
-                                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                <div className={sidebarListClass}>
                                     {(() => {
                                         const filtered = OFFENSE_METRICS.filter((metric) =>
                                             metric.label.toLowerCase().includes(offenseSearch.trim().toLowerCase())
@@ -2405,7 +2443,11 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             per1s: metric.isPercent || metric.isRate ? totalValue(row) : totalValue(row) / totalSeconds(row),
                                             per60s: metric.isPercent || metric.isRate ? totalValue(row) : (totalValue(row) * 60) / totalSeconds(row)
                                         }))
-                                        .sort((a, b) => b.total - a.total || a.account.localeCompare(b.account));
+                                        .sort((a, b) => {
+                                            const aValue = offenseViewMode === 'total' ? a.total : offenseViewMode === 'per1s' ? a.per1s : a.per60s;
+                                            const bValue = offenseViewMode === 'total' ? b.total : offenseViewMode === 'per1s' ? b.per1s : b.per60s;
+                                            return bValue - aValue || a.account.localeCompare(b.account);
+                                        });
 
                                     return (
                                         <>
@@ -2431,7 +2473,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div className="text-center">#</div>
                                                 <div>Player</div>
                                                 <div className="text-right">
                                                     {offenseViewMode === 'total' ? 'Total' : offenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
@@ -2440,15 +2483,10 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             </div>
                                             <div className="max-h-80 overflow-y-auto">
                                                 {rows.map((row: any, idx: number) => (
-                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            {getProfessionIconPath(row.profession) && (
-                                                                <img
-                                                                    src={getProfessionIconPath(row.profession) as string}
-                                                                    alt={row.profession}
-                                                                    className="w-4 h-4 shrink-0"
-                                                                />
-                                                            )}
+                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
                                                             <span className="truncate">{row.account}</span>
                                                         </div>
                                                         <div className="text-right font-mono text-gray-300">
@@ -2485,7 +2523,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         <div className="text-center text-gray-500 italic py-8">No defensive stats available</div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Defensive Tabs</div>
                                 <input
                                     value={defenseSearch}
@@ -2493,7 +2531,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     placeholder="Search..."
                                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                 />
-                                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                <div className={sidebarListClass}>
                                     {(() => {
                                         const filtered = DEFENSE_METRICS.filter((metric) =>
                                             metric.label.toLowerCase().includes(defenseSearch.trim().toLowerCase())
@@ -2527,7 +2565,11 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             per1s: (row.defenseTotals?.[metric.id] || 0) / totalSeconds(row),
                                             per60s: ((row.defenseTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
                                         }))
-                                        .sort((a, b) => b.total - a.total || a.account.localeCompare(b.account));
+                                        .sort((a, b) => {
+                                            const aValue = defenseViewMode === 'total' ? a.total : defenseViewMode === 'per1s' ? a.per1s : a.per60s;
+                                            const bValue = defenseViewMode === 'total' ? b.total : defenseViewMode === 'per1s' ? b.per1s : b.per60s;
+                                            return bValue - aValue || a.account.localeCompare(b.account);
+                                        });
 
                                     return (
                                         <>
@@ -2553,7 +2595,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div className="text-center">#</div>
                                                 <div>Player</div>
                                                 <div className="text-right">
                                                     {defenseViewMode === 'total' ? 'Total' : defenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
@@ -2562,15 +2605,10 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             </div>
                                             <div className="max-h-80 overflow-y-auto">
                                                 {rows.map((row: any, idx: number) => (
-                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            {getProfessionIconPath(row.profession) && (
-                                                                <img
-                                                                    src={getProfessionIconPath(row.profession) as string}
-                                                                    alt={row.profession}
-                                                                    className="w-4 h-4 shrink-0"
-                                                                />
-                                                            )}
+                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
                                                             <span className="truncate">{row.account}</span>
                                                         </div>
                                                         <div className="text-right font-mono text-gray-300">
@@ -2607,7 +2645,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         <div className="text-center text-gray-500 italic py-8">No support stats available</div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
                                 <input
                                     value={supportSearch}
@@ -2615,7 +2653,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     placeholder="Search..."
                                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                 />
-                                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                <div className={sidebarListClass}>
                                     {(() => {
                                         const filtered = SUPPORT_METRICS.filter((metric) =>
                                             metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
@@ -2649,7 +2687,11 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             per1s: (row.supportTotals?.[metric.id] || 0) / totalSeconds(row),
                                             per60s: ((row.supportTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
                                         }))
-                                        .sort((a, b) => b.total - a.total || a.account.localeCompare(b.account));
+                                        .sort((a, b) => {
+                                            const aValue = supportViewMode === 'total' ? a.total : supportViewMode === 'per1s' ? a.per1s : a.per60s;
+                                            const bValue = supportViewMode === 'total' ? b.total : supportViewMode === 'per1s' ? b.per1s : b.per60s;
+                                            return bValue - aValue || a.account.localeCompare(b.account);
+                                        });
 
                                     return (
                                         <>
@@ -2675,7 +2717,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div className="text-center">#</div>
                                                 <div>Player</div>
                                                 <div className="text-right">
                                                     {supportViewMode === 'total' ? 'Total' : supportViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
@@ -2684,15 +2727,10 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             </div>
                                             <div className="max-h-80 overflow-y-auto">
                                                 {rows.map((row: any, idx: number) => (
-                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            {getProfessionIconPath(row.profession) && (
-                                                                <img
-                                                                    src={getProfessionIconPath(row.profession) as string}
-                                                                    alt={row.profession}
-                                                                    className="w-4 h-4 shrink-0"
-                                                                />
-                                                            )}
+                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
                                                             <span className="truncate">{row.account}</span>
                                                         </div>
                                                         <div className="text-right font-mono text-gray-300">
@@ -2730,9 +2768,9 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                         <div className="text-center text-gray-500 italic py-8">No healing stats available</div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Healing Tabs</div>
-                                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                <div className="flex-1 overflow-y-auto space-y-1 pr-1">
                                     {HEALING_METRICS.map((metric) => (
                                         <button
                                             key={metric.id}
@@ -2797,7 +2835,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="grid grid-cols-[1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div className="text-center">#</div>
                                                 <div>Player</div>
                                                 <div className="text-right">{metric.label}</div>
                                                 <div className="text-right">Fight Time</div>
@@ -2807,15 +2846,10 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                     <div className="px-4 py-6 text-sm text-gray-500 italic">No healing data for this view</div>
                                                 ) : (
                                                     rows.map((row: any, idx: number) => (
-                                                        <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                        <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                            <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
                                                             <div className="flex items-center gap-2 min-w-0">
-                                                                {getProfessionIconPath(row.profession) && (
-                                                                    <img
-                                                                        src={getProfessionIconPath(row.profession) as string}
-                                                                        alt={row.profession}
-                                                                        className="w-4 h-4 shrink-0"
-                                                                    />
-                                                                )}
+                                                                {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
                                                                 <span className="truncate">{row.account}</span>
                                                             </div>
                                                             <div className="text-right font-mono text-gray-300">
@@ -2847,7 +2881,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     ) : (
                         <>
                             <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                                <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                                <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
                                     <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Special Buffs</div>
                                     <input
                                         value={specialSearch}
@@ -2855,7 +2889,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                         placeholder="Search..."
                                         className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                     />
-                                    <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                                    <div className={sidebarListClass}>
                                         {filteredSpecialTables.length === 0 ? (
                                             <div className="text-center text-gray-500 italic py-6 text-xs">No special buffs match this filter</div>
                                         ) : (
@@ -2875,50 +2909,42 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     </div>
                                 </div>
                                 <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
-                                    {filteredSpecialTables.length === 0 ? (
-                                        <div className="px-4 py-10 text-center text-gray-500 italic text-sm">No special buffs match this filter</div>
+                                    {!activeSpecialTable ? (
+                                        <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a special buff to view details</div>
                                     ) : (
-                                        filteredSpecialTables.map((buff: any) => (
-                                            activeSpecialTab === buff.id ? (
-                                                <div key={buff.id}>
-                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                        <div className="text-sm font-semibold text-gray-200">{buff.name}</div>
-                                                        <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
+                                        <div>
+                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                <div className="text-sm font-semibold text-gray-200">{activeSpecialTable.name}</div>
+                                                <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
+                                            </div>
+                                            <div className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                <div className="text-center">#</div>
+                                                <div>Player</div>
+                                                <div className="text-right">Total</div>
+                                                <div className="text-right">Per Sec</div>
+                                                <div className="text-right">Fight Time</div>
+                                            </div>
+                                            <div className="max-h-64 overflow-y-auto">
+                                                {activeSpecialTable.rows.map((row: any, idx: number) => (
+                                                    <div key={`${activeSpecialTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                            <span className="truncate">{row.account}</span>
+                                                        </div>
+                                                        <div className="text-right font-mono text-gray-300">
+                                                            {Math.round(row.total).toLocaleString()}
+                                                        </div>
+                                                        <div className="text-right font-mono text-gray-300">
+                                                            {formatWithCommas(row.perSecond, 1)}
+                                                        </div>
+                                                        <div className="text-right font-mono text-gray-400">
+                                                            {row.duration ? `${row.duration.toFixed(1)}s` : '-'}
+                                                        </div>
                                                     </div>
-                                                    <div className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                        <div>Player</div>
-                                                        <div className="text-right">Total</div>
-                                                        <div className="text-right">Per Sec</div>
-                                                        <div className="text-right">Fight Time</div>
-                                                    </div>
-                                                    <div className="max-h-64 overflow-y-auto">
-                                                        {buff.rows.map((row: any, idx: number) => (
-                                                            <div key={`${buff.id}-${row.account}-${idx}`} className="grid grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    {getProfessionIconPath(row.profession) && (
-                                                                        <img
-                                                                            src={getProfessionIconPath(row.profession) as string}
-                                                                            alt={row.profession}
-                                                                            className="w-4 h-4 shrink-0"
-                                                                        />
-                                                                    )}
-                                                                    <span className="truncate">{row.account}</span>
-                                                                </div>
-                                                                <div className="text-right font-mono text-gray-300">
-                                                                    {Math.round(row.total).toLocaleString()}
-                                                                </div>
-                                                                <div className="text-right font-mono text-gray-300">
-                                                                    {formatWithCommas(row.perSecond, 1)}
-                                                                </div>
-                                                                <div className="text-right font-mono text-gray-400">
-                                                                    {row.duration ? `${row.duration.toFixed(1)}s` : '-'}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ) : null
-                                        ))
+                                                ))}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>

@@ -1058,7 +1058,8 @@ if (!gotTheLock) {
                 githubBranch: store.get('githubBranch', 'main'),
                 githubPagesBaseUrl: store.get('githubPagesBaseUrl', null),
                 githubToken: store.get('githubToken', null),
-                githubWebTheme: store.get('githubWebTheme', DEFAULT_WEB_THEME_ID)
+                githubWebTheme: store.get('githubWebTheme', DEFAULT_WEB_THEME_ID),
+                githubLogoPath: store.get('githubLogoPath', null)
             };
         });
 
@@ -1070,7 +1071,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -1130,6 +1131,9 @@ if (!gotTheLock) {
             if (settings.githubWebTheme !== undefined) {
                 store.set('githubWebTheme', settings.githubWebTheme);
             }
+            if (settings.githubLogoPath !== undefined) {
+                store.set('githubLogoPath', settings.githubLogoPath);
+            }
         });
 
         ipcMain.handle('select-directory', async () => {
@@ -1149,6 +1153,18 @@ if (!gotTheLock) {
                 ]
             });
             if (!result.canceled && result.filePaths.length > 0) return result.filePaths;
+            return null;
+        });
+
+        ipcMain.handle('select-github-logo', async () => {
+            if (!win) return null;
+            const result = await dialog.showOpenDialog(win, {
+                properties: ['openFile'],
+                filters: [
+                    { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }
+                ]
+            });
+            if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
             return null;
         });
 
@@ -1494,6 +1510,80 @@ if (!gotTheLock) {
             }
         });
 
+        ipcMain.handle('apply-github-logo', async (_event, payload?: { logoPath?: string }) => {
+            try {
+                const token = store.get('githubToken') as string | undefined;
+                const owner = store.get('githubRepoOwner') as string | undefined;
+                const repo = store.get('githubRepoName') as string | undefined;
+                const branch = (store.get('githubBranch') as string | undefined) || 'main';
+                const logoPath = payload?.logoPath || (store.get('githubLogoPath') as string | undefined);
+                if (!token) {
+                    return { success: false, error: 'Missing GitHub token. Connect GitHub first.' };
+                }
+                if (!owner || !repo) {
+                    return { success: false, error: 'Select or create a repository in Settings first.' };
+                }
+                if (!logoPath || !fs.existsSync(logoPath)) {
+                    return { success: false, error: 'Logo file not found.' };
+                }
+
+                const headRef = await getGithubRef(owner, repo, branch, token);
+                const headSha = headRef?.object?.sha;
+                if (!headSha) {
+                    throw new Error('Unable to resolve repository branch head.');
+                }
+                const headCommit = await getGithubCommit(owner, repo, headSha, token);
+                const baseTreeSha = headCommit?.tree?.sha;
+                if (!baseTreeSha) {
+                    throw new Error('Unable to resolve repository tree.');
+                }
+                const treeData = await getGithubTree(owner, repo, baseTreeSha, token);
+                const treeEntries = Array.isArray(treeData?.tree) ? treeData.tree : [];
+                const treeMap = new Map<string, string>();
+                treeEntries.forEach((entry: any) => {
+                    if (entry?.path && entry?.sha && entry?.type === 'blob') {
+                        treeMap.set(entry.path, entry.sha);
+                    }
+                });
+
+                const pendingEntries: Array<{ path: string; contentBase64: string; blobSha: string }> = [];
+                const queueFile = (repoPath: string, content: Buffer) => {
+                    const blobSha = computeGitBlobSha(content);
+                    const existingSha = treeMap.get(repoPath);
+                    if (existingSha && existingSha === blobSha) return;
+                    pendingEntries.push({
+                        path: repoPath,
+                        contentBase64: content.toString('base64'),
+                        blobSha
+                    });
+                };
+
+                const logoBuffer = fs.readFileSync(logoPath);
+                const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png' }, null, 2));
+                queueFile('logo.png', logoBuffer);
+                queueFile('logo.json', logoJson);
+
+                if (pendingEntries.length === 0) {
+                    return { success: true, updated: false };
+                }
+
+                const blobEntries: Array<{ path: string; sha: string }> = [];
+                for (const entry of pendingEntries) {
+                    const blob = await createGithubBlob(owner, repo, token, entry.contentBase64);
+                    blobEntries.push({ path: entry.path, sha: blob.sha });
+                }
+
+                const newTree = await createGithubTree(owner, repo, token, baseTreeSha, blobEntries);
+                const commitMessage = 'Update logo';
+                const newCommit = await createGithubCommit(owner, repo, token, commitMessage, newTree.sha, headSha);
+                await updateGithubRef(owner, repo, branch, token, newCommit.sha);
+
+                return { success: true, updated: true };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to update logo.' };
+            }
+        });
+
         ipcMain.handle('apply-github-theme', async (_event, payload?: { themeId?: string }) => {
             try {
                 sendGithubThemeStatus('Preparing', 'Updating site theme. This can take a minute...', 5);
@@ -1786,6 +1876,13 @@ if (!gotTheLock) {
                 if (selectedTheme) {
                     const themeBuffer = Buffer.from(JSON.stringify(selectedTheme, null, 2));
                     queueFile('theme.json', themeBuffer);
+                }
+                const logoPath = store.get('githubLogoPath') as string | undefined;
+                if (logoPath && fs.existsSync(logoPath)) {
+                    const logoBuffer = fs.readFileSync(logoPath);
+                    queueFile('logo.png', logoBuffer);
+                    const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png' }, null, 2));
+                    queueFile('logo.json', logoJson);
                 }
 
                 if (pendingEntries.length === 0) {

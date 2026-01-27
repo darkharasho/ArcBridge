@@ -19,6 +19,7 @@ export interface BuffGenerationEntry {
 export interface BoonRow {
     account: string;
     profession: string;
+    professionList?: string[];
     activeTimeMs: number;
     numFights: number;
     groupSupported: number;
@@ -175,6 +176,8 @@ export const buildBoonTables = (logs: Array<{ details?: any }>) => {
     const playerAgg = new Map<string, {
         account: string;
         profession: string;
+        professions: Set<string>;
+        professionTimeMs: Record<string, number>;
         activeTimeMs: number;
         numFights: number;
         groupSupported: number;
@@ -224,6 +227,8 @@ export const buildBoonTables = (logs: Array<{ details?: any }>) => {
                 playerAgg.set(account, {
                     account,
                     profession,
+                    professions: new Set<string>(),
+                    professionTimeMs: {},
                     activeTimeMs: 0,
                     numFights: 0,
                     groupSupported: 0,
@@ -233,8 +238,10 @@ export const buildBoonTables = (logs: Array<{ details?: any }>) => {
             }
 
             const agg = playerAgg.get(account)!;
-            if (agg.profession !== profession) {
-                agg.profession = 'Multiple';
+            agg.profession = profession;
+            if (profession && profession !== 'Unknown') {
+                agg.professions.add(profession);
+                agg.professionTimeMs[profession] = (agg.professionTimeMs[profession] || 0) + activeTimeMs;
             }
             agg.activeTimeMs += activeTimeMs;
             agg.numFights += 1;
@@ -293,9 +300,24 @@ export const buildBoonTables = (logs: Array<{ details?: any }>) => {
             const hasData = BOON_CATEGORIES.some((category) => boonData[category].generationMs > 0 || boonData[category].wastedMs > 0);
             if (!hasData) return;
 
+            const professionList = Array.from(agg.professions || []).filter((prof) => prof && prof !== 'Unknown');
+            let primaryProfession = agg.profession;
+            if (professionList.length > 0) {
+                primaryProfession = professionList[0];
+                let maxTime = agg.professionTimeMs?.[primaryProfession] || 0;
+                professionList.forEach((prof) => {
+                    const time = agg.professionTimeMs?.[prof] || 0;
+                    if (time > maxTime) {
+                        maxTime = time;
+                        primaryProfession = prof;
+                    }
+                });
+            }
+
             rows.push({
                 account: agg.account,
-                profession: agg.profession,
+                profession: primaryProfession || 'Unknown',
+                professionList,
                 activeTimeMs: agg.activeTimeMs || 1,
                 numFights: agg.numFights || 1,
                 groupSupported: agg.groupSupported || 1,

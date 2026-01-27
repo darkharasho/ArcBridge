@@ -14,9 +14,9 @@ fi
 
 out="${2:-}"
 if [[ -z "$out" ]]; then
-    mkdir -p testdata
+    mkdir -p test-fixtures/boon
     base="$(basename "$file")"
-    out="testdata/${base%.*}.json"
+    out="test-fixtures/boon/${base%.*}.json"
 fi
 
 upload_response="$(curl -sS -F "file=@$file" https://dps.report/uploadContent)"

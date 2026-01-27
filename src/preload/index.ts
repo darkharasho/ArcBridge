@@ -87,6 +87,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     listLogFiles: (payload: { dir: string }) => ipcRenderer.invoke('list-log-files', payload),
     createGithubRepo: (params: { name: string; branch?: string }) => ipcRenderer.invoke('create-github-repo', params),
     ensureGithubTemplate: () => ipcRenderer.invoke('ensure-github-template'),
+    selectGithubLogo: () => ipcRenderer.invoke('select-github-logo'),
+    applyGithubLogo: (payload?: { logoPath?: string }) => ipcRenderer.invoke('apply-github-logo', payload),
     applyGithubTheme: (payload?: { themeId?: string }) => ipcRenderer.invoke('apply-github-theme', payload),
     uploadWebReport: (payload: { meta: any; stats: any }) => ipcRenderer.invoke('upload-web-report', payload),
     getGithubPagesBuildStatus: () => ipcRenderer.invoke('get-github-pages-build-status'),

@@ -115,6 +115,11 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [githubTemplateStatus, setGithubTemplateStatus] = useState<string | null>(null);
     const [githubTemplateStatusKind, setGithubTemplateStatusKind] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
     const lastEnsuredRepoRef = useRef<string | null>(null);
+    const [githubLogoPath, setGithubLogoPath] = useState<string | null>(null);
+    const [githubLogoStatus, setGithubLogoStatus] = useState<string | null>(null);
+    const [githubLogoStatusKind, setGithubLogoStatusKind] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+    const logoSyncInFlightRef = useRef(false);
+    const queuedLogoPathRef = useRef<string | null>(null);
     const orderedThemes = useMemo(() => {
         const active = WEB_THEMES.find((theme) => theme.id === githubWebTheme);
         if (!active) return WEB_THEMES;
@@ -138,6 +143,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setGithubPagesBaseUrl(settings.githubPagesBaseUrl || '');
             setGithubToken(settings.githubToken || '');
             setGithubWebTheme(settings.githubWebTheme || DEFAULT_WEB_THEME_ID);
+            setGithubLogoPath(settings.githubLogoPath || null);
             if (settings.githubToken) {
                 setGithubAuthStatus('connected');
             }
@@ -159,7 +165,8 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             githubBranch: githubBranch || 'main',
             githubPagesBaseUrl: githubPagesBaseUrl || null,
             githubToken: githubToken || null,
-            githubWebTheme: githubWebTheme || DEFAULT_WEB_THEME_ID
+            githubWebTheme: githubWebTheme || DEFAULT_WEB_THEME_ID,
+            githubLogoPath: githubLogoPath || null
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
@@ -188,6 +195,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         githubPagesBaseUrl,
         githubToken,
         githubWebTheme,
+        githubLogoPath,
         hasLoaded
     ]);
 
@@ -452,6 +460,45 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         }, 400);
         return () => clearTimeout(timeout);
     }, [githubWebTheme, githubAuthStatus, githubRepoName, githubToken, hasLoaded]);
+
+    const runLogoSync = async (logoPath: string) => {
+        if (!window.electronAPI?.applyGithubLogo) return;
+        logoSyncInFlightRef.current = true;
+        setGithubLogoStatusKind('pending');
+        setGithubLogoStatus('Uploading logo to GitHub Pages...');
+        const result = await window.electronAPI.applyGithubLogo({ logoPath });
+        if (result?.success) {
+            setGithubLogoStatusKind('success');
+            setGithubLogoStatus('Logo updated on GitHub Pages.');
+        } else {
+            setGithubLogoStatusKind('error');
+            setGithubLogoStatus(result?.error || 'Failed to update logo.');
+        }
+        logoSyncInFlightRef.current = false;
+        if (queuedLogoPathRef.current && queuedLogoPathRef.current !== logoPath) {
+            const next = queuedLogoPathRef.current;
+            queuedLogoPathRef.current = null;
+            runLogoSync(next);
+        }
+    };
+
+    useEffect(() => {
+        if (!hasLoaded) return;
+        if (!githubLogoPath) return;
+        if (githubAuthStatus !== 'connected') return;
+        if (!githubRepoName || !githubToken) return;
+        if (!window.electronAPI?.applyGithubLogo) return;
+        if (logoSyncInFlightRef.current) {
+            queuedLogoPathRef.current = githubLogoPath;
+            setGithubLogoStatusKind('pending');
+            setGithubLogoStatus('Logo change queued...');
+            return;
+        }
+        const timeout = setTimeout(() => {
+            runLogoSync(githubLogoPath);
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [githubLogoPath, githubAuthStatus, githubRepoName, githubToken, hasLoaded]);
 
     const validateRepoName = (value: string) => {
         if (!value) return 'Repository name is required.';
@@ -788,6 +835,45 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                 );
                             })}
                         </div>
+                    </div>
+                    <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-4">
+                        <div className="text-xs uppercase tracking-widest text-gray-500 mb-3">Logo</div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={async () => {
+                                    if (!window.electronAPI?.selectGithubLogo) return;
+                                    const path = await window.electronAPI.selectGithubLogo();
+                                    if (path) {
+                                        setGithubLogoPath(path);
+                                    }
+                                }}
+                                className="px-3 py-2 rounded-lg text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                            >
+                                {githubLogoPath ? 'Replace Logo' : 'Choose Logo'}
+                            </button>
+                            {githubLogoPath && (
+                                <button
+                                    onClick={() => setGithubLogoPath(null)}
+                                    className="px-3 py-2 rounded-lg text-xs font-semibold border bg-white/5 text-gray-400 border-white/10 hover:text-white"
+                                >
+                                    Remove
+                                </button>
+                            )}
+                            <div className="text-xs text-gray-500 truncate">
+                                {githubLogoPath ? githubLogoPath.split(/[\\/]/).pop() : 'No logo selected'}
+                            </div>
+                        </div>
+                        {githubLogoStatus && (
+                            <div className={`mt-3 text-xs ${githubLogoStatusKind === 'success'
+                                ? 'text-emerald-300'
+                                : githubLogoStatusKind === 'error'
+                                    ? 'text-rose-300'
+                                    : 'text-cyan-300'
+                                }`}
+                            >
+                                {githubLogoStatus}
+                            </div>
+                        )}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 mb-3">
                         <button

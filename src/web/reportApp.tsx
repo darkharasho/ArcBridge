@@ -129,6 +129,7 @@ export function ReportApp() {
     const [reportPathHint, setReportPathHint] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [theme, setTheme] = useState<WebTheme | null>(null);
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const basePath = useMemo(() => (window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`), []);
     const resolvedTheme = theme ?? DEFAULT_WEB_THEME;
     const accentRgb = resolvedTheme.rgb;
@@ -198,6 +199,24 @@ export function ReportApp() {
         };
     }, [basePath]);
 
+    useEffect(() => {
+        let isMounted = true;
+        fetch(`${basePath}logo.json`, { cache: 'no-store' })
+            .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
+            .then((data) => {
+                if (!isMounted) return;
+                const path = data?.path ? String(data.path) : 'logo.png';
+                setLogoUrl(`${basePath}${path}`.replace(/\/{2,}/g, '/'));
+            })
+            .catch(() => {
+                if (!isMounted) return;
+                setLogoUrl(null);
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, [basePath]);
+
     const sortedIndex = useMemo(() => {
         if (!index) return [];
         return [...index].sort((a, b) => {
@@ -221,7 +240,7 @@ export function ReportApp() {
     if (report) {
         return (
             <div
-                className="min-h-screen text-white relative"
+                className="min-h-screen text-white relative overflow-x-hidden"
                 style={{
                     backgroundColor: '#0f172a',
                     backgroundImage: resolvedTheme.pattern || undefined,
@@ -253,10 +272,19 @@ export function ReportApp() {
                             </a>
                         </div>
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                                <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">GW2 Arc Log Report</div>
-                                <h1 className="text-3xl font-bold mt-1">{report.meta.title}</h1>
-                                <div className="text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
+                            <div className="flex items-center gap-4">
+                                {logoUrl && (
+                                    <img
+                                        src={logoUrl}
+                                        alt="Squad logo"
+                                        className="w-12 h-12 rounded-lg object-cover border border-white/10"
+                                    />
+                                )}
+                                <div>
+                                    <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">GW2 Arc Log Report</div>
+                                    <h1 className="text-3xl font-bold mt-1">{report.meta.title}</h1>
+                                    <div className="text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
+                                </div>
                             </div>
                             <div className="flex flex-wrap gap-3">
                                 <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2">
@@ -282,7 +310,7 @@ export function ReportApp() {
 
     return (
         <div
-            className="min-h-screen text-white relative"
+            className="min-h-screen text-white relative overflow-x-hidden"
             style={{
                 backgroundColor: '#0f172a',
                 backgroundImage: resolvedTheme.pattern || undefined,
@@ -304,12 +332,21 @@ export function ReportApp() {
                 />
             </div>
             <div className="max-w-6xl mx-auto px-6 py-10">
-                <div className={`${glassCard} p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
-                    <div>
-                        <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">GW2 Arc Log Uploader</div>
-                        <h1 className="text-3xl font-bold mt-2">Command Reports</h1>
-                        <p className="text-gray-400 mt-1">Select a report to view the full stats dashboard.</p>
-                    </div>
+                    <div className={`${glassCard} p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
+                        <div className="flex items-center gap-4 min-h-[56px]">
+                            {logoUrl && (
+                                <img
+                                    src={logoUrl}
+                                    alt="Squad logo"
+                                    className="w-10 h-10 rounded-lg object-cover border border-white/10"
+                                />
+                            )}
+                            <div>
+                                <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">GW2 Arc Log Uploader</div>
+                                <h1 className="text-3xl font-bold mt-2">Command Reports</h1>
+                                <p className="text-gray-400 mt-1">Select a report to view the full stats dashboard.</p>
+                            </div>
+                        </div>
                     <div className="flex items-center gap-3">
                         <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300">
                             {filteredIndex.length} Reports
@@ -357,12 +394,21 @@ export function ReportApp() {
                                 style={glassCardStyle}
                             >
                                 <div className="flex items-center justify-between gap-4">
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex items-center gap-3">
+                                        {logoUrl && (
+                                            <img
+                                                src={logoUrl}
+                                                alt="Squad logo"
+                                                className="w-9 h-9 rounded-lg object-cover border border-white/10"
+                                            />
+                                        )}
                                         <div className="text-[11px] uppercase tracking-widest text-gray-400">{entry.dateLabel}</div>
-                                        <div className="text-lg font-semibold mt-1 truncate">{formatReportTitle(entry.dateStart)}</div>
-                                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-[color:var(--accent)]" />
-                                            <span className="truncate">{entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}</span>
+                                        <div>
+                                            <div className="text-lg font-semibold mt-1 truncate">{formatReportTitle(entry.dateStart)}</div>
+                                            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                                                <Users className="w-4 h-4 text-[color:var(--accent)]" />
+                                                <span className="truncate">{entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
