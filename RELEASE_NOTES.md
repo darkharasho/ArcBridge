@@ -1,18 +1,17 @@
 # Release Notes
 
-Version v1.5.2 — January 26, 2026
+Version v1.5.3 — January 26, 2026
 
-# GW2 Arc Log Uploader - Release Notes v1.5.2
+# GW2 Arc Log Uploader Release Notes - v1.5.3 🎉
 
 ## 🌟 Highlights
-- Updated the release notes for version 1.5.1 for clarity and completeness.
+- We've updated to version 1.5.3! 🚀
 
 ## 🛠️ Improvements
-- Enhanced the process of generating release notes to make future updates smoother.
-- Cleaned up unnecessary code by removing the obsolete GitHub release update script.
+- Added a script to streamline the updating of the GitHub release body, making future updates easier! 💻✨
 
 ## 🧯 Fixes
-- Eliminated unused GitHub Pages base URL state that was active during disconnections. 
+- None.
 
 ## ⚠️ Breaking Changes
 - None.
