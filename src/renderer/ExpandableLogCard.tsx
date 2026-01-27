@@ -40,9 +40,9 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     const isDiscord = log.status === 'discord';
     const statusLabel = isQueued ? 'Queued'
         : isPending ? 'Pending'
-        : isUploading ? 'Parsing with dps.report'
-            : isDiscord ? 'Preparing Discord preview'
-                : null;
+            : isUploading ? 'Parsing with dps.report'
+                : isDiscord ? 'Preparing Discord preview'
+                    : null;
 
     // --- Stats Calculation ---
     let totalDps = 0;
@@ -390,12 +390,12 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         const total = type === 'attacks' ? totalMiss + totalBlock + totalEvade + totalDodge : type === 'cc' ? totalCCTaken : totalStripsTaken;
         const color = type === 'attacks' ? 'text-blue-400' : type === 'cc' ? 'text-purple-400' : 'text-orange-400';
         return (
-            <div className={`bg-white/5 rounded-xl p-4 border border-white/10 ${fullHeight ? 'h-full' : ''}`}>
-                <h5 className={`font-bold ${color} mb-2 uppercase tracking-tight ${fullHeight ? 'text-[8px]' : 'text-[10px]'}`}>{label}</h5>
-                <div className={`font-mono text-gray-300 text-left space-y-1 ${fullHeight ? 'text-[9px]' : 'text-xs'}`}>
+            <div className={`bg-white/5 rounded-lg p-4 border border-white/10 ${fullHeight ? 'h-full overflow-hidden' : ''}`}>
+                <h5 className={`font-bold ${color} mb-1 uppercase tracking-tight leading-none ${fullHeight ? 'text-[9px]' : 'text-[10px]'}`}>{label}</h5>
+                <div className={`font-mono text-gray-300 text-left space-y-0.5 ${fullHeight ? 'text-[9px]' : 'text-xs'}`}>
                     <div className="flex justify-between text-gray-500"><span>Miss:</span> <span>{miss}</span></div>
                     <div className="flex justify-between text-gray-500"><span>Block:</span> <span>{block}</span></div>
-                    <div className="flex justify-between text-white font-bold pt-1 border-t border-white/5"><span>Total:</span> <span>{total}</span></div>
+                    <div className="flex justify-between text-white font-bold pt-0.5 border-t border-white/5"><span>Total:</span> <span>{total}</span></div>
                 </div>
             </div>
         );
@@ -417,11 +417,11 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
                     if (screenshotSection.tileId === 'incoming-strips') return renderIncoming('strips', true);
                     if (screenshotSection.tileId === 'incoming-blank') {
                         return (
-                            <img
-                                src="/img/Transparent.png"
-                                alt=""
-                                className="w-full h-full object-contain"
-                            />
+                            <div
+                                className="w-full h-full bg-transparent flex items-center justify-center p-0 m-0"
+                            >
+                                &nbsp;
+                            </div>
                         );
                     }
                 }
@@ -448,6 +448,12 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
                     data-screenshot-group={screenshotSection.tileKind === 'incoming' ? 'incoming' : 'default'}
                     data-screenshot-transparent={screenshotSection.tileId === 'incoming-blank' ? 'true' : undefined}
                     className={`bg-transparent ${tileSizeClass} p-0 m-0`}
+                    style={{
+                        width: screenshotSection.tileKind === 'incoming' ? '180px' : '360px',
+                        height: screenshotSection.tileKind === 'incoming' ? '140px' : '360px',
+                        minWidth: screenshotSection.tileKind === 'incoming' ? '180px' : '360px',
+                        minHeight: screenshotSection.tileKind === 'incoming' ? '140px' : '360px'
+                    }}
                 >
                     <div className="w-full h-full">
                         {tileContent}

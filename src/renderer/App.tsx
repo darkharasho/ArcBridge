@@ -264,9 +264,11 @@ function App() {
                             const transparent = (node as HTMLElement).dataset.screenshotTransparent === 'true';
                             try {
                                 const dataUrl = await safeToPng(node as HTMLElement, {
-                                    backgroundColor: transparent ? undefined : '#0f172a',
+                                    backgroundColor: transparent ? 'rgba(0,0,0,0)' : '#0f172a',
                                     quality: 0.95,
-                                    pixelRatio: 3
+                                    pixelRatio: 3,
+                                    width: (node as HTMLElement).offsetWidth,
+                                    height: (node as HTMLElement).offsetHeight
                                 });
                                 const buffer = dataUrlToUint8Array(dataUrl);
                                 const group = (node as HTMLElement).dataset.screenshotGroup || 'default';
@@ -873,7 +875,7 @@ function App() {
             </div>
 
             {/* Hidden Screenshot Container */}
-            <div className="fixed top-[-9999px] left-[-9999px] pointer-events-none opacity-0 overflow-hidden">
+            <div className="fixed top-0 left-0 pointer-events-none opacity-0 overflow-hidden z-[-9999]">
                 {screenshotData && (screenshotData as any).mode === 'image-beta' ? (
                     <>
                         {embedStatSettings.showSquadSummary && (
