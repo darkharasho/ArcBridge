@@ -137,6 +137,35 @@ const HEALING_METRICS: Array<{
     { id: 'downedHealingPerSecond', label: 'Downed Healing Per Second', baseField: 'downedHealing', perSecond: true, decimals: 1 }
 ];
 
+interface SkillUsagePlayer {
+    key: string;
+    account: string;
+    displayName: string;
+    profession: string;
+    professionList: string[];
+    logs: number;
+    skillTotals: Record<string, number>;
+}
+
+interface SkillOption {
+    id: string;
+    name: string;
+    total: number;
+}
+
+interface SkillUsageLogRecord {
+    id: string;
+    label: string;
+    timestamp: number;
+    skillEntries: Record<string, { name: string; players: Record<string, number> }>;
+}
+
+interface SkillUsageSummary {
+    logRecords: SkillUsageLogRecord[];
+    players: SkillUsagePlayer[];
+    skillOptions: SkillOption[];
+}
+
 export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded = false }: StatsViewProps) {
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
@@ -165,6 +194,11 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
     const [webUploadUrl, setWebUploadUrl] = useState<string | null>(null);
     const [webUploadBuildStatus, setWebUploadBuildStatus] = useState<'idle' | 'checking' | 'building' | 'built' | 'errored' | 'unknown'>('idle');
     const [webCopyStatus, setWebCopyStatus] = useState<'idle' | 'copied'>('idle');
+    const [skillUsagePlayerFilter, setSkillUsagePlayerFilter] = useState('');
+    const [skillUsageSkillFilter, setSkillUsageSkillFilter] = useState('');
+    const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+    const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+    const [hoveredSkillPlayer, setHoveredSkillPlayer] = useState<string[]>([]);
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -172,11 +206,12 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             maximumFractionDigits: decimals
         });
 
+    const validLogs = useMemo(() => logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details), [logs]);
+
     const stats = useMemo(() => {
         if (precomputedStats) {
             return precomputedStats;
         }
-        const validLogs = logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details);
         const total = validLogs.length;
 
         // Wins/Losses (Combat Stat Based)
@@ -1403,7 +1438,298 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             avgMvpScore,
             leaderboards
         };
-    }, [logs, precomputedStats]);
+    }, [validLogs, precomputedStats]);
+
+    const skillUsageData = useMemo<SkillUsageSummary>(() => {
+        const precomputedSkillUsage = precomputedStats?.skillUsageData as SkillUsageSummary | undefined;
+        if (precomputedSkillUsage) {
+            return precomputedSkillUsage;
+        }
+        const skillNameMap = new Map<string, string>();
+        const skillTotals = new Map<string, number>();
+        const playerMap = new Map<string, SkillUsagePlayer>();
+        const logRecords: SkillUsageLogRecord[] = [];
+
+        const resolveSkillName = (map: Record<string, { name?: string }>, id: number) => {
+            const keyed = map?.[`s${id}`] || map?.[`${id}`];
+            return keyed?.name || `Skill ${id}`;
+        };
+
+        validLogs.forEach((log) => {
+            const details = log.details;
+            if (!details) return;
+            const skillMap = details.skillMap || {};
+            const label = details.fightName || details.name || log.filePath || log.id || 'Log';
+            let timestamp = 0;
+            const parsedTime = Date.parse(details.timeStartStd || details.timeStart || '');
+            if (!Number.isNaN(parsedTime)) {
+                timestamp = parsedTime;
+            } else {
+                timestamp = details.uploadTime ?? log.uploadTime ?? Date.now();
+            }
+
+            const record: SkillUsageLogRecord = {
+                id: log.filePath || log.id || label,
+                label,
+                timestamp,
+                skillEntries: {}
+            };
+
+        const players = (details.players || []) as any[];
+        players.forEach((player) => {
+            if (player?.notInSquad) {
+                return;
+            }
+            const account = player.account || player.name || player.character_name || 'Unknown';
+            const profession = player.profession || 'Unknown';
+            const key = `${account}|${profession}`;
+                let playerRecord = playerMap.get(key);
+                if (!playerRecord) {
+                    playerRecord = {
+                        key,
+                        account,
+                        displayName: player.display_name || player.character_name || player.name || account,
+                        profession,
+                        professionList: player.profession ? [player.profession] : [],
+                        logs: 0,
+                        skillTotals: {}
+                    };
+                    playerMap.set(key, playerRecord);
+                }
+                playerRecord.logs += 1;
+
+                (player.rotation || []).forEach((rotationSkill) => {
+                    if (!rotationSkill || typeof rotationSkill.id !== 'number') return;
+                    const castCount = Array.isArray(rotationSkill.skills) ? rotationSkill.skills.length : 0;
+                    if (castCount === 0) return;
+                    const skillId = `s${rotationSkill.id}`;
+                    const skillName = resolveSkillName(skillMap, rotationSkill.id);
+                    const existingEntry = record.skillEntries[skillId] ?? { name: skillName, players: {} };
+                    if (existingEntry.name.startsWith('Skill ') && !skillName.startsWith('Skill ')) {
+                        existingEntry.name = skillName;
+                    }
+                    existingEntry.players[playerRecord.key] = (existingEntry.players[playerRecord.key] || 0) + castCount;
+                    record.skillEntries[skillId] = existingEntry;
+
+                    playerRecord.skillTotals[skillId] = (playerRecord.skillTotals[skillId] || 0) + castCount;
+                    skillNameMap.set(skillId, skillName);
+                    skillTotals.set(skillId, (skillTotals.get(skillId) || 0) + castCount);
+                });
+            });
+
+            logRecords.push(record);
+        });
+
+        logRecords.sort((a, b) => a.timestamp - b.timestamp);
+
+        const players = Array.from(playerMap.values())
+            .map((player) => ({
+                ...player,
+                professionList: Array.from(new Set(player.professionList || []))
+            }))
+            .sort((a, b) => b.logs - a.logs || a.displayName.localeCompare(b.displayName));
+
+        const skillOptions = Array.from(skillNameMap.entries())
+            .map(([id, name]) => ({
+                id,
+                name,
+                total: skillTotals.get(id) || 0
+            }))
+            .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+        return {
+            logRecords,
+            players,
+            skillOptions
+        };
+    }, [precomputedStats, validLogs]);
+
+    const playerMapByKey = useMemo(() => {
+        const map = new Map<string, SkillUsagePlayer>();
+        skillUsageData.players.forEach((player) => map.set(player.key, player));
+        return map;
+    }, [skillUsageData.players]);
+
+    const adjustHexColor = (hex: string, factor: number) => {
+        const cleaned = hex.replace('#', '');
+        if (cleaned.length !== 6) return hex;
+        const clamp = (value: number) => Math.max(0, Math.min(255, value));
+        const parse = (start: number) => Number.parseInt(cleaned.slice(start, start + 2), 16);
+        const toHex = (value: number) => clamp(Math.round(value)).toString(16).padStart(2, '0');
+        const r = parse(0);
+        const g = parse(2);
+        const b = parse(4);
+        return `#${toHex(r * factor)}${toHex(g * factor)}${toHex(b * factor)}`;
+    };
+
+    const skillNameLookup = useMemo(() => new Map(skillUsageData.skillOptions.map((option) => [option.id, option.name])), [skillUsageData.skillOptions]);
+
+    const skillBarData = useMemo(() => {
+        if (selectedPlayers.length === 0) return [];
+        const totals = new Map<
+            string,
+            { total: number; name: string; dominantProfession: string; maxPlayerCount: number }
+        >();
+        selectedPlayers.forEach((playerKey) => {
+            const player = playerMapByKey.get(playerKey);
+            if (!player) return;
+            Object.entries(player.skillTotals).forEach(([skillId, count]) => {
+                if (!count) return;
+                const existing = totals.get(skillId) || {
+                    total: 0,
+                    name: skillNameLookup.get(skillId) || `Skill ${skillId}`,
+                    dominantProfession: player.profession,
+                    maxPlayerCount: 0
+                };
+                existing.total += count;
+                if (count > existing.maxPlayerCount) {
+                    existing.maxPlayerCount = count;
+                    existing.dominantProfession = player.profession;
+                }
+                totals.set(skillId, existing);
+            });
+        });
+
+        const filterTerm = skillUsageSkillFilter.trim().toLowerCase();
+        const filtered = Array.from(totals.entries())
+            .map(([skillId, data]) => ({
+                skillId,
+                name: data.name,
+                total: data.total,
+                color: getProfessionColor(data.dominantProfession) || '#38bdf8'
+            }))
+            .filter((entry) => {
+                if (!filterTerm) return true;
+                return entry.name.toLowerCase().includes(filterTerm);
+            })
+            .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+            .slice(0, 8);
+        return filtered;
+    }, [selectedPlayers, playerMapByKey, skillNameLookup, skillUsageSkillFilter]);
+
+    const skillUsageAvailable = skillUsageData.logRecords.length > 0 && skillUsageData.skillOptions.length > 0 && skillUsageData.players.length > 0;
+
+    useEffect(() => {
+        if (!selectedSkillId && skillUsageData.skillOptions.length > 0) {
+            setSelectedSkillId(skillUsageData.skillOptions[0].id);
+        }
+    }, [skillUsageData.skillOptions, selectedSkillId]);
+
+    const filteredPlayerOptions = useMemo(() => {
+        const filterTerm = skillUsagePlayerFilter.trim().toLowerCase();
+        if (!filterTerm) return skillUsageData.players;
+        return skillUsageData.players.filter((player) => {
+            return (
+                player.displayName.toLowerCase().includes(filterTerm) ||
+                player.account.toLowerCase().includes(filterTerm) ||
+                player.profession.toLowerCase().includes(filterTerm)
+            );
+        });
+    }, [skillUsageData.players, skillUsagePlayerFilter]);
+
+    const playerTotalsForSkill = useMemo(() => {
+        if (!selectedSkillId) return {};
+        return selectedPlayers.reduce((acc, playerKey) => {
+            const player = playerMapByKey.get(playerKey);
+            acc[playerKey] = player?.skillTotals[selectedSkillId] || 0;
+            return acc;
+        }, {} as Record<string, number>);
+    }, [selectedSkillId, selectedPlayers, playerMapByKey]);
+
+    const classMaxTotals = useMemo(() => {
+        const totals: Record<string, number> = {};
+        selectedPlayers.forEach((playerKey) => {
+            const player = playerMapByKey.get(playerKey);
+            if (!player) return;
+            const total = playerTotalsForSkill[playerKey] ?? 0;
+            totals[player.profession] = Math.max(totals[player.profession] || 0, total);
+        });
+        return totals;
+    }, [selectedPlayers, playerMapByKey, playerTotalsForSkill]);
+
+    const classRankByPlayer = useMemo(() => {
+        const ranks = new Map<string, number>();
+        const grouped = new Map<string, Array<{ key: string; total: number }>>();
+        selectedPlayers.forEach((playerKey) => {
+            const player = playerMapByKey.get(playerKey);
+            if (!player) return;
+            const total = playerTotalsForSkill[playerKey] ?? 0;
+            const list = grouped.get(player.profession) || [];
+            list.push({ key: playerKey, total });
+            grouped.set(player.profession, list);
+        });
+        grouped.forEach((list) => {
+            list.sort((a, b) => b.total - a.total);
+            list.forEach((entry, index) => {
+                ranks.set(entry.key, index);
+            });
+        });
+        return ranks;
+    }, [selectedPlayers, playerMapByKey, playerTotalsForSkill]);
+
+    const lineDashPatterns = ['0', '6 4', '2 3', '10 4', '4 2', '8 6'];
+
+    const getLineColorForPlayer = (playerKey: string) => {
+        const player = playerMapByKey.get(playerKey);
+        const baseColor = getProfessionColor(player?.profession || '') || '#38bdf8';
+        const total = playerTotalsForSkill[playerKey] ?? 0;
+        const maxTotal = player?.profession ? classMaxTotals[player.profession] || 1 : 1;
+        const ratio = maxTotal > 0 ? total / maxTotal : 1;
+        const factor = 0.35 + ratio * 0.65;
+        return adjustHexColor(baseColor, factor);
+    };
+
+    const getLineDashForPlayer = (playerKey: string) => {
+        const rank = classRankByPlayer.get(playerKey) ?? 0;
+        return lineDashPatterns[rank % lineDashPatterns.length];
+    };
+
+    const skillChartData = useMemo(() => {
+        if (!selectedSkillId || selectedPlayers.length === 0) return [];
+        return skillUsageData.logRecords.map((record, index) => {
+            const timeLabel = new Date(record.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            const point: Record<string, number | string> = {
+                label: record.label,
+                timestamp: record.timestamp,
+                shortLabel: timeLabel,
+                fullLabel: timeLabel,
+                index
+            };
+            const entry = record.skillEntries[selectedSkillId];
+            selectedPlayers.forEach((playerKey) => {
+                point[playerKey] = entry?.players?.[playerKey] ?? 0;
+            });
+            return point;
+        });
+    }, [skillUsageData.logRecords, selectedPlayers, selectedSkillId]);
+
+    const skillChartMaxY = useMemo(() => {
+        let max = 0;
+        skillChartData.forEach((point) => {
+            selectedPlayers.forEach((playerKey) => {
+                const value = Number(point[playerKey] ?? 0);
+                if (value > max) max = value;
+            });
+        });
+        return max;
+    }, [skillChartData, selectedPlayers]);
+
+    const selectedSkillName = skillUsageData.skillOptions.find((option) => option.id === selectedSkillId)?.name || '';
+    const skillUsageReady = skillUsageAvailable && Boolean(selectedSkillId) && selectedPlayers.length > 0;
+    const SKILL_LINE_COLORS = ['#38bdf8', '#f472b6', '#facc15', '#34d399'];
+
+    const togglePlayerSelection = (playerKey: string) => {
+        setSelectedPlayers((prev) => {
+            if (prev.includes(playerKey)) {
+                return prev.filter((key) => key !== playerKey);
+            }
+            return [...prev, playerKey];
+        });
+    };
+
+    const removeSelectedPlayer = (playerKey: string) => {
+        setSelectedPlayers((prev) => prev.filter((key) => key !== playerKey));
+    };
 
     const filteredBoonTables = useMemo(() => {
         const term = boonSearch.trim().toLowerCase();
@@ -1504,7 +1830,10 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             const meta = buildReportMeta();
             const result = await window.electronAPI.uploadWebReport({
                 meta,
-                stats
+                stats: {
+                    ...stats,
+                    skillUsageData
+                }
             });
             if (result?.success) {
                 const url = result.url || '';
@@ -2144,6 +2473,28 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
+                                {selectedPlayers.length > 0 && (
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        {selectedPlayers.map((playerKey) => {
+                                            const player = playerMapByKey.get(playerKey);
+                                            const total = playerTotalsForSkill[playerKey] ?? 0;
+                                            return (
+                                                <div
+                                                    key={playerKey}
+                                                    className="rounded-2xl border border-white/10 bg-white/5 p-3 flex items-center justify-between"
+                                                    onMouseEnter={() => setHoveredSkillPlayer(playerKey)}
+                                                    onMouseLeave={() => setHoveredSkillPlayer(null)}
+                                                >
+                                                    <div>
+                                                        <div className="text-[10px] uppercase tracking-[0.4em] text-gray-400">Player</div>
+                                                        <div className="font-semibold text-white">{player?.displayName || playerKey}</div>
+                                                    </div>
+                                                    <div className="text-3xl font-black text-white font-mono">{total.toLocaleString()}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div className="w-full h-full overflow-y-auto pr-1 flex items-center">
                                 <div className="space-y-1.5 text-[11px] mx-auto">
@@ -3037,6 +3388,282 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                             </div>
                         </>
                     )}
+                </div>
+
+                {/* Skill Usage Tracker */}
+                <div id="skill-usage" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-cyan-400" />
+                                Skill Usage Tracker
+                            </h3>
+                            <p className="text-xs text-gray-400">
+                                Compare how often squad members cast a skill and drill into the timeline breakdown.
+                            </p>
+                        </div>
+                        <div className="text-xs uppercase tracking-[0.3em] text-gray-500">
+                            {skillUsageData.logRecords.length} {skillUsageData.logRecords.length === 1 ? 'log' : 'logs'}
+                        </div>
+                    </div>
+                    {selectedPlayers.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pb-2">
+                            {selectedPlayers.map((playerKey) => {
+                                const player = playerMapByKey.get(playerKey);
+                                if (!player) return null;
+                                return (
+                                    <span key={player.key} className="flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200">
+                                        <span className="truncate max-w-[140px]">{player.displayName}</span>
+                                        <button type="button" onClick={() => removeSelectedPlayer(player.key)} className="rounded-full p-1 text-cyan-200 hover:bg-white/20">
+                                            <XCircle className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <div className="grid gap-4 lg:grid-cols-2 items-stretch">
+                        <div className="space-y-2 flex flex-col h-[320px]">
+                            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">
+                                Squad Players
+                            </div>
+                            <input
+                                type="search"
+                                value={skillUsagePlayerFilter}
+                                onChange={(event) => setSkillUsagePlayerFilter(event.target.value)}
+                                placeholder="Search player or account"
+                                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-cyan-400 focus:outline-none"
+                            />
+                            <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
+                                {filteredPlayerOptions.length === 0 ? (
+                                    <div className="px-3 py-4 text-xs text-gray-500 italic">
+                                        No squad players match the filter
+                                    </div>
+                                ) : (
+                                    filteredPlayerOptions.map((player) => {
+                                        const isSelected = selectedPlayers.includes(player.key);
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={player.key}
+                                                onClick={() => togglePlayerSelection(player.key)}
+                                                className={`w-full border-b border-white/5 px-3 py-2 text-left transition-colors last:border-b-0 ${isSelected ? 'border-cyan-400 bg-cyan-500/10 text-white' : 'border-transparent hover:border-white/10 hover:bg-white/5'}`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <div className="text-sm font-semibold truncate text-white">{player.displayName}</div>
+                                                        <div className="text-[11px] text-gray-400">
+                                                            {player.account} · {player.profession} · {player.logs} {player.logs === 1 ? 'log' : 'logs'}
+                                                        </div>
+                                                    </div>
+                                                    {isSelected && <CheckCircle2 className="w-4 h-4 text-cyan-300" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                        <div className="space-y-2 flex flex-col h-[320px]">
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">
+                                    Skill Totals
+                                </div>
+                                <div className="text-[11px] text-gray-500">
+                                    {selectedPlayers.length > 0 ? `${selectedPlayers.length} player${selectedPlayers.length === 1 ? '' : 's'}` : 'Select players'}
+                                </div>
+                            </div>
+                            <input
+                                type="search"
+                                value={skillUsageSkillFilter}
+                                onChange={(event) => setSkillUsageSkillFilter(event.target.value)}
+                                placeholder="Filter skill names"
+                                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-cyan-400 focus:outline-none"
+                            />
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-0.5 flex-1 min-h-0">
+                                {selectedPlayers.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-xs text-gray-500">
+                                        Select squad players to see the skills they cast.
+                                    </div>
+                                ) : skillBarData.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-xs text-gray-500">
+                                        No skill casts found for the selected players.
+                                    </div>
+                                ) : (
+                                    (() => {
+                                        const maxSkillTotal = skillBarData.reduce((max, entry) => Math.max(max, entry.total), 0) || 1;
+                                        return (
+                                            <div className="space-y-0.5 h-full overflow-y-auto pr-0.5">
+                                                {skillBarData.map((entry, index) => {
+                                                    const widthPct = Math.min(100, (entry.total / maxSkillTotal) * 100);
+                                                    const isSelected = selectedSkillId === entry.skillId;
+                                                    return (
+                                                        <button
+                                                            key={entry.skillId}
+                                                            type="button"
+                                                            onClick={() => setSelectedSkillId(entry.skillId)}
+                                                            className={`w-full space-y-1 rounded-lg border px-2 py-1.5 text-left transition-colors ${isSelected ? 'border-white/60 bg-white/10' : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'}`}
+                                                        >
+                                                            <div className="flex items-center justify-between text-sm text-white">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
+                                                                    <span className="font-semibold truncate">{entry.name}</span>
+                                                                </div>
+                                                                <span className="text-cyan-200 font-mono text-xs">{entry.total.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="h-1 w-full rounded-full bg-white/10">
+                                                                <div
+                                                                    className="h-full rounded-full transition-all"
+                                                                    style={{ width: `${widthPct}%`, backgroundColor: entry.color }}
+                                                                />
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })()
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        {skillUsageReady ? (
+                            <div className="space-y-4 rounded-2xl bg-black/50 p-4 mt-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm font-semibold text-gray-200">
+                                        {selectedSkillName || 'Selected Skill Usage'}
+                                    </div>
+                                    <div className="text-[11px] text-gray-400">(casts per log)</div>
+                                </div>
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <LineChart data={skillChartData}>
+                                        <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                                        <XAxis
+                                            dataKey="index"
+                                            type="number"
+                                            tick={{ fill: '#e2e8f0', fontSize: 10 }}
+                                            interval={0}
+                                            tickFormatter={(value: number) => {
+                                                const entry = skillChartData[value];
+                                                const label = entry?.shortLabel ?? String(value);
+                                                return label.length > 20 ? `${label.slice(0, 20)}…` : label;
+                                            }}
+                                        />
+                                        <YAxis
+                                            tick={{ fill: '#e2e8f0', fontSize: 10 }}
+                                            domain={[0, Math.max(1, skillChartMaxY)]}
+                                            allowDecimals={false}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}
+                                            content={({ active, payload, label }) => {
+                                                if (!active || !payload || payload.length === 0) return null;
+                                                const sorted = [...payload].sort((a, b) => (b.value || 0) - (a.value || 0));
+                                                const first = sorted[0];
+                                                const header = (first?.payload as any)?.fullLabel || label;
+                                                return (
+                                                    <div className="rounded-lg bg-slate-900/95 border border-white/10 px-3 py-2 shadow-xl">
+                                                        <div className="text-sm text-white mb-1">{header}</div>
+                                                        <div className="space-y-1">
+                                                            {sorted.map((item) => {
+                                                                const name = String(item.name || '');
+                                                                const player = playerMapByKey.get(name);
+                                                                const labelText = player?.displayName || name || 'Player';
+                                                                const value = Number(item.value || 0).toLocaleString();
+                                                                const color = item.color || '#38bdf8';
+                                                                return (
+                                                                    <div key={`${labelText}-${value}`} className="flex items-center justify-between text-sm">
+                                                                        <span className="truncate" style={{ color }}>{labelText}</span>
+                                                                        <span className="text-gray-200 font-mono">{value}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }}
+                                        />
+                                        {selectedPlayers.map((playerKey) => {
+                                            const color = getLineColorForPlayer(playerKey);
+                                            const dash = getLineDashForPlayer(playerKey);
+                                            const isDimmed = hoveredSkillPlayer.length > 0 && !hoveredSkillPlayer.includes(playerKey);
+                                            return (
+                                            <Line
+                                                key={playerKey}
+                                                dataKey={playerKey}
+                                                stroke={color}
+                                                strokeWidth={3}
+                                                strokeDasharray={dash}
+                                                opacity={isDimmed ? 0 : 1}
+                                                hide={Boolean(isDimmed)}
+                                                dot={false}
+                                                isAnimationActive={false}
+                                            />
+                                            );
+                                        })}
+                                    </LineChart>
+                                </ResponsiveContainer>
+                                {selectedPlayers.length > 0 && (
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        {[...selectedPlayers]
+                                            .sort((a, b) => (playerTotalsForSkill[b] || 0) - (playerTotalsForSkill[a] || 0))
+                                            .map((playerKey) => {
+                                                const player = playerMapByKey.get(playerKey);
+                                                const total = playerTotalsForSkill[playerKey] ?? 0;
+                                                const swatchColor = getLineColorForPlayer(playerKey);
+                                                const isActive = hoveredSkillPlayer.includes(playerKey);
+                                                return (
+                                                    <button
+                                                        key={playerKey}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setHoveredSkillPlayer((prev) => {
+                                                                if (prev.includes(playerKey)) {
+                                                                    return prev.filter((key) => key !== playerKey);
+                                                                }
+                                                                return [...prev, playerKey];
+                                                            });
+                                                        }}
+                                                        className={`rounded-2xl border bg-white/5 p-3 flex items-center justify-between text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 ${
+                                                            isActive ? 'border-white/40 bg-white/10' : 'border-white/10 hover:border-white/30 hover:bg-white/10'
+                                                        }`}
+                                                        aria-pressed={isActive}
+                                                    >
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <svg className="h-2 w-6" viewBox="0 0 24 4" aria-hidden="true">
+                                                                <line
+                                                                    x1="0"
+                                                                    y1="2"
+                                                                    x2="24"
+                                                                    y2="2"
+                                                                    stroke={swatchColor}
+                                                                    strokeWidth="2"
+                                                                    strokeDasharray={getLineDashForPlayer(playerKey)}
+                                                                    strokeLinecap="round"
+                                                                />
+                                                            </svg>
+                                                            {renderProfessionIcon(player?.profession, player?.professionList, 'w-4 h-4')}
+                                                            <div className="min-w-0">
+                                                                <div className="text-[10px] uppercase tracking-[0.4em] text-gray-400">Player</div>
+                                                                <div className="font-semibold text-white truncate">{player?.displayName || playerKey}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-3xl font-black text-white font-mono">{total.toLocaleString()}</div>
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="rounded-2xl border border-dashed border-white/20 px-4 py-6 mt-2 text-center text-xs text-gray-400">
+                                {skillUsageAvailable
+                                    ? 'Pick one skill and up to two players to visualize their usage over time.'
+                                    : 'Upload or highlight logs with rotation data to enable the skill usage tracker.'}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

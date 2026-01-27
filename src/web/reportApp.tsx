@@ -15,7 +15,8 @@ import {
     HelpingHand,
     HeartPulse,
     Star,
-    PanelLeft
+    PanelLeft,
+    Zap
 } from 'lucide-react';
 
 interface ReportMeta {
@@ -298,7 +299,8 @@ export function ReportApp() {
             { id: 'defense-detailed', label: 'Defense Detailed', icon: ShieldCheck },
             { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
             { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
-            { id: 'special-buffs', label: 'Special Buffs', icon: Star }
+            { id: 'special-buffs', label: 'Special Buffs', icon: Star },
+            { id: 'skill-usage', label: 'Skill Usage', icon: Zap }
         ];
         const handleTocClick = (id: string) => {
             const el = document.getElementById(id);
