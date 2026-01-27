@@ -12,6 +12,7 @@ Version v1.5.6 — January 27, 2026
 
 ## 🧯 Fixes
 - Corrected inconsistencies in the release notes documentation.
+- Made the tiled (image-beta) Discord delivery path actually generate attachments in packaged builds.
 
 ## ⚠️ Breaking Changes
 None.

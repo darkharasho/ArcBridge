@@ -96,7 +96,7 @@ if (releaseResp.status === 404) {
             tag_name: tagName,
             name: tagName,
             body: notes,
-            draft: false,
+            draft: true,
             prerelease: false
         });
     }

@@ -12,6 +12,23 @@ import { Terminal as TerminalIcon } from 'lucide-react';
 import { DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IEmbedStatSettings, IMvpWeights } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
 
+const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
+    const commaIndex = dataUrl.indexOf(',');
+    if (commaIndex === -1) {
+        throw new Error('Invalid data URL');
+    }
+    const base64 = dataUrl.slice(commaIndex + 1);
+    if (typeof globalThis.atob !== 'function') {
+        throw new Error('Base64 decoder is not available');
+    }
+    const binaryString = globalThis.atob(base64);
+    const buffer = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i += 1) {
+        buffer[i] = binaryString.charCodeAt(i);
+    }
+    return buffer;
+};
+
 function App() {
     const [logDirectory, setLogDirectory] = useState<string | null>(null);
     const [notificationType, setNotificationType] = useState<'image' | 'image-beta' | 'embed'>('image');
@@ -201,6 +218,15 @@ function App() {
             // Wait for render
             setTimeout(async () => {
                 const mode = (data as any)?.mode || 'image';
+
+                // Helper to prevent hanging calls
+                const safeToPng = async (node: HTMLElement, options: any) => {
+                    return Promise.race([
+                        toPng(node, { ...options, cacheBust: false, skipAutoScale: true }),
+                        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Screenshot generation timed out')), 5000))
+                    ]);
+                };
+
                 if (mode === 'image-beta') {
                     const selector = `[data-screenshot-id="${escapeSelector(logKey)}"]`;
                     const expectedCount = (embedStatSettings.showSquadSummary ? 1 : 0)
@@ -213,37 +239,48 @@ function App() {
                         const fallbackNode = await waitForNode(`log-screenshot-${logKey}`, 1500);
                         if (fallbackNode) {
                             try {
-                                const dataUrl = await toPng(fallbackNode, {
+                                const dataUrl = await safeToPng(fallbackNode, {
                                     backgroundColor: '#0f172a',
                                     quality: 0.95,
                                     pixelRatio: 3
                                 });
-                                const resp = await fetch(dataUrl);
-                                const blob = await resp.blob();
-                                const arrayBuffer = await blob.arrayBuffer();
-                                window.electronAPI.sendScreenshot(logKey, new Uint8Array(arrayBuffer));
+                                const buffer = dataUrlToUint8Array(dataUrl);
+                                window.electronAPI.sendScreenshot(logKey, buffer);
                             } catch (err) {
                                 console.error("Fallback screenshot failed:", err);
+                                // Ensure we clean up even on error so UI doesn't hang
+                                setScreenshotData(null);
                             }
+                        } else {
+                            // If everything fails, clean up
+                            console.error("No fallback node found either.");
+                            setScreenshotData(null);
                         }
-                        setScreenshotData(null);
                         return;
                     }
                     try {
                         const buffers: { group: string; buffer: Uint8Array }[] = [];
                         for (const node of nodes) {
                             const transparent = (node as HTMLElement).dataset.screenshotTransparent === 'true';
-                            const dataUrl = await toPng(node as HTMLElement, {
-                                backgroundColor: transparent ? undefined : '#0f172a',
-                                quality: 0.95,
-                                pixelRatio: 3
-                            });
-                            const resp = await fetch(dataUrl);
-                            const blob = await resp.blob();
-                            const arrayBuffer = await blob.arrayBuffer();
-                            const group = (node as HTMLElement).dataset.screenshotGroup || 'default';
-                            buffers.push({ group, buffer: new Uint8Array(arrayBuffer) });
+                            try {
+                                const dataUrl = await safeToPng(node as HTMLElement, {
+                                    backgroundColor: transparent ? undefined : '#0f172a',
+                                    quality: 0.95,
+                                    pixelRatio: 3
+                                });
+                                const buffer = dataUrlToUint8Array(dataUrl);
+                                const group = (node as HTMLElement).dataset.screenshotGroup || 'default';
+                                buffers.push({ group, buffer });
+                            } catch (innerErr) {
+                                console.error("Failed to screenshot a specific tile:", innerErr);
+                                // Continue with other tiles if one fails
+                            }
                         }
+
+                        if (buffers.length === 0) {
+                            throw new Error("No tiles were successfully captured");
+                        }
+
                         const groups: Uint8Array[][] = [];
                         const incomingBuffers: Uint8Array[] = [];
                         let currentPair: Uint8Array[] = [];
@@ -285,17 +322,12 @@ function App() {
                     const node = await waitForNode(`log-screenshot-${logKey}`, 2000);
                     if (node) {
                         try {
-                            const dataUrl = await toPng(node, {
+                            const dataUrl = await safeToPng(node, {
                                 backgroundColor: '#0f172a', // Match bg-slate-900
                                 quality: 0.95,
                                 pixelRatio: 3 // Higher fidelity for Discord
                             });
-
-                            // Convert dataUrl to Uint8Array
-                            const resp = await fetch(dataUrl);
-                            const blob = await resp.blob();
-                            const arrayBuffer = await blob.arrayBuffer();
-                            const buffer = new Uint8Array(arrayBuffer);
+                            const buffer = dataUrlToUint8Array(dataUrl);
 
                             window.electronAPI.sendScreenshot(logKey, buffer);
                             setScreenshotData(null); // Cleanup

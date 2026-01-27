@@ -173,6 +173,34 @@ const compareVersion = (a: number[], b: number[]) => {
     return 0;
 };
 
+const extractReleaseNotesRangeFromFile = (rawNotes: string, currentVersion: string, lastSeenVersion: string | null) => {
+    const current = parseVersion(currentVersion);
+    if (!current) return null;
+    const lastSeen = parseVersion(lastSeenVersion);
+    const body = rawNotes.replace(/^# Release Notes\s*/i, '').trim();
+    if (!body) return null;
+    const sections = body.split(/\n(?=Version v)/).map((section) => section.trim()).filter(Boolean);
+    const selected = sections.filter((section) => {
+        const match = section.match(/^Version v?([0-9]+\.[0-9]+\.[0-9]+)\b/);
+        if (!match) return false;
+        const version = parseVersion(match[1]);
+        if (!version) return false;
+        if (compareVersion(version, current) > 0) return false;
+        if (lastSeen && compareVersion(version, lastSeen) <= 0) return false;
+        return true;
+    });
+    if (selected.length === 0) return null;
+    const sorted = selected.sort((a, b) => {
+        const aMatch = a.match(/^Version v?([0-9]+\.[0-9]+\.[0-9]+)\b/);
+        const bMatch = b.match(/^Version v?([0-9]+\.[0-9]+\.[0-9]+)\b/);
+        const aVer = parseVersion(aMatch?.[1] || '');
+        const bVer = parseVersion(bMatch?.[1] || '');
+        if (!aVer || !bVer) return 0;
+        return compareVersion(bVer, aVer);
+    });
+    return `# Release Notes\n\n${sorted.join('\n\n')}`.trim();
+};
+
 const fetchGithubReleaseNotesRange = async (currentVersion: string, lastSeenVersion: string | null): Promise<string | null> => {
     const current = parseVersion(currentVersion);
     if (!current) return null;
@@ -1017,8 +1045,11 @@ if (!gotTheLock) {
                 const notesPath = path.join(basePath, 'RELEASE_NOTES.md');
                 try {
                     const rawNotes = fs.readFileSync(notesPath, 'utf8');
-                    const nextHeaderIndex = rawNotes.indexOf('\n# Release Notes', 1);
-                    releaseNotes = nextHeaderIndex > -1 ? rawNotes.slice(0, nextHeaderIndex).trim() : rawNotes.trim();
+                    releaseNotes = extractReleaseNotesRangeFromFile(rawNotes, version, lastSeenVersion);
+                    if (!releaseNotes) {
+                        const nextHeaderIndex = rawNotes.indexOf('\n# Release Notes', 1);
+                        releaseNotes = nextHeaderIndex > -1 ? rawNotes.slice(0, nextHeaderIndex).trim() : rawNotes.trim();
+                    }
                 } catch (err) {
                     console.warn('[Main] Failed to read release notes:', err);
                 }
