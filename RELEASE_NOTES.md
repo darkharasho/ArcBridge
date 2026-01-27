@@ -2,17 +2,16 @@
 
 Version v1.5.1 — January 26, 2026
 
-# GW2 Arc Log Uploader Release Notes
+# GW2 Arc Log Uploader Release Notes - Version v1.5.1
 
 ## 🌟 Highlights
-- We're excited to bring you version **1.5.1**! 🎉
+- None.
 
 ## 🛠️ Improvements
-- Enhanced packaging options for a smoother installation experience. 📦
-- Added a copy function for the inferred GitHub Pages URL. 📋
+- Streamlined the app by removing the unused GitHub Pages base URL when disconnected.
 
 ## 🧯 Fixes
-- Updated release notes for clarity and accuracy. 📜
+- None.
 
 ## ⚠️ Breaking Changes
 - None.
