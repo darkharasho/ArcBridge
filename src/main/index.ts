@@ -1559,7 +1559,7 @@ if (!gotTheLock) {
                 };
 
                 const logoBuffer = fs.readFileSync(logoPath);
-                const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png' }, null, 2));
+                const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
                 queueFile('logo.png', logoBuffer);
                 queueFile('logo.json', logoJson);
 
@@ -1879,10 +1879,10 @@ if (!gotTheLock) {
                 }
                 const logoPath = store.get('githubLogoPath') as string | undefined;
                 if (logoPath && fs.existsSync(logoPath)) {
-                    const logoBuffer = fs.readFileSync(logoPath);
-                    queueFile('logo.png', logoBuffer);
-                    const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png' }, null, 2));
-                    queueFile('logo.json', logoJson);
+                const logoBuffer = fs.readFileSync(logoPath);
+                queueFile('logo.png', logoBuffer);
+                const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
+                queueFile('logo.json', logoJson);
                 }
 
                 if (pendingEntries.length === 0) {
@@ -1897,11 +1897,34 @@ if (!gotTheLock) {
                     blobEntries.push({ path: entry.path, sha: blob.sha });
                 }
 
-                sendWebUploadStatus('Finalizing', 'Publishing commit...', 90);
-                const newTree = await createGithubTree(owner, repo, token, baseTreeSha, blobEntries);
                 const commitMessage = `Update web report ${reportMeta.id}`;
-                const newCommit = await createGithubCommit(owner, repo, token, commitMessage, newTree.sha, headSha);
-                await updateGithubRef(owner, repo, branch, token, newCommit.sha);
+                const publishCommit = async (treeBaseSha: string, parentSha: string) => {
+                    const newTree = await createGithubTree(owner, repo, token, treeBaseSha, blobEntries);
+                    const newCommit = await createGithubCommit(owner, repo, token, commitMessage, newTree.sha, parentSha);
+                    await updateGithubRef(owner, repo, branch, token, newCommit.sha);
+                };
+
+                sendWebUploadStatus('Finalizing', 'Publishing commit...', 90);
+                try {
+                    await publishCommit(baseTreeSha, headSha);
+                } catch (err: any) {
+                    const message = String(err?.message || '');
+                    if (!message.includes('(422)')) {
+                        throw err;
+                    }
+                    sendWebUploadStatus('Finalizing', 'Retrying publish after concurrent update...', 92);
+                    const retryHeadRef = await getGithubRef(owner, repo, branch, token);
+                    const retryHeadSha = retryHeadRef?.object?.sha;
+                    if (!retryHeadSha) {
+                        throw err;
+                    }
+                    const retryHeadCommit = await getGithubCommit(owner, repo, retryHeadSha, token);
+                    const retryBaseTreeSha = retryHeadCommit?.tree?.sha;
+                    if (!retryBaseTreeSha) {
+                        throw err;
+                    }
+                    await publishCommit(retryBaseTreeSha, retryHeadSha);
+                }
 
                 sendWebUploadStatus('Complete', 'Web report uploaded.', 100);
                 return { success: true, url: reportUrl };

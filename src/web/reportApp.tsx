@@ -206,7 +206,10 @@ export function ReportApp() {
             .then((data) => {
                 if (!isMounted) return;
                 const path = data?.path ? String(data.path) : 'logo.png';
-                setLogoUrl(`${basePath}${path}`.replace(/\/{2,}/g, '/'));
+                const version = data?.updatedAt ? String(data.updatedAt) : '';
+                const urlBase = `${basePath}${path}`.replace(/\/{2,}/g, '/');
+                const url = version ? `${urlBase}?v=${encodeURIComponent(version)}` : urlBase;
+                setLogoUrl(url);
             })
             .catch(() => {
                 if (!isMounted) return;
@@ -277,7 +280,7 @@ export function ReportApp() {
                                     <img
                                         src={logoUrl}
                                         alt="Squad logo"
-                                        className="w-12 h-12 rounded-lg object-cover border border-white/10"
+                                        className="w-24 h-24 rounded-lg object-cover"
                                     />
                                 )}
                                 <div>
@@ -338,7 +341,7 @@ export function ReportApp() {
                                 <img
                                     src={logoUrl}
                                     alt="Squad logo"
-                                    className="w-10 h-10 rounded-lg object-cover border border-white/10"
+                                    className="w-24 h-24 rounded-lg object-cover"
                                 />
                             )}
                             <div>
@@ -393,22 +396,19 @@ export function ReportApp() {
                                 className={`${glassCard} px-5 py-4 hover:border-[color:var(--accent-border)] transition-colors group`}
                                 style={glassCardStyle}
                             >
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex items-center gap-3">
-                                        {logoUrl && (
-                                            <img
-                                                src={logoUrl}
-                                                alt="Squad logo"
-                                                className="w-9 h-9 rounded-lg object-cover border border-white/10"
-                                            />
-                                        )}
-                                        <div className="text-[11px] uppercase tracking-widest text-gray-400">{entry.dateLabel}</div>
-                                        <div>
-                                            <div className="text-lg font-semibold mt-1 truncate">{formatReportTitle(entry.dateStart)}</div>
-                                            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                                                <Users className="w-4 h-4 text-[color:var(--accent)]" />
-                                                <span className="truncate">{entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}</span>
-                                            </div>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="min-w-0 block text-left">
+                                        <div className="text-[11px] uppercase tracking-widest text-gray-400">
+                                            {entry.dateLabel}
+                                        </div>
+                                        <div className="text-lg font-semibold mt-1 truncate">
+                                            {formatReportTitle(entry.dateStart)}
+                                        </div>
+                                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                                            <Users className="w-4 h-4 text-[color:var(--accent)]" />
+                                            <span className="truncate">
+                                                {entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
