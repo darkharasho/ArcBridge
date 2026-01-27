@@ -9,7 +9,6 @@ import {
     LayoutDashboard,
     Trophy,
     Swords,
-    Shield,
     Activity,
     Map as MapIcon,
     Sparkles,

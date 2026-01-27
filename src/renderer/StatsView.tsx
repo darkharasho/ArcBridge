@@ -933,7 +933,35 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                     }))
                     .filter(item => Number.isFinite(item.value)),
                 false
-            )
+            ),
+            revives: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                key,
+                account: stat.account,
+                profession: stat.profession,
+                professionList: stat.professionList,
+                value: stat.revives
+            })), true),
+            participation: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                key,
+                account: stat.account,
+                profession: stat.profession,
+                professionList: stat.professionList,
+                value: stat.logsJoined
+            })), true),
+            dps: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                key,
+                account: stat.account,
+                profession: stat.profession,
+                professionList: stat.professionList,
+                value: stat.dps
+            })), true),
+            damage: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                key,
+                account: stat.account,
+                profession: stat.profession,
+                professionList: stat.professionList,
+                value: stat.damage
+            })), true)
         };
 
         const buildRankMap = (items: Array<{ key: string; value: number }>, higherIsBetter: boolean) => {
@@ -955,29 +983,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             return ranks;
         };
 
-        const rankMaps = {
-            downContrib: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.downContrib })), true),
-            healing: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.healing })), true),
-            cleanses: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.cleanses })), true),
-            strips: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.strips })), true),
-            stability: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.stab })), true),
-            cc: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.cc })), true),
-            revives: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.revives })), true),
-            participation: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.logsJoined })), true),
-            dodging: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.dodges })), true),
-            dps: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.dps })), true),
-            damage: buildRankMap(playerEntries.map(({ key, stat }) => ({ key, value: stat.damage })), true),
-            distanceToTag: buildRankMap(
-                playerEntries
-                    .filter(({ stat }) => !stat.isCommander)
-                    .map(({ key, stat }) => ({
-                        key,
-                        value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
-                    }))
-                    .filter(item => Number.isFinite(item.value)),
-                false
-            )
-        };
+        // rankMaps removed: MVP now references leaderboards for rank consistency.
 
         // --- Calculate MVP ---
         // --- Calculate MVP ---
@@ -1012,7 +1018,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             return entry?.rank || 0;
         };
 
-        playerEntries.forEach(({ key, stat }) => {
+        playerEntries.forEach(({ stat }) => {
             let score = 0;
             const contributions: { name: string, ratio: number, value: number, fmt: string, rank: number }[] = [];
 
