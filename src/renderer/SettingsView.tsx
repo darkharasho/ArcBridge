@@ -911,7 +911,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                     setGithubAuthMessage('Disconnected from GitHub.');
                                     setGithubRepos([]);
                                     setGithubRepoName('');
-                                    setGithubPagesBaseUrl('');
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold border border-white/10 transition-colors"
                             >
