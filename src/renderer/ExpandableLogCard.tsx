@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing } from '../shared/combatMetrics';
+import { applyStabilityGeneration, getIncomingDisruptions, getPlayerDownContribution, getPlayerOutgoingCrowdControl, getPlayerSquadBarrier, getPlayerSquadHealing } from '../shared/dashboardMetrics';
 import { Player } from '../shared/dpsReportTypes';
 import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
 import { getProfessionAbbrev, getProfessionEmoji, getProfessionIconPath } from '../shared/professionUtils';
@@ -29,7 +29,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     const players: Player[] = details.players || [];
     const targets = details.targets || [];
     const settings = embedStatSettings || DEFAULT_EMBED_STATS;
-    applySquadStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
+    applyStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
     const squadPlayers = players.filter((p: any) => !p.notInSquad);
     const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
 
@@ -79,7 +79,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             if (isSquad) {
                 squadDps += p.dpsAll[0].dps;
                 squadDmg += p.dpsAll[0].damage;
-                squadCC += computeOutgoingCrowdControl(p);
+                squadCC += getPlayerOutgoingCrowdControl(p);
                 squadResurrects += (p.support?.[0]?.resurrects || 0);
             }
         }
@@ -100,7 +100,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             // totalStripsTaken += d.boonStrips || 0;
         }
 
-        const pStats = computeIncomingDisruptions(p);
+        const pStats = getIncomingDisruptions(p);
         totalCCTaken += pStats.cc.total;
         totalCCMissed += pStats.cc.missed;
         totalCCBlocked += pStats.cc.blocked;
@@ -242,22 +242,22 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         {
             enabled: settings.showDownContribution,
             title: "Down Contribution",
-            sortFn: (a: any, b: any) => computeDownContribution(b) - computeDownContribution(a),
-            valFn: (p: any) => computeDownContribution(p),
+            sortFn: (a: any, b: any) => getPlayerDownContribution(b) - getPlayerDownContribution(a),
+            valFn: (p: any) => getPlayerDownContribution(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
             enabled: settings.showHealing,
             title: "Healing",
-            sortFn: (a: any, b: any) => computeSquadHealing(b) - computeSquadHealing(a),
-            valFn: (p: any) => computeSquadHealing(p),
+            sortFn: (a: any, b: any) => getPlayerSquadHealing(b) - getPlayerSquadHealing(a),
+            valFn: (p: any) => getPlayerSquadHealing(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
             enabled: settings.showBarrier,
             title: "Barrier",
-            sortFn: (a: any, b: any) => computeSquadBarrier(b) - computeSquadBarrier(a),
-            valFn: (p: any) => computeSquadBarrier(p),
+            sortFn: (a: any, b: any) => getPlayerSquadBarrier(b) - getPlayerSquadBarrier(a),
+            valFn: (p: any) => getPlayerSquadBarrier(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
@@ -277,8 +277,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         {
             enabled: settings.showCC,
             title: "CC",
-            sortFn: (a: any, b: any) => computeOutgoingCrowdControl(b) - computeOutgoingCrowdControl(a),
-            valFn: (p: any) => computeOutgoingCrowdControl(p),
+            sortFn: (a: any, b: any) => getPlayerOutgoingCrowdControl(b) - getPlayerOutgoingCrowdControl(a),
+            valFn: (p: any) => getPlayerOutgoingCrowdControl(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {

@@ -1,6 +1,28 @@
 import axios from 'axios';
 import FormData from 'form-data';
-import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing } from '../shared/combatMetrics';
+import {
+    applyStabilityGeneration,
+    getPlayerDamage,
+    getPlayerDps,
+    getPlayerDownsTaken,
+    getPlayerDownContribution,
+    getPlayerBreakbarDamage,
+    getPlayerCleanses,
+    getPlayerDamageTaken,
+    getPlayerDeaths,
+    getPlayerDistanceToTag,
+    getPlayerDodges,
+    getPlayerMissed,
+    getPlayerBlocked,
+    getPlayerEvaded,
+    getPlayerResurrects,
+    getPlayerSquadHealing,
+    getPlayerSquadBarrier,
+    getPlayerOutgoingCrowdControl,
+    getPlayerStrips,
+    getIncomingDisruptions,
+    getTargetStatTotal,
+} from '../shared/dashboardMetrics';
 import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 import { Player } from '../shared/dpsReportTypes';
 
@@ -133,7 +155,7 @@ export class DiscordNotifier {
                     const settings = this.embedStatSettings;
 
                     // Pre-calculate stability
-                    applySquadStabilityGeneration(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
+                    applyStabilityGeneration(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
 
                     let embedFields: any[] = [];
 
@@ -172,34 +194,32 @@ export class DiscordNotifier {
                     players.forEach((p: any) => {
                         const isSquad = !p.notInSquad;
 
-                        if (p.dpsAll && p.dpsAll.length > 0) {
-                            const dps = p.dpsAll[0].dps;
-                            const dmg = p.dpsAll[0].damage;
-                            totalDps += dps;
-                            totalDmg += dmg;
-                            if (isSquad) {
-                                squadDps += dps;
-                                squadDmg += dmg;
-                            }
+                        const dps = getPlayerDps(p);
+                        const dmg = getPlayerDamage(p);
+                        totalDps += dps;
+                        totalDmg += dmg;
+                        if (isSquad) {
+                            squadDps += dps;
+                            squadDmg += dmg;
                         }
                         if (p.defenses && p.defenses.length > 0) {
                             const d = p.defenses[0];
-                            totalDowns += d.downCount;
-                            totalDeaths += d.deadCount;
-                            totalDmgTaken += d.damageTaken || 0;
+                            totalDowns += getPlayerDownsTaken(p);
+                            totalDeaths += getPlayerDeaths(p);
+                            totalDmgTaken += getPlayerDamageTaken(p);
 
                             if (isSquad) {
-                                squadDowns += d.downCount;
-                                squadDeaths += d.deadCount;
+                                squadDowns += getPlayerDownsTaken(p);
+                                squadDeaths += getPlayerDeaths(p);
                             }
 
-                            totalMiss += d.missedCount || 0;
-                            totalBlock += d.blockedCount || 0;
-                            totalEvade += d.evadedCount || 0;
-                            totalDodge += d.dodgeCount || 0;
+                            totalMiss += getPlayerMissed(p);
+                            totalBlock += getPlayerBlocked(p);
+                            totalEvade += getPlayerEvaded(p);
+                            totalDodge += getPlayerDodges(p);
                             // Uses per-skill weighting for CC/Strips instead of raw summary fields
                         }
-                        const pStats = computeIncomingDisruptions(p);
+                        const pStats = getIncomingDisruptions(p);
                         totalCCTaken += pStats.cc.total;
                         totalCCMissed += pStats.cc.missed;
                         totalCCBlocked += pStats.cc.blocked;
@@ -385,29 +405,12 @@ export class DiscordNotifier {
                         });
                     };
 
-                    const getTargetStatTotal = (p: any, key: 'killed' | 'downed') => {
-                        if (!p.statsTargets) return 0;
-                        return p.statsTargets.reduce((sum: number, targetStats: any) => {
-                            if (!targetStats || targetStats.length === 0) return sum;
-                            const st = targetStats[0];
-                            return sum + (st?.[key] || 0);
-                        }, 0);
-                    };
-
-                    const getDistanceToTag = (p: any) => {
-                        const stats = p.statsAll?.[0];
-                        const distToCom = stats?.distToCom;
-                        if (distToCom !== undefined && distToCom !== null) {
-                            return distToCom;
-                        }
-                        const stackDist = stats?.stackDist;
-                        return stackDist || 0;
-                    };
-                    const getResurrects = (p: any) => p.support?.[0]?.resurrects || 0;
-                    const getBreakbarDamage = (p: any) => p.dpsAll?.[0]?.breakbarDamage || 0;
-                    const getDamageTaken = (p: any) => p.defenses?.[0]?.damageTaken || 0;
-                    const getDeaths = (p: any) => p.defenses?.[0]?.deadCount || 0;
-                    const getDodges = (p: any) => p.defenses?.[0]?.dodgeCount || 0;
+                    const getDistanceToTag = (p: any) => getPlayerDistanceToTag(p);
+                    const getResurrects = (p: any) => getPlayerResurrects(p);
+                    const getBreakbarDamage = (p: any) => getPlayerBreakbarDamage(p);
+                    const getDamageTaken = (p: any) => getPlayerDamageTaken(p);
+                    const getDeaths = (p: any) => getPlayerDeaths(p);
+                    const getDodges = (p: any) => getPlayerDodges(p);
 
                     const topListItems: Array<{
                         enabled: boolean;
@@ -419,50 +422,50 @@ export class DiscordNotifier {
                             {
                                 enabled: settings.showDamage,
                                 title: "Damage",
-                                sortFn: (a: any, b: any) => (b.dpsAll?.[0]?.damage || 0) - (a.dpsAll?.[0]?.damage || 0),
-                                valFn: (p: any) => p.dpsAll?.[0]?.damage || 0,
+                                sortFn: (a: any, b: any) => getPlayerDamage(b) - getPlayerDamage(a),
+                                valFn: (p: any) => getPlayerDamage(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showDownContribution,
                                 title: "Down Contribution",
-                                sortFn: (a: any, b: any) => computeDownContribution(b) - computeDownContribution(a),
-                                valFn: (p: any) => computeDownContribution(p),
+                                sortFn: (a: any, b: any) => getPlayerDownContribution(b) - getPlayerDownContribution(a),
+                                valFn: (p: any) => getPlayerDownContribution(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showHealing,
                                 title: "Healing",
-                                sortFn: (a: any, b: any) => computeSquadHealing(b) - computeSquadHealing(a),
-                                valFn: (p: any) => computeSquadHealing(p),
+                                sortFn: (a: any, b: any) => getPlayerSquadHealing(b) - getPlayerSquadHealing(a),
+                                valFn: (p: any) => getPlayerSquadHealing(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showBarrier,
                                 title: "Barrier",
-                                sortFn: (a: any, b: any) => computeSquadBarrier(b) - computeSquadBarrier(a),
-                                valFn: (p: any) => computeSquadBarrier(p),
+                                sortFn: (a: any, b: any) => getPlayerSquadBarrier(b) - getPlayerSquadBarrier(a),
+                                valFn: (p: any) => getPlayerSquadBarrier(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showCleanses,
                                 title: "Cleanses",
-                                sortFn: (a: any, b: any) => ((b.support?.[0]?.condiCleanse || 0) + (b.support?.[0]?.condiCleanseSelf || 0)) - ((a.support?.[0]?.condiCleanse || 0) + (a.support?.[0]?.condiCleanseSelf || 0)),
-                                valFn: (p: any) => (p.support?.[0]?.condiCleanse || 0) + (p.support?.[0]?.condiCleanseSelf || 0),
+                                sortFn: (a: any, b: any) => getPlayerCleanses(b) - getPlayerCleanses(a),
+                                valFn: (p: any) => getPlayerCleanses(p),
                                 fmtVal: (v: any) => v.toString()
                             },
                             {
                                 enabled: settings.showBoonStrips,
                                 title: "Boon Strips",
-                                sortFn: (a: any, b: any) => (b.support?.[0]?.boonStrips || 0) - (a.support?.[0]?.boonStrips || 0),
-                                valFn: (p: any) => p.support?.[0]?.boonStrips || 0,
+                                sortFn: (a: any, b: any) => getPlayerStrips(b) - getPlayerStrips(a),
+                                valFn: (p: any) => getPlayerStrips(p),
                                 fmtVal: (v: any) => v.toString()
                             },
                             {
                                 enabled: settings.showCC,
                                 title: "CC",
-                                sortFn: (a: any, b: any) => computeOutgoingCrowdControl(b) - computeOutgoingCrowdControl(a),
-                                valFn: (p: any) => computeOutgoingCrowdControl(p),
+                                sortFn: (a: any, b: any) => getPlayerOutgoingCrowdControl(b) - getPlayerOutgoingCrowdControl(a),
+                                valFn: (p: any) => getPlayerOutgoingCrowdControl(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
