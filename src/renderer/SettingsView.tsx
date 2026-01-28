@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink } from 'lucide-react';
-import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IMvpWeights } from './global.d';
+import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap } from 'lucide-react';
+import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD } from './global.d';
+import { METRICS_SPEC } from '../shared/metricsSettings';
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 
 interface SettingsViewProps {
@@ -9,6 +10,7 @@ interface SettingsViewProps {
     onEmbedStatSettingsSaved?: (settings: IEmbedStatSettings) => void;
     onOpenWhatsNew?: () => void;
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
+    onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
 }
 
 // Toggle switch component
@@ -73,11 +75,12 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onDisruptionMethodSaved }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
+    const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -140,6 +143,9 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setCloseBehavior(settings.closeBehavior || 'minimize');
             setEmbedStats({ ...DEFAULT_EMBED_STATS, ...(settings.embedStatSettings || {}) });
             setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
+            if (settings.disruptionMethod) {
+                setDisruptionMethod(settings.disruptionMethod);
+            }
             setGithubRepoOwner(settings.githubRepoOwner || '');
             setGithubRepoName(settings.githubRepoName || '');
             setGithubToken(settings.githubToken || '');
@@ -161,6 +167,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             closeBehavior,
             embedStatSettings: embedStats,
             mvpWeights: mvpWeights,
+            disruptionMethod: disruptionMethod,
             githubRepoName: githubRepoName || null,
             githubRepoOwner: githubRepoOwner || null,
             githubToken: githubToken || null,
@@ -169,6 +176,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
+        onDisruptionMethodSaved?.(disruptionMethod);
 
         setTimeout(() => {
             setIsSaving(false);
@@ -188,6 +196,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         closeBehavior,
         embedStats,
         mvpWeights,
+        disruptionMethod,
         githubRepoName,
         githubRepoOwner,
         githubToken,
@@ -972,6 +981,41 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                             label="Incoming Stats"
                             description="Attacks, CC, and strips received (with miss/block rates)"
                         />
+                    </div>
+                </SettingsSection>
+
+                {/* CC/Strip Methodology */}
+                <SettingsSection title="CC/Strip Methodology" icon={Zap} delay={0.12}>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Choose how crowd control and strip totals are calculated across the app.
+                    </p>
+                    <div className="grid gap-3">
+                        {Object.entries(METRICS_SPEC.methods).map(([key, method]) => {
+                            const isActive = disruptionMethod === key;
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => setDisruptionMethod(key as DisruptionMethod)}
+                                    className={`text-left rounded-xl border px-4 py-3 transition-colors ${isActive
+                                        ? 'bg-blue-500/15 border-blue-500/40 text-blue-100'
+                                        : 'bg-black/20 border-white/10 text-gray-300 hover:text-white hover:border-white/20'
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm font-semibold">{method.label}</div>
+                                        <div className={`text-xs font-semibold ${isActive ? 'text-blue-200' : 'text-gray-500'}`}>
+                                            {isActive ? 'Selected' : 'Select'}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-400 mt-1">{method.summary}</div>
+                                    <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                                        {method.implications.map((item, idx) => (
+                                            <li key={`${key}-${idx}`}>• {item}</li>
+                                        ))}
+                                    </ul>
+                                </button>
+                            );
+                        })}
                     </div>
                 </SettingsSection>
 

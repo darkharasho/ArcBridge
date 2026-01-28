@@ -26,7 +26,10 @@
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview",
         "fixture:json": "bash scripts/generate-json-fixture.sh",
-        "validate:boons": "node scripts/boon-validate.js"
+        "audit:boons": "node scripts/boon-validate.js",
+        "audit:metrics": "node scripts/metrics-audit.mjs --all",
+        "generate:metrics": "node scripts/metrics-audit.mjs --all --out test-fixtures/metrics",
+        "generate:fixtures": "for f in testdata/*.zevtc; do bash scripts/generate-json-fixture.sh \"$f\"; done"
     },
     "dependencies": {
         "axios": "^1.6.0",

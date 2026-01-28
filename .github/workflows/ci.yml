@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  validate-boons:
+  audit-boons:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,5 +22,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate boon generation
-        run: npm run validate:boons
+      - name: Audit boon generation
+        run: npm run audit:boons
+
+  audit-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit combat metrics
+        run: npm run audit:metrics

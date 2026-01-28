@@ -1,6 +1,29 @@
 import axios from 'axios';
 import FormData from 'form-data';
-import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import {
+    applyStabilityGeneration,
+    getPlayerDamage,
+    getPlayerDps,
+    getPlayerDownsTaken,
+    getPlayerDownContribution,
+    getPlayerBreakbarDamage,
+    getPlayerCleanses,
+    getPlayerDamageTaken,
+    getPlayerDeaths,
+    getPlayerDistanceToTag,
+    getPlayerDodges,
+    getPlayerMissed,
+    getPlayerBlocked,
+    getPlayerEvaded,
+    getPlayerResurrects,
+    getPlayerSquadHealing,
+    getPlayerSquadBarrier,
+    getPlayerOutgoingCrowdControl,
+    getPlayerStrips,
+    getIncomingDisruptions,
+    getTargetStatTotal,
+} from '../shared/dashboardMetrics';
+import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 import { Player } from '../shared/dpsReportTypes';
 
@@ -62,6 +85,7 @@ const DISCORD_MAX_EMBEDS = 10;
 export class DiscordNotifier {
     private webhookUrl: string | null = null;
     private embedStatSettings: IEmbedStatSettings = DEFAULT_EMBED_STATS;
+    private disruptionMethod: DisruptionMethod = DEFAULT_DISRUPTION_METHOD;
 
     constructor() {
     }
@@ -72,6 +96,10 @@ export class DiscordNotifier {
 
     public setEmbedStatSettings(settings: IEmbedStatSettings) {
         this.embedStatSettings = { ...DEFAULT_EMBED_STATS, ...settings };
+    }
+
+    public setDisruptionMethod(method: DisruptionMethod) {
+        this.disruptionMethod = method || DEFAULT_DISRUPTION_METHOD;
     }
 
     public async sendLog(logData: { permalink: string, id: string, filePath: string, imageBuffer?: Uint8Array, imageBuffers?: Uint8Array[], suppressContent?: boolean, mode?: 'image' | 'embed' }, jsonDetails?: any) {
@@ -133,7 +161,7 @@ export class DiscordNotifier {
                     const settings = this.embedStatSettings;
 
                     // Pre-calculate stability
-                    calculateAllStability(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
+                    applyStabilityGeneration(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
 
                     let embedFields: any[] = [];
 
@@ -172,34 +200,32 @@ export class DiscordNotifier {
                     players.forEach((p: any) => {
                         const isSquad = !p.notInSquad;
 
-                        if (p.dpsAll && p.dpsAll.length > 0) {
-                            const dps = p.dpsAll[0].dps;
-                            const dmg = p.dpsAll[0].damage;
-                            totalDps += dps;
-                            totalDmg += dmg;
-                            if (isSquad) {
-                                squadDps += dps;
-                                squadDmg += dmg;
-                            }
+                        const dps = getPlayerDps(p);
+                        const dmg = getPlayerDamage(p);
+                        totalDps += dps;
+                        totalDmg += dmg;
+                        if (isSquad) {
+                            squadDps += dps;
+                            squadDmg += dmg;
                         }
                         if (p.defenses && p.defenses.length > 0) {
                             const d = p.defenses[0];
-                            totalDowns += d.downCount;
-                            totalDeaths += d.deadCount;
-                            totalDmgTaken += d.damageTaken || 0;
+                            totalDowns += getPlayerDownsTaken(p);
+                            totalDeaths += getPlayerDeaths(p);
+                            totalDmgTaken += getPlayerDamageTaken(p);
 
                             if (isSquad) {
-                                squadDowns += d.downCount;
-                                squadDeaths += d.deadCount;
+                                squadDowns += getPlayerDownsTaken(p);
+                                squadDeaths += getPlayerDeaths(p);
                             }
 
-                            totalMiss += d.missedCount || 0;
-                            totalBlock += d.blockedCount || 0;
-                            totalEvade += d.evadedCount || 0;
-                            totalDodge += d.dodgeCount || 0;
-                            // Uses PlenBot logic below instead of simple fields for CC/Strips
+                            totalMiss += getPlayerMissed(p);
+                            totalBlock += getPlayerBlocked(p);
+                            totalEvade += getPlayerEvaded(p);
+                            totalDodge += getPlayerDodges(p);
+                            // Uses per-skill weighting for CC/Strips instead of raw summary fields
                         }
-                        const pStats = calculateIncomingStats(p);
+                        const pStats = getIncomingDisruptions(p, this.disruptionMethod);
                         totalCCTaken += pStats.cc.total;
                         totalCCMissed += pStats.cc.missed;
                         totalCCBlocked += pStats.cc.blocked;
@@ -245,8 +271,6 @@ export class DiscordNotifier {
                     // Build Description
                     let desc = `**Recorded by:** ${jsonDetails.recordedBy || 'Unknown'}\n`;
                     desc += `**Duration:** ${jsonDetails.duration || jsonDetails.encounterDuration || 'Unknown'}\n`;
-                    desc += `**Elite Insights version:** ${jsonDetails.eliteInsightsVersion || 'Unknown'}\n`;
-                    desc += `**arcdps version:** ${jsonDetails.arcVersion || 'Unknown'}\n`;
 
                     // Line 1: Squad Summary | Team Summary (Enemy)
                     const formatStatLine = (label: string, value: string | number) => {
@@ -387,29 +411,12 @@ export class DiscordNotifier {
                         });
                     };
 
-                    const getTargetStatTotal = (p: any, key: 'killed' | 'downed') => {
-                        if (!p.statsTargets) return 0;
-                        return p.statsTargets.reduce((sum: number, targetStats: any) => {
-                            if (!targetStats || targetStats.length === 0) return sum;
-                            const st = targetStats[0];
-                            return sum + (st?.[key] || 0);
-                        }, 0);
-                    };
-
-                    const getDistanceToTag = (p: any) => {
-                        const stats = p.statsAll?.[0];
-                        const distToCom = stats?.distToCom;
-                        if (distToCom !== undefined && distToCom !== null) {
-                            return distToCom;
-                        }
-                        const stackDist = stats?.stackDist;
-                        return stackDist || 0;
-                    };
-                    const getResurrects = (p: any) => p.support?.[0]?.resurrects || 0;
-                    const getBreakbarDamage = (p: any) => p.dpsAll?.[0]?.breakbarDamage || 0;
-                    const getDamageTaken = (p: any) => p.defenses?.[0]?.damageTaken || 0;
-                    const getDeaths = (p: any) => p.defenses?.[0]?.deadCount || 0;
-                    const getDodges = (p: any) => p.defenses?.[0]?.dodgeCount || 0;
+                    const getDistanceToTag = (p: any) => getPlayerDistanceToTag(p);
+                    const getResurrects = (p: any) => getPlayerResurrects(p);
+                    const getBreakbarDamage = (p: any) => getPlayerBreakbarDamage(p);
+                    const getDamageTaken = (p: any) => getPlayerDamageTaken(p);
+                    const getDeaths = (p: any) => getPlayerDeaths(p);
+                    const getDodges = (p: any) => getPlayerDodges(p);
 
                     const topListItems: Array<{
                         enabled: boolean;
@@ -421,50 +428,50 @@ export class DiscordNotifier {
                             {
                                 enabled: settings.showDamage,
                                 title: "Damage",
-                                sortFn: (a: any, b: any) => (b.dpsAll?.[0]?.damage || 0) - (a.dpsAll?.[0]?.damage || 0),
-                                valFn: (p: any) => p.dpsAll?.[0]?.damage || 0,
+                                sortFn: (a: any, b: any) => getPlayerDamage(b) - getPlayerDamage(a),
+                                valFn: (p: any) => getPlayerDamage(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showDownContribution,
                                 title: "Down Contribution",
-                                sortFn: (a: any, b: any) => calculateDownContribution(b) - calculateDownContribution(a),
-                                valFn: (p: any) => calculateDownContribution(p),
+                                sortFn: (a: any, b: any) => getPlayerDownContribution(b) - getPlayerDownContribution(a),
+                                valFn: (p: any) => getPlayerDownContribution(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showHealing,
                                 title: "Healing",
-                                sortFn: (a: any, b: any) => calculateSquadHealing(b) - calculateSquadHealing(a),
-                                valFn: (p: any) => calculateSquadHealing(p),
+                                sortFn: (a: any, b: any) => getPlayerSquadHealing(b) - getPlayerSquadHealing(a),
+                                valFn: (p: any) => getPlayerSquadHealing(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showBarrier,
                                 title: "Barrier",
-                                sortFn: (a: any, b: any) => calculateSquadBarrier(b) - calculateSquadBarrier(a),
-                                valFn: (p: any) => calculateSquadBarrier(p),
+                                sortFn: (a: any, b: any) => getPlayerSquadBarrier(b) - getPlayerSquadBarrier(a),
+                                valFn: (p: any) => getPlayerSquadBarrier(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showCleanses,
                                 title: "Cleanses",
-                                sortFn: (a: any, b: any) => ((b.support?.[0]?.condiCleanse || 0) + (b.support?.[0]?.condiCleanseSelf || 0)) - ((a.support?.[0]?.condiCleanse || 0) + (a.support?.[0]?.condiCleanseSelf || 0)),
-                                valFn: (p: any) => (p.support?.[0]?.condiCleanse || 0) + (p.support?.[0]?.condiCleanseSelf || 0),
+                                sortFn: (a: any, b: any) => getPlayerCleanses(b) - getPlayerCleanses(a),
+                                valFn: (p: any) => getPlayerCleanses(p),
                                 fmtVal: (v: any) => v.toString()
                             },
                             {
                                 enabled: settings.showBoonStrips,
                                 title: "Boon Strips",
-                                sortFn: (a: any, b: any) => (b.support?.[0]?.boonStrips || 0) - (a.support?.[0]?.boonStrips || 0),
-                                valFn: (p: any) => p.support?.[0]?.boonStrips || 0,
+                                sortFn: (a: any, b: any) => getPlayerStrips(b, this.disruptionMethod) - getPlayerStrips(a, this.disruptionMethod),
+                                valFn: (p: any) => getPlayerStrips(p, this.disruptionMethod),
                                 fmtVal: (v: any) => v.toString()
                             },
                             {
                                 enabled: settings.showCC,
                                 title: "CC",
-                                sortFn: (a: any, b: any) => calculateOutCC(b) - calculateOutCC(a),
-                                valFn: (p: any) => calculateOutCC(p),
+                                sortFn: (a: any, b: any) => getPlayerOutgoingCrowdControl(b, this.disruptionMethod) - getPlayerOutgoingCrowdControl(a, this.disruptionMethod),
+                                valFn: (p: any) => getPlayerOutgoingCrowdControl(p, this.disruptionMethod),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {

@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import { applyStabilityGeneration, getIncomingDisruptions, getPlayerDamage, getPlayerDps, getPlayerDownsTaken, getPlayerDeaths, getPlayerDamageTaken, getPlayerDodges, getPlayerMissed, getPlayerBlocked, getPlayerEvaded, getPlayerResurrects, getPlayerDownContribution, getPlayerOutgoingCrowdControl, getPlayerSquadBarrier, getPlayerSquadHealing, getTargetStatTotal } from '../shared/dashboardMetrics';
 import { Player } from '../shared/dpsReportTypes';
-import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DisruptionMethod, IEmbedStatSettings } from './global.d';
 import { getProfessionAbbrev, getProfessionEmoji, getProfessionIconPath } from '../shared/professionUtils';
 
 interface ExpandableLogCardProps {
@@ -12,6 +12,7 @@ interface ExpandableLogCardProps {
     onCancel?: () => void;
     screenshotMode?: boolean;
     embedStatSettings?: IEmbedStatSettings;
+    disruptionMethod?: DisruptionMethod;
     useClassIcons?: boolean;
     screenshotSection?: {
         type: 'summary' | 'toplists' | 'tile';
@@ -24,12 +25,13 @@ interface ExpandableLogCardProps {
     };
 }
 
-export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screenshotMode, embedStatSettings, screenshotSection, useClassIcons }: ExpandableLogCardProps) {
+export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screenshotMode, embedStatSettings, disruptionMethod, screenshotSection, useClassIcons }: ExpandableLogCardProps) {
     const details = log.details || {};
     const players: Player[] = details.players || [];
     const targets = details.targets || [];
     const settings = embedStatSettings || DEFAULT_EMBED_STATS;
-    calculateAllStability(players, { durationMS: details.durationMS, buffMap: details.buffMap });
+    const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
+    applyStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
     const squadPlayers = players.filter((p: any) => !p.notInSquad);
     const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
 
@@ -73,34 +75,27 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
 
     players.forEach((p: any) => {
         const isSquad = !p.notInSquad;
-        if (p.dpsAll && p.dpsAll.length > 0) {
-            totalDps += p.dpsAll[0].dps;
-            totalDmg += p.dpsAll[0].damage;
-            if (isSquad) {
-                squadDps += p.dpsAll[0].dps;
-                squadDmg += p.dpsAll[0].damage;
-                squadCC += calculateOutCC(p); // Use accurate PlenBot calculation
-                squadResurrects += (p.support?.[0]?.resurrects || 0);
-            }
+        totalDps += getPlayerDps(p);
+        totalDmg += getPlayerDamage(p);
+        if (isSquad) {
+            squadDps += getPlayerDps(p);
+            squadDmg += getPlayerDamage(p);
+            squadCC += getPlayerOutgoingCrowdControl(p, method);
+            squadResurrects += getPlayerResurrects(p);
         }
-        if (p.defenses && p.defenses.length > 0) {
-            const d = p.defenses[0];
-            totalDowns += d.downCount;
-            totalDeaths += d.deadCount;
-            totalDmgTaken += d.damageTaken || 0;
-            if (isSquad) {
-                squadDowns += d.downCount;
-                squadDeaths += d.deadCount;
-            }
-            totalMiss += d.missedCount || 0;
-            totalBlock += d.blockedCount || 0;
-            totalEvade += d.evadedCount || 0;
-            totalDodge += d.dodgeCount || 0;
-            // totalCCTaken += d.interruptedCount || 0; <-- Handled by PlenBot logic now
-            // totalStripsTaken += d.boonStrips || 0;
+        totalDowns += getPlayerDownsTaken(p);
+        totalDeaths += getPlayerDeaths(p);
+        totalDmgTaken += getPlayerDamageTaken(p);
+        if (isSquad) {
+            squadDowns += getPlayerDownsTaken(p);
+            squadDeaths += getPlayerDeaths(p);
         }
+        totalMiss += getPlayerMissed(p);
+        totalBlock += getPlayerBlocked(p);
+        totalEvade += getPlayerEvaded(p);
+        totalDodge += getPlayerDodges(p);
 
-        const pStats = calculateIncomingStats(p);
+        const pStats = getIncomingDisruptions(p, method);
         totalCCTaken += pStats.cc.total;
         totalCCMissed += pStats.cc.missed;
         totalCCBlocked += pStats.cc.blocked;
@@ -124,30 +119,15 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     // Aggregate downed/killed from statsTargets
     players.forEach((p: any) => {
         if (p.notInSquad) return; // Only count squad contributions
-        if (p.statsTargets && p.statsTargets.length > 0) {
-            // statsTargets[targetIndex] contains stats for that target
-            p.statsTargets.forEach((targetStats: any) => {
-                if (targetStats && targetStats.length > 0) {
-                    const st = targetStats[0]; // Phase 0
-                    enemyDowns += st.downed || 0;
-                    enemyDeaths += st.killed || 0;
-                }
-            });
-        }
+        enemyDowns += getTargetStatTotal(p, 'downed');
+        enemyDeaths += getTargetStatTotal(p, 'killed');
     });
 
     // Calculate enemy DPS (damage they dealt to us per second)
     const durationSec = (details.durationMS || 0) / 1000 || 1;
     const enemyDps = Math.round(totalDmgTaken / durationSec);
 
-    const getTargetStatTotal = (p: any, key: 'killed' | 'downed') => {
-        if (!p.statsTargets) return 0;
-        return p.statsTargets.reduce((sum: number, targetStats: any) => {
-            if (!targetStats || targetStats.length === 0) return sum;
-            const st = targetStats[0];
-            return sum + (st?.[key] || 0);
-        }, 0);
-    };
+    
 
     const getDistanceToTag = (p: any) => {
         const stats = p.statsAll?.[0];
@@ -242,22 +222,22 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         {
             enabled: settings.showDownContribution,
             title: "Down Contribution",
-            sortFn: (a: any, b: any) => calculateDownContribution(b) - calculateDownContribution(a),
-            valFn: (p: any) => calculateDownContribution(p),
+            sortFn: (a: any, b: any) => getPlayerDownContribution(b) - getPlayerDownContribution(a),
+            valFn: (p: any) => getPlayerDownContribution(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
             enabled: settings.showHealing,
             title: "Healing",
-            sortFn: (a: any, b: any) => calculateSquadHealing(b) - calculateSquadHealing(a),
-            valFn: (p: any) => calculateSquadHealing(p),
+            sortFn: (a: any, b: any) => getPlayerSquadHealing(b) - getPlayerSquadHealing(a),
+            valFn: (p: any) => getPlayerSquadHealing(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
             enabled: settings.showBarrier,
             title: "Barrier",
-            sortFn: (a: any, b: any) => calculateSquadBarrier(b) - calculateSquadBarrier(a),
-            valFn: (p: any) => calculateSquadBarrier(p),
+            sortFn: (a: any, b: any) => getPlayerSquadBarrier(b) - getPlayerSquadBarrier(a),
+            valFn: (p: any) => getPlayerSquadBarrier(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
@@ -277,8 +257,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         {
             enabled: settings.showCC,
             title: "CC",
-            sortFn: (a: any, b: any) => calculateOutCC(b) - calculateOutCC(a),
-            valFn: (p: any) => calculateOutCC(p),
+            sortFn: (a: any, b: any) => getPlayerOutgoingCrowdControl(b, method) - getPlayerOutgoingCrowdControl(a, method),
+            valFn: (p: any) => getPlayerOutgoingCrowdControl(p, method),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {

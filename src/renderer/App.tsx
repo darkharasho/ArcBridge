@@ -9,7 +9,7 @@ import { WebhookModal, Webhook } from './WebhookModal';
 import { UpdateErrorModal } from './UpdateErrorModal';
 import { Terminal } from './Terminal';
 import { Terminal as TerminalIcon } from 'lucide-react';
-import { DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IEmbedStatSettings, IMvpWeights } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DisruptionMethod, IEmbedStatSettings, IMvpWeights } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
 
 const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
@@ -38,6 +38,7 @@ function App() {
     const canceledLogsRef = useRef<Set<string>>(new Set());
     const [embedStatSettings, setEmbedStatSettings] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
+    const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
 
     const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
 
@@ -132,6 +133,9 @@ function App() {
             }
             if (settings.mvpWeights) {
                 setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...settings.mvpWeights });
+            }
+            if (settings.disruptionMethod) {
+                setDisruptionMethod(settings.disruptionMethod);
             }
 
             const whatsNew = await window.electronAPI.getWhatsNew();
@@ -598,12 +602,13 @@ function App() {
                 </header>
 
                 {view === 'stats' ? (
-                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} />
+                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} />
                 ) : view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}
                         onEmbedStatSettingsSaved={setEmbedStatSettings}
                         onMvpWeightsSaved={setMvpWeights}
+                        onDisruptionMethodSaved={setDisruptionMethod}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
                 ) : (
@@ -862,6 +867,7 @@ function App() {
                                                         }
                                                     }}
                                                     embedStatSettings={embedStatSettings}
+                                                    disruptionMethod={disruptionMethod}
                                                     useClassIcons={showClassIcons}
                                                 />
                                             ))
@@ -886,6 +892,7 @@ function App() {
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'squad' }}
                                 embedStatSettings={embedStatSettings}
+                                disruptionMethod={disruptionMethod}
                                 useClassIcons={showClassIcons}
                             />
                         )}
@@ -897,6 +904,7 @@ function App() {
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'enemy' }}
                                 embedStatSettings={embedStatSettings}
+                                disruptionMethod={disruptionMethod}
                                 useClassIcons={showClassIcons}
                             />
                         )}
@@ -909,6 +917,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-attacks' }}
                                     embedStatSettings={embedStatSettings}
+                                    disruptionMethod={disruptionMethod}
                                     useClassIcons={showClassIcons}
                                 />
                                 <ExpandableLogCard
@@ -918,6 +927,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-cc' }}
                                     embedStatSettings={embedStatSettings}
+                                    disruptionMethod={disruptionMethod}
                                     useClassIcons={showClassIcons}
                                 />
                                 <ExpandableLogCard
@@ -927,6 +937,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-strips' }}
                                     embedStatSettings={embedStatSettings}
+                                    disruptionMethod={disruptionMethod}
                                     useClassIcons={showClassIcons}
                                 />
                                 <ExpandableLogCard
@@ -936,6 +947,7 @@ function App() {
                                     screenshotMode={true}
                                     screenshotSection={{ type: 'tile', tileKind: 'incoming', tileId: 'incoming-blank' }}
                                     embedStatSettings={embedStatSettings}
+                                    disruptionMethod={disruptionMethod}
                                     useClassIcons={showClassIcons}
                                 />
                             </>
@@ -949,6 +961,7 @@ function App() {
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'toplist', tileIndex: index }}
                                 embedStatSettings={embedStatSettings}
+                                disruptionMethod={disruptionMethod}
                                 useClassIcons={showClassIcons}
                             />
                         ))}
@@ -958,6 +971,7 @@ function App() {
                             onToggle={() => { }}
                             screenshotMode={true}
                             embedStatSettings={embedStatSettings}
+                            disruptionMethod={disruptionMethod}
                             useClassIcons={showClassIcons}
                         />
                     </>
@@ -969,6 +983,7 @@ function App() {
                             onToggle={() => { }}
                             screenshotMode={true}
                             embedStatSettings={embedStatSettings}
+                            disruptionMethod={disruptionMethod}
                             useClassIcons={showClassIcons}
                         />
                     )

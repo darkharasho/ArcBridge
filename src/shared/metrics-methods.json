@@ -1,0 +1,38 @@
+{
+  "specVersion": "v2",
+  "methods": {
+    "count": {
+      "label": "Count Events",
+      "summary": "Counts each CC/strip event once.",
+      "implications": [
+        "Simple and stable across EI versions.",
+        "Multi-hit skills can inflate totals."
+      ]
+    },
+    "duration": {
+      "label": "Duration (Seconds)",
+      "summary": "Uses total CC/strip duration in seconds.",
+      "implications": [
+        "Reflects control impact more directly.",
+        "Totals represent time, not event count."
+      ]
+    },
+    "tiered": {
+      "label": "Tiered Impact",
+      "summary": "Weights events based on average duration tiers.",
+      "implications": [
+        "Balances short vs long CC/strip effects.",
+        "Uses averaged durations per player."
+      ],
+      "tiers": {
+        "shortMs": 500,
+        "mediumMs": 1500,
+        "weights": {
+          "short": 0.5,
+          "medium": 1,
+          "long": 2
+        }
+      }
+    }
+  }
+}
