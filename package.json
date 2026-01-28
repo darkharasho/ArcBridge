@@ -1,7 +1,7 @@
 {
     "name": "gw2-arc-log-uploader",
     "private": true,
-    "version": "1.6.1",
+    "version": "1.6.2",
     "description": "Guild Wars 2 arcDPS Log Uploader",
     "author": {
         "name": "darkharasho",
@@ -88,8 +88,11 @@
             "dist-electron/**/*",
             "dist-react/**/*",
             "dist-web/**/*",
+            "COPYRIGHT",
+            "LICENSE",
             "package.json",
-            "RELEASE_NOTES.md"
+            "RELEASE_NOTES.md",
+            "THIRD_PARTY_NOTICES.md"
         ],
         "linux": {
             "target": [

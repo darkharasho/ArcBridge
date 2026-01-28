@@ -1,3 +1,5 @@
+// Portions of this file are adapted from PlenBotLogUploader (MIT).
+// See THIRD_PARTY_NOTICES.md for license details.
 import { Player } from './dpsReportTypes';
 import { getPlayerBoonGenerationMs } from './boonGeneration';
 

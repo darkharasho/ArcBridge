@@ -1239,6 +1239,33 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                     </div>
                 </SettingsSection>
 
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-gray-400">
+                    <div className="text-sm font-semibold text-gray-200 mb-2">Legal Notice</div>
+                    <p>
+                        GW2 Arc Log Uploader is free software: you can redistribute it and/or modify it under the terms
+                        of the GNU General Public License v3.0 only. This program comes with ABSOLUTELY NO WARRANTY.
+                    </p>
+                    <p className="mt-2">
+                        See the{' '}
+                        <button
+                            type="button"
+                            onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/gw2_arc_log_uploader/blob/main/LICENSE')}
+                            className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                        >
+                            LICENSE
+                        </button>
+                        {' '}and{' '}
+                        <button
+                            type="button"
+                            onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/gw2_arc_log_uploader/blob/main/THIRD_PARTY_NOTICES.md')}
+                            className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                        >
+                            THIRD_PARTY_NOTICES.md
+                        </button>
+                        {' '}files for full terms and upstream attributions.
+                    </p>
+                </div>
+
                 <div className="h-[12vh] min-h-10 max-h-28" />
                 {/* Save Button (hidden with auto-save) */}
             </div>

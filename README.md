@@ -81,14 +81,17 @@ A premium, high-performance Electron application for Guild Wars 2 players to aut
 
 ## 📄 License
 
-This project is licensed under the gpl3.0 License—see the LICENSE file for details.
+This project is licensed under GPL-3.0-only—see the LICENSE file for details.
+Copyright (C) 2026 harasho.
 
-## Attribution
+## 🙌 Attribution & Upstream Licenses
 
 This project includes ideas and/or code adapted from:
 
-- PlenBot Log Uploader by Plenyx (and contributors), with additional work by bear-on-the-job.
+- PlenBot Log Uploader by Plenyx (and contributors), with additional work by bear-on-the-job. (MIT)
   - https://github.com/Plenyx/PlenBotLogUploader
   - https://github.com/bear-on-the-job
-- GW2 EI Log Combiner by Drevarr (and contributors).
+- GW2 EI Log Combiner by Drevarr (and contributors). (GPL-3.0)
   - https://github.com/Drevarr/GW2_EI_log_combiner
+
+See THIRD_PARTY_NOTICES.md for license text and additional details.
