@@ -1548,7 +1548,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 }
                 playerRecord.logs += 1;
 
-                (player.rotation || []).forEach((rotationSkill) => {
+                (player.rotation || []).forEach((rotationSkill: any) => {
                     if (!rotationSkill || typeof rotationSkill.id !== 'number') return;
                     const castCount = Array.isArray(rotationSkill.skills) ? rotationSkill.skills.length : 0;
                     if (castCount === 0) return;
@@ -1782,7 +1782,6 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
     const selectedSkillName = skillUsageData.skillOptions.find((option) => option.id === selectedSkillId)?.name || '';
     const skillUsageReady = skillUsageAvailable && Boolean(selectedSkillId) && selectedPlayers.length > 0;
-    const SKILL_LINE_COLORS = ['#38bdf8', '#f472b6', '#facc15', '#34d399'];
 
     const togglePlayerSelection = (playerKey: string) => {
         setSelectedPlayers((prev) => {
@@ -2597,8 +2596,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                 <div
                                                     key={playerKey}
                                                     className="rounded-2xl border border-white/10 bg-white/5 p-3 flex items-center justify-between"
-                                                    onMouseEnter={() => setHoveredSkillPlayer(playerKey)}
-                                                    onMouseLeave={() => setHoveredSkillPlayer(null)}
+                                                    onMouseEnter={() => setHoveredSkillPlayer([playerKey])}
+                                                    onMouseLeave={() => setHoveredSkillPlayer([])}
                                                 >
                                                     <div>
                                                         <div className="text-[10px] uppercase tracking-[0.4em] text-gray-400">Player</div>
@@ -3833,7 +3832,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             interval={0}
                                             tickFormatter={(value: number) => {
                                                 const entry = skillChartData[value];
-                                                const label = entry?.shortLabel ?? String(value);
+                                                const label = String(entry?.shortLabel ?? value);
                                                 return label.length > 20 ? `${label.slice(0, 20)}…` : label;
                                             }}
                                         />

@@ -41,6 +41,7 @@ export interface Player {
     dpsTargets?: StatsTarget[][];
     defenses: Defenses[];
     support: Support[];
+    rotation?: Array<{ id: number; skills?: number[] }>;
     extHealingStats?: {
         outgoingHealingAllies?: { healing: number; downedHealing?: number }[][];
     };
