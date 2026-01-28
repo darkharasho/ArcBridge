@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const inputPath = process.argv[2] || path.join(__dirname, '..', 'test-fixtures', 'boon', '20260125-202439.json');
-const expectedPath = process.argv[3] || path.join(__dirname, '..', 'test-fixtures', 'boon', 'boon-generation-expected.json');
+const expectedPath = process.argv[3] || path.join(__dirname, '..', 'test-fixtures', 'boon-expected', 'boon-generation-expected.json');
 
 const safeDiv = (a, b, fallback = 0) => (b ? a / b : fallback);
 

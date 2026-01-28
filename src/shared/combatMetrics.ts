@@ -73,7 +73,16 @@ export function applySquadStabilityGeneration(
 
     squadPlayers.forEach((player) => {
         const groupCount = groupCounts.get(player.group ?? 0) || 1;
-        const { generationMs } = getPlayerBoonGenerationMs(
+        const self = getPlayerBoonGenerationMs(
+            player,
+            'selfBuffs',
+            1122,
+            durationMs,
+            groupCount,
+            squadCount,
+            buffMap,
+        );
+        const squad = getPlayerBoonGenerationMs(
             player,
             'squadBuffs',
             1122,
@@ -82,7 +91,7 @@ export function applySquadStabilityGeneration(
             squadCount,
             buffMap,
         );
-        player.stabGeneration = generationMs / 1000;
+        player.stabGeneration = (self.generationMs + squad.generationMs) / 1000;
     });
 }
 

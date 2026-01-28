@@ -138,6 +138,11 @@ const normalizeForCompare = (data) => {
     return copy;
 };
 
+const sumStability = (data) => {
+    if (!data || !Array.isArray(data.metrics)) return 0;
+    return data.metrics.reduce((total, entry) => total + (Number(entry?.stabGeneration) || 0), 0);
+};
+
 const compareWithExpected = (data, expectedFile) => {
     const expectedFullPath = path.resolve(cwd, expectedFile);
     if (!fs.existsSync(expectedFullPath)) {
@@ -146,7 +151,18 @@ const compareWithExpected = (data, expectedFile) => {
     const expectedRaw = fs.readFileSync(expectedFullPath, 'utf8');
     const expected = JSON.parse(expectedRaw);
     const ok = JSON.stringify(normalizeForCompare(expected)) === JSON.stringify(normalizeForCompare(data));
-    return { ok, reason: ok ? '' : 'mismatch' };
+    if (ok) {
+        return { ok, reason: '' };
+    }
+    const expectedStab = sumStability(expected);
+    const actualStab = sumStability(data);
+    if (Math.abs(expectedStab - actualStab) > 0.0001) {
+        return {
+            ok,
+            reason: `mismatch (stability total expected ${expectedStab.toFixed(3)} got ${actualStab.toFixed(3)})`,
+        };
+    }
+    return { ok, reason: 'mismatch' };
 };
 
 if (allFlag) {

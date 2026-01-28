@@ -76,6 +76,8 @@ Implementation: `src/shared/combatMetrics.ts` (computeIncomingDisruptions).
 
 Implementation: `src/shared/dashboardMetrics.ts` (getPlayerCleanses).
 
+UI note: the Support table can display either **All** (condiCleanse + condiCleanseSelf) or **Squad** (condiCleanse only) via the cleanse-scope toggle. Discord and top summaries use **All**.
+
 ## Strips
 
 `strips` uses the configured methodology:
@@ -171,3 +173,4 @@ Implementation: `src/shared/dashboardMetrics.ts` (getTargetStatTotal).
 - `distToCom` and `stackDist` are not guaranteed to exist in every log; `distanceToTag` may be `0`.
 - Incoming CC/strips use weighted skill mappings; mismatches can occur if EI changes skill ids or hit accounting.
 - Stability generation depends on buff metadata presence (`buffMap`) and correct `durationMS`.
+- Damage uses `dpsAll[0].damage` (player total) rather than summing per-target totals, which may differ when targets are filtered or merged.

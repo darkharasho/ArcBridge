@@ -2,7 +2,7 @@
   "specVersion": "unknown",
   "method": "count",
   "source": "test-fixtures/boon/20260125-202439.json",
-  "generatedAt": "2026-01-28T23:00:48.042Z",
+  "generatedAt": "2026-01-28T23:17:34.878Z",
   "metrics": [
     {
       "name": "El Stan",
@@ -24,7 +24,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 237239,
-      "stabGeneration": 72.21438
+      "stabGeneration": 117.95015400000001
     },
     {
       "name": "Grimm O Tree",
@@ -68,7 +68,7 @@
       "downContribution": 0,
       "squadBarrier": 44836,
       "squadHealing": 134317,
-      "stabGeneration": 138.41089499999998
+      "stabGeneration": 168.09902899999997
     },
     {
       "name": "Revan Malice",
@@ -90,7 +90,7 @@
       "downContribution": 0,
       "squadBarrier": 86523,
       "squadHealing": 40198,
-      "stabGeneration": 1901.64534
+      "stabGeneration": 2432.8222240000005
     },
     {
       "name": "Valentino Graves",
@@ -112,7 +112,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 5492,
-      "stabGeneration": 1432.2518699999998
+      "stabGeneration": 1771.6594559999999
     },
     {
       "name": "Airtight Undies",
@@ -156,7 +156,7 @@
       "downContribution": 0,
       "squadBarrier": 8072,
       "squadHealing": 14128,
-      "stabGeneration": 0
+      "stabGeneration": 44.933392
     },
     {
       "name": "Momma Miko",
@@ -200,7 +200,7 @@
       "downContribution": 0,
       "squadBarrier": 42243,
       "squadHealing": 102917,
-      "stabGeneration": 1089.233565
+      "stabGeneration": 1406.976837
     },
     {
       "name": "Mr Pinguino V",
@@ -244,7 +244,7 @@
       "downContribution": 0,
       "squadBarrier": 78447,
       "squadHealing": 205429,
-      "stabGeneration": 764.268855
+      "stabGeneration": 910.302379
     },
     {
       "name": "Primordial Deity",
@@ -266,7 +266,7 @@
       "downContribution": 0,
       "squadBarrier": 36720,
       "squadHealing": 112755,
-      "stabGeneration": 1366.055355
+      "stabGeneration": 1749.995142
     },
     {
       "name": "Ziet The Dreaded",
@@ -288,7 +288,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 15500,
-      "stabGeneration": 0
+      "stabGeneration": 223.06219600000003
     },
     {
       "name": "Momma Miko",
@@ -310,7 +310,7 @@
       "downContribution": 0,
       "squadBarrier": 50957,
       "squadHealing": 110851,
-      "stabGeneration": 2352.985215
+      "stabGeneration": 2960.3883890000006
     },
     {
       "name": "Mr Pinguino V",
@@ -332,7 +332,7 @@
       "downContribution": 0,
       "squadBarrier": 13799,
       "squadHealing": 14565,
-      "stabGeneration": 126.37516500000001
+      "stabGeneration": 157.66806300000002
     },
     {
       "name": "Wag Toof",

@@ -2,7 +2,7 @@
   "specVersion": "unknown",
   "method": "count",
   "source": "test-fixtures/boon/20260117-175120.json",
-  "generatedAt": "2026-01-28T23:00:47.655Z",
+  "generatedAt": "2026-01-28T23:17:34.491Z",
   "metrics": [
     {
       "name": "Haro Forge",
@@ -24,7 +24,7 @@
       "downContribution": 0,
       "squadBarrier": 11642,
       "squadHealing": 17403,
-      "stabGeneration": 0
+      "stabGeneration": 44.893914
     },
     {
       "name": "Eve Clearwater",
@@ -68,7 +68,7 @@
       "downContribution": 0,
       "squadBarrier": 3620,
       "squadHealing": 0,
-      "stabGeneration": 18.319937999999997
+      "stabGeneration": 88.57991999999999
     },
     {
       "name": "Evoker pl-3488",

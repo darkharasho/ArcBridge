@@ -2,10 +2,10 @@ import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
-import { getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlayerSquadHealing, getPlayerSquadBarrier, getPlayerOutgoingCrowdControl } from '../shared/dashboardMetrics';
+import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlayerSquadHealing, getPlayerSquadBarrier, getPlayerOutgoingCrowdControl } from '../shared/dashboardMetrics';
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
-import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue, getPlayerBoonGenerationMs } from '../shared/boonGeneration';
+import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DisruptionMethod, IMvpWeights } from './global.d';
 
 interface StatsViewProps {
@@ -48,9 +48,9 @@ const OFFENSE_METRICS: Array<{
     isPercent?: boolean;
     weightField?: string;
     denomField?: string;
-    source?: 'statsTargets' | 'dpsTargets' | 'statsAll';
+    source?: 'statsTargets' | 'dpsTargets' | 'statsAll' | 'dpsAll';
 }> = [
-    { id: 'damage', label: 'Damage', field: 'totalDmg', source: 'statsTargets' },
+    { id: 'damage', label: 'Damage', field: 'damage', source: 'dpsAll' },
     { id: 'directDmg', label: 'Direct Damage', field: 'directDmg', source: 'statsTargets' },
     { id: 'connectedDamageCount', label: 'Connected Damage Count', field: 'connectedDamageCount', source: 'statsTargets' },
     { id: 'connectedDirectDamageCount', label: 'Connected Direct Damage Count', field: 'connectedDirectDamageCount', source: 'statsTargets' },
@@ -213,6 +213,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
     const [offenseViewMode, setOffenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [defenseViewMode, setDefenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [supportViewMode, setSupportViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
+    const [cleanseScope, setCleanseScope] = useState<'squad' | 'all'>('all');
     const [uploadingWeb, setUploadingWeb] = useState(false);
     const [webUploadMessage, setWebUploadMessage] = useState<string | null>(null);
     const [webUploadStage, setWebUploadStage] = useState<string | null>(null);
@@ -404,11 +405,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             totalSquadSizeAccum += squadCount;
             totalEnemiesAccum += enemyCount;
 
-            const groupCounts = new Map<number, number>();
-            squadPlayers.forEach((player) => {
-                const group = player.group ?? 0;
-                groupCounts.set(group, (groupCounts.get(group) || 0) + 1);
-            });
+            applyStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
 
             // 1. Calculate Win/Loss based on Downs/Deaths
             let squadDownsDeaths = 0;
@@ -521,26 +518,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 s.healing += getPlayerSquadHealing(p);
                 s.barrier += getPlayerSquadBarrier(p);
                 s.cc += getPlayerOutgoingCrowdControl(p, method);
-                const groupCount = groupCounts.get(p.group ?? 0) || 1;
-                const stabSelf = getPlayerBoonGenerationMs(
-                    p,
-                    'selfBuffs',
-                    1122,
-                    details.durationMS || 0,
-                    groupCount,
-                    squadCount,
-                    details.buffMap || {},
-                );
-                const stabSquad = getPlayerBoonGenerationMs(
-                    p,
-                    'squadBuffs',
-                    1122,
-                    details.durationMS || 0,
-                    groupCount,
-                    squadCount,
-                    details.buffMap || {},
-                );
-                s.stab += (stabSelf.generationMs + stabSquad.generationMs) / 1000;
+                s.stab += p.stabGeneration || 0;
 
                 // Stack Distance (Distance to Tag)
                 // statsAll[0] contains the stackDist field in Elite Insights JSON
@@ -683,6 +661,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 const statsTargetsList = Array.isArray(p.statsTargets) ? p.statsTargets : [];
                 const dpsTargetsList = Array.isArray(p.dpsTargets) ? p.dpsTargets : [];
                 const statsAll = (p.statsAll && p.statsAll.length > 0) ? (p.statsAll[0] as any) : null;
+                const dpsAll = (p.dpsAll && p.dpsAll.length > 0) ? (p.dpsAll[0] as any) : null;
 
                 OFFENSE_METRICS.forEach((metric) => {
                     if (metric.id === 'downContributionPercent') {
@@ -704,6 +683,13 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                             }
                             return;
                         }
+                        s.offenseTotals[metric.id] = (s.offenseTotals[metric.id] || 0) + value;
+                        return;
+                    }
+                    if (source === 'dpsAll') {
+                        if (!dpsAll) return;
+                        const value = Number(dpsAll[field] ?? 0);
+                        if (!Number.isFinite(value)) return;
                         s.offenseTotals[metric.id] = (s.offenseTotals[metric.id] || 0) + value;
                         return;
                     }
@@ -3314,13 +3300,21 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                             <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'support-detailed' ? 'flex flex-col min-h-0' : ''}`}>
                                 {(() => {
                                     const metric = SUPPORT_METRICS.find((entry) => entry.id === activeSupportStat) || SUPPORT_METRICS[0];
+                                    const resolveSupportTotal = (row: any) => {
+                                        if (metric.id === 'condiCleanse') {
+                                            const squad = row.supportTotals?.condiCleanse || 0;
+                                            const self = row.supportTotals?.condiCleanseSelf || 0;
+                                            return cleanseScope === 'all' ? squad + self : squad;
+                                        }
+                                        return row.supportTotals?.[metric.id] || 0;
+                                    };
                                     const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
                                     const rows = [...stats.supportPlayers]
                                         .map((row: any) => ({
                                             ...row,
-                                            total: row.supportTotals?.[metric.id] || 0,
-                                            per1s: (row.supportTotals?.[metric.id] || 0) / totalSeconds(row),
-                                            per60s: ((row.supportTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
+                                            total: resolveSupportTotal(row),
+                                            per1s: resolveSupportTotal(row) / totalSeconds(row),
+                                            per60s: (resolveSupportTotal(row) * 60) / totalSeconds(row)
                                         }))
                                         .sort((a, b) => {
                                             const aValue = supportViewMode === 'total' ? a.total : supportViewMode === 'per1s' ? a.per1s : a.per60s;
@@ -3334,24 +3328,64 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                 <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
                                                 <div className="text-xs uppercase tracking-widest text-gray-500">Support</div>
                                             </div>
-                                            <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
-                                                {([
-                                                    { value: 'total', label: 'Total' },
-                                                    { value: 'per1s', label: 'Stat/1s' },
-                                                    { value: 'per60s', label: 'Stat/60s' }
-                                                ] as const).map((option) => (
-                                                    <button
-                                                        key={option.value}
-                                                        onClick={() => setSupportViewMode(option.value)}
-                                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${supportViewMode === option.value
-                                                            ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
-                                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
-                                                            }`}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {metric.id === 'condiCleanse' ? (
+                                                <div className="flex items-center justify-between gap-2 px-4 py-2 bg-white/5">
+                                                    <div className="flex items-center gap-2">
+                                                        {([
+                                                            { value: 'all', label: 'All' },
+                                                            { value: 'squad', label: 'Squad' }
+                                                        ] as const).map((option) => (
+                                                            <button
+                                                                key={option.value}
+                                                                onClick={() => setCleanseScope(option.value)}
+                                                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${cleanseScope === option.value
+                                                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                                    }`}
+                                                            >
+                                                                {option.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {([
+                                                            { value: 'total', label: 'Total' },
+                                                            { value: 'per1s', label: 'Stat/1s' },
+                                                            { value: 'per60s', label: 'Stat/60s' }
+                                                        ] as const).map((option) => (
+                                                            <button
+                                                                key={option.value}
+                                                                onClick={() => setSupportViewMode(option.value)}
+                                                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${supportViewMode === option.value
+                                                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                                    }`}
+                                                            >
+                                                                {option.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                    {([
+                                                        { value: 'total', label: 'Total' },
+                                                        { value: 'per1s', label: 'Stat/1s' },
+                                                        { value: 'per60s', label: 'Stat/60s' }
+                                                    ] as const).map((option) => (
+                                                        <button
+                                                            key={option.value}
+                                                            onClick={() => setSupportViewMode(option.value)}
+                                                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${supportViewMode === option.value
+                                                                ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                                }`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                 <div className="text-center">#</div>
                                                 <div>Player</div>

@@ -2,7 +2,7 @@
   "specVersion": "unknown",
   "method": "count",
   "source": "test-fixtures/boon/20260117-180636.json",
-  "generatedAt": "2026-01-28T23:00:47.845Z",
+  "generatedAt": "2026-01-28T23:17:34.681Z",
   "metrics": [
     {
       "name": "Before Mourning",
@@ -90,7 +90,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 22336,
-      "stabGeneration": 337.95820800000007
+      "stabGeneration": 439.37919800000003
     },
     {
       "name": "Ha Ha Veil Go Brrr",
@@ -156,7 +156,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 25547,
-      "stabGeneration": 989.7347520000001
+      "stabGeneration": 1237.3360780000003
     },
     {
       "name": "Breaknbads",
@@ -178,7 +178,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 559,
-      "stabGeneration": 111.646908
+      "stabGeneration": 148.024354
     },
     {
       "name": "Corsair Wag",
@@ -200,7 +200,7 @@
       "downContribution": 0,
       "squadBarrier": 21729,
       "squadHealing": 7162,
-      "stabGeneration": 703.073772
+      "stabGeneration": 929.636529
     },
     {
       "name": "Jakarua Eywata",
@@ -244,7 +244,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 3628,
-      "stabGeneration": 0
+      "stabGeneration": 9.555366
     },
     {
       "name": "Sayuri Moriko",
@@ -266,7 +266,7 @@
       "downContribution": 0,
       "squadBarrier": 32474,
       "squadHealing": 23676,
-      "stabGeneration": 1116.46908
+      "stabGeneration": 1400.2802140000001
     },
     {
       "name": "Hera Twix",
@@ -310,7 +310,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 0,
-      "stabGeneration": 0
+      "stabGeneration": 59.59530899999999
     },
     {
       "name": "Lady Andromeda Rose",
@@ -332,7 +332,7 @@
       "downContribution": 0,
       "squadBarrier": 20242,
       "squadHealing": 30931,
-      "stabGeneration": 820.7556480000001
+      "stabGeneration": 1039.9423330000002
     },
     {
       "name": "Necro Of Fatalis",
@@ -354,7 +354,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 0,
-      "stabGeneration": 0
+      "stabGeneration": 41.825680999999996
     },
     {
       "name": "Protectress Kali",
@@ -376,7 +376,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 914,
-      "stabGeneration": 763.4234519999999
+      "stabGeneration": 954.363134
     },
     {
       "name": "Brakmariana",
@@ -398,7 +398,7 @@
       "downContribution": 0,
       "squadBarrier": 64671,
       "squadHealing": 45672,
-      "stabGeneration": 1062.1543679999997
+      "stabGeneration": 1351.5813749999998
     },
     {
       "name": "Color Of Life",
@@ -420,7 +420,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 0,
-      "stabGeneration": 461.675052
+      "stabGeneration": 604.5864469999999
     },
     {
       "name": "Fibbs The Dead",
@@ -442,7 +442,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 9,
-      "stabGeneration": 0
+      "stabGeneration": 19.194551
     },
     {
       "name": "Haro Forge",
@@ -486,7 +486,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 69017,
-      "stabGeneration": 0
+      "stabGeneration": 7.208434
     },
     {
       "name": "Lenoreleii",
@@ -530,7 +530,7 @@
       "downContribution": 0,
       "squadBarrier": 4070,
       "squadHealing": 1496,
-      "stabGeneration": 455.640084
+      "stabGeneration": 563.8504129999999
     },
     {
       "name": "Mylania Svenson",
@@ -552,7 +552,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 6661,
-      "stabGeneration": 1019.909592
+      "stabGeneration": 1268.935841
     },
     {
       "name": "R O O M B A",
@@ -596,7 +596,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 0,
-      "stabGeneration": 0
+      "stabGeneration": 35.958351
     },
     {
       "name": "Birdman Jackman",
@@ -618,7 +618,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 0,
-      "stabGeneration": 0
+      "stabGeneration": 6.370244
     },
     {
       "name": "Eve Clearwater",
@@ -662,7 +662,7 @@
       "downContribution": 0,
       "squadBarrier": 0,
       "squadHealing": 0,
-      "stabGeneration": 0
+      "stabGeneration": 29.839564
     },
     {
       "name": "Momma Miko",
@@ -684,7 +684,7 @@
       "downContribution": 0,
       "squadBarrier": 14785,
       "squadHealing": 2540,
-      "stabGeneration": 1083.2767559999998
+      "stabGeneration": 1356.6943339999998
     },
     {
       "name": "Tricky Thorn",
@@ -706,7 +706,7 @@
       "downContribution": 0,
       "squadBarrier": 17142,
       "squadHealing": 15506,
-      "stabGeneration": 564.2695080000001
+      "stabGeneration": 729.8958520000001
     },
     {
       "name": "Mesmer Hatt",
@@ -728,7 +728,7 @@
       "downContribution": 0,
       "squadBarrier": 15832,
       "squadHealing": 10027,
-      "stabGeneration": 597.4618320000001
+      "stabGeneration": 756.215018
     },
     {
       "name": "Nim Iss",
@@ -772,7 +772,7 @@
       "downContribution": 0,
       "squadBarrier": 18815,
       "squadHealing": 18274,
-      "stabGeneration": 467.71002000000004
+      "stabGeneration": 581.5362220000001
     },
     {
       "name": "Sunny Dispositíon",
@@ -794,7 +794,7 @@
       "downContribution": 0,
       "squadBarrier": 4639,
       "squadHealing": 0,
-      "stabGeneration": 0
+      "stabGeneration": 22.966406000000003
     },
     {
       "name": "Tehryan",
