@@ -1,6 +1,8 @@
 {
+  "specVersion": "unknown",
+  "method": "count",
   "source": "test-fixtures/boon/20260117-175120.json",
-  "generatedAt": "2026-01-28T20:22:11.901Z",
+  "generatedAt": "2026-01-28T23:00:47.655Z",
   "metrics": [
     {
       "name": "Haro Forge",
@@ -10,13 +12,13 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 11,
+        "total": 8,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
         "total": 3,
-        "missed": 1,
+        "missed": 0,
         "blocked": 0
       },
       "downContribution": 0,
@@ -30,14 +32,14 @@
       "profession": "Evoker",
       "group": 7,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
-        "total": 0,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 0,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },

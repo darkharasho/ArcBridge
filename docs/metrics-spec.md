@@ -6,6 +6,8 @@ independently from any third-party implementation while staying consistent
 with EI JSON inputs. It also records the exact fields and aggregation rules
 so the stats dashboard, Discord, and cards produce identical values.
 
+Spec version: `v2` (see `src/shared/metrics-methods.json`).
+
 ## Input Contract (EI JSON)
 
 All metrics are derived from the EI JSON payload produced by dps.report. The
@@ -27,23 +29,46 @@ minimum fields consumed are:
 
 If any of these are missing, the metric falls back to `0` as defined below.
 
+## Crowd Control & Strips Methodology
+
+The app supports three user-selectable methodologies (default: `count`),
+configured in `src/shared/metrics-methods.json`:
+
+1. **Count Events** (`count`)  
+   Uses EI summary counts for CC/strips. Best for stable, comparable totals.
+
+2. **Duration (Seconds)** (`duration`)  
+   Uses EI summary durations (converted to seconds). Best for impact-weighted
+   totals, but units are time not event counts.
+
+3. **Tiered Impact** (`tiered`)  
+   Uses average duration per event to apply tiered weights. Best for balancing
+   short vs long control with a simple, configurable heuristic.
+
+These methodologies apply to:
+- Outgoing CC totals
+- Incoming CC totals
+- Incoming strips totals
+
 ## Outgoing Crowd Control
 
-We compute a weighted count of crowd control skill hits by scanning each
-player's `totalDamageDist` entries. Each skill id is mapped to a coefficient
-that normalizes multi-hit effects into a single "CC unit". Only skills that
-match the player's profession group (or relics) are counted.
+For each player:
+- `count`: `statsAll[0].appliedCrowdControl`
+- `duration`: `statsAll[0].appliedCrowdControlDuration / 1000`
+- `tiered`: `appliedCrowdControl * tierWeight(avgDurationMs)`
 
-Implementation: `src/shared/combatMetrics.ts` (OUTGOING_CC_SKILLS).
+Implementation: `src/shared/combatMetrics.ts` (computeOutgoingCrowdControl).
 
 ## Incoming Strips and Crowd Control
 
-We compute incoming strips and incoming CC by scanning each player's
-`totalDamageTaken` entries. Each skill id is mapped to a coefficient, then
-`hits`, `missed`, and `blocked` are multiplied by that coefficient and summed.
+For each player:
+- Incoming CC uses `defenses[0].receivedCrowdControl` and
+  `defenses[0].receivedCrowdControlDuration`.
+- Incoming strips use `defenses[0].boonStrips` and `defenses[0].boonStripsTime`.
 
-Implementation: `src/shared/combatMetrics.ts`
-(INCOMING_STRIP_SKILL_WEIGHTS, INCOMING_CC_SKILL_WEIGHTS).
+Method application is the same as outgoing CC (count/duration/tiered).
+
+Implementation: `src/shared/combatMetrics.ts` (computeIncomingDisruptions).
 
 ## Cleanses
 
@@ -53,7 +78,10 @@ Implementation: `src/shared/dashboardMetrics.ts` (getPlayerCleanses).
 
 ## Strips
 
-`strips = support[0].boonStrips`.
+`strips` uses the configured methodology:
+- `count`: `support[0].boonStrips`
+- `duration`: `support[0].boonStripsTime / 1000`
+- `tiered`: `boonStrips * tierWeight(avgDurationMs)`
 
 Implementation: `src/shared/dashboardMetrics.ts` (getPlayerStrips).
 

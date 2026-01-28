@@ -49,6 +49,10 @@ export interface IMvpWeights {
     damage: number;
 }
 
+export type DisruptionMethod = 'count' | 'duration' | 'tiered';
+
+export const DEFAULT_DISRUPTION_METHOD: DisruptionMethod = 'count';
+
 // Default embed stat settings
 export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showSquadSummary: true,
@@ -108,6 +112,7 @@ export interface IElectronAPI {
         closeBehavior: 'minimize' | 'quit';
         embedStatSettings: IEmbedStatSettings;
         mvpWeights: IMvpWeights;
+        disruptionMethod: DisruptionMethod;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;
         githubBranch?: string | null;
@@ -128,6 +133,7 @@ export interface IElectronAPI {
         closeBehavior?: 'minimize' | 'quit';
         embedStatSettings?: IEmbedStatSettings;
         mvpWeights?: IMvpWeights;
+        disruptionMethod?: DisruptionMethod;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;
         githubBranch?: string | null;

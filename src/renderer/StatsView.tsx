@@ -6,12 +6,13 @@ import { getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlaye
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue, getPlayerBoonGenerationMs } from '../shared/boonGeneration';
-import { DEFAULT_MVP_WEIGHTS, IMvpWeights } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DisruptionMethod, IMvpWeights } from './global.d';
 
 interface StatsViewProps {
     logs: ILogData[];
     onBack: () => void;
     mvpWeights?: IMvpWeights;
+    disruptionMethod?: DisruptionMethod;
     precomputedStats?: any;
     embedded?: boolean;
 }
@@ -190,7 +191,8 @@ interface SkillUsageSummary {
     resUtilitySkills?: Array<{ id: string; name: string }>;
 }
 
-export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded = false }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precomputedStats, embedded = false }: StatsViewProps) {
+    const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
     const [activeBoonTab, setActiveBoonTab] = useState<string | null>(null);
@@ -514,11 +516,11 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
                 // Support: Cleanses and Strips (EI support stats)
                 s.cleanses += getPlayerCleanses(p);
-                s.strips += getPlayerStrips(p);
+                s.strips += getPlayerStrips(p, method);
 
                 s.healing += getPlayerSquadHealing(p);
                 s.barrier += getPlayerSquadBarrier(p);
-                s.cc += getPlayerOutgoingCrowdControl(p);
+                s.cc += getPlayerOutgoingCrowdControl(p, method);
                 const groupCount = groupCounts.get(p.group ?? 0) || 1;
                 const stabSelf = getPlayerBoonGenerationMs(
                     p,

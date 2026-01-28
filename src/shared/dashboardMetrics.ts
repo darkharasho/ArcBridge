@@ -1,5 +1,6 @@
 import { Player } from './dpsReportTypes';
-import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing } from './combatMetrics';
+import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing, resolveDisruptionValue } from './combatMetrics';
+import { DisruptionMethod, DEFAULT_DISRUPTION_METHOD } from './metricsSettings';
 
 export const getPlayerDamage = (player: Player) =>
     player.dpsAll?.[0]?.damage || 0;
@@ -10,8 +11,12 @@ export const getPlayerDps = (player: Player) =>
 export const getPlayerCleanses = (player: Player) =>
     (player.support?.[0]?.condiCleanse || 0) + (player.support?.[0]?.condiCleanseSelf || 0);
 
-export const getPlayerStrips = (player: Player) =>
-    player.support?.[0]?.boonStrips || 0;
+export const getPlayerStrips = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) => {
+    const support = player.support?.[0] as any;
+    const count = Number(support?.boonStrips ?? 0);
+    const durationMs = Number(support?.boonStripsTime ?? 0);
+    return resolveDisruptionValue(count, durationMs, method);
+};
 
 export const getPlayerResurrects = (player: Player) =>
     player.support?.[0]?.resurrects || 0;
@@ -60,17 +65,17 @@ export const getTargetStatTotal = (player: Player, field: 'killed' | 'downed' | 
     return total;
 };
 
-export const getPlayerDashboardTotals = (player: Player) => ({
+export const getPlayerDashboardTotals = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) => ({
     downContrib: computeDownContribution(player),
     cleanses: getPlayerCleanses(player),
-    strips: getPlayerStrips(player),
+    strips: getPlayerStrips(player, method),
     healing: computeSquadHealing(player),
     barrier: computeSquadBarrier(player),
-    cc: computeOutgoingCrowdControl(player),
+    cc: computeOutgoingCrowdControl(player, method),
 });
 
-export const getIncomingDisruptions = (player: Player) =>
-    computeIncomingDisruptions(player);
+export const getIncomingDisruptions = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) =>
+    computeIncomingDisruptions(player, method);
 
 export const getPlayerDownContribution = (player: Player) =>
     computeDownContribution(player);
@@ -81,8 +86,8 @@ export const getPlayerSquadHealing = (player: Player) =>
 export const getPlayerSquadBarrier = (player: Player) =>
     computeSquadBarrier(player);
 
-export const getPlayerOutgoingCrowdControl = (player: Player) =>
-    computeOutgoingCrowdControl(player);
+export const getPlayerOutgoingCrowdControl = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) =>
+    computeOutgoingCrowdControl(player, method);
 
 export const applyStabilityGeneration = (
     players: Player[],

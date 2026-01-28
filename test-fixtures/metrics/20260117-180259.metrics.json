@@ -1,6 +1,8 @@
 {
+  "specVersion": "unknown",
+  "method": "count",
   "source": "test-fixtures/boon/20260117-180259.json",
-  "generatedAt": "2026-01-28T20:22:12.556Z",
+  "generatedAt": "2026-01-28T23:00:47.741Z",
   "metrics": [
     {
       "name": "Dub Grumble",
@@ -30,16 +32,16 @@
       "profession": "Dragonhunter",
       "group": 2,
       "notInSquad": false,
-      "outCrowdControl": 2,
+      "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 19,
+        "total": 4,
         "missed": 0,
-        "blocked": 14
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 5,
+        "total": 1,
         "missed": 0,
-        "blocked": 3
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 0,
@@ -54,7 +56,7 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 9,
+        "total": 11,
         "missed": 0,
         "blocked": 0
       },
@@ -76,14 +78,14 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 3,
+        "total": 6,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 2,
+        "total": 1,
         "missed": 0,
-        "blocked": 1
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 0,
@@ -98,7 +100,7 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 4,
+        "total": 3,
         "missed": 0,
         "blocked": 0
       },
@@ -120,12 +122,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 9,
+        "total": 8,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 1,
+        "total": 0,
         "missed": 0,
         "blocked": 0
       },
@@ -142,12 +144,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 6,
+        "total": 5,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 3,
+        "total": 0,
         "missed": 0,
         "blocked": 0
       },
@@ -164,12 +166,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 4,
+        "total": 6,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 1,
+        "total": 2,
         "missed": 0,
         "blocked": 0
       },
@@ -184,9 +186,9 @@
       "profession": "Reaper",
       "group": 3,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
-        "total": 4,
+        "total": 2,
         "missed": 0,
         "blocked": 0
       },
@@ -206,9 +208,9 @@
       "profession": "Luminary",
       "group": 3,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 2,
       "incomingStrips": {
-        "total": 4,
+        "total": 3,
         "missed": 0,
         "blocked": 0
       },
@@ -230,12 +232,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 6,
+        "total": 5,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 0,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
@@ -250,16 +252,16 @@
       "profession": "Reaper",
       "group": 4,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 2,
       "incomingStrips": {
-        "total": 0,
+        "total": 6,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 1,
+        "total": 0,
         "missed": 0,
-        "blocked": 1
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 0,
@@ -274,7 +276,7 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 6,
+        "total": 4,
         "missed": 0,
         "blocked": 0
       },
@@ -294,9 +296,9 @@
       "profession": "Reaper",
       "group": 4,
       "notInSquad": false,
-      "outCrowdControl": 1,
+      "outCrowdControl": 3,
       "incomingStrips": {
-        "total": 7,
+        "total": 14,
         "missed": 0,
         "blocked": 0
       },
@@ -316,16 +318,16 @@
       "profession": "Luminary",
       "group": 4,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 4,
       "incomingStrips": {
-        "total": 4,
+        "total": 7,
         "missed": 0,
-        "blocked": 2
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 3,
+        "total": 1,
         "missed": 0,
-        "blocked": 2
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 3671,
@@ -345,7 +347,7 @@
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 0,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
@@ -360,14 +362,14 @@
       "profession": "Firebrand",
       "group": 5,
       "notInSquad": false,
-      "outCrowdControl": 7,
+      "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 7,
+        "total": 16,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 3,
+        "total": 0,
         "missed": 0,
         "blocked": 0
       },
@@ -382,16 +384,16 @@
       "profession": "Reaper",
       "group": 5,
       "notInSquad": false,
-      "outCrowdControl": 3,
+      "outCrowdControl": 5,
       "incomingStrips": {
-        "total": 12,
+        "total": 17,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 2,
+        "total": 1,
         "missed": 0,
-        "blocked": 1
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 0,
@@ -404,14 +406,14 @@
       "profession": "Amalgam",
       "group": 5,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 2,
       "incomingStrips": {
-        "total": 13,
+        "total": 9,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 3,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
@@ -426,14 +428,14 @@
       "profession": "Druid",
       "group": 5,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
-        "total": 6,
+        "total": 11,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 1,
+        "total": 0,
         "missed": 0,
         "blocked": 0
       },
@@ -448,14 +450,14 @@
       "profession": "Amalgam",
       "group": 6,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
-        "total": 14,
+        "total": 12,
         "missed": 0,
-        "blocked": 2
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 2,
+        "total": 3,
         "missed": 0,
         "blocked": 0
       },
@@ -472,14 +474,14 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 5,
+        "total": 6,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 2,
+        "total": 0,
         "missed": 0,
-        "blocked": 1
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 17684,
@@ -492,7 +494,7 @@
       "profession": "Luminary",
       "group": 6,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
         "total": 2,
         "missed": 0,
@@ -514,9 +516,9 @@
       "profession": "Druid",
       "group": 6,
       "notInSquad": false,
-      "outCrowdControl": 2,
+      "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 3,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
@@ -536,16 +538,16 @@
       "profession": "Reaper",
       "group": 6,
       "notInSquad": false,
-      "outCrowdControl": 10,
+      "outCrowdControl": 3,
       "incomingStrips": {
-        "total": 8,
+        "total": 7,
         "missed": 0,
-        "blocked": 4
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 2,
+        "total": 1,
         "missed": 0,
-        "blocked": 1
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 0,
@@ -560,14 +562,14 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 22,
+        "total": 21,
         "missed": 0,
-        "blocked": 6
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 7,
+        "total": 1,
         "missed": 0,
-        "blocked": 3
+        "blocked": 0
       },
       "downContribution": 0,
       "squadBarrier": 0,
@@ -582,12 +584,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 9,
+        "total": 8,
         "missed": 0,
-        "blocked": 2
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 3,
+        "total": 2,
         "missed": 0,
         "blocked": 0
       },
@@ -602,11 +604,11 @@
       "profession": "Amalgam",
       "group": 7,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
-        "total": 5,
+        "total": 8,
         "missed": 0,
-        "blocked": 1
+        "blocked": 0
       },
       "incomingCrowdControl": {
         "total": 1,
@@ -624,14 +626,14 @@
       "profession": "Luminary",
       "group": 7,
       "notInSquad": false,
-      "outCrowdControl": 0,
+      "outCrowdControl": 1,
       "incomingStrips": {
         "total": 6,
         "missed": 0,
-        "blocked": 5
+        "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 0,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
@@ -646,9 +648,9 @@
       "profession": "Chronomancer",
       "group": 7,
       "notInSquad": false,
-      "outCrowdControl": 11,
+      "outCrowdControl": 4,
       "incomingStrips": {
-        "total": 6,
+        "total": 2,
         "missed": 0,
         "blocked": 0
       },
@@ -714,12 +716,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 4,
+        "total": 6,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 0,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },
@@ -736,12 +738,12 @@
       "notInSquad": false,
       "outCrowdControl": 0,
       "incomingStrips": {
-        "total": 7,
+        "total": 5,
         "missed": 0,
         "blocked": 0
       },
       "incomingCrowdControl": {
-        "total": 3,
+        "total": 1,
         "missed": 0,
         "blocked": 0
       },

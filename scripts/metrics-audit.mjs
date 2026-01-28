@@ -78,6 +78,7 @@ const loadTsModule = (filePath) => {
 };
 
 const metricsModule = loadTsModule(path.join(cwd, 'src/shared/combatMetrics.ts'));
+const metricsSettings = loadTsModule(path.join(cwd, 'src/shared/metricsSettings.ts'));
 const {
     applySquadStabilityGeneration,
     computeOutgoingCrowdControl,
@@ -86,6 +87,7 @@ const {
     computeSquadBarrier,
     computeSquadHealing,
 } = metricsModule;
+const { METRICS_SPEC, DEFAULT_DISRUPTION_METHOD } = metricsSettings;
 
 const buildMetricsOutput = (sourcePath) => {
     const log = JSON.parse(fs.readFileSync(path.resolve(cwd, sourcePath), 'utf8'));
@@ -93,18 +95,19 @@ const buildMetricsOutput = (sourcePath) => {
         return null;
     }
     const players = log.players;
+    const method = DEFAULT_DISRUPTION_METHOD || 'count';
 
     applySquadStabilityGeneration(players, { durationMS: log.durationMS || 0, buffMap: log.buffMap || {} });
 
     const metrics = players.map((player) => {
-        const incoming = computeIncomingDisruptions(player);
+        const incoming = computeIncomingDisruptions(player, method);
         return {
             name: player.name,
             account: player.account,
             profession: player.profession,
             group: player.group,
             notInSquad: player.notInSquad,
-            outCrowdControl: computeOutgoingCrowdControl(player),
+            outCrowdControl: computeOutgoingCrowdControl(player, method),
             incomingStrips: incoming.strips,
             incomingCrowdControl: incoming.cc,
             downContribution: computeDownContribution(player),
@@ -115,6 +118,8 @@ const buildMetricsOutput = (sourcePath) => {
     });
 
     return {
+        specVersion: METRICS_SPEC?.specVersion || 'unknown',
+        method,
         source: sourcePath,
         generatedAt: new Date().toISOString(),
         metrics,

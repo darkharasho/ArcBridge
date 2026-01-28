@@ -79,6 +79,8 @@ export interface StatsAll {
     downContribution?: number; // Added back as optional
     stackDist?: number;
     distToCom?: number;
+    appliedCrowdControl?: number;
+    appliedCrowdControlDuration?: number;
 }
 
 // Correct Defenses interface based on standard Elite Insights JSON
@@ -92,6 +94,9 @@ export interface Defenses {
     interruptedCount: number;
     damageTaken: number;
     boonStrips?: number; // Incoming strips often appear here or in support depending on parsing context, adding as optional
+    boonStripsTime?: number;
+    receivedCrowdControl?: number;
+    receivedCrowdControlDuration?: number;
 }
 
 export interface SquadBuffVolume {

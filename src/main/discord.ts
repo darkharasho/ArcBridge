@@ -23,6 +23,7 @@ import {
     getIncomingDisruptions,
     getTargetStatTotal,
 } from '../shared/dashboardMetrics';
+import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 import { Player } from '../shared/dpsReportTypes';
 
@@ -84,6 +85,7 @@ const DISCORD_MAX_EMBEDS = 10;
 export class DiscordNotifier {
     private webhookUrl: string | null = null;
     private embedStatSettings: IEmbedStatSettings = DEFAULT_EMBED_STATS;
+    private disruptionMethod: DisruptionMethod = DEFAULT_DISRUPTION_METHOD;
 
     constructor() {
     }
@@ -94,6 +96,10 @@ export class DiscordNotifier {
 
     public setEmbedStatSettings(settings: IEmbedStatSettings) {
         this.embedStatSettings = { ...DEFAULT_EMBED_STATS, ...settings };
+    }
+
+    public setDisruptionMethod(method: DisruptionMethod) {
+        this.disruptionMethod = method || DEFAULT_DISRUPTION_METHOD;
     }
 
     public async sendLog(logData: { permalink: string, id: string, filePath: string, imageBuffer?: Uint8Array, imageBuffers?: Uint8Array[], suppressContent?: boolean, mode?: 'image' | 'embed' }, jsonDetails?: any) {
@@ -219,7 +225,7 @@ export class DiscordNotifier {
                             totalDodge += getPlayerDodges(p);
                             // Uses per-skill weighting for CC/Strips instead of raw summary fields
                         }
-                        const pStats = getIncomingDisruptions(p);
+                        const pStats = getIncomingDisruptions(p, this.disruptionMethod);
                         totalCCTaken += pStats.cc.total;
                         totalCCMissed += pStats.cc.missed;
                         totalCCBlocked += pStats.cc.blocked;
@@ -457,15 +463,15 @@ export class DiscordNotifier {
                             {
                                 enabled: settings.showBoonStrips,
                                 title: "Boon Strips",
-                                sortFn: (a: any, b: any) => getPlayerStrips(b) - getPlayerStrips(a),
-                                valFn: (p: any) => getPlayerStrips(p),
+                                sortFn: (a: any, b: any) => getPlayerStrips(b, this.disruptionMethod) - getPlayerStrips(a, this.disruptionMethod),
+                                valFn: (p: any) => getPlayerStrips(p, this.disruptionMethod),
                                 fmtVal: (v: any) => v.toString()
                             },
                             {
                                 enabled: settings.showCC,
                                 title: "CC",
-                                sortFn: (a: any, b: any) => getPlayerOutgoingCrowdControl(b) - getPlayerOutgoingCrowdControl(a),
-                                valFn: (p: any) => getPlayerOutgoingCrowdControl(p),
+                                sortFn: (a: any, b: any) => getPlayerOutgoingCrowdControl(b, this.disruptionMethod) - getPlayerOutgoingCrowdControl(a, this.disruptionMethod),
+                                valFn: (p: any) => getPlayerOutgoingCrowdControl(p, this.disruptionMethod),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {

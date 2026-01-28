@@ -5,6 +5,7 @@ import https from 'node:https'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
+import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { LogWatcher } from './watcher'
 import { Uploader } from './uploader'
 import { DiscordNotifier } from './discord';
@@ -860,6 +861,8 @@ function createWindow() {
     if (embedStatSettings) {
         discord.setEmbedStatSettings(embedStatSettings as any);
     }
+    const disruptionMethod = store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD) as DisruptionMethod;
+    discord.setDisruptionMethod(disruptionMethod);
 
     // Initialize dps.report token
     const dpsReportToken = store.get('dpsReportToken');
@@ -1111,6 +1114,7 @@ if (!gotTheLock) {
                 closeBehavior: store.get('closeBehavior', 'minimize'),
                 embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS),
                 mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) },
+                disruptionMethod: store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD),
                 githubRepoOwner: store.get('githubRepoOwner', null),
                 githubRepoName: store.get('githubRepoName', null),
                 githubBranch: store.get('githubBranch', 'main'),
@@ -1129,7 +1133,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, disruptionMethod?: DisruptionMethod, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -1170,6 +1174,10 @@ if (!gotTheLock) {
             }
             if (settings.mvpWeights !== undefined) {
                 store.set('mvpWeights', settings.mvpWeights);
+            }
+            if (settings.disruptionMethod !== undefined) {
+                store.set('disruptionMethod', settings.disruptionMethod);
+                discord?.setDisruptionMethod(settings.disruptionMethod);
             }
             if (settings.githubRepoOwner !== undefined) {
                 store.set('githubRepoOwner', settings.githubRepoOwner);
