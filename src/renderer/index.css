@@ -45,3 +45,77 @@ body.web-report #root {
     scrollbar-width: none;
     /* Firefox */
 }
+
+@keyframes modal-pane-grow {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes modal-pane-shrink {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+}
+
+@keyframes modal-backdrop-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modal-backdrop-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.modal-pane {
+    transform-origin: center;
+    animation-duration: 180ms;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+    will-change: transform, opacity;
+}
+
+.modal-pane-enter {
+    animation-name: modal-pane-grow;
+}
+
+.modal-pane-exit {
+    animation-name: modal-pane-shrink;
+    animation-duration: 150ms;
+    animation-timing-function: ease-in;
+}
+
+.modal-backdrop {
+    animation-duration: 160ms;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+}
+
+.modal-backdrop-enter {
+    animation-name: modal-backdrop-in;
+}
+
+.modal-backdrop-exit {
+    animation-name: modal-backdrop-out;
+    animation-duration: 140ms;
+    animation-timing-function: ease-in;
+}

@@ -1,5 +1,5 @@
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
 import { calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
@@ -199,6 +199,9 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
     const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
     const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
     const [hoveredSkillPlayer, setHoveredSkillPlayer] = useState<string[]>([]);
+    const [expandedSection, setExpandedSection] = useState<string | null>(null);
+    const [expandedSectionClosing, setExpandedSectionClosing] = useState(false);
+    const expandedCloseTimerRef = useRef<number | null>(null);
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -1667,7 +1670,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         return ranks;
     }, [selectedPlayers, playerMapByKey, playerTotalsForSkill]);
 
-    const lineDashPatterns = ['0', '6 4', '2 3', '10 4', '4 2', '8 6'];
+    const lineDashPatterns = ['0', '12 3', '8 3', '6 3', '4 3', '2 3'];
 
     const getLineColorForPlayer = (playerKey: string) => {
         const player = playerMapByKey.get(playerKey);
@@ -1682,6 +1685,15 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
     const getLineDashForPlayer = (playerKey: string) => {
         const rank = classRankByPlayer.get(playerKey) ?? 0;
         return lineDashPatterns[rank % lineDashPatterns.length];
+    };
+
+    const getLineStrokeColor = (playerKey: string, isSelected: boolean, hasSelection: boolean) => {
+        if (!hasSelection) {
+            return getLineColorForPlayer(playerKey);
+        }
+        const player = playerMapByKey.get(playerKey);
+        const baseColor = getProfessionColor(player?.profession || '') || '#38bdf8';
+        return isSelected ? adjustHexColor(baseColor, 1.2) : adjustHexColor(baseColor, 0.5);
     };
 
     const skillChartData = useMemo(() => {
@@ -1965,6 +1977,47 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
         return () => clearInterval(interval);
     }, [webUploadBuildStatus]);
 
+    const openExpandedSection = (sectionId: string) => {
+        if (expandedCloseTimerRef.current) {
+            window.clearTimeout(expandedCloseTimerRef.current);
+            expandedCloseTimerRef.current = null;
+        }
+        setExpandedSectionClosing(false);
+        setExpandedSection(sectionId);
+    };
+
+    const closeExpandedSection = () => {
+        if (!expandedSection) return;
+        if (expandedCloseTimerRef.current) {
+            window.clearTimeout(expandedCloseTimerRef.current);
+        }
+        setExpandedSectionClosing(true);
+        expandedCloseTimerRef.current = window.setTimeout(() => {
+            setExpandedSection(null);
+            setExpandedSectionClosing(false);
+            expandedCloseTimerRef.current = null;
+        }, 160);
+    };
+
+    useEffect(() => {
+        if (!expandedSection) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                closeExpandedSection();
+            }
+        };
+        const prevBodyOverflow = document.body.style.overflow;
+        const prevHtmlOverflow = document.documentElement.style.overflow;
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = prevBodyOverflow;
+            document.documentElement.style.overflow = prevHtmlOverflow;
+        };
+    }, [expandedSection]);
+
     const colorClasses: Record<string, { bg: string; text: string }> = {
         red: { bg: 'bg-red-500/20', text: 'text-red-400' },
         yellow: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
@@ -2055,6 +2108,14 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
     return (
         <div className={containerClass}>
+            {expandedSection && (
+                <div
+                    className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-md modal-backdrop ${
+                        expandedSectionClosing ? 'modal-backdrop-exit' : 'modal-backdrop-enter'
+                    }`}
+                    onClick={closeExpandedSection}
+                />
+            )}
             {/* Header */}
             <div className="flex items-center justify-between mb-3 shrink-0">
                 <div className="flex items-center gap-4">
@@ -2680,11 +2741,31 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Boon Output Tables */}
-                <div id="boon-output" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-cyan-400" />
-                        Boon Output
-                    </h3>
+                <div
+                    id="boon-output"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'boon-output'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                            Boon Output
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={() => (expandedSection === 'boon-output' ? closeExpandedSection() : openExpandedSection('boon-output'))}
+                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                            aria-label={expandedSection === 'boon-output' ? 'Close Boon Output' : 'Expand Boon Output'}
+                            title={expandedSection === 'boon-output' ? 'Close' : 'Expand'}
+                        >
+                            {expandedSection === 'boon-output' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                    </div>
                     {stats.boonTables.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No boon data available</div>
                     ) : (
@@ -2712,8 +2793,8 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                                    <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
+                                <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'boon-output' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                                    <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'boon-output' ? 'h-full flex-1' : 'self-start'}`}>
                                         <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
                                         <input
                                             value={boonSearch}
@@ -2721,7 +2802,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             placeholder="Search..."
                                             className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                         />
-                                        <div className={sidebarListClass}>
+                                        <div className={`${sidebarListClass} ${expandedSection === 'boon-output' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                             {filteredBoonTables.length === 0 ? (
                                                 <div className="text-center text-gray-500 italic py-6 text-xs">No boons match this filter</div>
                                             ) : (
@@ -2740,7 +2821,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             )}
                                         </div>
                                     </div>
-                                    <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                                    <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'boon-output' ? 'flex flex-col min-h-0' : ''}`}>
                                         {!activeBoonTable ? (
                                             <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a boon to view details</div>
                                         ) : (
@@ -2781,7 +2862,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                     </div>
                                                     <div className="text-right">Fight Time</div>
                                                 </div>
-                                                <div className="max-h-64 overflow-y-auto">
+                                                <div className={`${expandedSection === 'boon-output' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-64 overflow-y-auto'}`}>
                                                     {[...activeBoonTable.rows]
                                                         .sort((a: any, b: any) => (
                                                             getBoonMetricValue(b, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
@@ -2813,16 +2894,36 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Offensive - Detailed Table */}
-                <div id="offense-detailed" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <Swords className="w-5 h-5 text-rose-300" />
-                        Offenses - Detailed
-                    </h3>
+                <div
+                    id="offense-detailed"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'offense-detailed'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <Swords className="w-5 h-5 text-rose-300" />
+                            Offenses - Detailed
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={() => (expandedSection === 'offense-detailed' ? closeExpandedSection() : openExpandedSection('offense-detailed'))}
+                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                            aria-label={expandedSection === 'offense-detailed' ? 'Close Offense Detailed' : 'Expand Offense Detailed'}
+                            title={expandedSection === 'offense-detailed' ? 'Close' : 'Expand'}
+                        >
+                            {expandedSection === 'offense-detailed' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                    </div>
                     {stats.offensePlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No offensive stats available</div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
+                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'offense-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'offense-detailed' ? 'h-full flex-1' : 'self-start'}`}>
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Offensive Tabs</div>
                                 <input
                                     value={offenseSearch}
@@ -2830,7 +2931,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     placeholder="Search..."
                                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                 />
-                                <div className={sidebarListClass}>
+                                <div className={`${sidebarListClass} ${expandedSection === 'offense-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                     {(() => {
                                         const filtered = OFFENSE_METRICS.filter((metric) =>
                                             metric.label.toLowerCase().includes(offenseSearch.trim().toLowerCase())
@@ -2853,7 +2954,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     })()}
                                 </div>
                             </div>
-                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'offense-detailed' ? 'flex flex-col min-h-0' : ''}`}>
                                 {(() => {
                                     const metric = OFFENSE_METRICS.find((entry) => entry.id === activeOffenseStat) || OFFENSE_METRICS[0];
                                     const totalSeconds = (row: any) => Math.max(1, (row.totalFightMs || 0) / 1000);
@@ -2919,7 +3020,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                 </div>
                                                 <div className="text-right">Fight Time</div>
                                             </div>
-                                            <div className="max-h-80 overflow-y-auto">
+                                            <div className={`${expandedSection === 'offense-detailed' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
                                                 {rows.map((row: any, idx: number) => (
                                                     <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
                                                         <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
@@ -2952,16 +3053,36 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Defenses - Detailed Table */}
-                <div id="defense-detailed" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-sky-300" />
-                        Defenses - Detailed
-                    </h3>
+                <div
+                    id="defense-detailed"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'defense-detailed'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-sky-300" />
+                            Defenses - Detailed
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={() => (expandedSection === 'defense-detailed' ? closeExpandedSection() : openExpandedSection('defense-detailed'))}
+                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                            aria-label={expandedSection === 'defense-detailed' ? 'Close Defense Detailed' : 'Expand Defense Detailed'}
+                            title={expandedSection === 'defense-detailed' ? 'Close' : 'Expand'}
+                        >
+                            {expandedSection === 'defense-detailed' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                    </div>
                     {stats.defensePlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No defensive stats available</div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
+                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'defense-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'defense-detailed' ? 'h-full flex-1' : 'self-start'}`}>
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Defensive Tabs</div>
                                 <input
                                     value={defenseSearch}
@@ -2969,7 +3090,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     placeholder="Search..."
                                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                 />
-                                <div className={sidebarListClass}>
+                                <div className={`${sidebarListClass} ${expandedSection === 'defense-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                     {(() => {
                                         const filtered = DEFENSE_METRICS.filter((metric) =>
                                             metric.label.toLowerCase().includes(defenseSearch.trim().toLowerCase())
@@ -2992,7 +3113,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     })()}
                                 </div>
                             </div>
-                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'defense-detailed' ? 'flex flex-col min-h-0' : ''}`}>
                                 {(() => {
                                     const metric = DEFENSE_METRICS.find((entry) => entry.id === activeDefenseStat) || DEFENSE_METRICS[0];
                                     const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
@@ -3041,7 +3162,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                 </div>
                                                 <div className="text-right">Fight Time</div>
                                             </div>
-                                            <div className="max-h-80 overflow-y-auto">
+                                            <div className={`${expandedSection === 'defense-detailed' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
                                                 {rows.map((row: any, idx: number) => (
                                                     <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
                                                         <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
@@ -3074,16 +3195,36 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Support - Detailed Table */}
-                <div id="support-detailed" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <HelpingHand className="w-5 h-5 text-emerald-300" />
-                        Support - Detailed
-                    </h3>
+                <div
+                    id="support-detailed"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'support-detailed'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <HelpingHand className="w-5 h-5 text-emerald-300" />
+                            Support - Detailed
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={() => (expandedSection === 'support-detailed' ? closeExpandedSection() : openExpandedSection('support-detailed'))}
+                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                            aria-label={expandedSection === 'support-detailed' ? 'Close Support Detailed' : 'Expand Support Detailed'}
+                            title={expandedSection === 'support-detailed' ? 'Close' : 'Expand'}
+                        >
+                            {expandedSection === 'support-detailed' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                    </div>
                     {stats.supportPlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No support stats available</div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
+                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'support-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'support-detailed' ? 'h-full flex-1' : 'self-start'}`}>
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
                                 <input
                                     value={supportSearch}
@@ -3091,7 +3232,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     placeholder="Search..."
                                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                 />
-                                <div className={sidebarListClass}>
+                                <div className={`${sidebarListClass} ${expandedSection === 'support-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                     {(() => {
                                         const filtered = SUPPORT_METRICS.filter((metric) =>
                                             metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
@@ -3114,7 +3255,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     })()}
                                 </div>
                             </div>
-                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'support-detailed' ? 'flex flex-col min-h-0' : ''}`}>
                                 {(() => {
                                     const metric = SUPPORT_METRICS.find((entry) => entry.id === activeSupportStat) || SUPPORT_METRICS[0];
                                     const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
@@ -3163,7 +3304,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                 </div>
                                                 <div className="text-right">Fight Time</div>
                                             </div>
-                                            <div className="max-h-80 overflow-y-auto">
+                                            <div className={`${expandedSection === 'support-detailed' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
                                                 {rows.map((row: any, idx: number) => (
                                                     <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
                                                         <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
@@ -3197,16 +3338,36 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Healing Stats Table */}
-                <div id="healing-stats" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-lime-300" />
-                        Healing Stats
-                    </h3>
+                <div
+                    id="healing-stats"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'healing-stats'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-lime-300" />
+                            Healing Stats
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={() => (expandedSection === 'healing-stats' ? closeExpandedSection() : openExpandedSection('healing-stats'))}
+                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                            aria-label={expandedSection === 'healing-stats' ? 'Close Healing Stats' : 'Expand Healing Stats'}
+                            title={expandedSection === 'healing-stats' ? 'Close' : 'Expand'}
+                        >
+                            {expandedSection === 'healing-stats' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                    </div>
                     {stats.healingPlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No healing stats available</div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
+                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'healing-stats' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'healing-stats' ? 'h-full flex-1' : 'self-start'}`}>
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Healing Tabs</div>
                                 <div className="flex-1 overflow-y-auto space-y-1 pr-1">
                                     {HEALING_METRICS.map((metric) => (
@@ -3223,7 +3384,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                     ))}
                                 </div>
                             </div>
-                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'healing-stats' ? 'flex flex-col min-h-0' : ''}`}>
                                 {(() => {
                                     const metric = HEALING_METRICS.find((entry) => entry.id === activeHealingMetric) || HEALING_METRICS[0];
                                     const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
@@ -3279,7 +3440,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                 <div className="text-right">{metric.label}</div>
                                                 <div className="text-right">Fight Time</div>
                                             </div>
-                                            <div className="max-h-80 overflow-y-auto">
+                                            <div className={`${expandedSection === 'healing-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
                                                 {rows.length === 0 ? (
                                                     <div className="px-4 py-6 text-sm text-gray-500 italic">No healing data for this view</div>
                                                 ) : (
@@ -3309,17 +3470,37 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Special Buff Output Tables */}
-                <div id="special-buffs" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-purple-300" />
-                        Special Buffs
-                    </h3>
+                <div
+                    id="special-buffs"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'special-buffs'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-purple-300" />
+                            Special Buffs
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={() => (expandedSection === 'special-buffs' ? closeExpandedSection() : openExpandedSection('special-buffs'))}
+                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                            aria-label={expandedSection === 'special-buffs' ? 'Close Special Buffs' : 'Expand Special Buffs'}
+                            title={expandedSection === 'special-buffs' ? 'Close' : 'Expand'}
+                        >
+                            {expandedSection === 'special-buffs' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                    </div>
                     {stats.specialTables.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No special buff data available</div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                                <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 self-start">
+                            <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'special-buffs' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                                <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'special-buffs' ? 'h-full flex-1' : 'self-start'}`}>
                                     <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Special Buffs</div>
                                     <input
                                         value={specialSearch}
@@ -3327,7 +3508,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                         placeholder="Search..."
                                         className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
                                     />
-                                    <div className={sidebarListClass}>
+                                    <div className={`${sidebarListClass} ${expandedSection === 'special-buffs' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                         {filteredSpecialTables.length === 0 ? (
                                             <div className="text-center text-gray-500 italic py-6 text-xs">No special buffs match this filter</div>
                                         ) : (
@@ -3346,7 +3527,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'special-buffs' ? 'flex flex-col min-h-0' : ''}`}>
                                     {!activeSpecialTable ? (
                                         <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a special buff to view details</div>
                                     ) : (
@@ -3362,7 +3543,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                                 <div className="text-right">Per Sec</div>
                                                 <div className="text-right">Fight Time</div>
                                             </div>
-                                            <div className="max-h-64 overflow-y-auto">
+                                            <div className={`${expandedSection === 'special-buffs' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-64 overflow-y-auto'}`}>
                                                 {activeSpecialTable.rows.map((row: any, idx: number) => (
                                                     <div key={`${activeSpecialTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
                                                         <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
@@ -3391,7 +3572,16 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 </div>
 
                 {/* Skill Usage Tracker */}
-                <div id="skill-usage" className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24">
+                <div
+                    id="skill-usage"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                        expandedSection === 'skill-usage'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : ''
+                    }`}
+                >
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
                         <div>
                             <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
@@ -3402,8 +3592,19 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                 Compare how often squad members cast a skill and drill into the timeline breakdown.
                             </p>
                         </div>
-                        <div className="text-xs uppercase tracking-[0.3em] text-gray-500">
-                            {skillUsageData.logRecords.length} {skillUsageData.logRecords.length === 1 ? 'log' : 'logs'}
+                        <div className="flex items-center gap-3">
+                            <div className="text-xs uppercase tracking-[0.3em] text-gray-500">
+                                {skillUsageData.logRecords.length} {skillUsageData.logRecords.length === 1 ? 'log' : 'logs'}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => (expandedSection === 'skill-usage' ? closeExpandedSection() : openExpandedSection('skill-usage'))}
+                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                                aria-label={expandedSection === 'skill-usage' ? 'Close Skill Usage' : 'Expand Skill Usage'}
+                                title={expandedSection === 'skill-usage' ? 'Close' : 'Expand'}
+                            >
+                                {expandedSection === 'skill-usage' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                            </button>
                         </div>
                     </div>
                     {selectedPlayers.length > 0 && (
@@ -3585,18 +3786,19 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             }}
                                         />
                                         {selectedPlayers.map((playerKey) => {
-                                            const color = getLineColorForPlayer(playerKey);
+                                            const isSelected = hoveredSkillPlayer.includes(playerKey);
+                                            const hasSelection = hoveredSkillPlayer.length > 0;
+                                            const color = getLineStrokeColor(playerKey, isSelected, hasSelection);
                                             const dash = getLineDashForPlayer(playerKey);
-                                            const isDimmed = hoveredSkillPlayer.length > 0 && !hoveredSkillPlayer.includes(playerKey);
+                                            const isDimmed = hoveredSkillPlayer.length > 0 && !isSelected;
                                             return (
                                             <Line
                                                 key={playerKey}
                                                 dataKey={playerKey}
                                                 stroke={color}
-                                                strokeWidth={3}
+                                                strokeWidth={isSelected ? 4 : 3}
                                                 strokeDasharray={dash}
-                                                opacity={isDimmed ? 0 : 1}
-                                                hide={Boolean(isDimmed)}
+                                                opacity={isDimmed ? 0.6 : 1}
                                                 dot={false}
                                                 isAnimationActive={false}
                                             />
@@ -3611,8 +3813,9 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                                             .map((playerKey) => {
                                                 const player = playerMapByKey.get(playerKey);
                                                 const total = playerTotalsForSkill[playerKey] ?? 0;
-                                                const swatchColor = getLineColorForPlayer(playerKey);
-                                                const isActive = hoveredSkillPlayer.includes(playerKey);
+                                            const isActive = hoveredSkillPlayer.includes(playerKey);
+                                            const hasSelection = hoveredSkillPlayer.length > 0;
+                                            const swatchColor = getLineStrokeColor(playerKey, isActive, hasSelection);
                                                 return (
                                                     <button
                                                         key={playerKey}
