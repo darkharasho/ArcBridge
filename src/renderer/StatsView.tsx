@@ -1101,6 +1101,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
             const weights = mvpWeights || DEFAULT_MVP_WEIGHTS;
 
             const check = (val: number, maxVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
+                if (weight <= 0) return;
                 if (maxVal > 0) {
                     const ratio = val / maxVal;
                     score += ratio * weight;
@@ -1109,6 +1110,7 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
                 }
             };
             const checkLowerIsBetter = (val: number, bestVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
+                if (weight <= 0) return;
                 if (bestVal > 0 && val > 0) {
                     const ratio = bestVal / val;
                     score += ratio * weight;
