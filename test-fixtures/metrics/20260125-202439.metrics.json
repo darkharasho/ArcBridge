@@ -1,0 +1,358 @@
+{
+  "source": "test-fixtures/boon/20260125-202439.json",
+  "generatedAt": "2026-01-28T20:22:14.331Z",
+  "metrics": [
+    {
+      "name": "El Stan",
+      "account": "Stan.9684",
+      "profession": "Tempest",
+      "group": 1,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 237239,
+      "stabGeneration": 72.21438
+    },
+    {
+      "name": "Grimm O Tree",
+      "account": "Grimmster.6924",
+      "profession": "Reaper",
+      "group": 1,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 5,
+        "missed": 1,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 12765,
+      "stabGeneration": 0
+    },
+    {
+      "name": "Möxî",
+      "account": "moxic.6038",
+      "profession": "Scourge",
+      "group": 1,
+      "notInSquad": false,
+      "outCrowdControl": 16,
+      "incomingStrips": {
+        "total": 18,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 7,
+        "missed": 1,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 44836,
+      "squadHealing": 134317,
+      "stabGeneration": 138.41089499999998
+    },
+    {
+      "name": "Revan Malice",
+      "account": "Revan Malise.5107",
+      "profession": "Luminary",
+      "group": 1,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 27,
+        "missed": 1,
+        "blocked": 1
+      },
+      "incomingCrowdControl": {
+        "total": 6,
+        "missed": 1,
+        "blocked": 1
+      },
+      "downContribution": 0,
+      "squadBarrier": 86523,
+      "squadHealing": 40198,
+      "stabGeneration": 1901.64534
+    },
+    {
+      "name": "Valentino Graves",
+      "account": "VincentCross.1469",
+      "profession": "Firebrand",
+      "group": 1,
+      "notInSquad": false,
+      "outCrowdControl": 17,
+      "incomingStrips": {
+        "total": 23,
+        "missed": 0,
+        "blocked": 2
+      },
+      "incomingCrowdControl": {
+        "total": 9,
+        "missed": 2,
+        "blocked": 3
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 5492,
+      "stabGeneration": 1432.2518699999998
+    },
+    {
+      "name": "Airtight Undies",
+      "account": "undiee.3146",
+      "profession": "Catalyst",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 6,
+      "incomingStrips": {
+        "total": 21,
+        "missed": 1,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 12,
+        "missed": 1,
+        "blocked": 3
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 54504,
+      "stabGeneration": 0
+    },
+    {
+      "name": "Haro Forge",
+      "account": "harasho.4281",
+      "profession": "Amalgam",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 32,
+        "missed": 0,
+        "blocked": 1
+      },
+      "incomingCrowdControl": {
+        "total": 10,
+        "missed": 2,
+        "blocked": 1
+      },
+      "downContribution": 0,
+      "squadBarrier": 8072,
+      "squadHealing": 14128,
+      "stabGeneration": 0
+    },
+    {
+      "name": "Momma Miko",
+      "account": "Shanhana Miko.8702",
+      "profession": "Luminary",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 0,
+      "stabGeneration": 0
+    },
+    {
+      "name": "Momma Miko",
+      "account": "Shanhana Miko.8702",
+      "profession": "Luminary",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 8,
+        "missed": 1,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 5,
+        "missed": 1,
+        "blocked": 2
+      },
+      "downContribution": 0,
+      "squadBarrier": 42243,
+      "squadHealing": 102917,
+      "stabGeneration": 1089.233565
+    },
+    {
+      "name": "Mr Pinguino V",
+      "account": "pinguinox.9528",
+      "profession": "Scrapper",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 0,
+      "stabGeneration": 0
+    },
+    {
+      "name": "Mr Pinguino V",
+      "account": "pinguinox.9528",
+      "profession": "Scrapper",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 3,
+      "incomingStrips": {
+        "total": 29,
+        "missed": 2,
+        "blocked": 2
+      },
+      "incomingCrowdControl": {
+        "total": 5,
+        "missed": 0,
+        "blocked": 1
+      },
+      "downContribution": 0,
+      "squadBarrier": 78447,
+      "squadHealing": 205429,
+      "stabGeneration": 764.268855
+    },
+    {
+      "name": "Primordial Deity",
+      "account": "Vettexl.9726",
+      "profession": "Luminary",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 32,
+        "missed": 2,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 12,
+        "missed": 1,
+        "blocked": 1
+      },
+      "downContribution": 0,
+      "squadBarrier": 36720,
+      "squadHealing": 112755,
+      "stabGeneration": 1366.055355
+    },
+    {
+      "name": "Ziet The Dreaded",
+      "account": "Zietlogik.6208",
+      "profession": "Reaper",
+      "group": 2,
+      "notInSquad": false,
+      "outCrowdControl": 13,
+      "incomingStrips": {
+        "total": 24,
+        "missed": 1,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 8,
+        "missed": 1,
+        "blocked": 2
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 15500,
+      "stabGeneration": 0
+    },
+    {
+      "name": "Momma Miko",
+      "account": "Shanhana Miko.8702",
+      "profession": "Luminary",
+      "group": 3,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 12,
+        "missed": 0,
+        "blocked": 5
+      },
+      "incomingCrowdControl": {
+        "total": 1,
+        "missed": 0,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 50957,
+      "squadHealing": 110851,
+      "stabGeneration": 2352.985215
+    },
+    {
+      "name": "Mr Pinguino V",
+      "account": "pinguinox.9528",
+      "profession": "Scrapper",
+      "group": 3,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 13799,
+      "squadHealing": 14565,
+      "stabGeneration": 126.37516500000001
+    },
+    {
+      "name": "Wag Toof",
+      "account": "Wag Z.8294",
+      "profession": "Catalyst",
+      "group": 3,
+      "notInSquad": false,
+      "outCrowdControl": 0,
+      "incomingStrips": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "incomingCrowdControl": {
+        "total": 0,
+        "missed": 0,
+        "blocked": 0
+      },
+      "downContribution": 0,
+      "squadBarrier": 0,
+      "squadHealing": 0,
+      "stabGeneration": 0
+    }
+  ]
+}

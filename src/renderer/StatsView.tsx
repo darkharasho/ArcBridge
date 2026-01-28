@@ -2,7 +2,7 @@ import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
-import { calculateSquadBarrier, calculateSquadHealing, calculateOutCC, calculateDownContribution } from '../shared/plenbot';
+import { computeSquadBarrier, computeSquadHealing, computeOutgoingCrowdControl, computeDownContribution } from '../shared/combatMetrics';
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue, getPlayerBoonGenerationMs } from '../shared/boonGeneration';
@@ -510,16 +510,15 @@ export function StatsView({ logs, onBack, mvpWeights, precomputedStats, embedded
 
                 // Aggregate Metrics
                 // Down Contribution
-                s.downContrib += calculateDownContribution(p);
+                s.downContrib += computeDownContribution(p);
 
-                // Support: Cleanses and Strips (PlenBot uses condiCleanse + condiCleanseSelf)
+                // Support: Cleanses and Strips (EI support stats)
                 s.cleanses += (p.support?.[0]?.condiCleanse || 0) + (p.support?.[0]?.condiCleanseSelf || 0);
                 s.strips += p.support?.[0]?.boonStrips || 0;
 
-                // PlenBot calcs
-                s.healing += calculateSquadHealing(p);
-                s.barrier += calculateSquadBarrier(p);
-                s.cc += calculateOutCC(p);
+                s.healing += computeSquadHealing(p);
+                s.barrier += computeSquadBarrier(p);
+                s.cc += computeOutgoingCrowdControl(p);
                 const groupCount = groupCounts.get(p.group ?? 0) || 1;
                 const stabSelf = getPlayerBoonGenerationMs(
                     p,

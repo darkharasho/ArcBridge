@@ -24,3 +24,6 @@ jobs:
 
       - name: Validate boon generation
         run: npm run validate:boons
+
+      - name: Audit combat metrics
+        run: npm run audit:metrics

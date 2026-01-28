@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing } from '../shared/combatMetrics';
 import { Player } from '../shared/dpsReportTypes';
 import { DEFAULT_EMBED_STATS, IEmbedStatSettings } from './global.d';
 import { getProfessionAbbrev, getProfessionEmoji, getProfessionIconPath } from '../shared/professionUtils';
@@ -29,7 +29,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     const players: Player[] = details.players || [];
     const targets = details.targets || [];
     const settings = embedStatSettings || DEFAULT_EMBED_STATS;
-    calculateAllStability(players, { durationMS: details.durationMS, buffMap: details.buffMap });
+    applySquadStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
     const squadPlayers = players.filter((p: any) => !p.notInSquad);
     const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
 
@@ -79,7 +79,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             if (isSquad) {
                 squadDps += p.dpsAll[0].dps;
                 squadDmg += p.dpsAll[0].damage;
-                squadCC += calculateOutCC(p); // Use accurate PlenBot calculation
+                squadCC += computeOutgoingCrowdControl(p);
                 squadResurrects += (p.support?.[0]?.resurrects || 0);
             }
         }
@@ -96,11 +96,11 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             totalBlock += d.blockedCount || 0;
             totalEvade += d.evadedCount || 0;
             totalDodge += d.dodgeCount || 0;
-            // totalCCTaken += d.interruptedCount || 0; <-- Handled by PlenBot logic now
+            // totalCCTaken += d.interruptedCount || 0; <-- handled by per-skill weighting now
             // totalStripsTaken += d.boonStrips || 0;
         }
 
-        const pStats = calculateIncomingStats(p);
+        const pStats = computeIncomingDisruptions(p);
         totalCCTaken += pStats.cc.total;
         totalCCMissed += pStats.cc.missed;
         totalCCBlocked += pStats.cc.blocked;
@@ -242,22 +242,22 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         {
             enabled: settings.showDownContribution,
             title: "Down Contribution",
-            sortFn: (a: any, b: any) => calculateDownContribution(b) - calculateDownContribution(a),
-            valFn: (p: any) => calculateDownContribution(p),
+            sortFn: (a: any, b: any) => computeDownContribution(b) - computeDownContribution(a),
+            valFn: (p: any) => computeDownContribution(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
             enabled: settings.showHealing,
             title: "Healing",
-            sortFn: (a: any, b: any) => calculateSquadHealing(b) - calculateSquadHealing(a),
-            valFn: (p: any) => calculateSquadHealing(p),
+            sortFn: (a: any, b: any) => computeSquadHealing(b) - computeSquadHealing(a),
+            valFn: (p: any) => computeSquadHealing(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
             enabled: settings.showBarrier,
             title: "Barrier",
-            sortFn: (a: any, b: any) => calculateSquadBarrier(b) - calculateSquadBarrier(a),
-            valFn: (p: any) => calculateSquadBarrier(p),
+            sortFn: (a: any, b: any) => computeSquadBarrier(b) - computeSquadBarrier(a),
+            valFn: (p: any) => computeSquadBarrier(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {
@@ -277,8 +277,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         {
             enabled: settings.showCC,
             title: "CC",
-            sortFn: (a: any, b: any) => calculateOutCC(b) - calculateOutCC(a),
-            valFn: (p: any) => calculateOutCC(p),
+            sortFn: (a: any, b: any) => computeOutgoingCrowdControl(b) - computeOutgoingCrowdControl(a),
+            valFn: (p: any) => computeOutgoingCrowdControl(p),
             fmtVal: (v: number) => v.toLocaleString()
         },
         {

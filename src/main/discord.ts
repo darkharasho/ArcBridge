@@ -1,6 +1,6 @@
 import axios from 'axios';
 import FormData from 'form-data';
-import { calculateAllStability, calculateDownContribution, calculateIncomingStats, calculateOutCC, calculateSquadBarrier, calculateSquadHealing } from '../shared/plenbot';
+import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing } from '../shared/combatMetrics';
 import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 import { Player } from '../shared/dpsReportTypes';
 
@@ -133,7 +133,7 @@ export class DiscordNotifier {
                     const settings = this.embedStatSettings;
 
                     // Pre-calculate stability
-                    calculateAllStability(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
+                    applySquadStabilityGeneration(players, { durationMS: jsonDetails.durationMS, buffMap: jsonDetails.buffMap });
 
                     let embedFields: any[] = [];
 
@@ -197,9 +197,9 @@ export class DiscordNotifier {
                             totalBlock += d.blockedCount || 0;
                             totalEvade += d.evadedCount || 0;
                             totalDodge += d.dodgeCount || 0;
-                            // Uses PlenBot logic below instead of simple fields for CC/Strips
+                            // Uses per-skill weighting for CC/Strips instead of raw summary fields
                         }
-                        const pStats = calculateIncomingStats(p);
+                        const pStats = computeIncomingDisruptions(p);
                         totalCCTaken += pStats.cc.total;
                         totalCCMissed += pStats.cc.missed;
                         totalCCBlocked += pStats.cc.blocked;
@@ -245,8 +245,6 @@ export class DiscordNotifier {
                     // Build Description
                     let desc = `**Recorded by:** ${jsonDetails.recordedBy || 'Unknown'}\n`;
                     desc += `**Duration:** ${jsonDetails.duration || jsonDetails.encounterDuration || 'Unknown'}\n`;
-                    desc += `**Elite Insights version:** ${jsonDetails.eliteInsightsVersion || 'Unknown'}\n`;
-                    desc += `**arcdps version:** ${jsonDetails.arcVersion || 'Unknown'}\n`;
 
                     // Line 1: Squad Summary | Team Summary (Enemy)
                     const formatStatLine = (label: string, value: string | number) => {
@@ -428,22 +426,22 @@ export class DiscordNotifier {
                             {
                                 enabled: settings.showDownContribution,
                                 title: "Down Contribution",
-                                sortFn: (a: any, b: any) => calculateDownContribution(b) - calculateDownContribution(a),
-                                valFn: (p: any) => calculateDownContribution(p),
+                                sortFn: (a: any, b: any) => computeDownContribution(b) - computeDownContribution(a),
+                                valFn: (p: any) => computeDownContribution(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showHealing,
                                 title: "Healing",
-                                sortFn: (a: any, b: any) => calculateSquadHealing(b) - calculateSquadHealing(a),
-                                valFn: (p: any) => calculateSquadHealing(p),
+                                sortFn: (a: any, b: any) => computeSquadHealing(b) - computeSquadHealing(a),
+                                valFn: (p: any) => computeSquadHealing(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
                                 enabled: settings.showBarrier,
                                 title: "Barrier",
-                                sortFn: (a: any, b: any) => calculateSquadBarrier(b) - calculateSquadBarrier(a),
-                                valFn: (p: any) => calculateSquadBarrier(p),
+                                sortFn: (a: any, b: any) => computeSquadBarrier(b) - computeSquadBarrier(a),
+                                valFn: (p: any) => computeSquadBarrier(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
@@ -463,8 +461,8 @@ export class DiscordNotifier {
                             {
                                 enabled: settings.showCC,
                                 title: "CC",
-                                sortFn: (a: any, b: any) => calculateOutCC(b) - calculateOutCC(a),
-                                valFn: (p: any) => calculateOutCC(p),
+                                sortFn: (a: any, b: any) => computeOutgoingCrowdControl(b) - computeOutgoingCrowdControl(a),
+                                valFn: (p: any) => computeOutgoingCrowdControl(p),
                                 fmtVal: (v: any) => v.toLocaleString()
                             },
                             {
