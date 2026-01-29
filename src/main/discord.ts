@@ -240,9 +240,6 @@ export class DiscordNotifier {
                         if (isSquad) {
                             const prof = p.profession || 'Unknown';
                             squadClassCounts[prof] = (squadClassCounts[prof] || 0) + 1;
-                        } else {
-                            const prof = p.profession || 'Unknown';
-                            enemyClassCounts[prof] = (enemyClassCounts[prof] || 0) + 1;
                         }
                     });
 
@@ -256,6 +253,23 @@ export class DiscordNotifier {
                     // Count non-fake targets
                     targets.forEach((t: any) => {
                         if (!t.isFake) enemyCount++;
+                    });
+
+                    const seenEnemyIdsInFight = new Set<string>();
+                    targets.forEach((t: any) => {
+                        if (t?.isFake) return;
+                        if (t?.enemyPlayer === false) return;
+                        const rawName = t?.name || 'Unknown';
+                        const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
+                        const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
+                        if (seenEnemyIdsInFight.has(idKey)) return;
+                        seenEnemyIdsInFight.add(idKey);
+
+                        const cleanName = String(rawName)
+                            .replace(/\s+pl-\d+$/i, '')
+                            .replace(/\s*\([^)]*\)/, '')
+                            .trim();
+                        enemyClassCounts[cleanName] = (enemyClassCounts[cleanName] || 0) + 1;
                     });
 
                     // Aggregate downed/killed from statsTargets
@@ -323,22 +337,37 @@ export class DiscordNotifier {
                         });
                     }
 
-                    const formatClassLines = (counts: Record<string, number>) => {
+                    const formatClassLines = (counts: Record<string, number>, useAbbrev = true, maxItems?: number, includeSummary?: boolean) => {
                         const entries = Object.entries(counts)
                             .filter(([, count]) => count > 0)
                             .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
                             .map(([profession, count]) => {
-                                const label = `${getProfessionAbbrev(profession).toUpperCase()}:`;
+                                const labelText = useAbbrev
+                                    ? getProfessionAbbrev(profession).toUpperCase().padEnd(3, ' ')
+                                    : profession.toUpperCase();
+                                const label = `${labelText}:`;
                                 return `${label} ${count}`;
                             });
                         if (entries.length === 0) return 'No Data';
 
+                        const limitedEntries = (() => {
+                            if (!maxItems || entries.length <= maxItems) {
+                                return entries;
+                            }
+                            const overflowTotal = entries
+                                .slice(maxItems)
+                                .reduce((sum, entry) => sum + Number(entry.split(':')[1] || 0), 0);
+                            const base = entries.slice(0, maxItems);
+                            if (!includeSummary || overflowTotal <= 0) return base;
+                            return [...base, `+ ${overflowTotal}`];
+                        })();
+
                         const maxRows = 5;
                         const columns: string[][] = [];
-                        for (let i = 0; i < entries.length; i += maxRows) {
-                            columns.push(entries.slice(i, i + maxRows));
+                        for (let i = 0; i < limitedEntries.length; i += maxRows) {
+                            columns.push(limitedEntries.slice(i, i + maxRows));
                         }
-                        const colWidth = Math.max(...entries.map(entry => entry.length)) + 2;
+                        const colWidth = Math.max(...limitedEntries.map(entry => entry.length)) + 2;
                         const lines: string[] = [];
                         for (let row = 0; row < maxRows; row += 1) {
                             const line = columns
@@ -365,7 +394,7 @@ export class DiscordNotifier {
                     if (settings.showClassSummary && settings.showEnemySummary) {
                         embedFields.push({
                             name: "Enemy Classes:",
-                            value: `\`\`\`\n${formatClassLines(enemyClassCounts)}\n\`\`\``,
+                            value: `\`\`\`\n${formatClassLines(enemyClassCounts, true, 14, true)}\n\`\`\``,
                             inline: true
                         });
                     }

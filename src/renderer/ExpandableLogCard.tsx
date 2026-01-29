@@ -140,7 +140,28 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     };
 
     const squadClassCounts = buildClassCounts(squadPlayers);
-    const enemyClassCounts = buildClassCounts(nonSquadPlayers);
+    const enemyClassCounts = (() => {
+        const counts: Record<string, number> = {};
+        const seenEnemyIdsInFight = new Set<string>();
+        targets.forEach((t: any) => {
+            if (t?.isFake) return;
+            const rawName = t?.name || 'Unknown';
+            const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
+            const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
+            if (seenEnemyIdsInFight.has(idKey)) return;
+            seenEnemyIdsInFight.add(idKey);
+
+            const cleanName = String(rawName)
+                .replace(/\s+pl-\d+$/i, '')
+                .replace(/\s*\([^)]*\)/, '')
+                .trim();
+            counts[cleanName] = (counts[cleanName] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .filter(([, count]) => count > 0)
+            .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+            .map(([profession, count]) => ({ profession, count }));
+    })();
 
     
 
@@ -174,10 +195,22 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     };
 
     const renderClassSummary = (title: string, counts: Array<{ profession: string; count: number }>, colorClass: string, compact?: boolean, fullHeight?: boolean) => {
-        const maxRows = 5;
+        const isTile = Boolean(fullHeight);
+        const isEnemy = title.toLowerCase().includes('enemy');
+        const maxItems = isTile ? 20 : (isEnemy ? 30 : undefined);
+        let limitedCounts = counts;
+        if (maxItems && counts.length > maxItems) {
+            const overflowStart = maxItems;
+            const overflowTotal = counts.slice(overflowStart).reduce((sum, item) => sum + item.count, 0);
+            limitedCounts = [
+                ...counts.slice(0, maxItems),
+                { profession: '+', count: overflowTotal, isSummary: true } as any
+            ];
+        }
+        const maxRows = fullHeight ? 7 : 10;
         const columns: Array<Array<{ profession: string; count: number }>> = [];
-        for (let i = 0; i < counts.length; i += maxRows) {
-            columns.push(counts.slice(i, i + maxRows));
+        for (let i = 0; i < limitedCounts.length; i += maxRows) {
+            columns.push(limitedCounts.slice(i, i + maxRows));
         }
         const headerClass = compact
             ? `font-semibold ${colorClass} mb-2 uppercase tracking-wider text-[10px]`
@@ -185,11 +218,19 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         return (
             <div className={`bg-white/5 rounded-xl ${compact ? 'p-3' : 'p-4'} border border-white/10 shadow-lg ${fullHeight ? 'h-full' : ''}`}>
                 <h5 className={`${headerClass} border-b border-white/10 pb-2`}>{title}</h5>
-                {counts.length > 0 ? (
+                {limitedCounts.length > 0 ? (
                     <div className={`grid grid-flow-col auto-cols-fr gap-2 font-mono text-gray-200 ${fullHeight ? 'text-base' : compact ? 'text-[11px]' : 'text-sm'}`}>
                         {columns.map((column, columnIndex) => (
                             <div key={`${title}-col-${columnIndex}`} className="space-y-2">
-                                {column.map(({ profession, count }) => {
+                                {column.map(({ profession, count, isSummary }: any) => {
+                                    if (isSummary) {
+                                        return (
+                                            <div key={`${title}-summary`} className="flex items-center justify-between gap-2 bg-white/5 rounded-md px-2 py-1 border border-white/10">
+                                                <span className="text-gray-300">{`+ ${count}`}</span>
+                                                <span />
+                                            </div>
+                                        );
+                                    }
                                     const iconPath = getProfessionIconPath(profession);
                                     const label = getProfessionAbbrev(profession).toUpperCase();
                                     return (

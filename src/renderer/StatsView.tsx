@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
@@ -19,24 +19,14 @@ interface StatsViewProps {
 
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
 
-const ProfessionIcon = ({
-    profession,
-    professionList,
-    className = 'w-4 h-4'
-}: {
-    profession: string | undefined;
-    professionList?: string[];
-    className?: string;
-}) => {
-    const list = (professionList || []).filter(Boolean);
-    const resolvedProfession = profession === 'Multi' && list.length > 0 ? list[0] : profession;
-    const iconPath = getProfessionIconPath(resolvedProfession || 'Unknown');
-    const showMulti = list.length > 1;
-    const [open, setOpen] = useState(false);
+const useSmartTooltipPlacement = (
+    open: boolean,
+    deps: any[],
+    wrapperRef: RefObject<HTMLElement>,
+    tooltipRef: RefObject<HTMLElement>
+) => {
     const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
     const [shiftX, setShiftX] = useState(0);
-    const wrapperRef = useRef<HTMLSpanElement | null>(null);
-    const tooltipRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!open) return;
@@ -82,7 +72,40 @@ const ProfessionIcon = ({
             setShiftX(clampedCenter - desiredCenter);
         });
         return () => cancelAnimationFrame(raf);
-    }, [open, list.length, className]);
+    }, [open, ...deps]);
+
+    return { placement, shiftX };
+};
+
+const buildClassColumns = (counts: Record<string, number>, maxRows = 5) => {
+    const entries = Object.entries(counts)
+        .filter(([, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([profession, count]) => ({ profession, count }));
+    const columns: Array<Array<{ profession: string; count: number }>> = [];
+    for (let i = 0; i < entries.length; i += maxRows) {
+        columns.push(entries.slice(i, i + maxRows));
+    }
+    return columns;
+};
+
+const ProfessionIcon = ({
+    profession,
+    professionList,
+    className = 'w-4 h-4'
+}: {
+    profession: string | undefined;
+    professionList?: string[];
+    className?: string;
+}) => {
+    const list = (professionList || []).filter(Boolean);
+    const resolvedProfession = profession === 'Multi' && list.length > 0 ? list[0] : profession;
+    const iconPath = getProfessionIconPath(resolvedProfession || 'Unknown');
+    const showMulti = list.length > 1;
+    const [open, setOpen] = useState(false);
+    const wrapperRef = useRef<HTMLSpanElement | null>(null);
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
+    const { placement, shiftX } = useSmartTooltipPlacement(open, [list.length, className], wrapperRef, tooltipRef);
 
     if (!iconPath) return null;
 
@@ -133,6 +156,105 @@ const renderProfessionIcon = (
 ) => (
     <ProfessionIcon profession={profession} professionList={professionList} className={className} />
 );
+
+const CountClassTooltip = ({
+    count,
+    classCounts,
+    label,
+    className
+}: {
+    count: number;
+    classCounts?: Record<string, number>;
+    label: string;
+    className?: string;
+}) => {
+    const columns = buildClassColumns(classCounts || {});
+    const hasTooltip = count > 0;
+    const [open, setOpen] = useState(false);
+    const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({});
+    const wrapperRef = useRef<HTMLSpanElement | null>(null);
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const updatePosition = () => {
+            const wrapper = wrapperRef.current;
+            const tooltip = tooltipRef.current;
+            if (!wrapper || !tooltip) return;
+            const rect = wrapper.getBoundingClientRect();
+            const tipRect = tooltip.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            const placeOnTop = spaceBelow < tipRect.height + 8 && spaceAbove > spaceBelow;
+            const top = placeOnTop
+                ? Math.max(8, rect.top - tipRect.height - 8)
+                : Math.min(window.innerHeight - tipRect.height - 8, rect.bottom + 8);
+            const desiredCenter = rect.left + rect.width / 2;
+            const minCenter = 8 + tipRect.width / 2;
+            const maxCenter = window.innerWidth - 8 - tipRect.width / 2;
+            const clampedCenter = Math.min(Math.max(desiredCenter, minCenter), maxCenter);
+            setTooltipStyle({
+                position: 'fixed',
+                top,
+                left: clampedCenter,
+                transform: 'translateX(-50%)'
+            });
+        };
+        const raf = requestAnimationFrame(updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        };
+    }, [open, columns.length, count]);
+
+    return (
+        <span
+            ref={wrapperRef}
+            className={`relative inline-flex items-center justify-end ${hasTooltip ? 'group cursor-help' : ''}`}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+        >
+            <span className={className}>{count}</span>
+            {hasTooltip && (
+                <div
+                    ref={tooltipRef}
+                    style={tooltipStyle}
+                    className={`z-[9999] w-max rounded-md border border-white/10 bg-[#0f172a]/95 px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity ${open ? 'opacity-100' : ''}`}
+                >
+                    <div className="mb-1 text-[9px] uppercase tracking-wider text-amber-200">
+                        {label}
+                    </div>
+                    {columns.length > 0 ? (
+                        <div className="grid grid-flow-col auto-cols-fr gap-2">
+                            {columns.map((col, idx) => (
+                                <div key={`${label}-col-${idx}`} className="space-y-1">
+                                    {col.map(({ profession, count: profCount }) => {
+                                        const iconPath = getProfessionIconPath(profession || 'Unknown');
+                                        return (
+                                            <div key={profession} className="flex items-center gap-1">
+                                                {iconPath ? (
+                                                    <img src={iconPath} alt={profession || 'Unknown'} className="h-3.5 w-3.5" />
+                                                ) : null}
+                                                <span className="text-gray-100">{profession || 'Unknown'}</span>
+                                                <span className="text-gray-400">·</span>
+                                                <span className="text-gray-200">{profCount}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-[10px] text-gray-500 italic">No class data available</div>
+                    )}
+                </div>
+            )}
+        </span>
+    );
+};
 
 const OFFENSE_METRICS: Array<{
     id: string;
@@ -1634,7 +1756,11 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             const allyPlayers = players.filter((p) => p.notInSquad);
             const allFriendly = players;
             const nonFakeTargets = targets.filter((t) => !t.isFake);
-            const teamIds = Array.from(new Set(nonFakeTargets.map((t) => t?.teamID).filter((id) => id !== undefined && id !== null)));
+            const teamIds = Array.from(new Set(
+                nonFakeTargets
+                    .map((t) => Number(t?.teamID ?? t?.teamId))
+                    .filter((id) => Number.isFinite(id))
+            ));
             const colorOrder = ['red', 'green', 'blue'] as const;
 
             const teamColorMap = new Map<number, typeof colorOrder[number]>();
@@ -1651,8 +1777,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                     });
                 } else {
                     colorOrder.forEach((color) => {
-                        const id = rawTeamMap[color] ?? rawTeamMap[color.toUpperCase()];
-                        if (typeof id === 'number') {
+                        const idRaw = rawTeamMap[color] ?? rawTeamMap[color.toUpperCase()];
+                        const id = Number(idRaw);
+                        if (Number.isFinite(id)) {
                             teamColorMap.set(id, color);
                         }
                     });
@@ -1668,13 +1795,55 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             });
 
             const teamCounts = { red: 0, green: 0, blue: 0 };
+            const teamClassCounts: Record<'red' | 'green' | 'blue', Record<string, number>> = {
+                red: {},
+                green: {},
+                blue: {}
+            };
+            const enemyClassCounts: Record<string, number> = {};
+            let enemyPlayerCount = 0;
+            const countByProfession = (list: any[]) => {
+                const counts: Record<string, number> = {};
+                list.forEach((p) => {
+                    const prof = p?.profession || 'Unknown';
+                    counts[prof] = (counts[prof] || 0) + 1;
+                });
+                return counts;
+            };
             nonFakeTargets.forEach((t) => {
-                const teamId = t?.teamID;
+                const teamId = Number(t?.teamID ?? t?.teamId);
                 if (!Number.isFinite(teamId)) return;
                 const color = teamColorMap.get(teamId);
                 if (!color) return;
                 teamCounts[color] += 1;
             });
+            players.forEach((p) => {
+                if (!p?.notInSquad) return;
+                const teamId = Number(p?.teamID ?? p?.teamId);
+                if (!Number.isFinite(teamId)) return;
+                const color = teamColorMap.get(teamId);
+                if (!color) return;
+                const prof = p?.profession || 'Unknown';
+                teamClassCounts[color][prof] = (teamClassCounts[color][prof] || 0) + 1;
+            });
+            const seenEnemyIdsInFight = new Set<string>();
+            nonFakeTargets.forEach((t) => {
+                const rawName = t?.name || 'Unknown';
+                const rawId = (t as any)?.instanceID ?? (t as any)?.instid ?? (t as any)?.id ?? rawName;
+                const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
+                if (seenEnemyIdsInFight.has(idKey)) return;
+                seenEnemyIdsInFight.add(idKey);
+
+                const cleanName = String(rawName)
+                    .replace(/\s+pl-\d+$/i, '')
+                    .replace(/\s*\([^)]*\)/, '')
+                    .trim();
+
+                enemyClassCounts[cleanName] = (enemyClassCounts[cleanName] || 0) + 1;
+            });
+
+            const squadClassCountsFight = countByProfession(squadPlayers);
+            const allyClassCountsFight = countByProfession(allyPlayers);
 
             let alliesDown = 0;
             let alliesDead = 0;
@@ -1717,6 +1886,11 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 allyCount: allyPlayers.length,
                 enemyCount: nonFakeTargets.length,
                 teamCounts,
+                teamClassCounts,
+                enemyClassCounts,
+                enemyPlayerCount,
+                squadClassCountsFight,
+                allyClassCountsFight,
                 alliesDown,
                 alliesDead,
                 alliesRevived,
@@ -2720,9 +2894,30 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                 <td className="py-2 px-3 text-gray-200 w-20">{fight.duration || '--:--'}</td>
                                                 {fightBreakdownTab === 'sizes' && (
                                                     <>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.squadCount ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.allyCount ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.enemyCount ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">
+                                                            <CountClassTooltip
+                                                                count={fight.squadCount ?? 0}
+                                                                classCounts={fight.squadClassCountsFight}
+                                                                label="Squad Classes"
+                                                                className="text-gray-200"
+                                                            />
+                                                        </td>
+                                                        <td className="py-2 px-3 text-right font-mono">
+                                                            <CountClassTooltip
+                                                                count={fight.allyCount ?? 0}
+                                                                classCounts={fight.allyClassCountsFight}
+                                                                label="Ally Classes"
+                                                                className="text-gray-200"
+                                                            />
+                                                        </td>
+                                                        <td className="py-2 px-3 text-right font-mono">
+                                                            <CountClassTooltip
+                                                                count={fight.enemyCount ?? 0}
+                                                                classCounts={fight.enemyClassCounts}
+                                                                label="Enemy Classes"
+                                                                className="text-gray-200"
+                                                            />
+                                                        </td>
                                                         <td className="py-2 px-3 text-right font-mono text-red-300">{fight.teamCounts?.red ?? 0}</td>
                                                         <td className="py-2 px-3 text-right font-mono text-green-300">{fight.teamCounts?.green ?? 0}</td>
                                                         <td className="py-2 px-3 text-right font-mono text-blue-300">{fight.teamCounts?.blue ?? 0}</td>
