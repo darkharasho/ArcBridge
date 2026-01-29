@@ -640,27 +640,37 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         Settings
                     </h2>
                 </div>
-                <AnimatePresence mode="wait">
-                    {(isSaving || showSaved) && (
-                        <motion.div
-                            key={isSaving ? 'saving' : 'saved'}
-                            initial={{ opacity: 0, x: 12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 12 }}
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
-                            className="flex items-center gap-2"
-                        >
-                            <div
-                                className={`px-3 py-1 rounded-full text-xs font-semibold border ${isSaving
-                                    ? 'bg-green-500/20 text-green-300 border-green-500/40'
-                                    : 'bg-white/5 text-gray-400 border-white/10'
-                                    }`}
+                <div className="flex items-center gap-3">
+                    <AnimatePresence mode="wait">
+                        {(isSaving || showSaved) && (
+                            <motion.div
+                                key={isSaving ? 'saving' : 'saved'}
+                                initial={{ opacity: 0, x: 12 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 12 }}
+                                transition={{ duration: 0.2, ease: 'easeOut' }}
+                                className="flex items-center gap-2"
                             >
-                                {isSaving ? 'Saving…' : 'Saved'}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                <div
+                                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${isSaving
+                                        ? 'bg-green-500/20 text-green-300 border-green-500/40'
+                                        : 'bg-white/5 text-gray-400 border-white/10'
+                                        }`}
+                                >
+                                    {isSaving ? 'Saving…' : 'Saved'}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    <button
+                        type="button"
+                        onClick={() => window.electronAPI?.openExternal?.('https://discord.gg/UjzMXMGXEg')}
+                        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                        Support Discord
+                    </button>
+                </div>
             </motion.div>
 
             <div className="flex-1 overflow-y-auto pr-2 space-y-4">
