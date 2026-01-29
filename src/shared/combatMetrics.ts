@@ -135,3 +135,177 @@ export function computeSquadHealing(player: Player): number {
     }
     return total;
 }
+
+export function computeSquadDownedHealing(player: Player): number {
+    if (!player.extHealingStats || !player.extHealingStats.outgoingHealingAllies) return 0;
+
+    let total = 0;
+    for (const squadMember of player.extHealingStats.outgoingHealingAllies) {
+        if (!squadMember) continue;
+        for (const phaseData of squadMember) {
+            if (phaseData) {
+                total += (phaseData as any).downedHealing || 0;
+            }
+        }
+    }
+    return total;
+}
+
+type DamageReductionSource = {
+    id?: number;
+    name: string;
+    reduction?: number;
+    perHit?: boolean;
+};
+
+const INCOMING_DAMAGE_REDUCTION_SOURCES: DamageReductionSource[] = [
+    { id: 717, name: 'Protection', reduction: 0.33 },
+    { id: 5579, name: 'Frost Aura', reduction: 0.1 },
+    { name: 'Frozen Ground' },
+    { name: 'Dual Orbits: Air and Earth' },
+    { name: 'Dual Orbits: Fire and Earth' },
+    { name: 'Dual Orbits: Water and Earth' },
+    { name: 'Grinding Stones' },
+    { name: 'Rocky Loop' },
+    { name: 'Explosive Thrust' },
+    { name: 'Steel Divide' },
+    { name: 'Swift Cut' },
+    { name: 'Restorative Glow' },
+    { name: 'Infusing Terror' },
+    { name: 'Perilous Gift' },
+    { name: 'Resilient Weapon' },
+    { name: 'Signet of Judgment' },
+    { name: 'Forced Engagement' },
+    { name: 'Vengeful Hammers' },
+    { name: 'Endure Pain' },
+    { name: 'Spectrum Shield' },
+    { name: 'Barrier Signet' },
+    { name: '"Guard!"' },
+    { name: 'Dolyak Stance' },
+    { name: '"Flash-Freeze!"' },
+    { name: '"Rise!"' },
+    { name: 'Daring Advance' },
+    { name: 'Rite of the Great Dwarf', reduction: 0.5 },
+    { name: 'Rampage' },
+    { name: '"Rebound!"' },
+    { name: 'Weave Self' },
+    { name: 'Ancient Echo' },
+    { name: 'Facet of Nature' },
+    { name: 'Full Counter' },
+    { name: 'Drink Ambrosia' },
+    { name: 'Throw Enchanted Ice' },
+    { name: 'Enter Shadow Shroud' },
+    { name: 'Death Shroud' },
+    { name: "Reaper's Shroud" },
+    { name: "Ritualist's Shroud" },
+    { name: 'Lesser "Guard!"' },
+];
+
+const PER_HIT_DAMAGE_REDUCTION_SOURCES: DamageReductionSource[] = [
+    { name: "Eternity's Requiem", perHit: true },
+    { name: 'Lesser Volcano', perHit: true },
+    { name: 'Meteor Shower', perHit: true },
+    { name: 'Volcano', perHit: true },
+    { name: 'Lightning Orb', perHit: true },
+    { name: 'Mirror Blade', perHit: true },
+    { name: 'Frost Storm', perHit: true },
+    { name: 'Invoke Lightning', perHit: true },
+    { name: 'Ice Storm', perHit: true },
+    { name: 'Lightning Storm', perHit: true },
+];
+
+const normalizeBuffName = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const getBuffName = (buffMap: Record<string, any> | undefined, id: number) => {
+    if (!buffMap) return null;
+    const entry = buffMap[`b${id}`] || buffMap[`${id}`];
+    if (entry?.name) return String(entry.name);
+    return null;
+};
+
+const getBuffUptimePercent = (
+    player: Player,
+    buffMap: Record<string, any> | undefined,
+    target: { id?: number; name: string },
+) => {
+    if (!player.buffUptimes || player.buffUptimes.length === 0) return 0;
+    const targetName = normalizeBuffName(target.name);
+    for (const buff of player.buffUptimes) {
+        if (target.id !== undefined && buff.id === target.id) {
+            return Number(buff.buffData?.[0]?.uptime ?? 0);
+        }
+        const name = getBuffName(buffMap, buff.id);
+        if (name && normalizeBuffName(name).includes(targetName)) {
+            return Number(buff.buffData?.[0]?.uptime ?? 0);
+        }
+    }
+    return 0;
+};
+
+const getAverageIncomingHitDamage = (player: Player) => {
+    if (!player.totalDamageTaken || player.totalDamageTaken.length === 0) return 0;
+    let totalDamage = 0;
+    let totalHits = 0;
+    for (const entries of player.totalDamageTaken) {
+        for (const entry of entries || []) {
+            if (!entry) continue;
+            totalDamage += Number(entry.totalDamage ?? 0);
+            totalHits += Number(entry.connectedHits ?? 0);
+        }
+    }
+    if (!totalHits) return 0;
+    return totalDamage / totalHits;
+};
+
+export const computeDamageMitigationBreakdown = (
+    player: Player,
+    context?: { buffMap?: Record<string, any> },
+) => {
+    const buffMap = context?.buffMap;
+    const damageTaken = Number(player.defenses?.[0]?.damageTaken ?? 0);
+    const barrierAbsorbed = Number(player.defenses?.[0]?.damageBarrier ?? 0);
+    const blockedCount = Number(player.defenses?.[0]?.blockedCount ?? 0);
+    const invulnCount = Number(player.defenses?.[0]?.invulnedCount ?? 0);
+    const averageHit = getAverageIncomingHitDamage(player);
+
+    let reductionFraction = 0;
+    const reductions: Record<string, number> = {};
+    const perHitReductions: Record<string, number> = {};
+    INCOMING_DAMAGE_REDUCTION_SOURCES.forEach((source) => {
+        const uptimePercent = getBuffUptimePercent(player, buffMap, source);
+        const uptimeFraction = Math.max(0, Math.min(1, uptimePercent / 100));
+        if (source.reduction !== undefined) {
+            reductionFraction += uptimeFraction * source.reduction;
+        }
+        reductions[source.name] = uptimePercent;
+    });
+    PER_HIT_DAMAGE_REDUCTION_SOURCES.forEach((source) => {
+        const uptimePercent = getBuffUptimePercent(player, buffMap, source);
+        perHitReductions[source.name] = uptimePercent;
+    });
+    reductionFraction = Math.max(0, Math.min(1, reductionFraction));
+
+    const estimatedReduction = damageTaken * reductionFraction;
+    const preventedFromBlocks = (blockedCount + invulnCount) * averageHit;
+    const total = barrierAbsorbed + estimatedReduction + preventedFromBlocks;
+
+    return {
+        total,
+        barrierAbsorbed,
+        damageTaken,
+        reductionFraction,
+        estimatedReduction,
+        averageHit,
+        blockedCount,
+        invulnCount,
+        preventedFromBlocks,
+        reductionUptimes: reductions,
+        reductionPerHitUptimes: perHitReductions,
+    };
+};
+
+export const computeDamageMitigation = (
+    player: Player,
+    context?: { buffMap?: Record<string, any> },
+) => computeDamageMitigationBreakdown(player, context).total;

@@ -105,7 +105,12 @@ function App() {
         embedStatSettings.showBreakbarDamage,
         embedStatSettings.showDamageTaken,
         embedStatSettings.showDeaths,
-        embedStatSettings.showDodges
+        embedStatSettings.showDodges,
+        embedStatSettings.showDownedHealing,
+        embedStatSettings.showDamageMitigation,
+        embedStatSettings.showInvulns,
+        embedStatSettings.showEvades,
+        embedStatSettings.showBlocks
     ].filter(Boolean).length;
     const showClassIcons = notificationType === 'image' || notificationType === 'image-beta';
 

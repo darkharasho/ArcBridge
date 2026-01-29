@@ -84,6 +84,7 @@ const {
     computeOutgoingCrowdControl,
     computeIncomingDisruptions,
     computeDownContribution,
+    computeDamageMitigationBreakdown,
     computeSquadBarrier,
     computeSquadHealing,
 } = metricsModule;
@@ -101,6 +102,7 @@ const buildMetricsOutput = (sourcePath) => {
 
     const metrics = players.map((player) => {
         const incoming = computeIncomingDisruptions(player, method);
+        const mitigation = computeDamageMitigationBreakdown(player, { buffMap: log.buffMap });
         return {
             name: player.name,
             account: player.account,
@@ -114,6 +116,18 @@ const buildMetricsOutput = (sourcePath) => {
             squadBarrier: computeSquadBarrier(player),
             squadHealing: computeSquadHealing(player),
             stabGeneration: player.stabGeneration || 0,
+            damageMitigation: mitigation.total,
+            damageMitigationBreakdown: {
+                barrierAbsorbed: mitigation.barrierAbsorbed,
+                reductionFraction: mitigation.reductionFraction,
+                estimatedReduction: mitigation.estimatedReduction,
+                blockedCount: mitigation.blockedCount,
+                invulnCount: mitigation.invulnCount,
+                preventedFromBlocks: mitigation.preventedFromBlocks,
+                averageHit: mitigation.averageHit,
+                reductionUptimes: mitigation.reductionUptimes,
+                reductionPerHitUptimes: mitigation.reductionPerHitUptimes,
+            },
         };
     });
 

@@ -93,6 +93,9 @@ export interface Defenses {
     dodgeCount: number;
     interruptedCount: number;
     damageTaken: number;
+    damageBarrier?: number;
+    damageBarrierCount?: number;
+    invulnedCount?: number;
     boonStrips?: number; // Incoming strips often appear here or in support depending on parsing context, adding as optional
     boonStripsTime?: number;
     receivedCrowdControl?: number;

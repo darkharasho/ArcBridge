@@ -15,6 +15,7 @@ Version v1.9.0 — January 28, 2026
 - Fix tooltip positioning and improve table layout in StatsView
 - Profession icons now support multi-profession tooltips and improved rendering
 - Add Proof of Work modal and metrics specification documentation
+- Damage mitigation now includes WvW reduction skills and expanded audit/spec coverage
 
 ## 🧯 Fixes
 - General errors and minor issues addressed (5-mini)

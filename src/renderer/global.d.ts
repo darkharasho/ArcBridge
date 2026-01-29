@@ -31,6 +31,11 @@ export interface IEmbedStatSettings {
     showDamageTaken: boolean;
     showDeaths: boolean;
     showDodges: boolean;
+    showDownedHealing: boolean;
+    showDamageMitigation: boolean;
+    showInvulns: boolean;
+    showEvades: boolean;
+    showBlocks: boolean;
     maxTopListRows: number;
     classDisplay: 'off' | 'short' | 'emoji';
 }
@@ -77,6 +82,11 @@ export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showDamageTaken: false,
     showDeaths: false,
     showDodges: false,
+    showDownedHealing: false,
+    showDamageMitigation: false,
+    showInvulns: false,
+    showEvades: false,
+    showBlocks: false,
     maxTopListRows: 10,
     classDisplay: 'off',
 };

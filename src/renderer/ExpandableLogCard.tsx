@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { applyStabilityGeneration, getIncomingDisruptions, getPlayerDamage, getPlayerDps, getPlayerDownsTaken, getPlayerDeaths, getPlayerDamageTaken, getPlayerDodges, getPlayerMissed, getPlayerBlocked, getPlayerEvaded, getPlayerResurrects, getPlayerDownContribution, getPlayerOutgoingCrowdControl, getPlayerSquadBarrier, getPlayerSquadHealing, getTargetStatTotal } from '../shared/dashboardMetrics';
+import { applyStabilityGeneration, getIncomingDisruptions, getPlayerDamage, getPlayerDps, getPlayerDownsTaken, getPlayerDeaths, getPlayerDamageTaken, getPlayerDodges, getPlayerDownedHealing, getPlayerDamageMitigation, getPlayerMissed, getPlayerBlocked, getPlayerEvaded, getPlayerInvulns, getPlayerResurrects, getPlayerDownContribution, getPlayerOutgoingCrowdControl, getPlayerSquadBarrier, getPlayerSquadHealing, getTargetStatTotal } from '../shared/dashboardMetrics';
 import { Player } from '../shared/dpsReportTypes';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DisruptionMethod, IEmbedStatSettings } from './global.d';
 import { getProfessionAbbrev, getProfessionEmoji, getProfessionIconPath } from '../shared/professionUtils';
@@ -427,6 +427,41 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             title: "Dodges",
             sortFn: (a: any, b: any) => getDodges(b) - getDodges(a),
             valFn: (p: any) => getDodges(p),
+            fmtVal: (v: number) => v.toString()
+        },
+        {
+            enabled: settings.showDownedHealing,
+            title: "Downed Healing",
+            sortFn: (a: any, b: any) => getPlayerDownedHealing(b) - getPlayerDownedHealing(a),
+            valFn: (p: any) => getPlayerDownedHealing(p),
+            fmtVal: (v: number) => v.toLocaleString()
+        },
+        {
+            enabled: settings.showDamageMitigation,
+            title: "Damage Mitigation",
+            sortFn: (a: any, b: any) => getPlayerDamageMitigation(b, { buffMap: details.buffMap }) - getPlayerDamageMitigation(a, { buffMap: details.buffMap }),
+            valFn: (p: any) => getPlayerDamageMitigation(p, { buffMap: details.buffMap }),
+            fmtVal: (v: number) => v.toLocaleString()
+        },
+        {
+            enabled: settings.showInvulns,
+            title: "Invulns",
+            sortFn: (a: any, b: any) => getPlayerInvulns(b) - getPlayerInvulns(a),
+            valFn: (p: any) => getPlayerInvulns(p),
+            fmtVal: (v: number) => v.toString()
+        },
+        {
+            enabled: settings.showEvades,
+            title: "Evades",
+            sortFn: (a: any, b: any) => getPlayerEvaded(b) - getPlayerEvaded(a),
+            valFn: (p: any) => getPlayerEvaded(p),
+            fmtVal: (v: number) => v.toString()
+        },
+        {
+            enabled: settings.showBlocks,
+            title: "Blocks",
+            sortFn: (a: any, b: any) => getPlayerBlocked(b) - getPlayerBlocked(a),
+            valFn: (p: any) => getPlayerBlocked(p),
             fmtVal: (v: number) => v.toString()
         }
     ];

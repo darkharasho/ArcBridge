@@ -601,6 +601,11 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             showDamageTaken: enabled,
             showDeaths: enabled,
             showDodges: enabled,
+            showDownedHealing: enabled,
+            showDamageMitigation: enabled,
+            showInvulns: enabled,
+            showEvades: enabled,
+            showBlocks: enabled,
         }));
     };
 
@@ -610,7 +615,9 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         embedStats.showResurrects && embedStats.showDistanceToTag &&
         embedStats.showKills && embedStats.showDowns &&
         embedStats.showBreakbarDamage && embedStats.showDamageTaken &&
-        embedStats.showDeaths && embedStats.showDodges;
+        embedStats.showDeaths && embedStats.showDodges &&
+        embedStats.showDownedHealing && embedStats.showDamageMitigation &&
+        embedStats.showInvulns && embedStats.showEvades && embedStats.showBlocks;
 
     return (
         <div className="flex flex-col h-full min-h-0">
@@ -1226,6 +1233,36 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                 onChange={(v) => updateEmbedStat('showDodges', v)}
                                 label="Dodges"
                                 description="Number of dodges performed"
+                            />
+                            <Toggle
+                                enabled={embedStats.showDownedHealing}
+                                onChange={(v) => updateEmbedStat('showDownedHealing', v)}
+                                label="Downed Healing"
+                                description="Healing done to downed allies"
+                            />
+                            <Toggle
+                                enabled={embedStats.showDamageMitigation}
+                                onChange={(v) => updateEmbedStat('showDamageMitigation', v)}
+                                label="Damage Mitigation"
+                                description="Barrier + protection/reduction buffs + blocks + invulns"
+                            />
+                            <Toggle
+                                enabled={embedStats.showInvulns}
+                                onChange={(v) => updateEmbedStat('showInvulns', v)}
+                                label="Invulns"
+                                description="Times attacks were made while invulnerable"
+                            />
+                            <Toggle
+                                enabled={embedStats.showEvades}
+                                onChange={(v) => updateEmbedStat('showEvades', v)}
+                                label="Evades"
+                                description="Times attacks were evaded"
+                            />
+                            <Toggle
+                                enabled={embedStats.showBlocks}
+                                onChange={(v) => updateEmbedStat('showBlocks', v)}
+                                label="Blocks"
+                                description="Times attacks were blocked"
                             />
                         </div>
                     </div>

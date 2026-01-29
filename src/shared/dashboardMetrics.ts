@@ -1,5 +1,5 @@
 import { Player } from './dpsReportTypes';
-import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing, resolveDisruptionValue } from './combatMetrics';
+import { applySquadStabilityGeneration, computeDamageMitigation, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadDownedHealing, computeSquadHealing, resolveDisruptionValue } from './combatMetrics';
 import { DisruptionMethod, DEFAULT_DISRUPTION_METHOD } from './metricsSettings';
 
 export const getPlayerDamage = (player: Player) =>
@@ -51,6 +51,12 @@ export const getPlayerBlocked = (player: Player) =>
 export const getPlayerEvaded = (player: Player) =>
     player.defenses?.[0]?.evadedCount || 0;
 
+export const getPlayerInvulns = (player: Player) =>
+    player.defenses?.[0]?.invulnedCount || 0;
+
+export const getPlayerDamageMitigation = (player: Player, context?: { buffMap?: Record<string, any> }) =>
+    computeDamageMitigation(player, context);
+
 export const getPlayerDownsTaken = (player: Player) =>
     player.defenses?.[0]?.downCount || 0;
 
@@ -82,6 +88,9 @@ export const getPlayerDownContribution = (player: Player) =>
 
 export const getPlayerSquadHealing = (player: Player) =>
     computeSquadHealing(player);
+
+export const getPlayerDownedHealing = (player: Player) =>
+    computeSquadDownedHealing(player);
 
 export const getPlayerSquadBarrier = (player: Player) =>
     computeSquadBarrier(player);

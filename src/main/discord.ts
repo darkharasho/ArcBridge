@@ -12,9 +12,12 @@ import {
     getPlayerDeaths,
     getPlayerDistanceToTag,
     getPlayerDodges,
+    getPlayerDownedHealing,
+    getPlayerDamageMitigation,
     getPlayerMissed,
     getPlayerBlocked,
     getPlayerEvaded,
+    getPlayerInvulns,
     getPlayerResurrects,
     getPlayerSquadHealing,
     getPlayerSquadBarrier,
@@ -49,6 +52,11 @@ export interface IEmbedStatSettings {
     showDamageTaken: boolean;
     showDeaths: boolean;
     showDodges: boolean;
+    showDownedHealing: boolean;
+    showDamageMitigation: boolean;
+    showInvulns: boolean;
+    showEvades: boolean;
+    showBlocks: boolean;
     maxTopListRows: number;
     classDisplay: 'off' | 'short' | 'emoji';
 }
@@ -75,6 +83,11 @@ const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showDamageTaken: false,
     showDeaths: false,
     showDodges: false,
+    showDownedHealing: false,
+    showDamageMitigation: false,
+    showInvulns: false,
+    showEvades: false,
+    showBlocks: false,
     maxTopListRows: 10,
     classDisplay: 'off',
 };
@@ -503,6 +516,11 @@ export class DiscordNotifier {
                     const getDamageTaken = (p: any) => getPlayerDamageTaken(p);
                     const getDeaths = (p: any) => getPlayerDeaths(p);
                     const getDodges = (p: any) => getPlayerDodges(p);
+                    const getDownedHealing = (p: any) => getPlayerDownedHealing(p);
+                    const getDamageMitigation = (p: any) => getPlayerDamageMitigation(p, { buffMap: jsonDetails.buffMap });
+                    const getInvulns = (p: any) => getPlayerInvulns(p);
+                    const getEvades = (p: any) => getPlayerEvaded(p);
+                    const getBlocks = (p: any) => getPlayerBlocked(p);
 
                     const topListItems: Array<{
                         enabled: boolean;
@@ -621,6 +639,41 @@ export class DiscordNotifier {
                                 title: "Dodges",
                                 sortFn: (a: any, b: any) => getDodges(b) - getDodges(a),
                                 valFn: (p: any) => getDodges(p),
+                        fmtVal: (v: any) => fmtInt(v)
+                            },
+                            {
+                                enabled: settings.showDownedHealing,
+                                title: "Downed Healing",
+                                sortFn: (a: any, b: any) => getDownedHealing(b) - getDownedHealing(a),
+                                valFn: (p: any) => getDownedHealing(p),
+                        fmtVal: (v: any) => fmtInt(v)
+                            },
+                            {
+                                enabled: settings.showDamageMitigation,
+                                title: "Damage Mitigation",
+                                sortFn: (a: any, b: any) => getDamageMitigation(b) - getDamageMitigation(a),
+                                valFn: (p: any) => getDamageMitigation(p),
+                        fmtVal: (v: any) => fmtInt(v)
+                            },
+                            {
+                                enabled: settings.showInvulns,
+                                title: "Invulns",
+                                sortFn: (a: any, b: any) => getInvulns(b) - getInvulns(a),
+                                valFn: (p: any) => getInvulns(p),
+                        fmtVal: (v: any) => fmtInt(v)
+                            },
+                            {
+                                enabled: settings.showEvades,
+                                title: "Evades",
+                                sortFn: (a: any, b: any) => getEvades(b) - getEvades(a),
+                                valFn: (p: any) => getEvades(p),
+                        fmtVal: (v: any) => fmtInt(v)
+                            },
+                            {
+                                enabled: settings.showBlocks,
+                                title: "Blocks",
+                                sortFn: (a: any, b: any) => getBlocks(b) - getBlocks(a),
+                                valFn: (p: any) => getBlocks(p),
                         fmtVal: (v: any) => fmtInt(v)
                             }
                         ];

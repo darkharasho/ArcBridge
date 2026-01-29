@@ -15,7 +15,8 @@ minimum fields consumed are:
 
 - `players[*].dpsAll[0].damage`, `players[*].dpsAll[0].dps`, `players[*].dpsAll[0].breakbarDamage`
 - `players[*].defenses[0].damageTaken`, `deadCount`, `downCount`,
-  `missedCount`, `blockedCount`, `evadedCount`, `dodgeCount`
+  `missedCount`, `blockedCount`, `evadedCount`, `dodgeCount`,
+  `damageBarrier`, `invulnedCount`
 - `players[*].support[0].condiCleanse`, `condiCleanseSelf`, `boonStrips`,
   `resurrects`
 - `players[*].statsAll[0].stackDist`, `players[*].statsAll[0].distToCom`
@@ -25,7 +26,7 @@ minimum fields consumed are:
 - `players[*].extBarrierStats.outgoingBarrierAllies`
 - `players[*].totalDamageDist`, `players[*].totalDamageTaken`
 - `players[*].activeTimes`
-- `buffMap` and `durationMS` for stability generation
+- `players[*].buffUptimes`, `buffMap`, and `durationMS` for stability generation + mitigation
 
 If any of these are missing, the metric falls back to `0` as defined below.
 
@@ -131,6 +132,61 @@ Incoming damage per skill (incoming damage distribution) is derived from
 `players[*].totalDamageTaken[*]` entries and summed across players for the
 squad view. This total can be large for siege skills because it aggregates
 all hits and all players (and across multiple logs when viewing aggregates).
+
+## Damage Mitigation
+
+Damage mitigation is a composite score used for the Discord and UI "Damage
+Mitigation" top list. It combines three sources:
+
+1. **Barrier absorbed**  
+   `defenses[0].damageBarrier`
+
+2. **Damage reduction estimate (WvW-allowed skills/buffs)**  
+   `damageTaken * sum(uptime% * reduction)`  
+   where uptime% is `buffUptimes[*].buffData[0].uptime` and reductions are
+   known values for:
+   - Protection: 33% strike damage reduction
+   - Frost Aura: 10% strike damage reduction
+   - Rite of the Great Dwarf: 50% damage reduction
+
+   The WvW allowlist uses these skill names (matched via `buffMap` by id/name):
+
+   - Frost Aura, Frozen Ground, Dual Orbits (Air+Earth, Fire+Earth, Water+Earth),
+     Grinding Stones, Rocky Loop
+   - Explosive Thrust, Steel Divide, Swift Cut
+   - Restorative Glow, Infusing Terror
+   - Perilous Gift, Resilient Weapon
+   - Signet of Judgment, Forced Engagement, Vengeful Hammers, Endure Pain,
+     Spectrum Shield, Barrier Signet, "Guard!", Dolyak Stance, "Flash-Freeze!",
+     "Rise!"
+   - Daring Advance, Rite of the Great Dwarf, Rampage, "Rebound!", Weave Self
+   - Ancient Echo, Facet of Nature, Full Counter, Drink Ambrosia,
+     Throw Enchanted Ice, Enter Shadow Shroud, Death Shroud, Reaper's Shroud,
+     Ritualist's Shroud
+   - Lesser "Guard!"
+
+   Only skills with known reduction values contribute to the estimated reduction.
+   The rest are tracked for uptime/audit.
+
+3. **Outgoing damage reduction per hit (tracked only)**  
+   Uptime is tracked for: Eternity's Requiem, Lesser Volcano, Meteor Shower,
+   Volcano, Lightning Orb, Mirror Blade, Frost Storm, Invoke Lightning,
+   Ice Storm, Lightning Storm. These do not affect the mitigation total
+   until reduction values are defined.
+
+   Buffs are matched by id/name using `buffMap`, and the summed reduction
+   fraction is clamped to `0..1`.
+
+3. **Blocked/Invuln prevention (estimate)**  
+   `(blockedCount + invulnedCount) * averageIncomingHitDamage`  
+   where `averageIncomingHitDamage` is computed from
+   `totalDamageTaken[*].totalDamage / totalDamageTaken[*].connectedHits`.
+
+Total mitigation:
+
+`damageMitigation = barrierAbsorbed + estimatedReduction + preventedFromBlocks`
+
+Implementation: `src/shared/combatMetrics.ts` (computeDamageMitigation).
 
 ## Deaths / Downs (Taken)
 

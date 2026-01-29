@@ -1287,6 +1287,11 @@ if (!gotTheLock) {
             showDamageTaken: false,
             showDeaths: false,
             showDodges: false,
+            showDownedHealing: false,
+            showDamageMitigation: false,
+            showInvulns: false,
+            showEvades: false,
+            showBlocks: false,
             maxTopListRows: 10,
             classDisplay: 'off',
         };
