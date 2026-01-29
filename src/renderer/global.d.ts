@@ -50,6 +50,11 @@ export interface IMvpWeights {
     damage: number;
 }
 
+export interface IStatsViewSettings {
+    showTopStats: boolean;
+    showMvp: boolean;
+}
+
 export type DisruptionMethod = 'count' | 'duration' | 'tiered';
 
 export const DEFAULT_DISRUPTION_METHOD: DisruptionMethod = 'count';
@@ -96,6 +101,11 @@ export const DEFAULT_MVP_WEIGHTS: IMvpWeights = {
     damage: 0.2
 };
 
+export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
+    showTopStats: true,
+    showMvp: true
+};
+
 export interface IElectronAPI {
     selectDirectory: () => Promise<string | null>;
     startWatching: (path: string) => void;
@@ -114,6 +124,7 @@ export interface IElectronAPI {
         closeBehavior: 'minimize' | 'quit';
         embedStatSettings: IEmbedStatSettings;
         mvpWeights: IMvpWeights;
+        statsViewSettings: IStatsViewSettings;
         disruptionMethod: DisruptionMethod;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;
@@ -136,6 +147,7 @@ export interface IElectronAPI {
         closeBehavior?: 'minimize' | 'quit';
         embedStatSettings?: IEmbedStatSettings;
         mvpWeights?: IMvpWeights;
+        statsViewSettings?: IStatsViewSettings;
         disruptionMethod?: DisruptionMethod;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;

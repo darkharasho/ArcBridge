@@ -9,7 +9,7 @@ import { WebhookModal, Webhook } from './WebhookModal';
 import { UpdateErrorModal } from './UpdateErrorModal';
 import { Terminal } from './Terminal';
 import { Terminal as TerminalIcon } from 'lucide-react';
-import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DisruptionMethod, IEmbedStatSettings, IMvpWeights } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IEmbedStatSettings, IMvpWeights, IStatsViewSettings } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
 
 const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
@@ -38,6 +38,7 @@ function App() {
     const canceledLogsRef = useRef<Set<string>>(new Set());
     const [embedStatSettings, setEmbedStatSettings] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
+    const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
 
     const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
@@ -172,6 +173,9 @@ function App() {
             }
             if (settings.mvpWeights) {
                 setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...settings.mvpWeights });
+            }
+            if (settings.statsViewSettings) {
+                setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...settings.statsViewSettings });
             }
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
@@ -692,12 +696,13 @@ function App() {
                 </header>
 
                 {view === 'stats' ? (
-                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} />
+                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} statsViewSettings={statsViewSettings} />
                 ) : view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}
                         onEmbedStatSettingsSaved={setEmbedStatSettings}
                         onMvpWeightsSaved={setMvpWeights}
+                        onStatsViewSettingsSaved={setStatsViewSettings}
                         onDisruptionMethodSaved={setDisruptionMethod}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />

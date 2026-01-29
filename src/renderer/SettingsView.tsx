@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap } from 'lucide-react';
-import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD } from './global.d';
+import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
@@ -13,6 +13,7 @@ interface SettingsViewProps {
     onEmbedStatSettingsSaved?: (settings: IEmbedStatSettings) => void;
     onOpenWhatsNew?: () => void;
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
+    onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
 }
 
@@ -78,11 +79,12 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onDisruptionMethodSaved }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
+    const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
@@ -149,6 +151,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setCloseBehavior(settings.closeBehavior || 'minimize');
             setEmbedStats({ ...DEFAULT_EMBED_STATS, ...(settings.embedStatSettings || {}) });
             setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
+            setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...(settings.statsViewSettings || {}) });
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
             }
@@ -173,6 +176,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             closeBehavior,
             embedStatSettings: embedStats,
             mvpWeights: mvpWeights,
+            statsViewSettings: statsViewSettings,
             disruptionMethod: disruptionMethod,
             githubRepoName: githubRepoName || null,
             githubRepoOwner: githubRepoOwner || null,
@@ -182,6 +186,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
+        onStatsViewSettingsSaved?.(statsViewSettings);
         onDisruptionMethodSaved?.(disruptionMethod);
 
         setTimeout(() => {
@@ -202,6 +207,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         closeBehavior,
         embedStats,
         mvpWeights,
+        statsViewSettings,
         disruptionMethod,
         githubRepoName,
         githubRepoOwner,
@@ -542,6 +548,10 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
 
     const updateEmbedStat = (key: keyof IEmbedStatSettings, value: boolean) => {
         setEmbedStats(prev => ({ ...prev, [key]: value }));
+    };
+
+    const updateStatsViewSetting = (key: keyof IStatsViewSettings, value: boolean) => {
+        setStatsViewSettings(prev => ({ ...prev, [key]: value }));
     };
 
     const updateMaxTopRows = (value: number) => {
@@ -1243,6 +1253,26 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         <Sparkles className="w-4 h-4" />
                         View What's New
                     </button>
+                </SettingsSection>
+
+                <SettingsSection title="Dashboard - Top Stats & MVP" icon={BarChart3} delay={0.18}>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Control the calculation and display of the top stats cards and MVP highlights.
+                    </p>
+                    <div className="divide-y divide-white/5">
+                        <Toggle
+                            enabled={statsViewSettings.showTopStats}
+                            onChange={(v) => updateStatsViewSetting('showTopStats', v)}
+                            label="Show Top Stats Section"
+                            description="Top players cards and leader breakdowns"
+                        />
+                        <Toggle
+                            enabled={statsViewSettings.showMvp}
+                            onChange={(v) => updateStatsViewSetting('showMvp', v)}
+                            label="Calculate MVP"
+                            description="MVP scoring + squad/silver/bronze highlights"
+                        />
+                    </div>
                 </SettingsSection>
 
                 {/* Close Behavior Section */}

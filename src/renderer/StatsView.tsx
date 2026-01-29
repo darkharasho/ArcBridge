@@ -6,12 +6,13 @@ import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayer
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
-import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DisruptionMethod, IMvpWeights } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IMvpWeights, IStatsViewSettings } from './global.d';
 
 interface StatsViewProps {
     logs: ILogData[];
     onBack: () => void;
     mvpWeights?: IMvpWeights;
+    statsViewSettings?: IStatsViewSettings;
     disruptionMethod?: DisruptionMethod;
     precomputedStats?: any;
     embedded?: boolean;
@@ -415,9 +416,12 @@ interface SkillUsageSummary {
     resUtilitySkills?: Array<{ id: string; name: string }>;
 }
 
-export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precomputedStats, embedded = false }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disruptionMethod, precomputedStats, embedded = false }: StatsViewProps) {
     const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+    const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
+    const showTopStats = activeStatsViewSettings.showTopStats;
+    const showMvp = activeStatsViewSettings.showMvp;
     const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
         'Down Contribution': 'downContribution',
         'Healing': 'healing',
@@ -1156,6 +1160,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
         const avgSquadSize = total > 0 ? Math.round(totalSquadSizeAccum / total) : 0;
         const avgEnemies = total > 0 ? Math.round(totalEnemiesAccum / total) : 0;
 
+        const shouldComputeTopStats = activeStatsViewSettings.showTopStats || activeStatsViewSettings.showMvp;
+        const shouldComputeMvp = activeStatsViewSettings.showMvp;
+
         // Find Leaders
         const emptyLeader = { value: 0, player: '-', count: 0, profession: 'Unknown', professionList: [] as string[] };
 
@@ -1172,6 +1179,21 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
         let maxDamage = { ...emptyLeader };
         let maxDps = { ...emptyLeader };
         let maxRevives = { ...emptyLeader };
+        let leaderboards: Record<string, Array<{ rank: number; account: string; profession: string; professionList?: string[]; value: number }>> = {
+            downContrib: [],
+            barrier: [],
+            healing: [],
+            dodges: [],
+            strips: [],
+            cleanses: [],
+            cc: [],
+            stability: [],
+            closestToTag: [],
+            revives: [],
+            participation: [],
+            dps: [],
+            damage: []
+        };
 
         playerStats.forEach((stat) => {
             const list = Array.from(stat.professions || []).filter((prof) => prof && prof !== 'Unknown');
@@ -1223,159 +1245,160 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             healingTotals: stat.healingTotals
         }));
 
-        playerEntries.forEach(({ stat }) => {
-            const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown', professionList: stat.professionList || [] };
+        if (shouldComputeTopStats) {
+            playerEntries.forEach(({ stat }) => {
+                const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown', professionList: stat.professionList || [] };
 
-            if (stat.downContrib > maxDownContrib.value) maxDownContrib = { value: stat.downContrib, ...pInfo };
-            if (stat.cleanses > maxCleanses.value) maxCleanses = { value: stat.cleanses, ...pInfo };
-            if (stat.strips > maxStrips.value) maxStrips = { value: stat.strips, ...pInfo };
-            if (stat.stab > maxStab.value) maxStab = { value: stat.stab, ...pInfo };
-            if (stat.healing > maxHealing.value) maxHealing = { value: stat.healing, ...pInfo };
-            if (stat.barrier > maxBarrier.value) maxBarrier = { value: stat.barrier, ...pInfo };
-            if (stat.cc > maxCC.value) maxCC = { value: stat.cc, ...pInfo };
-            if (stat.dodges > maxDodges.value) maxDodges = { value: stat.dodges, ...pInfo };
-            if (stat.damage > maxDamage.value) maxDamage = { value: stat.damage, ...pInfo };
-            if (stat.dps > maxDps.value) maxDps = { value: stat.dps, ...pInfo };
-            if (stat.revives > maxRevives.value) maxRevives = { value: stat.revives, ...pInfo };
-            if (stat.logsJoined > maxLogsJoined) maxLogsJoined = stat.logsJoined;
+                if (stat.downContrib > maxDownContrib.value) maxDownContrib = { value: stat.downContrib, ...pInfo };
+                if (stat.cleanses > maxCleanses.value) maxCleanses = { value: stat.cleanses, ...pInfo };
+                if (stat.strips > maxStrips.value) maxStrips = { value: stat.strips, ...pInfo };
+                if (stat.stab > maxStab.value) maxStab = { value: stat.stab, ...pInfo };
+                if (stat.healing > maxHealing.value) maxHealing = { value: stat.healing, ...pInfo };
+                if (stat.barrier > maxBarrier.value) maxBarrier = { value: stat.barrier, ...pInfo };
+                if (stat.cc > maxCC.value) maxCC = { value: stat.cc, ...pInfo };
+                if (stat.dodges > maxDodges.value) maxDodges = { value: stat.dodges, ...pInfo };
+                if (stat.damage > maxDamage.value) maxDamage = { value: stat.damage, ...pInfo };
+                if (stat.dps > maxDps.value) maxDps = { value: stat.dps, ...pInfo };
+                if (stat.revives > maxRevives.value) maxRevives = { value: stat.revives, ...pInfo };
+                if (stat.logsJoined > maxLogsJoined) maxLogsJoined = stat.logsJoined;
 
-            if (!stat.isCommander && stat.distCount > 0) {
-                const avgDist = stat.totalDist / stat.distCount;
-                if (avgDist > 0 && avgDist < closestToTag.value) {
-                    closestToTag = { value: avgDist, ...pInfo };
+                if (!stat.isCommander && stat.distCount > 0) {
+                    const avgDist = stat.totalDist / stat.distCount;
+                    if (avgDist > 0 && avgDist < closestToTag.value) {
+                        closestToTag = { value: avgDist, ...pInfo };
+                    }
                 }
-            }
-        });
-
-        if (closestToTag.value === 999999) closestToTag.value = 0;
-
-        const buildLeaderboard = (items: Array<{ key: string; account: string; profession: string; professionList?: string[]; value: number }>, higherIsBetter: boolean) => {
-            const filtered = items.filter(item => Number.isFinite(item.value) && item.value > 0);
-            const sorted = filtered.sort((a, b) => {
-                const diff = higherIsBetter ? b.value - a.value : a.value - b.value;
-                if (diff !== 0) return diff;
-                return a.account.localeCompare(b.account);
             });
-            let lastValue: number | null = null;
-            let lastRank = 0;
-            return sorted.map((item, index) => {
-                if (lastValue === null || item.value !== lastValue) {
-                    lastRank = index + 1;
-                    lastValue = item.value;
-                }
-                return {
-                    rank: lastRank,
-                    account: item.account,
-                    profession: item.profession,
-                    professionList: item.professionList,
-                    value: item.value
-                };
-            });
-        };
 
-        const leaderboards = {
-            downContrib: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.downContrib
-            })), true),
-            barrier: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.barrier
-            })), true),
-            healing: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.healing
-            })), true),
-            dodges: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.dodges
-            })), true),
-            strips: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.strips
-            })), true),
-            cleanses: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.cleanses
-            })), true),
-            cc: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.cc
-            })), true),
-            stability: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.stab
-            })), true),
-            closestToTag: buildLeaderboard(
-                playerEntries
-                    .filter(({ stat }) => !stat.isCommander)
-                    .map(({ key, stat }) => ({
-                        key,
-                        account: stat.account,
-                        profession: stat.profession,
-                        professionList: stat.professionList,
-                        value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
-                    }))
-                    .filter(item => Number.isFinite(item.value)),
-                false
-            ),
-            revives: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.revives
-            })), true),
-            participation: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.logsJoined
-            })), true),
-            dps: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.dps
-            })), true),
-            damage: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
-                key,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: stat.damage
-            })), true)
-        };
+            if (closestToTag.value === 999999) closestToTag.value = 0;
+
+            const buildLeaderboard = (items: Array<{ key: string; account: string; profession: string; professionList?: string[]; value: number }>, higherIsBetter: boolean) => {
+                const filtered = items.filter(item => Number.isFinite(item.value) && item.value > 0);
+                const sorted = filtered.sort((a, b) => {
+                    const diff = higherIsBetter ? b.value - a.value : a.value - b.value;
+                    if (diff !== 0) return diff;
+                    return a.account.localeCompare(b.account);
+                });
+                let lastValue: number | null = null;
+                let lastRank = 0;
+                return sorted.map((item, index) => {
+                    if (lastValue === null || item.value !== lastValue) {
+                        lastRank = index + 1;
+                        lastValue = item.value;
+                    }
+                    return {
+                        rank: lastRank,
+                        account: item.account,
+                        profession: item.profession,
+                        professionList: item.professionList,
+                        value: item.value
+                    };
+                });
+            };
+
+            leaderboards = {
+                downContrib: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.downContrib
+                })), true),
+                barrier: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.barrier
+                })), true),
+                healing: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.healing
+                })), true),
+                dodges: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.dodges
+                })), true),
+                strips: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.strips
+                })), true),
+                cleanses: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.cleanses
+                })), true),
+                cc: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.cc
+                })), true),
+                stability: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.stab
+                })), true),
+                closestToTag: buildLeaderboard(
+                    playerEntries
+                        .filter(({ stat }) => !stat.isCommander)
+                        .map(({ key, stat }) => ({
+                            key,
+                            account: stat.account,
+                            profession: stat.profession,
+                            professionList: stat.professionList,
+                            value: stat.distCount > 0 ? stat.totalDist / stat.distCount : Number.POSITIVE_INFINITY
+                        }))
+                        .filter(item => Number.isFinite(item.value)),
+                    false
+                ),
+                revives: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.revives
+                })), true),
+                participation: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.logsJoined
+                })), true),
+                dps: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.dps
+                })), true),
+                damage: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: stat.damage
+                })), true)
+            };
+        }
 
         // rankMaps removed: MVP now references leaderboards for rank consistency.
 
-        // --- Calculate MVP ---
         // --- Calculate MVP ---
         let mvp = {
             player: 'None',
@@ -1387,130 +1410,135 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             color: '#64748b',
             topStats: [] as { name: string, val: string, ratio: number }[]
         };
+        let silver: any = undefined;
+        let bronze: any = undefined;
+        let avgMvpScore = 0;
 
-        let totalScoreSum = 0;
-        const scoreBreakdown: Array<{
-            player: string;
-            account: string;
-            profession: string;
-            professionList?: string[];
-            score: number;
-            reason: string;
-            topStats: { name: string, val: string, ratio: number }[];
-        }> = [];
+        if (shouldComputeMvp) {
+            let totalScoreSum = 0;
+            const scoreBreakdown: Array<{
+                player: string;
+                account: string;
+                profession: string;
+                professionList?: string[];
+                score: number;
+                reason: string;
+                topStats: { name: string, val: string, ratio: number }[];
+            }> = [];
 
-        const getRankFromLeaderboard = (
-            leaderboard: Array<{ rank: number; account: string }> | undefined,
-            account: string
-        ) => {
-            if (!leaderboard?.length) return 0;
-            const entry = leaderboard.find((row) => row.account === account);
-            return entry?.rank || 0;
-        };
-
-        playerEntries.forEach(({ stat }) => {
-            let score = 0;
-            const contributions: { name: string, ratio: number, value: number, fmt: string, rank: number }[] = [];
-
-            const formatCompactNumber = (value: number) => {
-                const abs = Math.abs(value);
-                if (abs >= 1_000_000) {
-                    return `${(value / 1_000_000).toFixed(2)}m`;
-                }
-                if (abs >= 1_000) {
-                    return `${(value / 1_000).toFixed(abs >= 100_000 ? 0 : 1)}k`;
-                }
-                return Math.round(value).toLocaleString();
+            const getRankFromLeaderboard = (
+                leaderboard: Array<{ rank: number; account: string }> | undefined,
+                account: string
+            ) => {
+                if (!leaderboard?.length) return 0;
+                const entry = leaderboard.find((row) => row.account === account);
+                return entry?.rank || 0;
             };
 
-            const weights = activeMvpWeights;
+            playerEntries.forEach(({ stat }) => {
+                let score = 0;
+                const contributions: { name: string, ratio: number, value: number, fmt: string, rank: number }[] = [];
 
-            const check = (val: number, maxVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
-                if (weight <= 0) return;
-                if (maxVal > 0) {
-                    const ratio = val / maxVal;
-                    score += ratio * weight;
-                    const rank = getRankFromLeaderboard(leaderboard, stat.account);
-                    contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
-                }
-            };
-            const checkLowerIsBetter = (val: number, bestVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
-                if (weight <= 0) return;
-                if (bestVal > 0 && val > 0) {
-                    const ratio = bestVal / val;
-                    score += ratio * weight;
-                    const rank = getRankFromLeaderboard(leaderboard, stat.account);
-                    contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
-                }
-            };
-
-            check(stat.downContrib, maxDownContrib.value, 'Down Contribution', weights.downContribution, leaderboards.downContrib);
-            check(stat.healing, maxHealing.value, 'Healing', weights.healing, leaderboards.healing);
-            check(stat.cleanses, maxCleanses.value, 'Cleanses', weights.cleanses, leaderboards.cleanses);
-            check(stat.strips, maxStrips.value, 'Strips', weights.strips, leaderboards.strips);
-            check(stat.stab, maxStab.value, 'Stability', weights.stability, leaderboards.stability);
-            check(stat.cc, maxCC.value, 'CC', weights.cc, leaderboards.cc);
-            check(stat.revives, maxRevives.value, 'Revives', weights.revives, leaderboards.revives);
-            check(stat.logsJoined, maxLogsJoined, 'Participation', weights.participation, leaderboards.participation);
-            check(stat.dodges, maxDodges.value, 'Dodging', weights.dodging, leaderboards.dodges);
-            check(stat.dps, maxDps.value, 'DPS', weights.dps, leaderboards.dps);
-            check(stat.damage, maxDamage.value, 'Damage', weights.damage, leaderboards.damage);
-            if (!stat.isCommander && stat.distCount > 0) {
-                const avgDist = stat.totalDist / stat.distCount;
-                checkLowerIsBetter(avgDist, closestToTag.value, 'Distance to Tag', weights.distanceToTag, leaderboards.closestToTag);
-            }
-
-            totalScoreSum += score;
-
-            contributions.sort((a, b) => b.ratio - a.ratio);
-            const top3 = contributions.slice(0, 3);
-
-            let reason = 'Consistent all-round performance';
-            if (top3.length > 0) {
-                const best = top3[0];
-                if (best.ratio >= 1) {
-                    reason = `Top Rank in ${best.name}`;
-                    if (top3.length > 1 && top3[1].ratio > 0.8) {
-                        reason += ` & High ${top3[1].name}`;
+                const formatCompactNumber = (value: number) => {
+                    const abs = Math.abs(value);
+                    if (abs >= 1_000_000) {
+                        return `${(value / 1_000_000).toFixed(2)}m`;
                     }
-                } else if (best.ratio > 0.8) {
-                    reason = `High ${best.name} & ${top3[1]?.name || 'Performance'}`;
-                } else {
-                    reason = `Versatile: ${best.name}, ${top3[1]?.name}`;
+                    if (abs >= 1_000) {
+                        return `${(value / 1_000).toFixed(abs >= 100_000 ? 0 : 1)}k`;
+                    }
+                    return Math.round(value).toLocaleString();
+                };
+
+                const weights = activeMvpWeights;
+
+                const check = (val: number, maxVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
+                    if (weight <= 0) return;
+                    if (maxVal > 0) {
+                        const ratio = val / maxVal;
+                        score += ratio * weight;
+                        const rank = getRankFromLeaderboard(leaderboard, stat.account);
+                        contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
+                    }
+                };
+                const checkLowerIsBetter = (val: number, bestVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
+                    if (weight <= 0) return;
+                    if (bestVal > 0 && val > 0) {
+                        const ratio = bestVal / val;
+                        score += ratio * weight;
+                        const rank = getRankFromLeaderboard(leaderboard, stat.account);
+                        contributions.push({ name, ratio, value: val, fmt: formatCompactNumber(val), rank });
+                    }
+                };
+
+                check(stat.downContrib, maxDownContrib.value, 'Down Contribution', weights.downContribution, leaderboards.downContrib);
+                check(stat.healing, maxHealing.value, 'Healing', weights.healing, leaderboards.healing);
+                check(stat.cleanses, maxCleanses.value, 'Cleanses', weights.cleanses, leaderboards.cleanses);
+                check(stat.strips, maxStrips.value, 'Strips', weights.strips, leaderboards.strips);
+                check(stat.stab, maxStab.value, 'Stability', weights.stability, leaderboards.stability);
+                check(stat.cc, maxCC.value, 'CC', weights.cc, leaderboards.cc);
+                check(stat.revives, maxRevives.value, 'Revives', weights.revives, leaderboards.revives);
+                check(stat.logsJoined, maxLogsJoined, 'Participation', weights.participation, leaderboards.participation);
+                check(stat.dodges, maxDodges.value, 'Dodging', weights.dodging, leaderboards.dodges);
+                check(stat.dps, maxDps.value, 'DPS', weights.dps, leaderboards.dps);
+                check(stat.damage, maxDamage.value, 'Damage', weights.damage, leaderboards.damage);
+                if (!stat.isCommander && stat.distCount > 0) {
+                    const avgDist = stat.totalDist / stat.distCount;
+                    checkLowerIsBetter(avgDist, closestToTag.value, 'Distance to Tag', weights.distanceToTag, leaderboards.closestToTag);
                 }
+
+                totalScoreSum += score;
+
+                contributions.sort((a, b) => b.ratio - a.ratio);
+                const top3 = contributions.slice(0, 3);
+
+                let reason = 'Consistent all-round performance';
+                if (top3.length > 0) {
+                    const best = top3[0];
+                    if (best.ratio >= 1) {
+                        reason = `Top Rank in ${best.name}`;
+                        if (top3.length > 1 && top3[1].ratio > 0.8) {
+                            reason += ` & High ${top3[1].name}`;
+                        }
+                    } else if (best.ratio > 0.8) {
+                        reason = `High ${best.name} & ${top3[1]?.name || 'Performance'}`;
+                    } else {
+                        reason = `Versatile: ${best.name}, ${top3[1]?.name}`;
+                    }
+                }
+
+                const summary = {
+                    player: stat.name,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    score,
+                    reason,
+                    topStats: top3.map(c => ({ name: c.name, val: c.fmt, ratio: c.rank }))
+                };
+
+                scoreBreakdown.push(summary);
+            });
+
+            scoreBreakdown.sort((a, b) => b.score - a.score);
+            silver = scoreBreakdown[1];
+            bronze = scoreBreakdown[2];
+            if (scoreBreakdown[0]) {
+                const top = scoreBreakdown[0];
+                mvp = {
+                    player: top.player,
+                    account: top.account,
+                    reason: top.reason,
+                    score: top.score,
+                    profession: top.profession,
+                    professionList: top.professionList || [],
+                    color: getProfessionColor(top.profession),
+                    topStats: top.topStats
+                };
             }
 
-            const summary = {
-                player: stat.name,
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                score,
-                reason,
-                topStats: top3.map(c => ({ name: c.name, val: c.fmt, ratio: c.rank }))
-            };
-
-            scoreBreakdown.push(summary);
-        });
-
-        scoreBreakdown.sort((a, b) => b.score - a.score);
-        const silver = scoreBreakdown[1];
-        const bronze = scoreBreakdown[2];
-        if (scoreBreakdown[0]) {
-            const top = scoreBreakdown[0];
-            mvp = {
-                player: top.player,
-                account: top.account,
-                reason: top.reason,
-                score: top.score,
-                profession: top.profession,
-                professionList: top.professionList || [],
-                color: getProfessionColor(top.profession),
-                topStats: top.topStats
-            };
+            avgMvpScore = playerStats.size > 0 ? totalScoreSum / playerStats.size : 0;
         }
-
-        const avgMvpScore = playerStats.size > 0 ? totalScoreSum / playerStats.size : 0;
 
         // Sort Skills
         const topSkills = Object.values(skillDamageMap)
@@ -3071,11 +3099,14 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 </div>
 
                 {/* Records Grid */}
+                {showTopStats && (
                 <div id="top-players" className="scroll-mt-24">
                     <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
                         <Trophy className="w-5 h-5 text-yellow-400" />
                         Top Players (Total Accumulated Stats)
                     </h3>
+                    {showMvp && (
+                    <>
                     <div className="mb-6">
                         <div className="bg-gradient-to-r from-yellow-500/20 via-orange-500/10 to-transparent border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden group">
                             {/* Glow Effect */}
@@ -3192,6 +3223,8 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                             </div>
                         ))}
                     </div>
+                    </>
+                    )}
 
                     {(() => {
                         const leaderCards = [
@@ -3228,6 +3261,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                         );
                     })()}
                 </div>
+                )}
 
                 {/* Top Skills Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

@@ -1304,6 +1304,10 @@ if (!gotTheLock) {
             dps: 0.2,
             damage: 0.2
         };
+        const DEFAULT_STATS_VIEW_SETTINGS = {
+            showTopStats: true,
+            showMvp: true
+        };
 
         ipcMain.handle('get-settings', () => {
             return {
@@ -1316,6 +1320,7 @@ if (!gotTheLock) {
                 closeBehavior: store.get('closeBehavior', 'minimize'),
                 embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS),
                 mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) },
+                statsViewSettings: { ...DEFAULT_STATS_VIEW_SETTINGS, ...(store.get('statsViewSettings') as any || {}) },
                 disruptionMethod: store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD),
                 githubRepoOwner: store.get('githubRepoOwner', null),
                 githubRepoName: store.get('githubRepoName', null),
@@ -1339,7 +1344,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, disruptionMethod?: DisruptionMethod, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -1380,6 +1385,9 @@ if (!gotTheLock) {
             }
             if (settings.mvpWeights !== undefined) {
                 store.set('mvpWeights', settings.mvpWeights);
+            }
+            if (settings.statsViewSettings !== undefined) {
+                store.set('statsViewSettings', settings.statsViewSettings);
             }
             if (settings.disruptionMethod !== undefined) {
                 store.set('disruptionMethod', settings.disruptionMethod);
