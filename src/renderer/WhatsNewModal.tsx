@@ -89,14 +89,20 @@ export function WhatsNewModal({ isOpen, onClose, version, releaseNotes }: WhatsN
                                                 {children}
                                             </td>
                                         ),
+                                        pre: ({ children }) => (
+                                            <pre className="overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-blue-100">
+                                                {children}
+                                            </pre>
+                                        ),
                                         code: (props: any) => {
-                                            const { inline, children } = props;
-                                            return inline ? (
+                                            const { inline, className, children } = props;
+                                            const isInline = inline ?? !className;
+                                            return isInline ? (
                                                 <code className="rounded bg-black/40 px-1.5 py-0.5 text-[11px] text-blue-200">
                                                     {children}
                                                 </code>
                                             ) : (
-                                                <code className="block whitespace-pre-wrap rounded-xl bg-black/40 p-4 text-xs text-blue-100">
+                                                <code className="whitespace-pre-wrap text-blue-100">
                                                     {children}
                                                 </code>
                                             );
