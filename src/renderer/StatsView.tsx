@@ -127,7 +127,7 @@ const ProfessionIcon = ({
                     <div
                         ref={tooltipRef}
                         style={tooltipStyle}
-                        className={`absolute left-1/2 z-50 w-max rounded-md border border-white/10 bg-[#0f172a]/95 px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity ${placementClass} ${open ? 'opacity-100' : ''}`}
+                        className={`absolute left-1/2 z-50 w-max rounded-md border border-white/10 bg-black/70 backdrop-blur-md px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity ${placementClass} ${open ? 'opacity-100' : ''}`}
                     >
                         <div className="mb-1 text-[9px] uppercase tracking-wider text-amber-200">Multi</div>
                         <div className="space-y-1">
@@ -228,7 +228,7 @@ const CountClassTooltip = ({
                 <div
                     ref={tooltipRef}
                     style={tooltipStyle}
-                    className={`z-[9999] w-max rounded-md border border-white/10 bg-[#0f172a]/95 px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity ${open ? 'opacity-100' : ''}`}
+                    className={`z-[9999] w-max rounded-md border border-white/10 bg-black/70 backdrop-blur-md px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity ${open ? 'opacity-100' : ''}`}
                 >
                     <div className="mb-1 text-[9px] uppercase tracking-wider text-amber-200">
                         {label}
