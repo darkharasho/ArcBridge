@@ -171,7 +171,12 @@ const CountClassTooltip = ({
     const columns = buildClassColumns(classCounts || {});
     const hasTooltip = count > 0;
     const [open, setOpen] = useState(false);
-    const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({});
+    const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({
+        position: 'fixed',
+        top: -9999,
+        left: -9999,
+        transform: 'translateX(-50%)'
+    });
     const wrapperRef = useRef<HTMLSpanElement | null>(null);
     const tooltipRef = useRef<HTMLDivElement | null>(null);
 
@@ -2818,7 +2823,8 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                             <div className="text-center text-gray-500 italic py-6">No fight data available</div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-xs table-fixed">
+                                <div className="max-h-[360px] overflow-y-auto">
+                                    <table className="w-full text-xs table-fixed">
                                     <thead>
                                         <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
                                             <th className="text-right py-2 px-3">#</th>
@@ -2953,7 +2959,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                         {(() => {
                                                             const delta = Number((fight.outgoingBarrierAbsorbed || 0) - (fight.incomingBarrierAbsorbed || 0));
                                                             return (
-                                                                <td className={`py-2 px-3 text-right font-mono ${delta < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+                                                                <td className={`py-2 px-3 text-right font-mono ${delta < 0 ? 'text-emerald-300' : 'text-red-300'}`}>
                                                                     {delta.toLocaleString()}
                                                                 </td>
                                                             );
@@ -2963,7 +2969,8 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                             </tr>
                                         ))}
                                     </tbody>
-                                </table>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </div>
