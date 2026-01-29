@@ -1177,11 +1177,11 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
         // Sort Skills
         const topSkills = Object.values(skillDamageMap)
             .sort((a, b) => b.damage - a.damage)
-            .slice(0, 5);
+            .slice(0, 25);
 
         const topIncomingSkills = Object.values(incomingSkillDamageMap)
             .sort((a, b) => b.damage - a.damage)
-            .slice(0, 5);
+            .slice(0, 25);
 
         // KDR Calculations
         const squadKDR = totalSquadDeaths > 0 ? (totalSquadKills / totalSquadDeaths).toFixed(2) : totalSquadKills > 0 ? '∞' : '0.00';
@@ -2484,12 +2484,32 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 {/* Top Skills Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                     {/* Outgoing Skills */}
-                    <div id="top-skills-outgoing" className="bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24">
-                        <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                            <Swords className="w-5 h-5 text-orange-400" />
-                            Top Outgoing Damage Skills
-                        </h3>
-                        <div className="space-y-4">
+                    <div
+                        id="top-skills-outgoing"
+                        className={`bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24 ${
+                            expandedSection === 'top-skills-outgoing'
+                                ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                    expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                                }`
+                                : ''
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                                <Swords className="w-5 h-5 text-orange-400" />
+                                Top Outgoing Damage Skills
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => (expandedSection === 'top-skills-outgoing' ? closeExpandedSection() : openExpandedSection('top-skills-outgoing'))}
+                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                                aria-label={expandedSection === 'top-skills-outgoing' ? 'Close Top Outgoing Damage Skills' : 'Expand Top Outgoing Damage Skills'}
+                                title={expandedSection === 'top-skills-outgoing' ? 'Close' : 'Expand'}
+                            >
+                                {expandedSection === 'top-skills-outgoing' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <div className={`${expandedSection === 'top-skills-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
                             {stats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
@@ -2517,12 +2537,32 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                     </div>
 
                     {/* Incoming Skills */}
-                    <div id="top-skills-incoming" className="bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24">
-                        <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                            <Shield className="w-5 h-5 text-red-500" />
-                            Top Incoming Damage Skills
-                        </h3>
-                        <div className="space-y-4">
+                    <div
+                        id="top-skills-incoming"
+                        className={`bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24 ${
+                            expandedSection === 'top-skills-incoming'
+                                ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
+                                    expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                                }`
+                                : ''
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                                <Shield className="w-5 h-5 text-red-500" />
+                                Top Incoming Damage Skills
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => (expandedSection === 'top-skills-incoming' ? closeExpandedSection() : openExpandedSection('top-skills-incoming'))}
+                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                                aria-label={expandedSection === 'top-skills-incoming' ? 'Close Top Incoming Damage Skills' : 'Expand Top Incoming Damage Skills'}
+                                title={expandedSection === 'top-skills-incoming' ? 'Close' : 'Expand'}
+                            >
+                                {expandedSection === 'top-skills-incoming' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <div className={`${expandedSection === 'top-skills-incoming' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
                             {stats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
