@@ -6,7 +6,7 @@ independently from any third-party implementation while staying consistent
 with EI JSON inputs. It also records the exact fields and aggregation rules
 so the stats dashboard, Discord, and cards produce identical values.
 
-Spec version: `v2` (see `src/shared/metrics-methods.json`).
+Spec version: `v3` (see `src/shared/metrics-methods.json`).
 
 ## Input Contract (EI JSON)
 
@@ -126,6 +126,11 @@ Implementation: `src/shared/dashboardMetrics.ts` (getPlayerBreakbarDamage).
 `damageTaken = defenses[0].damageTaken`.
 
 Implementation: `src/shared/dashboardMetrics.ts` (getPlayerDamageTaken).
+
+Incoming damage per skill (incoming damage distribution) is derived from
+`players[*].totalDamageTaken[*]` entries and summed across players for the
+squad view. This total can be large for siege skills because it aggregates
+all hits and all players (and across multiple logs when viewing aggregates).
 
 ## Deaths / Downs (Taken)
 
