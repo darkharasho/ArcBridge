@@ -1,22 +1,23 @@
 # Release Notes
 
-Version v1.8.0 — January 28, 2026
+Version v1.9.0 — January 28, 2026
 
 ## 🌟 Highlights
-- New fight breakdown feature with detailed statistics.
-- File picker now supports a month window filter and a Load More option.
-- Top damage list expanded to 25 entries for easier scanning.
-- Manual log entry improvements: Add a Select Since button and a date/time picker.
-- Default model updated to gpt-5.1-mini for improved responses.
+- GW2 Arc Log Uploader v1.9.0 is here
+- Tiled mode for Discord posts is fully released
+- Added DPS report cache to optimize recalculating of repeat logs
+- DPS report cache can now be cleared with a dedicated option
+- Embeds now show more precise enemy class counts
+- Class stats in Discord embeds now include a summary feature
+- Profession icons include tooltips for multi-profession displays
 
 ## 🛠️ Improvements
-- Unique count for enemy players to improve analytics.
-- Release notes prompt refined for clarity.
-- Spec doc updated.
+- Fix tooltip positioning and improve table layout in StatsView
+- Profession icons now support multi-profession tooltips and improved rendering
+- Add Proof of Work modal and metrics specification documentation
 
 ## 🧯 Fixes
-- Fixed errors affecting normal usage.
-- Addressed issues related to the 5-mini path.
+- General errors and minor issues addressed (5-mini)
 
 ## ⚠️ Breaking Changes
 - None.
