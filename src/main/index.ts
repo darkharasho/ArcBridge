@@ -1505,6 +1505,20 @@ if (!gotTheLock) {
             })();
         });
 
+        ipcMain.on('renderer-log', (_event, payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => {
+            const level = payload?.level || 'info';
+            const meta = payload?.meta;
+            const message = payload?.message || '';
+            const formatted = meta ? `${message} ${formatLogArgs([meta])}` : message;
+            if (level === 'error') {
+                console.error(`[Renderer] ${formatted}`);
+            } else if (level === 'warn') {
+                console.warn(`[Renderer] ${formatted}`);
+            } else {
+                console.log(`[Renderer] ${formatted}`);
+            }
+        });
+
         ipcMain.on('window-control', (_event, action: 'minimize' | 'maximize' | 'close') => {
             if (!win) return;
             if (action === 'minimize') win.minimize();

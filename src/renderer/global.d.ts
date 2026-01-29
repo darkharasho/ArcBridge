@@ -163,6 +163,7 @@ export interface IElectronAPI {
     sendScreenshots: (id: string, buffers: Uint8Array[]) => void;
     sendScreenshotsGroups: (id: string, groups: Uint8Array[][]) => void;
     onConsoleLog: (callback: (log: { type: 'info' | 'error', message: string, timestamp: string }) => void) => () => void;
+    logToMain: (payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => void;
     getLogs: () => Promise<ILogData[]>;
     saveLogs: (logs: ILogData[]) => void;
     // Auto Updater

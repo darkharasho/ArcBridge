@@ -132,6 +132,27 @@ Incoming damage per skill (incoming damage distribution) is derived from
 squad view. This total can be large for siege skills because it aggregates
 all hits and all players (and across multiple logs when viewing aggregates).
 
+## Outgoing Conditions (Applications + Damage)
+
+Outgoing condition totals are derived from `players[*].totalDamageDist[*]`
+entries whose resolved skill name maps to a condition label (see
+`CONDITION_NAME_MAP`). For each matching entry:
+
+- `applications` uses `connectedHits` when available, otherwise falls back to
+  `hits` (needed for non-damaging conditions like blind/slow/fear).
+- `damage` uses `totalDamage`.
+
+Totals are aggregated per player and across the squad. The UI can filter to a
+single condition or show the all-conditions rollup.
+
+### Limitation (EI JSON)
+
+Accurate application counts for non-damaging conditions (e.g., vulnerability,
+weakness, blind, slow) require target buff state timelines
+(`targets[*].buffs[*].statesPerSource`). When this data is absent in the EI JSON,
+the app falls back to damage distribution (`totalDamageDist`) hit counts, which
+can significantly under-count applications for those conditions.
+
 ## Deaths / Downs (Taken)
 
 `deaths = defenses[0].deadCount`  
