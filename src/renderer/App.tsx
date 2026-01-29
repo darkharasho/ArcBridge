@@ -735,7 +735,7 @@ function App() {
                                                     }}
                                                     className="flex-1 bg-transparent border-none text-sm text-gray-300 focus:ring-0 cursor-pointer appearance-none"
                                                 >
-                                                    <option value="" className="bg-gray-900">No webhook selected</option>
+                                                    <option value="" className="bg-gray-900">Disabled</option>
                                                     {webhooks.map(w => (
                                                         <option key={w.id} value={w.id} className="bg-gray-900">{w.name}</option>
                                                     ))}
