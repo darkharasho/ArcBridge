@@ -19,23 +19,92 @@ interface StatsViewProps {
 
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
 
-const renderProfessionIcon = (
-    profession: string | undefined,
-    professionList?: string[],
+const ProfessionIcon = ({
+    profession,
+    professionList,
     className = 'w-4 h-4'
-) => {
+}: {
+    profession: string | undefined;
+    professionList?: string[];
+    className?: string;
+}) => {
     const list = (professionList || []).filter(Boolean);
     const resolvedProfession = profession === 'Multi' && list.length > 0 ? list[0] : profession;
     const iconPath = getProfessionIconPath(resolvedProfession || 'Unknown');
-    if (!iconPath) return null;
     const showMulti = list.length > 1;
+    const [open, setOpen] = useState(false);
+    const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
+    const [shiftX, setShiftX] = useState(0);
+    const wrapperRef = useRef<HTMLSpanElement | null>(null);
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const raf = requestAnimationFrame(() => {
+            const wrapper = wrapperRef.current;
+            const tooltip = tooltipRef.current;
+            if (!wrapper || !tooltip) return;
+
+            const rect = wrapper.getBoundingClientRect();
+            const tipRect = tooltip.getBoundingClientRect();
+
+            const findClippingAncestor = (node: HTMLElement | null) => {
+                let current = node?.parentElement || null;
+                while (current) {
+                    const style = window.getComputedStyle(current);
+                    const overflow = `${style.overflow}${style.overflowY}${style.overflowX}`;
+                    if (/(auto|scroll|hidden)/.test(overflow)) {
+                        return current;
+                    }
+                    current = current.parentElement;
+                }
+                return null;
+            };
+
+            const clipAncestor = findClippingAncestor(wrapper);
+            const clipRect = clipAncestor ? clipAncestor.getBoundingClientRect() : {
+                top: 0,
+                bottom: window.innerHeight,
+                left: 0,
+                right: window.innerWidth
+            };
+
+            const spaceBelow = clipRect.bottom - rect.bottom;
+            const spaceAbove = rect.top - clipRect.top;
+            const preferred = spaceBelow < tipRect.height + 8 && spaceAbove > spaceBelow ? 'top' : 'bottom';
+            setPlacement(preferred);
+
+            const padding = 6;
+            const desiredCenter = rect.left + rect.width / 2;
+            const minCenter = clipRect.left + padding + tipRect.width / 2;
+            const maxCenter = clipRect.right - padding - tipRect.width / 2;
+            const clampedCenter = Math.min(Math.max(desiredCenter, minCenter), maxCenter);
+            setShiftX(clampedCenter - desiredCenter);
+        });
+        return () => cancelAnimationFrame(raf);
+    }, [open, list.length, className]);
+
+    if (!iconPath) return null;
+
+    const placementClass = placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2';
+    const tooltipStyle = { transform: `translateX(calc(-50% + ${shiftX}px))` };
+
     return (
-        <span className={`relative inline-flex shrink-0 ${showMulti ? 'group' : ''}`}>
+        <span
+            ref={wrapperRef}
+            className={`relative inline-flex shrink-0 ${showMulti ? 'group' : ''}`}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+        >
             <img src={iconPath} alt={resolvedProfession || 'Unknown'} className={`${className} shrink-0`} />
             {showMulti && (
                 <>
                     <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-300 ring-1 ring-[#0f172a]" />
-                    <div className="absolute left-1/2 top-full z-50 mt-2 w-max -translate-x-1/2 rounded-md border border-white/10 bg-[#0f172a]/95 px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity group-hover:opacity-100">
+                    <div
+                        ref={tooltipRef}
+                        style={tooltipStyle}
+                        className={`absolute left-1/2 z-50 w-max rounded-md border border-white/10 bg-[#0f172a]/95 px-2 py-1 text-[10px] text-gray-200 shadow-lg opacity-0 pointer-events-none transition-opacity ${placementClass} ${open ? 'opacity-100' : ''}`}
+                    >
                         <div className="mb-1 text-[9px] uppercase tracking-wider text-amber-200">Multi</div>
                         <div className="space-y-1">
                             {list.map((prof) => {
@@ -56,6 +125,14 @@ const renderProfessionIcon = (
         </span>
     );
 };
+
+const renderProfessionIcon = (
+    profession: string | undefined,
+    professionList?: string[],
+    className = 'w-4 h-4'
+) => (
+    <ProfessionIcon profession={profession} professionList={professionList} className={className} />
+);
 
 const OFFENSE_METRICS: Array<{
     id: string;
