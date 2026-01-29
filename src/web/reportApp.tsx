@@ -456,7 +456,7 @@ export function ReportApp() {
                         </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <StatsView logs={[]} onBack={() => {}} mvpWeights={undefined} precomputedStats={report.stats} embedded />
+                        <StatsView logs={[]} onBack={() => {}} mvpWeights={undefined} precomputedStats={report.stats} statsViewSettings={report.stats?.statsViewSettings} embedded />
                     </div>
                 </div>
             </div>

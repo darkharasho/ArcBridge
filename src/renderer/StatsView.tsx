@@ -2482,7 +2482,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 meta,
                 stats: {
                     ...stats,
-                    skillUsageData
+                    skillUsageData,
+                    statsViewSettings: activeStatsViewSettings
                 }
             });
             if (result?.success) {
