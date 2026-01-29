@@ -1071,8 +1071,18 @@ function App() {
                                         <div className="max-h-56 overflow-y-auto space-y-1 pr-1 text-xs text-gray-300">
                                             {filePickerAvailable
                                                 .filter((entry) => entry.name.toLowerCase().includes(filePickerFilter.trim().toLowerCase()))
-                                                .map((entry, index, filtered) => (
-                                                    <div
+                                                .map((entry, index, filtered) => {
+                                                    const timestamp = Number.isFinite(entry.mtimeMs)
+                                                        ? new Date(entry.mtimeMs).toLocaleString(undefined, {
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: '2-digit',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })
+                                                        : null;
+                                                    return (
+                                                        <div
                                                         key={entry.path}
                                                         className={`flex items-center gap-2 px-2 py-1 rounded-lg border cursor-pointer select-none ${filePickerSelected.has(entry.path)
                                                             ? 'bg-cyan-500/10 border-cyan-400/40 text-cyan-100'
@@ -1109,8 +1119,14 @@ function App() {
                                                             )}
                                                         </div>
                                                         <span className="truncate flex-1">{entry.name}</span>
+                                                        {timestamp && (
+                                                            <span className="text-[10px] text-gray-500/80 font-medium whitespace-nowrap">
+                                                                {timestamp}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                         </div>
                                     )}
                                 </div>
