@@ -119,3 +119,24 @@ body.web-report #root {
     animation-duration: 140ms;
     animation-timing-function: ease-in;
 }
+
+.glass-datetime {
+    color-scheme: dark;
+}
+
+.glass-datetime::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.2);
+    opacity: 0.8;
+}
+
+.glass-datetime::-webkit-datetime-edit,
+.glass-datetime::-webkit-datetime-edit-fields-wrapper,
+.glass-datetime::-webkit-datetime-edit-text,
+.glass-datetime::-webkit-datetime-edit-month-field,
+.glass-datetime::-webkit-datetime-edit-day-field,
+.glass-datetime::-webkit-datetime-edit-year-field,
+.glass-datetime::-webkit-datetime-edit-hour-field,
+.glass-datetime::-webkit-datetime-edit-minute-field,
+.glass-datetime::-webkit-datetime-edit-ampm-field {
+    color: #e2e8f0;
+}

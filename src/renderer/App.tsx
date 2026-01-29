@@ -72,6 +72,8 @@ function App() {
     const [filePickerAvailable, setFilePickerAvailable] = useState<Array<{ path: string; name: string; mtimeMs: number; size: number }>>([]);
     const [filePickerSelected, setFilePickerSelected] = useState<Set<string>>(new Set());
     const [filePickerFilter, setFilePickerFilter] = useState('');
+    const [selectSinceOpen, setSelectSinceOpen] = useState(false);
+    const [selectSinceValue, setSelectSinceValue] = useState('');
     const [filePickerError, setFilePickerError] = useState<string | null>(null);
     const [filePickerLoading, setFilePickerLoading] = useState(false);
     const lastPickedIndexRef = useRef<number | null>(null);
@@ -1038,24 +1040,56 @@ function App() {
                                                         setFilePickerSelected(new Set());
                                                         return;
                                                     }
-                                                    const filtered = filePickerAvailable.filter((entry) =>
-                                                        entry.name.toLowerCase().includes(filePickerFilter.trim().toLowerCase())
-                                                    );
-                                                    setFilePickerSelected((prev) => {
-                                                        const next = new Set(prev);
-                                                        filtered.forEach((entry) => next.add(entry.path));
-                                                        return next;
-                                                    });
+                                                    setSelectSinceOpen((prev) => !prev);
                                                 }}
                                                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${filePickerSelected.size > 0
                                                     ? 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                     : 'bg-cyan-600/20 text-cyan-200 border-cyan-500/40 hover:bg-cyan-600/30'
                                                     }`}
                                             >
-                                                {filePickerSelected.size > 0 ? 'Clear Selection' : 'Select All'}
+                                                {filePickerSelected.size > 0 ? 'Clear Selection' : 'Select Since'}
                                             </button>
                                         </div>
                                     </div>
+                                    {selectSinceOpen && filePickerSelected.size === 0 && (
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <input
+                                                type="datetime-local"
+                                                value={selectSinceValue}
+                                                onChange={(event) => setSelectSinceValue(event.target.value)}
+                                                className="glass-datetime bg-black/40 border border-white/15 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none backdrop-blur-sm shadow-inner shadow-black/30"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    if (!selectSinceValue) return;
+                                                    const sinceMs = new Date(selectSinceValue).getTime();
+                                                    if (!Number.isFinite(sinceMs)) return;
+                                                    const matching = filePickerAvailable.filter((entry) => {
+                                                        if (!Number.isFinite(entry.mtimeMs)) return false;
+                                                        return entry.mtimeMs >= sinceMs;
+                                                    });
+                                                    setFilePickerSelected((prev) => {
+                                                        const next = new Set(prev);
+                                                        matching.forEach((entry) => next.add(entry.path));
+                                                        return next;
+                                                    });
+                                                    setSelectSinceOpen(false);
+                                                }}
+                                                className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-cyan-600/20 text-cyan-200 border-cyan-500/40 hover:bg-cyan-600/30"
+                                            >
+                                                Apply
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectSinceOpen(false);
+                                                    setSelectSinceValue('');
+                                                }}
+                                                className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    )}
                                     <input
                                         type="search"
                                         value={filePickerFilter}
