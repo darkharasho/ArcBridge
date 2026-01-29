@@ -230,6 +230,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const [expandedSectionClosing, setExpandedSectionClosing] = useState(false);
     const expandedCloseTimerRef = useRef<number | null>(null);
+    const [fightBreakdownTab, setFightBreakdownTab] = useState<'sizes' | 'outcomes' | 'damage' | 'barrier'>('sizes');
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -302,6 +303,30 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
         if (lowered.includes('blue borderlands') || lowered.includes('blue alpine borderlands')) return 'Blue BL';
         if (lowered.includes('red borderlands') || lowered.includes('red desert borderlands')) return 'Red BL';
         return normalized;
+    };
+
+    const formatFightDateTime = (details: any, log: any) => {
+        const raw = details?.timeStartStd || details?.timeStart || details?.timeEndStd || details?.timeEnd;
+        let date: Date | null = null;
+        if (typeof raw === 'string') {
+            const parsed = Date.parse(raw);
+            if (!Number.isNaN(parsed)) {
+                date = new Date(parsed);
+            }
+        } else if (typeof raw === 'number' && Number.isFinite(raw)) {
+            date = new Date(raw * 1000);
+        } else if (typeof details?.uploadTime === 'number') {
+            date = new Date(details.uploadTime * 1000);
+        } else if (typeof log?.uploadTime === 'number') {
+            date = new Date(log.uploadTime * 1000);
+        }
+        if (!date) return '';
+        return date.toLocaleString(undefined, {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     const validLogs = useMemo(() => logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details), [logs]);
@@ -1587,7 +1612,11 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
 
             return {
                 id: log.id || log.filePath || `${details.fightName || 'fight'}-${index}`,
-                label: shortenFightLabel(details.fightName || details.name || log.filePath || log.id || 'Fight'),
+                label: (() => {
+                    const baseLabel = shortenFightLabel(details.fightName || details.name || log.filePath || log.id || 'Fight');
+                    const timestamp = formatFightDateTime(details, log);
+                    return timestamp ? `${timestamp} ${baseLabel}` : baseLabel;
+                })(),
                 permalink: log.permalink,
                 duration: getFightDurationLabel(details, log),
                 squadCount: squadPlayers.length,
@@ -2492,44 +2521,91 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 {/* Fight Breakdown (excluded from share screenshots) */}
                 <div id="fight-breakdown" className="mt-6 stats-share-exclude">
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                             <h3 className="text-lg font-bold text-gray-200">Fight Breakdown</h3>
-                            <span className="text-[10px] uppercase tracking-widest text-gray-500">
-                                {stats.fightBreakdown?.length || 0} Fights
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {([
+                                    { id: 'sizes', label: 'Sizes' },
+                                    { id: 'outcomes', label: 'Outcome' },
+                                    { id: 'damage', label: 'Damage' },
+                                    { id: 'barrier', label: 'Barrier' }
+                                ] as const).map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setFightBreakdownTab(tab.id)}
+                                        className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border transition-colors ${fightBreakdownTab === tab.id
+                                            ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                            : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
+                                            }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                                <span className="text-[10px] uppercase tracking-widest text-gray-500">
+                                    {stats.fightBreakdown?.length || 0} Fights
+                                </span>
+                            </div>
                         </div>
                         {(stats.fightBreakdown || []).length === 0 ? (
                             <div className="text-center text-gray-500 italic py-6">No fight data available</div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="min-w-[1500px] w-full text-xs">
+                                <table className="w-full text-xs table-fixed">
                                     <thead>
                                         <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
                                             <th className="text-right py-2 px-3">#</th>
-                                            <th className="text-left py-2 px-3">Report</th>
-                                            <th className="text-left py-2 px-3">Duration</th>
-                                            <th className="text-right py-2 px-3">Squad</th>
-                                            <th className="text-right py-2 px-3">Allies</th>
-                                            <th className="text-right py-2 px-3">Enemies</th>
-                                            <th className="text-right py-2 px-3">Red</th>
-                                            <th className="text-right py-2 px-3">Green</th>
-                                            <th className="text-right py-2 px-3">Blue</th>
-                                            <th className="text-right py-2 px-3">Allies Down</th>
-                                            <th className="text-right py-2 px-3">Allies Dead</th>
-                                            <th className="text-right py-2 px-3">Allies Revived</th>
-                                            <th className="text-right py-2 px-3">Rallies</th>
-                                            <th className="text-right py-2 px-3">Enemy Deaths</th>
-                                            <th className="text-right py-2 px-3">Outgoing Dmg</th>
-                                            <th className="text-right py-2 px-3">Incoming Dmg</th>
-                                            <th className="text-right py-2 px-3">Barrier In</th>
-                                            <th className="text-right py-2 px-3">Barrier Out</th>
+                                            <th className="text-left py-2 px-3 w-[240px]">Report</th>
+                                            <th className="text-left py-2 px-3 w-20">Duration</th>
+                                            {fightBreakdownTab === 'sizes' && (
+                                                <>
+                                                    <th className="text-right py-2 px-3">Squad</th>
+                                                    <th className="text-right py-2 px-3">Allies</th>
+                                                    <th className="text-right py-2 px-3">Enemies</th>
+                                                    <th className="text-right py-2 px-3">Red</th>
+                                                    <th className="text-right py-2 px-3">Green</th>
+                                                    <th className="text-right py-2 px-3">Blue</th>
+                                                </>
+                                            )}
+                                            {fightBreakdownTab === 'outcomes' && (
+                                                <>
+                                                    <th className="text-right py-2 px-3">Allies Down</th>
+                                                    <th className="text-right py-2 px-3">Allies Dead</th>
+                                                    <th className="text-right py-2 px-3">Allies Revived</th>
+                                                    <th className="text-right py-2 px-3">Rallies</th>
+                                                    <th className="text-right py-2 px-3">Enemy Deaths</th>
+                                                </>
+                                            )}
+                                            {fightBreakdownTab === 'damage' && (
+                                                <>
+                                                    <th className="text-right py-2 px-3">Outgoing Dmg</th>
+                                                    <th className="text-right py-2 px-3">Incoming Dmg</th>
+                                                    <th className="text-right py-2 px-3">Delta</th>
+                                                </>
+                                            )}
+                                            {fightBreakdownTab === 'barrier' && (
+                                                <>
+                                                    <th
+                                                        className="text-right py-2 px-3"
+                                                        title="Incoming damage mitigated by your squad's barrier"
+                                                    >
+                                                        Barrier Absorption
+                                                    </th>
+                                                    <th
+                                                        className="text-right py-2 px-3"
+                                                        title="Outgoing damage mitigated by enemy barrier"
+                                                    >
+                                                        Enemy Barrier Absorption
+                                                    </th>
+                                                    <th className="text-right py-2 px-3">Delta</th>
+                                                </>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {(stats.fightBreakdown || []).map((fight: any, idx: number) => (
                                             <tr key={fight.id || `${fight.label}-${idx}`} className="border-b border-white/5 hover:bg-white/5">
                                                 <td className="py-2 px-3 text-right font-mono text-gray-500">{idx + 1}</td>
-                                                <td className="py-2 px-3">
+                                                <td className="py-2 px-3 w-[240px]">
                                                     {fight.permalink ? (
                                                         <button
                                                             onClick={() => {
@@ -2539,7 +2615,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                                     window.open(fight.permalink, '_blank');
                                                                 }
                                                             }}
-                                                            className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                                                            className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2 block truncate"
                                                         >
                                                             {fight.label || 'dps.report'}
                                                         </button>
@@ -2547,22 +2623,54 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                         <span className="text-gray-500">Pending</span>
                                                     )}
                                                 </td>
-                                                <td className="py-2 px-3 text-gray-200">{fight.duration || '--:--'}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.squadCount ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.allyCount ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.enemyCount ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono text-red-300">{fight.teamCounts?.red ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono text-green-300">{fight.teamCounts?.green ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono text-blue-300">{fight.teamCounts?.blue ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.alliesDown ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.alliesDead ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.alliesRevived ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.rallies ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{fight.enemyDeaths ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{Number(fight.totalOutgoingDamage || 0).toLocaleString()}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{Number(fight.totalIncomingDamage || 0).toLocaleString()}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{Number(fight.incomingBarrierAbsorbed || 0).toLocaleString()}</td>
-                                                <td className="py-2 px-3 text-right font-mono">{Number(fight.outgoingBarrierAbsorbed || 0).toLocaleString()}</td>
+                                                <td className="py-2 px-3 text-gray-200 w-20">{fight.duration || '--:--'}</td>
+                                                {fightBreakdownTab === 'sizes' && (
+                                                    <>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.squadCount ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.allyCount ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.enemyCount ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono text-red-300">{fight.teamCounts?.red ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono text-green-300">{fight.teamCounts?.green ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono text-blue-300">{fight.teamCounts?.blue ?? 0}</td>
+                                                    </>
+                                                )}
+                                                {fightBreakdownTab === 'outcomes' && (
+                                                    <>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.alliesDown ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.alliesDead ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.alliesRevived ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.rallies ?? 0}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{fight.enemyDeaths ?? 0}</td>
+                                                    </>
+                                                )}
+                                                {fightBreakdownTab === 'damage' && (
+                                                    <>
+                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.totalOutgoingDamage || 0).toLocaleString()}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.totalIncomingDamage || 0).toLocaleString()}</td>
+                                                        {(() => {
+                                                            const delta = Number((fight.totalOutgoingDamage || 0) - (fight.totalIncomingDamage || 0));
+                                                            return (
+                                                                <td className={`py-2 px-3 text-right font-mono ${delta < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+                                                                    {delta.toLocaleString()}
+                                                                </td>
+                                                            );
+                                                        })()}
+                                                    </>
+                                                )}
+                                                {fightBreakdownTab === 'barrier' && (
+                                                    <>
+                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.incomingBarrierAbsorbed || 0).toLocaleString()}</td>
+                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.outgoingBarrierAbsorbed || 0).toLocaleString()}</td>
+                                                        {(() => {
+                                                            const delta = Number((fight.outgoingBarrierAbsorbed || 0) - (fight.incomingBarrierAbsorbed || 0));
+                                                            return (
+                                                                <td className={`py-2 px-3 text-right font-mono ${delta < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+                                                                    {delta.toLocaleString()}
+                                                                </td>
+                                                            );
+                                                        })()}
+                                                    </>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
