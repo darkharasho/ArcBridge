@@ -36,7 +36,7 @@ if (!apiKey) {
     process.exit(1);
 }
 
-const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const model = process.env.OPENAI_MODEL || 'gpt-5.1-mini';
 const org = process.env.OPENAI_ORG;
 const project = process.env.OPENAI_PROJECT;
 
@@ -87,25 +87,26 @@ const trimmedPatch = diffPatch.length > maxPatchChars
     : diffPatch;
 
 const prompt = [
-    `You are writing friendly release notes for the "GW2 Arc Log Uploader" app.`,
+    `Write friendly, non-technical release notes for the "GW2 Arc Log Uploader" app.`,
     `Version: v${version}.`,
-    `Use ONLY the commit summary and diff provided below (git log ${lastTag || 'project start'}..HEAD and git diff). Do not infer or add features not explicitly listed.`,
-    `Please produce concise, user-facing notes with these sections and markdown headings (include emojis in headings and sprinkle a few emojis in bullets):`,
+    `Use ONLY the commit summary and diff below. Don't invent features.`,
+    `Keep it short and clear for end users.`,
+    `Use these markdown sections (with emojis in the headings):`,
     `## 🌟 Highlights`,
     `## 🛠️ Improvements`,
     `## 🧯 Fixes`,
     `## ⚠️ Breaking Changes`,
-    `If a section has no items, write "None." under it.`,
-    `Keep to 3-6 bullets per section max, avoid raw commit hashes, and translate technical phrasing into user-friendly language.`,
-    `If a commit message is vague or unclear, summarize it conservatively without guessing details.`,
+    `If a section has nothing, write "None."`,
+    `Aim for 2-5 bullets per section. Avoid repeating the same idea. No raw commit hashes.`,
+    `If something is unclear, be cautious and brief.`,
     '',
     `Commit summary since ${lastTag || 'project start'}:`,
     commitLines.length ? commitLines.map((line) => `- ${line}`).join('\n') : '- No commits found.',
     '',
-    `Diff summary (git diff ${range || 'HEAD'} --stat):`,
+    `Diff summary:`,
     diffStat || 'No diff stats found.',
     '',
-    `Code changes (git diff ${range || 'HEAD'} --unified=2):`,
+    `Code changes:`,
     trimmedPatch || 'No diff found.'
 ].join('\n');
 
