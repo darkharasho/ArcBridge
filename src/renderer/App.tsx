@@ -244,8 +244,10 @@ function App() {
 
                 if (mode === 'image-beta') {
                     const selector = `[data-screenshot-id="${escapeSelector(logKey)}"]`;
-                    const expectedCount = (embedStatSettings.showSquadSummary ? 1 : 0)
-                        + (embedStatSettings.showEnemySummary ? 1 : 0)
+                    const summaryTileCount = (embedStatSettings.showSquadSummary ? 1 : 0)
+                        + (embedStatSettings.showEnemySummary ? 1 : 0);
+                    const expectedCount = summaryTileCount
+                        + (embedStatSettings.showClassSummary ? summaryTileCount : 0)
                         + (embedStatSettings.showIncomingStats ? 4 : 0)
                         + enabledTopListCount;
                     const nodes = await waitForNodes(selector, Math.max(1, expectedCount), 5000);
@@ -963,6 +965,30 @@ function App() {
                                 onToggle={() => { }}
                                 screenshotMode={true}
                                 screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'enemy' }}
+                                embedStatSettings={embedStatSettings}
+                                disruptionMethod={disruptionMethod}
+                                useClassIcons={showClassIcons}
+                            />
+                        )}
+                        {embedStatSettings.showClassSummary && embedStatSettings.showSquadSummary && (
+                            <ExpandableLogCard
+                                log={screenshotData}
+                                isExpanded={true}
+                                onToggle={() => { }}
+                                screenshotMode={true}
+                                screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'squad-classes' }}
+                                embedStatSettings={embedStatSettings}
+                                disruptionMethod={disruptionMethod}
+                                useClassIcons={showClassIcons}
+                            />
+                        )}
+                        {embedStatSettings.showClassSummary && embedStatSettings.showEnemySummary && (
+                            <ExpandableLogCard
+                                log={screenshotData}
+                                isExpanded={true}
+                                onToggle={() => { }}
+                                screenshotMode={true}
+                                screenshotSection={{ type: 'tile', tileKind: 'summary', tileId: 'enemy-classes' }}
                                 embedStatSettings={embedStatSettings}
                                 disruptionMethod={disruptionMethod}
                                 useClassIcons={showClassIcons}

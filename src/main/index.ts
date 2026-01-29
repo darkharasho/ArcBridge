@@ -1069,6 +1069,7 @@ if (!gotTheLock) {
             showSquadSummary: true,
             showEnemySummary: true,
             showIncomingStats: true,
+            showClassSummary: true,
             showDamage: true,
             showDownContribution: true,
             showHealing: true,

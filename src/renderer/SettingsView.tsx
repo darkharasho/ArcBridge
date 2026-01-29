@@ -980,6 +980,12 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                             description="Enemy count, damage taken, incoming DPS, enemy downs/kills"
                         />
                         <Toggle
+                            enabled={embedStats.showClassSummary}
+                            onChange={(v) => updateEmbedStat('showClassSummary', v)}
+                            label="Class Summary"
+                            description="Squad and enemy class breakdowns"
+                        />
+                        <Toggle
                             enabled={embedStats.showIncomingStats}
                             onChange={(v) => updateEmbedStat('showIncomingStats', v)}
                             label="Incoming Stats"
@@ -1024,12 +1030,12 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                 </SettingsSection>
 
                 {/* Discord Embed Stats - Top Lists */}
-                <SettingsSection title="Discord Embed - Top 10 Lists" icon={BarChart3} delay={0.15}>
+                <SettingsSection title="Discord Embed - Top Stats Lists" icon={BarChart3} delay={0.15}>
                     <p className="text-sm text-gray-400 mb-2">
-                        Configure which top 10 player lists appear in Discord embed notifications.
+                        Configure which top stat player lists appear in Discord embed notifications.
                     </p>
                     <div className="mb-4 pb-4 border-b border-white/10">
-                        <label className="text-xs text-gray-500 block mb-2">Max rows per top 10 list</label>
+                        <label className="text-xs text-gray-500 block mb-2">Max rows per top stat list</label>
                         <div className="flex items-center gap-3">
                             <input
                                 type="range"

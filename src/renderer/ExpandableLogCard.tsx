@@ -20,7 +20,7 @@ interface ExpandableLogCardProps {
         count?: number;
         showHeader?: boolean;
         tileKind?: 'summary' | 'incoming' | 'toplist';
-        tileId?: 'squad' | 'enemy' | 'incoming-attacks' | 'incoming-cc' | 'incoming-strips' | 'incoming-blank';
+        tileId?: 'squad' | 'enemy' | 'squad-classes' | 'enemy-classes' | 'incoming-attacks' | 'incoming-cc' | 'incoming-strips' | 'incoming-blank';
         tileIndex?: number;
     };
 }
@@ -127,6 +127,21 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     const durationSec = (details.durationMS || 0) / 1000 || 1;
     const enemyDps = Math.round(totalDmgTaken / durationSec);
 
+    const buildClassCounts = (list: Player[]) => {
+        const counts: Record<string, number> = {};
+        list.forEach((p: any) => {
+            const prof = p.profession || 'Unknown';
+            counts[prof] = (counts[prof] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .filter(([, count]) => count > 0)
+            .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+            .map(([profession, count]) => ({ profession, count }));
+    };
+
+    const squadClassCounts = buildClassCounts(squadPlayers);
+    const enemyClassCounts = buildClassCounts(nonSquadPlayers);
+
     
 
     const getDistanceToTag = (p: any) => {
@@ -156,6 +171,55 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             return getProfessionEmoji(p.profession || 'Unknown');
         }
         return '';
+    };
+
+    const renderClassSummary = (title: string, counts: Array<{ profession: string; count: number }>, colorClass: string, compact?: boolean, fullHeight?: boolean) => {
+        const maxRows = 5;
+        const columns: Array<Array<{ profession: string; count: number }>> = [];
+        for (let i = 0; i < counts.length; i += maxRows) {
+            columns.push(counts.slice(i, i + maxRows));
+        }
+        const headerClass = compact
+            ? `font-semibold ${colorClass} mb-2 uppercase tracking-wider text-[10px]`
+            : `font-black ${colorClass} mb-3 uppercase tracking-widest ${fullHeight ? 'text-base' : 'text-xs'}`;
+        return (
+            <div className={`bg-white/5 rounded-xl ${compact ? 'p-3' : 'p-4'} border border-white/10 shadow-lg ${fullHeight ? 'h-full' : ''}`}>
+                <h5 className={`${headerClass} border-b border-white/10 pb-2`}>{title}</h5>
+                {counts.length > 0 ? (
+                    <div className={`grid grid-flow-col auto-cols-fr gap-2 font-mono text-gray-200 ${fullHeight ? 'text-base' : compact ? 'text-[11px]' : 'text-sm'}`}>
+                        {columns.map((column, columnIndex) => (
+                            <div key={`${title}-col-${columnIndex}`} className="space-y-2">
+                                {column.map(({ profession, count }) => {
+                                    const iconPath = getProfessionIconPath(profession);
+                                    const label = getProfessionAbbrev(profession).toUpperCase();
+                                    return (
+                                        <div key={profession} className="flex items-center justify-between gap-2 bg-white/5 rounded-md px-2 py-1 border border-white/10">
+                                            <span className="flex items-center gap-1 text-gray-100">
+                                                {useClassIcons && iconPath ? (
+                                                    <img
+                                                        src={iconPath}
+                                                        alt={profession}
+                                                        className={fullHeight ? 'w-5 h-5' : 'w-4 h-4'}
+                                                    />
+                                                ) : (
+                                                    <span className="uppercase text-gray-400">{label}</span>
+                                                )}
+                                                {useClassIcons && iconPath ? (
+                                                    <span className="uppercase text-gray-400">{label}</span>
+                                                ) : null}
+                                            </span>
+                                            <span className="font-bold text-white">{count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-xs text-gray-500 italic text-center py-2">No Data</div>
+                )}
+            </div>
+        );
     };
 
     // Helper for rendering top lists
@@ -329,6 +393,7 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
     const visibleTopLists = topListItems.filter(item => item.enabled);
     const showSummarySection = settings.showSquadSummary || settings.showEnemySummary;
     const showIncomingSection = settings.showIncomingStats;
+    const showClassSummary = settings.showClassSummary;
     const showHeader = screenshotSection?.showHeader ?? true;
     const topListSliceStart = screenshotSection?.start || 0;
     const topListSliceCount = screenshotSection?.count || visibleTopLists.length;
@@ -390,6 +455,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
                 if (screenshotSection.tileKind === 'summary') {
                     if (screenshotSection.tileId === 'squad') return renderSquadSummary(true, true);
                     if (screenshotSection.tileId === 'enemy') return renderEnemySummary(true, true);
+                    if (screenshotSection.tileId === 'squad-classes' && showClassSummary) return renderClassSummary('Squad Classes', squadClassCounts, 'text-green-400', true, true);
+                    if (screenshotSection.tileId === 'enemy-classes' && showClassSummary) return renderClassSummary('Enemy Classes', enemyClassCounts, 'text-red-400', true, true);
                 }
                 if (screenshotSection.tileKind === 'incoming') {
                     if (screenshotSection.tileId === 'incoming-attacks') return renderIncoming('attacks', true);
@@ -497,6 +564,16 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
                                         <div className="flex justify-between"><span>Kills:</span> <span className="text-white font-bold">{enemyDeaths}</span></div>
                                     </div>
                                 </div>
+                            )}
+                        </div>
+                    )}
+                    {(screenshotSection?.type !== 'toplists' && showSummarySection && showClassSummary) && (
+                        <div className="grid grid-cols-2 gap-4 text-base">
+                            {settings.showSquadSummary && (
+                                renderClassSummary('Squad Classes', squadClassCounts, 'text-green-400')
+                            )}
+                            {settings.showEnemySummary && (
+                                renderClassSummary('Enemy Classes', enemyClassCounts, 'text-red-400')
                             )}
                         </div>
                     )}
@@ -640,6 +717,16 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
                                                 <div className="flex justify-between"><span>Kills:</span> <span>{enemyDeaths}</span></div>
                                             </div>
                                         </div>
+                                    )}
+                                </div>
+                            )}
+                            {(settings.showSquadSummary || settings.showEnemySummary) && showClassSummary && (
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    {settings.showSquadSummary && (
+                                        renderClassSummary('Squad Classes', squadClassCounts, 'text-green-400', true)
+                                    )}
+                                    {settings.showEnemySummary && (
+                                        renderClassSummary('Enemy Classes', enemyClassCounts, 'text-red-400', true)
                                     )}
                                 </div>
                             )}

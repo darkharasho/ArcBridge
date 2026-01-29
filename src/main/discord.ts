@@ -32,6 +32,7 @@ export interface IEmbedStatSettings {
     showSquadSummary: boolean;
     showEnemySummary: boolean;
     showIncomingStats: boolean;
+    showClassSummary: boolean;
     showDamage: boolean;
     showDownContribution: boolean;
     showHealing: boolean;
@@ -57,6 +58,7 @@ const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showSquadSummary: true,
     showEnemySummary: true,
     showIncomingStats: true,
+    showClassSummary: true,
     showDamage: true,
     showDownContribution: true,
     showHealing: true,
@@ -195,7 +197,8 @@ export class DiscordNotifier {
                     let totalStripsMissed = 0;
                     let totalStripsBlocked = 0;
 
-                    const profCounts: { [key: string]: number } = {};
+                    const squadClassCounts: { [key: string]: number } = {};
+                    const enemyClassCounts: { [key: string]: number } = {};
 
                     players.forEach((p: any) => {
                         const isSquad = !p.notInSquad;
@@ -234,8 +237,13 @@ export class DiscordNotifier {
                         totalStripsMissed += pStats.strips.missed;
                         totalStripsBlocked += pStats.strips.blocked;
 
-                        const prof = p.profession;
-                        profCounts[prof] = (profCounts[prof] || 0) + 1;
+                        if (isSquad) {
+                            const prof = p.profession || 'Unknown';
+                            squadClassCounts[prof] = (squadClassCounts[prof] || 0) + 1;
+                        } else {
+                            const prof = p.profession || 'Unknown';
+                            enemyClassCounts[prof] = (enemyClassCounts[prof] || 0) + 1;
+                        }
                     });
 
                     // Calculate Enemy (Target) Stats - how many times WE downed/killed them
@@ -311,6 +319,53 @@ export class DiscordNotifier {
                         embedFields.push({
                             name: "Enemy Summary:",
                             value: `\`\`\`\n${enemySummaryLines}\n\`\`\``,
+                            inline: true
+                        });
+                    }
+
+                    const formatClassLines = (counts: Record<string, number>) => {
+                        const entries = Object.entries(counts)
+                            .filter(([, count]) => count > 0)
+                            .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+                            .map(([profession, count]) => {
+                                const label = `${getProfessionAbbrev(profession).toUpperCase()}:`;
+                                return `${label} ${count}`;
+                            });
+                        if (entries.length === 0) return 'No Data';
+
+                        const maxRows = 5;
+                        const columns: string[][] = [];
+                        for (let i = 0; i < entries.length; i += maxRows) {
+                            columns.push(entries.slice(i, i + maxRows));
+                        }
+                        const colWidth = Math.max(...entries.map(entry => entry.length)) + 2;
+                        const lines: string[] = [];
+                        for (let row = 0; row < maxRows; row += 1) {
+                            const line = columns
+                                .map(col => (col[row] || '').padEnd(colWidth))
+                                .join('')
+                                .trimEnd();
+                            lines.push(line);
+                        }
+                        return lines.join('\n').trimEnd();
+                    };
+
+                    if (settings.showClassSummary && (settings.showSquadSummary || settings.showEnemySummary)) {
+                        embedFields.push({ name: '\u200b', value: '\u200b', inline: false });
+                    }
+
+                    if (settings.showClassSummary && settings.showSquadSummary) {
+                        embedFields.push({
+                            name: "Squad Classes:",
+                            value: `\`\`\`\n${formatClassLines(squadClassCounts)}\n\`\`\``,
+                            inline: true
+                        });
+                    }
+
+                    if (settings.showClassSummary && settings.showEnemySummary) {
+                        embedFields.push({
+                            name: "Enemy Classes:",
+                            value: `\`\`\`\n${formatClassLines(enemyClassCounts)}\n\`\`\``,
                             inline: true
                         });
                     }

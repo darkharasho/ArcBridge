@@ -10,6 +10,7 @@ export interface IEmbedStatSettings {
     showSquadSummary: boolean;
     showEnemySummary: boolean;
     showIncomingStats: boolean;
+    showClassSummary: boolean;
 
     // Top 10 lists (default enabled)
     showDamage: boolean;
@@ -58,6 +59,7 @@ export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
     showSquadSummary: true,
     showEnemySummary: true,
     showIncomingStats: true,
+    showClassSummary: true,
     showDamage: true,
     showDownContribution: true,
     showHealing: true,
