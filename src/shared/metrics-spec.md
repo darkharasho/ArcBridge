@@ -172,6 +172,22 @@ For each player, aggregate from `statsTargets[*][0]`:
 
 Implementation: `src/shared/dashboardMetrics.ts` (getTargetStatTotal).
 
+## Skill Usage Tracker (Rotation Casts)
+
+Skill usage is derived from each player's `rotation` entries in EI JSON. For
+each rotation skill entry:
+- `castCount = rotationSkill.skills.length`
+- `skillId = s{rotationSkill.id}`
+- Counts are aggregated per player per log and summed across logs for totals.
+
+The Skill Usage Tracker supports two display modes:
+- **Total**: raw cast counts per player (per log in the timeline).
+- **Per Second**: cast rate using active time, where
+  `activeSeconds = players[*].activeTimes[0] / 1000` when available, otherwise
+  `durationMS / 1000` from the log details.
+
+Implementation: `src/renderer/StatsView.tsx` (skill usage tracker aggregation).
+
 ## Known Caveats
 
 - EI JSON versions can add/remove fields; missing fields always fall back to `0`.
@@ -179,3 +195,4 @@ Implementation: `src/shared/dashboardMetrics.ts` (getTargetStatTotal).
 - Incoming CC/strips use weighted skill mappings; mismatches can occur if EI changes skill ids or hit accounting.
 - Stability generation depends on buff metadata presence (`buffMap`) and correct `durationMS`.
 - Damage uses `dpsAll[0].damage` (player total) rather than summing per-target totals, which may differ when targets are filtered or merged.
+- Skill usage totals are raw cast counts unless the per-second view is selected; missing `activeTimes` falls back to log duration for rate calculations.

@@ -389,6 +389,7 @@ interface SkillUsagePlayer {
     profession: string;
     professionList: string[];
     logs: number;
+    totalActiveSeconds?: number;
     skillTotals: Record<string, number>;
 }
 
@@ -403,6 +404,8 @@ interface SkillUsageLogRecord {
     label: string;
     timestamp: number;
     skillEntries: Record<string, { name: string; players: Record<string, number> }>;
+    playerActiveSeconds?: Record<string, number>;
+    durationSeconds?: number;
 }
 
 interface SkillUsageSummary {
@@ -472,6 +475,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
     const [expandedSectionClosing, setExpandedSectionClosing] = useState(false);
     const expandedCloseTimerRef = useRef<number | null>(null);
     const [fightBreakdownTab, setFightBreakdownTab] = useState<'sizes' | 'outcomes' | 'damage' | 'barrier'>('sizes');
+    const [skillUsageView, setSkillUsageView] = useState<'total' | 'perSecond'>('total');
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -1975,7 +1979,20 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
     const skillUsageData = useMemo<SkillUsageSummary>(() => {
         const precomputedSkillUsage = precomputedStats?.skillUsageData as SkillUsageSummary | undefined;
         if (precomputedSkillUsage) {
-            return precomputedSkillUsage;
+            const activeSecondsByPlayer = new Map<string, number>();
+            precomputedSkillUsage.logRecords?.forEach((record) => {
+                Object.entries(record.playerActiveSeconds || {}).forEach(([playerKey, seconds]) => {
+                    if (!Number.isFinite(seconds)) return;
+                    activeSecondsByPlayer.set(playerKey, (activeSecondsByPlayer.get(playerKey) || 0) + seconds);
+                });
+            });
+            return {
+                ...precomputedSkillUsage,
+                players: (precomputedSkillUsage.players || []).map((player) => ({
+                    ...player,
+                    totalActiveSeconds: player.totalActiveSeconds ?? activeSecondsByPlayer.get(player.key) ?? 0
+                }))
+            };
         }
         const skillNameMap = new Map<string, string>();
         const skillTotals = new Map<string, number>();
@@ -2005,7 +2022,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 id: log.filePath || log.id || label,
                 label,
                 timestamp,
-                skillEntries: {}
+                skillEntries: {},
+                playerActiveSeconds: {},
+                durationSeconds: details.durationMS ? details.durationMS / 1000 : 0
             };
 
             const players = (details.players || []) as any[];
@@ -2025,11 +2044,18 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                         profession,
                         professionList: player.profession ? [player.profession] : [],
                         logs: 0,
+                        totalActiveSeconds: 0,
                         skillTotals: {}
                     };
                     playerMap.set(key, playerRecord);
                 }
                 playerRecord.logs += 1;
+                const activeMs = Array.isArray(player.activeTimes) && typeof player.activeTimes[0] === 'number'
+                    ? player.activeTimes[0]
+                    : details.durationMS || 0;
+                const activeSeconds = activeMs > 0 ? activeMs / 1000 : 0;
+                playerRecord.totalActiveSeconds = (playerRecord.totalActiveSeconds || 0) + activeSeconds;
+                record.playerActiveSeconds![playerRecord.key] = activeSeconds;
 
                 (player.rotation || []).forEach((rotationSkill: any) => {
                     if (!rotationSkill || typeof rotationSkill.id !== 'number') return;
@@ -2103,6 +2129,18 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
     };
 
     const skillNameLookup = useMemo(() => new Map(skillUsageData.skillOptions.map((option) => [option.id, option.name])), [skillUsageData.skillOptions]);
+    const isSkillUsagePerSecond = skillUsageView === 'perSecond';
+    const formatSkillUsageValue = (value: number) => {
+        if (isSkillUsagePerSecond) {
+            return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        return Math.round(value).toLocaleString();
+    };
+
+    const getPlayerActiveSeconds = (playerKey: string) => {
+        const player = playerMapByKey.get(playerKey);
+        return player?.totalActiveSeconds || 0;
+    };
 
     const skillBarData = useMemo(() => {
         if (selectedPlayers.length === 0) return [];
@@ -2110,6 +2148,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             string,
             { total: number; name: string; dominantProfession: string; maxPlayerCount: number }
         >();
+        const selectedActiveSeconds = selectedPlayers.reduce((sum, playerKey) => sum + getPlayerActiveSeconds(playerKey), 0);
         selectedPlayers.forEach((playerKey) => {
             const player = playerMapByKey.get(playerKey);
             if (!player) return;
@@ -2135,7 +2174,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             .map(([skillId, data]) => ({
                 skillId,
                 name: data.name,
-                total: data.total,
+                total: isSkillUsagePerSecond && selectedActiveSeconds > 0
+                    ? data.total / selectedActiveSeconds
+                    : data.total,
                 color: getProfessionColor(data.dominantProfession) || '#38bdf8'
             }))
             .filter((entry) => {
@@ -2145,7 +2186,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
             .slice(0, 8);
         return filtered;
-    }, [selectedPlayers, playerMapByKey, skillNameLookup, skillUsageSkillFilter]);
+    }, [selectedPlayers, playerMapByKey, skillNameLookup, skillUsageSkillFilter, isSkillUsagePerSecond]);
 
     const skillUsageAvailable = skillUsageData.logRecords.length > 0 && skillUsageData.skillOptions.length > 0 && skillUsageData.players.length > 0;
 
@@ -2171,10 +2212,12 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
         if (!selectedSkillId) return {};
         return selectedPlayers.reduce((acc, playerKey) => {
             const player = playerMapByKey.get(playerKey);
-            acc[playerKey] = player?.skillTotals[selectedSkillId] || 0;
+            const total = player?.skillTotals[selectedSkillId] || 0;
+            const activeSeconds = getPlayerActiveSeconds(playerKey);
+            acc[playerKey] = isSkillUsagePerSecond && activeSeconds > 0 ? total / activeSeconds : total;
             return acc;
         }, {} as Record<string, number>);
-    }, [selectedSkillId, selectedPlayers, playerMapByKey]);
+    }, [selectedSkillId, selectedPlayers, playerMapByKey, isSkillUsagePerSecond]);
 
     const classMaxTotals = useMemo(() => {
         const totals: Record<string, number> = {};
@@ -2246,11 +2289,13 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
             };
             const entry = record.skillEntries[selectedSkillId];
             selectedPlayers.forEach((playerKey) => {
-                point[playerKey] = entry?.players?.[playerKey] ?? 0;
+                const total = entry?.players?.[playerKey] ?? 0;
+                const activeSeconds = record.playerActiveSeconds?.[playerKey] ?? record.durationSeconds ?? 0;
+                point[playerKey] = isSkillUsagePerSecond && activeSeconds > 0 ? total / activeSeconds : total;
             });
             return point;
         });
-    }, [skillUsageData.logRecords, selectedPlayers, selectedSkillId]);
+    }, [skillUsageData.logRecords, selectedPlayers, selectedSkillId, isSkillUsagePerSecond]);
 
     const skillChartMaxY = useMemo(() => {
         let max = 0;
@@ -4434,6 +4479,25 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 text-[10px] uppercase tracking-[0.25em] text-gray-400">
+                                {[
+                                    { id: 'total', label: 'Total' },
+                                    { id: 'perSecond', label: 'Per Sec' }
+                                ].map((mode) => (
+                                    <button
+                                        key={mode.id}
+                                        type="button"
+                                        onClick={() => setSkillUsageView(mode.id as 'total' | 'perSecond')}
+                                        className={`px-2.5 py-1 rounded-full transition-colors ${
+                                            skillUsageView === mode.id
+                                                ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-400/40'
+                                                : 'border border-transparent text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        {mode.label}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="text-xs uppercase tracking-[0.3em] text-gray-500">
                                 {skillUsageData.logRecords.length} {skillUsageData.logRecords.length === 1 ? 'log' : 'logs'}
                             </div>
@@ -4512,7 +4576,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                     Skill Totals
                                 </div>
                                 <div className="text-[11px] text-gray-500">
-                                    {selectedPlayers.length > 0 ? `${selectedPlayers.length} player${selectedPlayers.length === 1 ? '' : 's'}` : 'Select players'}
+                                    {selectedPlayers.length > 0
+                                        ? `${selectedPlayers.length} player${selectedPlayers.length === 1 ? '' : 's'} · ${isSkillUsagePerSecond ? 'casts/sec' : 'total casts'}`
+                                        : 'Select players'}
                                 </div>
                             </div>
                             <input
@@ -4546,13 +4612,13 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                             onClick={() => setSelectedSkillId(entry.skillId)}
                                                             className={`w-full space-y-1 rounded-lg border px-2 py-1.5 text-left transition-colors ${isSelected ? 'border-white/60 bg-white/10' : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'}`}
                                                         >
-                                                            <div className="flex items-center justify-between text-sm text-white">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
-                                                                    <span className="font-semibold truncate">{entry.name}</span>
+                                                                <div className="flex items-center justify-between text-sm text-white">
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
+                                                                        <span className="font-semibold truncate">{entry.name}</span>
+                                                                    </div>
+                                                                    <span className="text-cyan-200 font-mono text-xs">{formatSkillUsageValue(entry.total)}</span>
                                                                 </div>
-                                                                <span className="text-cyan-200 font-mono text-xs">{entry.total.toLocaleString()}</span>
-                                                            </div>
                                                             <div className="h-1 w-full rounded-full bg-white/10">
                                                                 <div
                                                                     className="h-full rounded-full transition-all"
@@ -4576,7 +4642,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                     <div className="text-sm font-semibold text-gray-200">
                                         {selectedSkillName || 'Selected Skill Usage'}
                                     </div>
-                                    <div className="text-[11px] text-gray-400">(casts per log)</div>
+                                    <div className="text-[11px] text-gray-400">
+                                        ({isSkillUsagePerSecond ? 'casts per second' : 'casts per log'})
+                                    </div>
                                 </div>
                                 <ResponsiveContainer width="100%" height={250}>
                                     <LineChart data={skillChartData}>
@@ -4612,7 +4680,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                                 const name = String(item.name || '');
                                                                 const player = playerMapByKey.get(name);
                                                                 const labelText = player?.displayName || name || 'Player';
-                                                                const value = Number(item.value || 0).toLocaleString();
+                                                                const value = formatSkillUsageValue(Number(item.value || 0));
                                                                 const color = item.color || '#38bdf8';
                                                                 return (
                                                                     <div key={`${labelText}-${value}`} className="flex items-center justify-between text-sm">
@@ -4693,7 +4761,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                                                 <div className="font-semibold text-white truncate">{player?.displayName || playerKey}</div>
                                                             </div>
                                                         </div>
-                                                        <div className="text-3xl font-black text-white font-mono">{total.toLocaleString()}</div>
+                                                        <div className="text-3xl font-black text-white font-mono">{formatSkillUsageValue(total)}</div>
                                                     </button>
                                                 );
                                             })}
