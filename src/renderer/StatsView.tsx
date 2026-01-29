@@ -414,6 +414,26 @@ interface SkillUsageSummary {
 
 export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precomputedStats, embedded = false }: StatsViewProps) {
     const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
+    const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+    const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
+        'Down Contribution': 'downContribution',
+        'Healing': 'healing',
+        'Cleanses': 'cleanses',
+        'Strips': 'strips',
+        'Stability': 'stability',
+        'CC': 'cc',
+        'Revives': 'revives',
+        'Distance to Tag': 'distanceToTag',
+        'Participation': 'participation',
+        'Dodging': 'dodging',
+        'DPS': 'dps',
+        'Damage': 'damage'
+    };
+    const isMvpStatEnabled = (name: string) => {
+        const key = mvpStatWeightKeys[name];
+        if (!key) return true;
+        return activeMvpWeights[key] > 0;
+    };
     const [sharing, setSharing] = useState(false);
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
     const [activeBoonTab, setActiveBoonTab] = useState<string | null>(null);
@@ -1398,7 +1418,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                 return Math.round(value).toLocaleString();
             };
 
-            const weights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+            const weights = activeMvpWeights;
 
             const check = (val: number, maxVal: number, name: string, weight = 1, leaderboard?: Array<{ rank: number; account: string }>) => {
                 if (weight <= 0) return;
@@ -3011,7 +3031,7 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
 
                                     {/* Top Stats Breakdown */}
                                     <div className="flex flex-wrap gap-2">
-                                        {stats.mvp.topStats && stats.mvp.topStats.map((stat: any, i: number) => {
+                                        {stats.mvp.topStats && stats.mvp.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, i: number) => {
                                             const rank = Math.max(1, Math.round(stat.ratio));
                                             const mod100 = rank % 100;
                                             const mod10 = rank % 10;
@@ -3071,9 +3091,9 @@ export function StatsView({ logs, onBack, mvpWeights, disruptionMethod, precompu
                                             {entry.data?.profession || 'Unknown'}
                                         </div>
                                     </div>
-                                    {entry.data?.topStats?.length ? (
+                                    {entry.data?.topStats?.some((stat: any) => isMvpStatEnabled(stat.name)) ? (
                                         <div className="flex flex-col items-end gap-1 text-[10px] text-gray-300">
-                                            {entry.data.topStats.map((stat: any, idx: number) => {
+                                            {entry.data.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, idx: number) => {
                                                 const rank = Math.max(1, Math.round(stat.ratio));
                                                 const mod100 = rank % 100;
                                                 const mod10 = rank % 10;
