@@ -8,10 +8,12 @@ import { computeOutgoingConditions, OutgoingConditionsResult } from '../../share
 import type { WorkerRequest, WorkerResponse, WorkerPoolConfig, WorkerTask, MetricsInput } from './types';
 
 interface ManagedWorker {
+    id: number;
     worker: Worker;
     busy: boolean;
     currentTask: WorkerTask<any> | null;
     idleTimer: ReturnType<typeof setTimeout> | null;
+    taskTimer: ReturnType<typeof setTimeout> | null;
 }
 
 let taskIdCounter = 0;
@@ -53,10 +55,12 @@ export class MainWorkerPool {
 
         const worker = new Worker(this.workerPath);
         const managed: ManagedWorker = {
+            id: workerId,
             worker,
             busy: false,
             currentTask: null,
-            idleTimer: null
+            idleTimer: null,
+            taskTimer: null
         };
 
         this.workers.set(workerId, managed);
@@ -71,6 +75,15 @@ export class MainWorkerPool {
         });
 
         worker.on('exit', (code) => {
+            const managedWorker = this.workers.get(workerId);
+            if (!managedWorker) {
+                return;
+            }
+            this.clearTaskTimer(managedWorker);
+            if (managedWorker.currentTask) {
+                managedWorker.currentTask.reject(new Error(`Worker ${workerId} exited with code ${code ?? 'unknown'}`));
+                managedWorker.currentTask = null;
+            }
             if (code !== 0 && !this.shuttingDown) {
                 console.warn(`[WorkerPool] Worker ${workerId} exited with code ${code}`);
             }
@@ -112,6 +125,7 @@ export class MainWorkerPool {
 
         managed.busy = false;
         managed.currentTask = null;
+        this.clearTaskTimer(managed);
 
         if (response.type === 'ERROR') {
             const error = new Error(response.error);
@@ -142,6 +156,11 @@ export class MainWorkerPool {
             managed.currentTask.reject(error);
             managed.currentTask = null;
         }
+        if (managed.idleTimer) {
+            clearTimeout(managed.idleTimer);
+            managed.idleTimer = null;
+        }
+        this.clearTaskTimer(managed);
 
         // Terminate and remove the failed worker
         managed.worker.terminate().catch(() => { });
@@ -171,6 +190,41 @@ export class MainWorkerPool {
                 this.workers.delete(workerId);
             }
         }, this.config.idleTimeoutMs);
+    }
+
+    private clearTaskTimer(managed: ManagedWorker): void {
+        if (managed.taskTimer) {
+            clearTimeout(managed.taskTimer);
+            managed.taskTimer = null;
+        }
+    }
+
+    private handleTaskTimeout(workerId: number, taskId: string): void {
+        const managed = this.workers.get(workerId);
+        if (!managed || !managed.currentTask || managed.currentTask.id !== taskId) return;
+
+        const timeoutMs = this.config.taskTimeoutMs;
+        console.warn(`[WorkerPool] Task ${taskId} timed out after ${timeoutMs}ms; terminating worker ${workerId}`);
+
+        const task = managed.currentTask;
+        managed.currentTask = null;
+        managed.busy = false;
+        if (managed.idleTimer) {
+            clearTimeout(managed.idleTimer);
+            managed.idleTimer = null;
+        }
+        this.clearTaskTimer(managed);
+
+        task.reject(new Error(`Worker task ${taskId} timed out after ${timeoutMs}ms`));
+
+        managed.worker.terminate().catch(() => { });
+        this.workers.delete(workerId);
+
+        if (!this.shuttingDown && this.workers.size < this.config.minWorkers) {
+            this.spawnWorker().catch(console.error);
+        }
+
+        this.processQueue();
     }
 
     private getIdleWorker(): ManagedWorker | null {
@@ -210,6 +264,12 @@ export class MainWorkerPool {
         worker.busy = true;
         worker.currentTask = task;
         task.startedAt = Date.now();
+        this.clearTaskTimer(worker);
+        if (this.config.taskTimeoutMs > 0) {
+            worker.taskTimer = setTimeout(() => {
+                this.handleTaskTimeout(worker.id, task.id);
+            }, this.config.taskTimeoutMs);
+        }
 
         worker.worker.postMessage(task.request);
     }
@@ -317,6 +377,7 @@ export class MainWorkerPool {
             if (managed.idleTimer) {
                 clearTimeout(managed.idleTimer);
             }
+            this.clearTaskTimer(managed);
             if (managed.currentTask) {
                 managed.currentTask.reject(new Error('Worker pool shutting down'));
             }

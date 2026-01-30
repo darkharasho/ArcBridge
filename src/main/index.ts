@@ -347,8 +347,8 @@ const loadDpsReportCacheEntry = async (hash: string) => {
     let jsonDetails: any | null = null;
     if (entry.detailsPath) {
         try {
-            const raw = await fs.promises.readFile(entry.detailsPath, 'utf8');
-            jsonDetails = JSON.parse(raw);
+            const isGzipped = entry.detailsPath.toLowerCase().endsWith('.gz');
+            jsonDetails = await getWorkerPool().parseJson(entry.detailsPath, isGzipped);
         } catch {
             jsonDetails = null;
         }
