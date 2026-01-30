@@ -674,7 +674,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     };
 
     const validLogs = useMemo(() => logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details), [logs]);
-    const hasEiDetails = useMemo(() => validLogs.some((log) => Boolean(log.eiDetails)), [validLogs]);
+    const hasEiDetails = useMemo(() => {
+        if (embedded) {
+            return Boolean(precomputedStats?.eiParserUsed);
+        }
+        return validLogs.some((log) => Boolean(log.eiDetails));
+    }, [embedded, precomputedStats, validLogs]);
 
     const stats = useMemo(() => {
         if (precomputedStats) {
@@ -2783,7 +2788,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 stats: {
                     ...stats,
                     skillUsageData,
-                    statsViewSettings: activeStatsViewSettings
+                    statsViewSettings: activeStatsViewSettings,
+                    eiParserUsed: hasEiDetails
                 }
             });
             if (result?.success) {
