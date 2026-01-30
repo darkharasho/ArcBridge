@@ -295,6 +295,7 @@ export function ReportApp() {
             { id: 'timeline', label: 'Squad vs Enemy', icon: Activity },
             { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon },
             { id: 'boon-output', label: 'Boon Output', icon: Sparkles },
+            { id: 'conditions-outgoing', label: 'Conditions', icon: Skull },
             { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
             { id: 'defense-detailed', label: 'Defense Detailed', icon: ShieldCheck },
             { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
