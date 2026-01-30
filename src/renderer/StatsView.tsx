@@ -790,6 +790,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             if (!details) return;
             const players = details.players as unknown as Player[];
             const targets = details.targets || [];
+            const conditionDetails = log.eiDetails || details;
+            const conditionPlayers = (conditionDetails?.players as unknown as Player[]) || players;
+            const conditionTargets = conditionDetails?.targets || targets;
+            const conditionSkillMap = conditionDetails?.skillMap || details.skillMap;
+            const conditionBuffMap = conditionDetails?.buffMap || details.buffMap;
             const replayMeta = (details as any).combatReplayMetaData || {};
             const inchesToPixel = typeof replayMeta?.inchToPixel === 'number' && replayMeta.inchToPixel > 0
                 ? replayMeta.inchToPixel
@@ -1264,40 +1269,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             skillDamageMap[entry.id].damage += entry.totalDamage;
                             skillDamageMap[entry.id].hits += entry.connectedHits;
 
-                            const conditionName = getConditionNameFromEntry(skillName, entry.id, details.buffMap);
-                            if (conditionName) {
-                                const buffName = details.buffMap?.[`b${entry.id}`]?.name;
-                                const skillLabel = skillName.startsWith('Skill ') && buffName ? buffName : skillName;
-                                const connectedHits = Number(entry.connectedHits ?? 0);
-                                const rawHits = Number(entry.hits ?? 0);
-                                const hits = connectedHits > 0 ? connectedHits : rawHits;
-                                const damage = Number(entry.totalDamage ?? 0);
-                                if (Number.isFinite(hits) || Number.isFinite(damage)) {
-                                    const existing = outgoingCondiTotals[conditionName] || {
-                                        name: conditionName,
-                                        applications: 0,
-                                        damage: 0
-                                    };
-                                    existing.applications += Number.isFinite(hits) ? hits : 0;
-                                    existing.damage += Number.isFinite(damage) ? damage : 0;
-                                    outgoingCondiTotals[conditionName] = existing;
-
-                                    const playerConditionTotals = s.outgoingConditions[conditionName] || {
-                                        applications: 0,
-                                        damage: 0,
-                                        skills: {}
-                                    };
-                                    playerConditionTotals.applications += Number.isFinite(hits) ? hits : 0;
-                                    playerConditionTotals.damage += Number.isFinite(damage) ? damage : 0;
-                                    if (Number.isFinite(hits) || Number.isFinite(damage)) {
-                                        const skillEntry = playerConditionTotals.skills[skillLabel] || { name: skillLabel, hits: 0, damage: 0 };
-                                        skillEntry.hits += Number.isFinite(hits) ? hits : 0;
-                                        skillEntry.damage += Number.isFinite(damage) ? damage : 0;
-                                        playerConditionTotals.skills[skillLabel] = skillEntry;
-                                    }
-                                    s.outgoingConditions[conditionName] = playerConditionTotals;
-                                }
-                            }
                         });
                     });
                 }
@@ -1333,6 +1304,67 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 }
             });
 
+            // Outgoing Conditions (prefer EI CLI details if present)
+            conditionPlayers.forEach((p: any) => {
+                if (p.notInSquad) return;
+                const account = p.account || 'Unknown';
+                const key = account !== 'Unknown' ? account : (p.name || 'Unknown');
+                const s = playerStats.get(key);
+                if (!s) return;
+
+                if (p.totalDamageDist) {
+                    p.totalDamageDist.forEach((distList: any) => {
+                        if (!distList) return;
+                        distList.forEach((entry: any) => {
+                            if (!entry.id) return;
+
+                            let skillName = `Skill ${entry.id}`;
+                            if (conditionSkillMap) {
+                                if (conditionSkillMap[`s${entry.id}`]) {
+                                    skillName = conditionSkillMap[`s${entry.id}`].name;
+                                } else if (conditionSkillMap[`${entry.id}`]) {
+                                    skillName = conditionSkillMap[`${entry.id}`].name;
+                                }
+                            }
+
+                            const conditionName = getConditionNameFromEntry(skillName, entry.id, conditionBuffMap);
+                            if (!conditionName) return;
+                            const buffName = conditionBuffMap?.[`b${entry.id}`]?.name;
+                            const skillLabel = skillName.startsWith('Skill ') && buffName ? buffName : skillName;
+                            const connectedHits = Number(entry.connectedHits ?? 0);
+                            const rawHits = Number(entry.hits ?? 0);
+                            const hits = connectedHits > 0 ? connectedHits : rawHits;
+                            const damage = Number(entry.totalDamage ?? 0);
+                            if (!Number.isFinite(hits) && !Number.isFinite(damage)) return;
+
+                            const existing = outgoingCondiTotals[conditionName] || {
+                                name: conditionName,
+                                applications: 0,
+                                damage: 0
+                            };
+                            existing.applications += Number.isFinite(hits) ? hits : 0;
+                            existing.damage += Number.isFinite(damage) ? damage : 0;
+                            outgoingCondiTotals[conditionName] = existing;
+
+                            const playerConditionTotals = s.outgoingConditions[conditionName] || {
+                                applications: 0,
+                                damage: 0,
+                                skills: {}
+                            };
+                            playerConditionTotals.applications += Number.isFinite(hits) ? hits : 0;
+                            playerConditionTotals.damage += Number.isFinite(damage) ? damage : 0;
+                            if (Number.isFinite(hits) || Number.isFinite(damage)) {
+                                const skillEntry = playerConditionTotals.skills[skillLabel] || { name: skillLabel, hits: 0, damage: 0 };
+                                skillEntry.hits += Number.isFinite(hits) ? hits : 0;
+                                skillEntry.damage += Number.isFinite(damage) ? damage : 0;
+                                playerConditionTotals.skills[skillLabel] = skillEntry;
+                            }
+                            s.outgoingConditions[conditionName] = playerConditionTotals;
+                        });
+                    });
+                }
+            });
+
             // Outgoing condition applications from target buff states (statesPerSource)
             const countAppliedFromStates = (states: Array<[number, number]> | undefined) => {
                 if (!states || states.length === 0) return 0;
@@ -1355,7 +1387,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             };
 
             const nameToKey = new Map<string, string>();
-            players.forEach((player: any) => {
+            conditionPlayers.forEach((player: any) => {
                 if (player?.notInSquad) return;
                 const accountName = player.account || 'Unknown';
                 const playerKey = accountName !== 'Unknown' ? accountName : (player.name || 'Unknown');
@@ -1367,12 +1399,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             let buffStateApplicationsTotal = 0;
             let buffStateSourcesSeen = 0;
             let targetBuffEntriesSeen = 0;
-            targets.forEach((target: any) => {
+            conditionTargets.forEach((target: any) => {
                 if (!target?.buffs) return;
                 target.buffs.forEach((buff: any) => {
                     const buffId = Number(buff?.id);
                     if (!Number.isFinite(buffId)) return;
-                    const buffMeta = details.buffMap?.[`b${buffId}`];
+                    const buffMeta = conditionBuffMap?.[`b${buffId}`];
                     if (buffMeta?.classification !== 'Condition') return;
                     const conditionName = buffMeta?.name || getConditionName(buffMeta?.name);
                     if (!conditionName) return;

@@ -32,6 +32,7 @@
         "generate:fixtures": "for f in testdata/*.zevtc; do bash scripts/generate-json-fixture.sh \"$f\"; done"
     },
     "dependencies": {
+        "adm-zip": "^0.5.16",
         "axios": "^1.6.0",
         "chokidar": "^3.5.3",
         "clsx": "^2.0.0",
