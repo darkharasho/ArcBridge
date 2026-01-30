@@ -7,7 +7,7 @@ import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IMvpWeights, IStatsViewSettings } from './global.d';
-import { computeOutgoingConditions } from '../shared/conditionsMetrics';
+import { computeOutgoingConditions, resolveConditionNameFromEntry } from '../shared/conditionsMetrics';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -539,6 +539,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const [offenseSearch, setOffenseSearch] = useState('');
     const [defenseSearch, setDefenseSearch] = useState('');
     const [conditionSearch, setConditionSearch] = useState('');
+    const [conditionDirection, setConditionDirection] = useState<'outgoing' | 'incoming'>('outgoing');
     const [supportSearch, setSupportSearch] = useState('');
     const [activeOffenseStat, setActiveOffenseStat] = useState<string>('damage');
     const [activeDefenseStat, setActiveDefenseStat] = useState<string>('damageTaken');
@@ -725,6 +726,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 skills: Record<string, { name: string; hits: number; damage: number }>;
                 applicationsFromBuffs?: number;
             }>;
+            incomingConditions: Record<string, {
+                applications: number;
+                damage: number;
+                skills: Record<string, { name: string; hits: number; damage: number }>;
+            }>;
         }
 
         const playerStats = new Map<string, PlayerStats>();
@@ -734,6 +740,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         // skillId -> { name, damage, hits }
         const skillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
         const outgoingCondiTotals: Record<string, { name: string; applications: number; damage: number; applicationsFromBuffs?: number }> = {};
+        const incomingCondiTotals: Record<string, { name: string; applications: number; damage: number }> = {};
         const incomingSkillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
 
         let totalSquadSizeAccum = 0;
@@ -936,7 +943,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                         damage: 0,
                         dps: 0,
                         revives: 0,
-                        outgoingConditions: {}
+                        outgoingConditions: {},
+                        incomingConditions: {}
                     });
                 }
 
@@ -1233,35 +1241,35 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     });
                 }
 
-                // Incoming Skill Aggregation (Damage Taken)
-                if (p.totalDamageTaken) {
-                    p.totalDamageTaken.forEach(takenList => {
-                        if (!takenList) return;
-                        takenList.forEach(entry => {
-                            if (!entry.id) return;
+            // Incoming Skill Aggregation (Damage Taken)
+            if (p.totalDamageTaken) {
+                p.totalDamageTaken.forEach(takenList => {
+                    if (!takenList) return;
+                    takenList.forEach(entry => {
+                        if (!entry.id) return;
 
-                            let skillName = `Skill ${entry.id}`;
-                            // Resolve name
-                            if (details.skillMap) {
-                                if (details.skillMap[`s${entry.id}`]) {
-                                    skillName = details.skillMap[`s${entry.id}`].name;
-                                } else if (details.skillMap[`${entry.id}`]) {
-                                    skillName = details.skillMap[`${entry.id}`].name;
-                                }
+                        let skillName = `Skill ${entry.id}`;
+                        // Resolve name
+                        if (details.skillMap) {
+                            if (details.skillMap[`s${entry.id}`]) {
+                                skillName = details.skillMap[`s${entry.id}`].name;
+                            } else if (details.skillMap[`${entry.id}`]) {
+                                skillName = details.skillMap[`${entry.id}`].name;
                             }
+                        }
 
-                            if (!incomingSkillDamageMap[entry.id]) {
-                                incomingSkillDamageMap[entry.id] = { name: skillName, damage: 0, hits: 0 };
-                            }
-                            if (incomingSkillDamageMap[entry.id].name.startsWith('Skill ') && !skillName.startsWith('Skill ')) {
-                                incomingSkillDamageMap[entry.id].name = skillName;
-                            }
+                        if (!incomingSkillDamageMap[entry.id]) {
+                            incomingSkillDamageMap[entry.id] = { name: skillName, damage: 0, hits: 0 };
+                        }
+                        if (incomingSkillDamageMap[entry.id].name.startsWith('Skill ') && !skillName.startsWith('Skill ')) {
+                            incomingSkillDamageMap[entry.id].name = skillName;
+                        }
 
-                            incomingSkillDamageMap[entry.id].damage += entry.totalDamage;
-                            incomingSkillDamageMap[entry.id].hits += entry.hits; // For taken, hits is usually raw hits
-                        });
+                        incomingSkillDamageMap[entry.id].damage += entry.totalDamage;
+                        incomingSkillDamageMap[entry.id].hits += entry.hits; // For taken, hits is usually raw hits
                     });
-                }
+                });
+            }
             });
 
             const conditionResult = computeOutgoingConditions({
@@ -1331,6 +1339,47 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     }
                 });
             }
+
+            conditionPlayers.forEach((player: any) => {
+                if (player?.notInSquad) return;
+                const account = player.account || 'Unknown';
+                const key = account !== 'Unknown' ? account : (player.name || 'Unknown');
+                const stat = playerStats.get(key);
+                if (!stat || !player?.totalDamageTaken) return;
+                player.totalDamageTaken.forEach((takenList: any) => {
+                    if (!takenList) return;
+                    takenList.forEach((entry: any) => {
+                        if (!entry.id) return;
+                        let skillName = `Skill ${entry.id}`;
+                        if (conditionSkillMap) {
+                            if (conditionSkillMap[`s${entry.id}`]) {
+                                skillName = conditionSkillMap[`s${entry.id}`].name;
+                            } else if (conditionSkillMap[`${entry.id}`]) {
+                                skillName = conditionSkillMap[`${entry.id}`].name;
+                            }
+                        }
+                        const finalName = resolveConditionNameFromEntry(skillName, entry.id, conditionBuffMap);
+                        if (!finalName) return;
+                        const hits = Number(entry.hits ?? 0);
+                        const damage = Number(entry.totalDamage ?? 0);
+                        if (!Number.isFinite(hits) && !Number.isFinite(damage)) return;
+
+                        const summaryEntry = incomingCondiTotals[finalName] || { name: finalName, applications: 0, damage: 0 };
+                        summaryEntry.applications += Number.isFinite(hits) ? hits : 0;
+                        summaryEntry.damage += Number.isFinite(damage) ? damage : 0;
+                        incomingCondiTotals[finalName] = summaryEntry;
+
+                        const playerEntry = stat.incomingConditions[finalName] || { applications: 0, damage: 0, skills: {} };
+                        playerEntry.applications += Number.isFinite(hits) ? hits : 0;
+                        playerEntry.damage += Number.isFinite(damage) ? damage : 0;
+                        const skillEntry = playerEntry.skills[skillName] || { name: skillName, hits: 0, damage: 0 };
+                        skillEntry.hits += Number.isFinite(hits) ? hits : 0;
+                        skillEntry.damage += Number.isFinite(damage) ? damage : 0;
+                        playerEntry.skills[skillName] = skillEntry;
+                        stat.incomingConditions[finalName] = playerEntry;
+                    });
+                });
+            });
         });
 
         const avgSquadSize = total > 0 ? Math.round(totalSquadSizeAccum / total) : 0;
@@ -1429,6 +1478,24 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     ? entry.applicationsFromBuffs
                     : entry.applications;
                 totalApplications += Number(applications || 0);
+                totalDamage += Number(entry.damage || 0);
+            });
+            return {
+                account: stat.account,
+                profession: stat.profession || 'Unknown',
+                professionList: stat.professionList,
+                totalFightMs: stat.totalFightMs || 0,
+                totalApplications,
+                totalDamage,
+                conditions: conditionTotals
+            };
+        });
+        const incomingConditionPlayers = playerEntries.map(({ stat }) => {
+            const conditionTotals = stat.incomingConditions || {};
+            let totalApplications = 0;
+            let totalDamage = 0;
+            Object.values(conditionTotals).forEach((entry) => {
+                totalApplications += Number(entry.applications || 0);
                 totalDamage += Number(entry.damage || 0);
             });
             return {
@@ -1752,6 +1819,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 applications: (entry.applicationsFromBuffs && entry.applicationsFromBuffs > 0)
                     ? entry.applicationsFromBuffs
                     : entry.applications
+            }))
+            .sort((a, b) => b.damage - a.damage || a.name.localeCompare(b.name));
+        const incomingConditionSummary = Object.values(incomingCondiTotals)
+            .map((entry) => ({
+                ...entry,
+                applications: entry.applications
             }))
             .sort((a, b) => b.damage - a.damage || a.name.localeCompare(b.name));
 
@@ -2195,6 +2268,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             topIncomingSkills,
             outgoingConditionSummary,
             outgoingConditionPlayers,
+            incomingConditionSummary,
+            incomingConditionPlayers,
 
             mapData,
             squadClassData,
@@ -2216,6 +2291,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             leaderboards
         };
     }, [validLogs, precomputedStats]);
+
+    const conditionSummary = conditionDirection === 'outgoing'
+        ? stats.outgoingConditionSummary
+        : stats.incomingConditionSummary;
+    const conditionPlayers = conditionDirection === 'outgoing'
+        ? stats.outgoingConditionPlayers
+        : stats.incomingConditionPlayers;
 
     const skillUsageData = useMemo<SkillUsageSummary>(() => {
         const precomputedSkillUsage = precomputedStats?.skillUsageData as SkillUsageSummary | undefined;
@@ -4159,7 +4241,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     )}
                 </div>
 
-                {/* Outgoing Conditions */}
+                {/* Conditions */}
                 <div
                     id="conditions-outgoing"
                     className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
@@ -4173,17 +4255,39 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
                             <Skull className="w-5 h-5 text-amber-300" />
-                            Conditions - Outgoing
+                            Conditions
                         </h3>
-                        <button
-                            type="button"
-                            onClick={() => (expandedSection === 'conditions-outgoing' ? closeExpandedSection() : openExpandedSection('conditions-outgoing'))}
-                            className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
-                            aria-label={expandedSection === 'conditions-outgoing' ? 'Close Outgoing Conditions' : 'Expand Outgoing Conditions'}
-                            title={expandedSection === 'conditions-outgoing' ? 'Close' : 'Expand'}
-                        >
-                            {expandedSection === 'conditions-outgoing' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setConditionDirection('outgoing')}
+                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${conditionDirection === 'outgoing'
+                                    ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
+                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                    }`}
+                            >
+                                Outgoing
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setConditionDirection('incoming')}
+                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${conditionDirection === 'incoming'
+                                    ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
+                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                    }`}
+                            >
+                                Incoming
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => (expandedSection === 'conditions-outgoing' ? closeExpandedSection() : openExpandedSection('conditions-outgoing'))}
+                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                                aria-label={expandedSection === 'conditions-outgoing' ? 'Close Outgoing Conditions' : 'Expand Outgoing Conditions'}
+                                title={expandedSection === 'conditions-outgoing' ? 'Close' : 'Expand'}
+                            >
+                                {expandedSection === 'conditions-outgoing' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                            </button>
+                        </div>
                     </div>
                     {!hasEiDetails && (
                         <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
@@ -4192,7 +4296,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 : 'Local Elite Insights parsing is disabled. Condition application counts may be incomplete. For more accurate counts enable Elite Insights in the settings.'}
                         </div>
                     )}
-                    {stats.outgoingConditionSummary && stats.outgoingConditionSummary.length > 0 ? (
+                    {conditionSummary && conditionSummary.length > 0 ? (
                         <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'conditions-outgoing' ? 'flex-1 min-h-0 h-full' : ''}`}>
                             <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'conditions-outgoing' ? 'h-full flex-1' : 'self-start'}`}>
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Conditions</div>
@@ -4204,7 +4308,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 />
                                 <div className={`${sidebarListClass} ${expandedSection === 'conditions-outgoing' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                     {(() => {
-                                        const entries = [...(stats.outgoingConditionSummary || [])].sort((a: any, b: any) => (b.damage || 0) - (a.damage || 0));
+                                        const entries = [...(conditionSummary || [])].sort((a: any, b: any) => (b.damage || 0) - (a.damage || 0));
                                         const filtered = entries.filter((entry: any) =>
                                             entry.name.toLowerCase().includes(conditionSearch.trim().toLowerCase())
                                         );
@@ -4278,7 +4382,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 </div>
                                 <div className={`${expandedSection === 'conditions-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
                                     {(() => {
-                                        const entries = stats.outgoingConditionPlayers || [];
+                                        const entries = conditionPlayers || [];
                                         const rows = entries
                                             .map((player: any) => {
                                                 const conditionTotals = player.conditions || {};
@@ -4290,7 +4394,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                     };
                                                 }
                                                 const condition = conditionTotals[activeConditionName];
-                                                const applications = (condition?.applicationsFromBuffs && condition.applicationsFromBuffs > 0)
+                                                const applications = conditionDirection === 'outgoing' && condition?.applicationsFromBuffs && condition.applicationsFromBuffs > 0
                                                     ? condition.applicationsFromBuffs
                                                     : condition?.applications;
                                                 return {

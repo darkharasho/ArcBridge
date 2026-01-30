@@ -21,7 +21,7 @@ const getConditionName = (name?: string | null) => {
     return CONDITION_NAME_MAP.get(cleaned) || null;
 };
 
-const getConditionNameFromEntry = (
+export const resolveConditionNameFromEntry = (
     skillName: string,
     id?: number,
     buffMap?: Record<string, { name?: string }>
@@ -123,7 +123,7 @@ export const computeOutgoingConditions = (payload: {
                         skillName = skillMap[`${entry.id}`].name || skillName;
                     }
                 }
-                const conditionName = getConditionNameFromEntry(skillName, entry.id, buffMap);
+    const conditionName = resolveConditionNameFromEntry(skillName, entry.id, buffMap);
                 if (!conditionName) return;
                 const buffName = buffMap?.[`b${entry.id}`]?.name;
                 const skillLabel = skillName.startsWith('Skill ') && buffName ? buffName : skillName;
