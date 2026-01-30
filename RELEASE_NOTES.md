@@ -1,17 +1,21 @@
 # Release Notes
 
-Version v1.10.1 — January 29, 2026
+Version v1.10.2 — January 29, 2026
 
 ## 🌟 Highlights
-- StatsView updated to handle embedded EI details
-- eiParserUsed is now included in stats
-- Version bumped to 1.10.1
+- Version bumped to 1.10.2 in package.json and package-lock.json.
+- Code cleanup and structural refactor for easier maintenance.
+- Added a new script to help commit updated dist-web index files.
 
 ## 🛠️ Improvements
-None.
+- Added a new script to commit updated dist-web index files.
+- Cleaned up code structure and removed unused blocks.
+- Refactored key parts of the codebase for better readability and maintainability.
 
 ## 🧯 Fixes
-None.
+- Fix Skill Usage table having character name instead of account name like the rest.
+- Fixed the conditions navbar entry missing.
+- Fixed intermittent 422s from github.
 
 ## ⚠️ Breaking Changes
-None.
+- None.
