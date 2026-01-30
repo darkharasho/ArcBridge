@@ -714,6 +714,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     };
 
     const validLogs = useMemo(() => logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details), [logs]);
+    const hasEiDetails = useMemo(() => validLogs.some((log) => Boolean(log.eiDetails)), [validLogs]);
 
     const stats = useMemo(() => {
         if (precomputedStats) {
@@ -4304,6 +4305,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'conditions-outgoing' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
+                    {!hasEiDetails && (
+                        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+                            {embedded
+                                ? 'This table has been generated with an external parser; condition application counts may be incomplete.'
+                                : 'Local Elite Insights parsing is disabled. Condition application counts may be incomplete. For more accurate counts enable Elite Insights in the settings.'}
+                        </div>
+                    )}
                     {stats.outgoingConditionSummary && stats.outgoingConditionSummary.length > 0 ? (
                         <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'conditions-outgoing' ? 'flex-1 min-h-0 h-full' : ''}`}>
                             <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'conditions-outgoing' ? 'h-full flex-1' : 'self-start'}`}>
