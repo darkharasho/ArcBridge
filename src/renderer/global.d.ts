@@ -62,6 +62,8 @@ export interface IEiCliSettings {
     preferredRuntime: 'auto' | 'dotnet' | 'wine';
 }
 
+export type UiTheme = 'classic' | 'modern';
+
 export type DisruptionMethod = 'count' | 'duration' | 'tiered';
 
 export const DEFAULT_DISRUPTION_METHOD: DisruptionMethod = 'count';
@@ -120,6 +122,8 @@ export const DEFAULT_EI_CLI_SETTINGS: IEiCliSettings = {
     preferredRuntime: 'auto'
 };
 
+export const DEFAULT_UI_THEME: UiTheme = 'classic';
+
 export interface IElectronAPI {
     selectDirectory: () => Promise<string | null>;
     startWatching: (path: string) => void;
@@ -141,6 +145,7 @@ export interface IElectronAPI {
         statsViewSettings: IStatsViewSettings;
         disruptionMethod: DisruptionMethod;
         eiCliSettings?: IEiCliSettings;
+        uiTheme?: UiTheme;
         autoUpdateSupported?: boolean;
         autoUpdateDisabledReason?: string | null;
         githubRepoOwner?: string | null;
@@ -167,6 +172,7 @@ export interface IElectronAPI {
         statsViewSettings?: IStatsViewSettings;
         disruptionMethod?: DisruptionMethod;
         eiCliSettings?: IEiCliSettings;
+        uiTheme?: UiTheme;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;
         githubBranch?: string | null;

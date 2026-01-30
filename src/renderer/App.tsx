@@ -40,6 +40,7 @@ function App() {
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
+    const [uiTheme, setUiTheme] = useState<'classic' | 'modern'>('classic');
 
     const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
 
@@ -140,6 +141,12 @@ function App() {
         };
     }, [webhookDropdownOpen]);
 
+    useEffect(() => {
+        const body = document.body;
+        body.classList.remove('theme-classic', 'theme-modern');
+        body.classList.add(uiTheme === 'modern' ? 'theme-modern' : 'theme-classic');
+    }, [uiTheme]);
+
 
     // Stats calculation
     const totalUploads = logs.length;
@@ -178,6 +185,9 @@ function App() {
             }
             if (settings.statsViewSettings) {
                 setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...settings.statsViewSettings });
+            }
+            if (settings.uiTheme) {
+                setUiTheme(settings.uiTheme);
             }
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
@@ -579,12 +589,17 @@ function App() {
         }
     };
 
+    const isModernTheme = uiTheme === 'modern';
+    const shellClassName = isModernTheme
+        ? 'app-shell h-screen w-screen text-white overflow-hidden flex flex-col'
+        : 'app-shell h-screen w-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-gray-900 to-black text-white font-sans overflow-hidden flex flex-col';
+
     return (
-        <div className="h-screen w-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-gray-900 to-black text-white font-sans overflow-hidden flex flex-col">
+        <div className={shellClassName}>
             {/* Custom Title Bar */}
-            <div className="h-10 shrink-0 w-full flex justify-between items-center px-4 bg-black/20 backdrop-blur-md border-b border-white/5 drag-region select-none z-50">
+            <div className="app-titlebar h-10 shrink-0 w-full flex justify-between items-center px-4 bg-black/20 backdrop-blur-md border-b border-white/5 drag-region select-none z-50">
                 <div className="flex items-center gap-2">
-                    <img src="./img/logo.svg" alt="Icon" className="w-4 h-4" />
+                    <img src="/img/ArcBridgeGradient.png" alt="Icon" className="h-4 w-auto" />
                     <span className="text-xs font-medium text-gray-400">GW2 Arc Log Uploader</span>
                 </div>
                 <div className="flex items-center gap-4 no-drag">
@@ -601,22 +616,22 @@ function App() {
             </div>
 
             {/* Background Orbs */}
-            <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[100px] pointer-events-none" />
-            <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[100px] pointer-events-none" />
+            <div className="legacy-orb absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[100px] pointer-events-none" />
+            <div className="legacy-orb absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[100px] pointer-events-none" />
 
-            <div className="relative z-10 max-w-5xl mx-auto p-8 flex-1 w-full flex flex-col min-h-0">
-                <header className="flex justify-between items-center mb-10 shrink-0">
+            <div className="app-content relative z-10 max-w-5xl mx-auto p-8 flex-1 w-full flex flex-col min-h-0">
+                <header className="app-header flex justify-between items-center mb-10 shrink-0">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-3"
                     >
-                        <div className="p-2 bg-blue-500/20 rounded-lg backdrop-blur-sm border border-blue-500/30">
-                            <UploadCloud className="w-10 h-10 text-blue-400" />
+                        <div className="flex items-center gap-3">
+                            <img src="/img/ArcBridgeGradient.png" alt="ArcBridge" className="h-8 w-auto rounded-md" />
+                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                                GW2 Arc Log Uploader
+                            </h1>
                         </div>
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                            GW2 Arc Log Uploader
-                        </h1>
                     </motion.div>
                     <div className="flex items-center gap-3">
                         <AnimatePresence mode="wait">
@@ -714,7 +729,7 @@ function App() {
                 </header>
 
                 {view === 'stats' ? (
-                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} statsViewSettings={statsViewSettings} />
+                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} statsViewSettings={statsViewSettings} uiTheme={uiTheme} />
                 ) : view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}
@@ -722,10 +737,11 @@ function App() {
                         onMvpWeightsSaved={setMvpWeights}
                         onStatsViewSettingsSaved={setStatsViewSettings}
                         onDisruptionMethodSaved={setDisruptionMethod}
+                        onUiThemeSaved={setUiTheme}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
+                    <div className="dashboard-view grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
                         <div className="space-y-6 overflow-y-auto pr-2">
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}

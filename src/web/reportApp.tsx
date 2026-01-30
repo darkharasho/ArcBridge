@@ -148,6 +148,7 @@ export function ReportApp() {
     const [theme, setTheme] = useState<WebTheme | null>(null);
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [tocOpen, setTocOpen] = useState(false);
+    const [uiTheme, setUiTheme] = useState<'classic' | 'modern'>('classic');
     const basePath = useMemo(() => {
         let pathName = window.location.pathname || '/';
         if (pathName.endsWith('/index.html')) {
@@ -207,7 +208,12 @@ export function ReportApp() {
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
-                setReport(normalizeCommanderDistance(data));
+                const normalized = normalizeCommanderDistance(data);
+                setReport(normalized);
+                const themeChoice = normalized?.stats?.uiTheme;
+                if (themeChoice === 'modern' || themeChoice === 'classic') {
+                    setUiTheme(themeChoice);
+                }
             })
             .catch(() => {
                 if (reportId) {
@@ -219,6 +225,7 @@ export function ReportApp() {
                     .then((data) => {
                         if (!isMounted) return;
                         setIndex(Array.isArray(data) ? data : []);
+                        setUiTheme('classic');
                     })
                     .catch(() => {
                         if (!isMounted) return;
@@ -228,7 +235,14 @@ export function ReportApp() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [basePath]);
+
+    useEffect(() => {
+        const body = document.body;
+        body.classList.add('web-report');
+        body.classList.remove('theme-classic', 'theme-modern');
+        body.classList.add(uiTheme === 'modern' ? 'theme-modern' : 'theme-classic');
+    }, [uiTheme]);
 
     useEffect(() => {
         let isMounted = true;
@@ -249,11 +263,31 @@ export function ReportApp() {
 
     useEffect(() => {
         let isMounted = true;
+        fetch(`${basePath}ui-theme.json`, { cache: 'no-store' })
+            .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
+            .then((data) => {
+                if (!isMounted) return;
+                const themeChoice = data?.theme;
+                if (themeChoice === 'modern' || themeChoice === 'classic') {
+                    setUiTheme(themeChoice);
+                }
+            })
+            .catch(() => {
+                if (!isMounted) return;
+                setUiTheme('classic');
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, [basePath]);
+
+    useEffect(() => {
+        let isMounted = true;
         fetch(`${basePath}logo.json`, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
-                const path = data?.path ? String(data.path) : 'logo.png';
+                const path = data?.path ? String(data.path) : 'img/ArcBridge.png';
                 const version = data?.updatedAt ? String(data.updatedAt) : '';
                 const urlBase = `${basePath}${path}`.replace(/\/{2,}/g, '/');
                 const url = version ? `${urlBase}?v=${encodeURIComponent(version)}` : urlBase;

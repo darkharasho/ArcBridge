@@ -5,6 +5,7 @@ import https from 'node:https'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
+import { computeOutgoingConditions } from '../shared/conditionsMetrics';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { DEFAULT_EI_CLI_SETTINGS, loadEiCliJsonForLog, updateEiCliIfNeeded } from './eiCli';
 import { LogWatcher } from './watcher'
@@ -163,6 +164,24 @@ const computeFileHash = (filePath: string): Promise<string> => {
         stream.on('error', reject);
         stream.on('end', () => resolve(hash.digest('hex')));
     });
+};
+
+const attachConditionMetrics = (details: any) => {
+    if (!details || details.conditionMetrics) return details;
+    const players = Array.isArray(details.players) ? details.players : [];
+    const targets = Array.isArray(details.targets) ? details.targets : [];
+    if (!players.length || !targets.length) return details;
+    try {
+        details.conditionMetrics = computeOutgoingConditions({
+            players,
+            targets,
+            skillMap: details.skillMap,
+            buffMap: details.buffMap
+        });
+    } catch (err: any) {
+        console.warn('[Main] Condition metrics failed:', err?.message || err);
+    }
+    return details;
 };
 
 const loadDpsReportCacheEntry = async (hash: string) => {
@@ -327,6 +346,10 @@ const processLogFile = async (filePath: string) => {
                 await saveDpsReportCacheEntry(cacheKey, result, cacheableDetails);
             } else if (cacheKey && cached?.entry?.result && cacheableDetails && !cached?.jsonDetails) {
                 await updateDpsReportCacheDetails(cacheKey, cacheableDetails);
+            }
+
+            if (jsonDetails && !jsonDetails.error) {
+                jsonDetails = attachConditionMetrics(jsonDetails);
             }
 
             win?.webContents.send('upload-status', {
@@ -994,7 +1017,7 @@ const getWebRoot = () => {
 };
 
 function createTray() {
-    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/logo.png');
+    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/ArcBridgeAppIcon.png');
     const icon = nativeImage.createFromPath(iconPath);
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
 
@@ -1041,7 +1064,7 @@ function createTray() {
 function createWindow() {
     const bounds = store.get('windowBounds') as { width: number, height: number } | undefined;
 
-    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/logo.png');
+    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/ArcBridgeAppIcon.png');
     console.log(`[Main] Loading icon from: ${iconPath}`);
     const appIcon = nativeImage.createFromPath(iconPath);
 
@@ -1400,6 +1423,7 @@ if (!gotTheLock) {
                 statsViewSettings: { ...DEFAULT_STATS_VIEW_SETTINGS, ...(store.get('statsViewSettings') as any || {}) },
                 disruptionMethod: store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD),
                 eiCliSettings: { ...DEFAULT_EI_SETTINGS, ...(store.get('eiCliSettings') as any || {}) },
+                uiTheme: store.get('uiTheme', 'classic'),
                 autoUpdateSupported: updateSupported,
                 autoUpdateDisabledReason: updateDisabledReason,
                 githubRepoOwner: store.get('githubRepoOwner', null),
@@ -1424,7 +1448,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, eiCliSettings?: any, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, eiCliSettings?: any, uiTheme?: 'classic' | 'modern', githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -1475,6 +1499,9 @@ if (!gotTheLock) {
             }
             if (settings.eiCliSettings !== undefined) {
                 store.set('eiCliSettings', settings.eiCliSettings);
+            }
+            if (settings.uiTheme !== undefined) {
+                store.set('uiTheme', settings.uiTheme);
             }
             if (settings.githubRepoOwner !== undefined) {
                 store.set('githubRepoOwner', settings.githubRepoOwner);
@@ -2075,6 +2102,9 @@ if (!gotTheLock) {
                 reportIds.forEach((id) => {
                     queueFile(withPagesPath(pagesPath, `reports/${id}/theme.json`), themeBuffer);
                 });
+                const uiTheme = store.get('uiTheme', 'classic') as string;
+                const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiTheme }, null, 2));
+                queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
 
                 if (pendingEntries.length === 0) {
                     sendGithubThemeStatus('Complete', 'Theme already up to date.', 100);
@@ -2298,6 +2328,9 @@ if (!gotTheLock) {
                     const themeBuffer = Buffer.from(JSON.stringify(selectedTheme, null, 2));
                     queueFile(withPagesPath(pagesPath, 'theme.json'), themeBuffer);
                 }
+                const uiTheme = store.get('uiTheme', 'classic') as string;
+                const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiTheme }, null, 2));
+                queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
                 const logoPath = store.get('githubLogoPath') as string | undefined;
                 if (logoPath && fs.existsSync(logoPath)) {
                 const logoBuffer = fs.readFileSync(logoPath);

@@ -17,6 +17,7 @@ interface StatsViewProps {
     disruptionMethod?: DisruptionMethod;
     precomputedStats?: any;
     embedded?: boolean;
+    uiTheme?: 'classic' | 'modern';
 }
 
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
@@ -503,7 +504,7 @@ interface SkillUsageSummary {
     resUtilitySkills?: Array<{ id: string; name: string }>;
 }
 
-export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disruptionMethod, precomputedStats, embedded = false }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disruptionMethod, precomputedStats, embedded = false, uiTheme }: StatsViewProps) {
     const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
@@ -1277,7 +1278,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             }
             });
 
-            const conditionResult = computeOutgoingConditions({
+            const conditionResult = log?.details?.conditionMetrics || computeOutgoingConditions({
                 players: conditionPlayers,
                 targets: conditionTargets,
                 skillMap: conditionSkillMap,
@@ -2789,7 +2790,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     ...stats,
                     skillUsageData,
                     statsViewSettings: activeStatsViewSettings,
-                    eiParserUsed: hasEiDetails
+                    eiParserUsed: hasEiDetails,
+                    uiTheme: uiTheme || 'classic'
                 }
             });
             if (result?.success) {
@@ -3039,11 +3041,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const sortedEnemyClassData = [...stats.enemyClassData].sort(sortByCountDesc);
 
     const containerClass = embedded
-        ? 'min-h-screen flex flex-col p-1 w-full max-w-6xl mx-auto'
-        : 'h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
+        ? 'stats-view min-h-screen flex flex-col p-1 w-full max-w-6xl mx-auto'
+        : 'stats-view h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
     const scrollContainerClass = embedded
-        ? 'space-y-6 min-h-0 p-4 rounded-xl'
-        : 'flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-[#0f172a] p-4 rounded-xl';
+        ? 'space-y-6 min-h-0 p-4 rounded-xl bg-black/20 border border-white/5 backdrop-blur-xl'
+        : 'flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl backdrop-blur-2xl';
     const scrollContainerStyle: CSSProperties | undefined = embedded
         ? {
             backgroundColor: 'rgba(3, 7, 18, 0.75)',
@@ -3415,7 +3417,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     {showMvp && (
                     <>
                     <div className="mb-6">
-                        <div className="bg-gradient-to-r from-yellow-500/20 via-orange-500/10 to-transparent border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden group">
+                        <div className="mvp-card mvp-card--gold border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden group">
                             {/* Glow Effect */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-yellow-500/20 transition-all" />
 
@@ -3427,17 +3429,17 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
-                                        <span className="text-yellow-500 font-bold uppercase tracking-widest text-xs">Squad MVP</span>
+                                        <span className="text-yellow-400 font-bold uppercase tracking-widest text-xs">Squad MVP</span>
                                     </div>
                                     <div className="text-3xl font-black text-white mb-2 flex items-center gap-3">
                                         {stats.mvp.account}
                                         {renderProfessionIcon(stats.mvp.profession, stats.mvp.professionList, 'w-6 h-6')}
-                                        <span className="text-lg font-medium text-gray-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                                        <span className="text-lg font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 rounded border border-yellow-500/20">
                                             {stats.mvp.profession}
                                         </span>
                                     </div>
-                                    <p className="text-gray-300 italic flex items-center gap-2 mb-3">
-                                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500/50" />
+                                    <p className="text-yellow-200/80 italic flex items-center gap-2 mb-3">
+                                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-500/40" />
                                         "{stats.mvp.reason}"
                                     </p>
 
@@ -3457,10 +3459,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                             ? 'rd'
                                                             : 'th';
                                             return (
-                                                <div key={i} className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs">
+                                                <div key={i} className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full text-xs">
                                                     <span className="text-yellow-200 font-bold">{stat.name}</span>
-                                                    <span className="text-white font-mono">{stat.val}</span>
-                                                    <span className="text-yellow-500/50 text-[10px]">({rank}{suffix})</span>
+                                                    <span className="text-yellow-50 font-mono">{stat.val}</span>
+                                                    <span className="text-yellow-400/60 text-[10px]">({rank}{suffix})</span>
                                                 </div>
                                             );
                                         })}
@@ -3478,15 +3480,19 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         {[
-                            { label: 'Silver', data: stats.silver, color: 'from-slate-400/20 to-slate-700/10', accent: 'text-slate-200' },
-                            { label: 'Bronze', data: stats.bronze, color: 'from-orange-500/25 to-amber-900/15', accent: 'text-orange-200' }
+                            { label: 'Silver', data: stats.silver, accent: 'text-slate-200' },
+                            { label: 'Bronze', data: stats.bronze, accent: 'text-orange-200' }
                         ].map((entry) => (
                             <div
                                 key={entry.label}
-                                className={`bg-gradient-to-r ${entry.color} border border-white/10 rounded-2xl p-4`}
+                                className={`mvp-card mvp-card--${entry.label.toLowerCase()} border border-white/10 rounded-2xl p-4 relative overflow-hidden group`}
                             >
+                                <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[70px] pointer-events-none transition-all ${entry.label === 'Silver'
+                                    ? 'bg-slate-300/15 group-hover:bg-slate-300/25'
+                                    : 'bg-orange-400/15 group-hover:bg-orange-400/25'
+                                    }`} />
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className={`text-xs uppercase tracking-widest font-semibold ${entry.accent}`}>
+                                    <div className={`text-xs uppercase tracking-widest font-semibold ${entry.label === 'Silver' ? 'text-slate-200' : 'text-orange-200'}`}>
                                         {entry.label} MVP
                                     </div>
                                     <div className="text-xs text-gray-500 font-mono">
@@ -3496,15 +3502,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 <div className="flex items-center gap-3">
                                     {entry.data && renderProfessionIcon(entry.data.profession, entry.data.professionList, 'w-6 h-6')}
                                     <div className="min-w-0 flex-1">
-                                        <div className="text-lg font-semibold text-white truncate">
+                                        <div className={`text-lg font-semibold ${entry.label === 'Silver' ? 'text-slate-100' : 'text-orange-100'} truncate`}>
                                             {entry.data?.account || '—'}
                                         </div>
-                                        <div className="text-xs text-gray-400 truncate">
+                                        <div className={`text-xs ${entry.label === 'Silver' ? 'text-slate-300/70' : 'text-orange-200/70'} truncate`}>
                                             {entry.data?.profession || 'Unknown'}
                                         </div>
                                     </div>
                                     {entry.data?.topStats?.some((stat: any) => isMvpStatEnabled(stat.name)) ? (
-                                        <div className="flex flex-col items-end gap-1 text-[10px] text-gray-300">
+                                        <div className={`flex flex-col items-end gap-1 text-[10px] ${entry.label === 'Silver' ? 'text-slate-200' : 'text-orange-200'}`}>
                                             {entry.data.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, idx: number) => {
                                                 const rank = Math.max(1, Math.round(stat.ratio));
                                                 const mod100 = rank % 100;
@@ -3519,7 +3525,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                                 ? 'rd'
                                                                 : 'th';
                                                 return (
-                                                    <span key={idx} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
+                                                    <span
+                                                        key={idx}
+                                                        className={`px-2 py-0.5 rounded-full border ${entry.label === 'Silver'
+                                                            ? 'bg-slate-400/10 border-slate-300/30'
+                                                            : 'bg-orange-500/10 border-orange-400/30'
+                                                            }`}
+                                                    >
                                                         {stat.name} {rank}{suffix}
                                                     </span>
                                                 );

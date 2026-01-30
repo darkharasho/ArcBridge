@@ -106,13 +106,13 @@
                 "deb"
             ],
             "category": "Utility",
-            "icon": "public/img/logo.png"
+            "icon": "public/img/ArcBridgeAppIcon.png"
         },
         "win": {
             "target": [
                 "nsis"
             ],
-            "icon": "public/img/logo.png"
+            "icon": "public/img/ArcBridgeAppIcon.png"
         },
         "nsis": {
             "oneClick": true,

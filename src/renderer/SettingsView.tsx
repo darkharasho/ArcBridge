@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Terminal } from 'lucide-react';
-import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, IEiCliSettings, DEFAULT_EI_CLI_SETTINGS } from './global.d';
+import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, IEiCliSettings, DEFAULT_EI_CLI_SETTINGS, UiTheme, DEFAULT_UI_THEME } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
@@ -15,6 +15,7 @@ interface SettingsViewProps {
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
     onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
+    onUiThemeSaved?: (theme: UiTheme) => void;
 }
 
 // Toggle switch component
@@ -79,7 +80,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
@@ -87,6 +88,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [eiCliSettings, setEiCliSettings] = useState<IEiCliSettings>(DEFAULT_EI_CLI_SETTINGS);
+    const [uiTheme, setUiTheme] = useState<UiTheme>(DEFAULT_UI_THEME);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -154,6 +156,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
             setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...(settings.statsViewSettings || {}) });
             setEiCliSettings({ ...DEFAULT_EI_CLI_SETTINGS, ...(settings.eiCliSettings || {}) });
+            setUiTheme((settings.uiTheme as UiTheme) || DEFAULT_UI_THEME);
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
             }
@@ -181,6 +184,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             statsViewSettings: statsViewSettings,
             disruptionMethod: disruptionMethod,
             eiCliSettings: eiCliSettings,
+            uiTheme,
             githubRepoName: githubRepoName || null,
             githubRepoOwner: githubRepoOwner || null,
             githubToken: githubToken || null,
@@ -191,6 +195,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         onMvpWeightsSaved?.(mvpWeights);
         onStatsViewSettingsSaved?.(statsViewSettings);
         onDisruptionMethodSaved?.(disruptionMethod);
+        onUiThemeSaved?.(uiTheme);
 
         setTimeout(() => {
             setIsSaving(false);
@@ -213,6 +218,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         statsViewSettings,
         disruptionMethod,
         eiCliSettings,
+        uiTheme,
         githubRepoName,
         githubRepoOwner,
         githubToken,
@@ -627,7 +633,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         embedStats.showDeaths && embedStats.showDodges;
 
     return (
-        <div className="flex flex-col h-full min-h-0">
+        <div className="settings-view flex flex-col h-full min-h-0">
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -678,6 +684,33 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             </motion.div>
 
             <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+                <SettingsSection title="Appearance" icon={Sparkles} delay={0.02}>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Switch between the classic interface and the new slate/pearl redesign.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setUiTheme('classic')}
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-colors ${uiTheme === 'classic'
+                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:border-white/30'
+                                }`}
+                        >
+                            Classic (Default)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setUiTheme('modern')}
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-colors ${uiTheme === 'modern'
+                                ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:border-white/30'
+                                }`}
+                        >
+                            Modern Pearl
+                        </button>
+                    </div>
+                </SettingsSection>
                 {/* DPS Report Token Section */}
                 <SettingsSection title="dps.report User Token" icon={Key} delay={0.05}>
                     <p className="text-sm text-gray-400 mb-4">
