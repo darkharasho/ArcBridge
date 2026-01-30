@@ -2102,6 +2102,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     .map((t) => Number(t?.teamID ?? t?.teamId))
                     .filter((id) => Number.isFinite(id))
             ));
+            const allyTeamIds = Array.from(new Set(
+                allyPlayers
+                    .map((p) => Number(p?.teamID ?? p?.teamId))
+                    .filter((id) => Number.isFinite(id))
+            ));
+            const relevantTeamIds = new Set<number>([...teamIds, ...allyTeamIds]);
             const colorOrder = ['red', 'green', 'blue'] as const;
 
             const teamColorMap = new Map<number, typeof colorOrder[number]>();
@@ -2127,7 +2133,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 }
             }
 
-            const usedColors = new Set(teamColorMap.values());
+            const usedColors = new Set(
+                Array.from(teamColorMap.entries())
+                    .filter(([id]) => relevantTeamIds.has(id))
+                    .map(([, color]) => color)
+            );
             const remainingColors = colorOrder.filter((c) => !usedColors.has(c));
             const unmappedIds = teamIds.filter((id) => !teamColorMap.has(id)).sort((a, b) => a - b);
             unmappedIds.forEach((id, idx) => {
