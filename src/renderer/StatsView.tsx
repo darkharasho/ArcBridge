@@ -2378,7 +2378,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     playerRecord = {
                         key,
                         account,
-                        displayName: player.display_name || player.character_name || player.name || account,
+                        displayName: player.account || account,
                         profession,
                         professionList: player.profession ? [player.profession] : [],
                         logs: 0,

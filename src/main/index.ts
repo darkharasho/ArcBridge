@@ -764,7 +764,10 @@ const updateGithubRef = async (owner: string, repo: string, branch: string, toke
         force: false
     });
     if (resp.status >= 300) {
-        throw new Error(`GitHub API error (${resp.status}) updating ref`);
+        const err = new Error(`GitHub API error (${resp.status}) updating ref`);
+        (err as any).status = resp.status;
+        (err as any).data = resp.data;
+        throw err;
     }
     return resp.data;
 };
@@ -2327,7 +2330,8 @@ if (!gotTheLock) {
                     await publishCommit(baseTreeSha, headSha);
                 } catch (err: any) {
                     const message = String(err?.message || '');
-                    if (!message.includes('(422)')) {
+                    const status = Number(err?.status);
+                    if (status !== 422 && !message.includes('(422)')) {
                         throw err;
                     }
                     sendWebUploadStatus('Finalizing', 'Retrying publish after concurrent update...', 92);
