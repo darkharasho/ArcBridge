@@ -2,8 +2,8 @@ import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
-import { spawn, spawnSync } from 'child_process';
-import zlib from 'zlib';
+import { spawn } from 'child_process';
+import { getWorkerPool } from '../workers/main/workerPool';
 
 const AdmZip = require('adm-zip');
 
@@ -142,21 +142,29 @@ const resolveCliBinaries = async () => {
     return { exe, dll };
 };
 
-const commandExists = (command: string) => {
+const commandExists = async (command: string): Promise<boolean> => {
     const checker = process.platform === 'win32' ? 'where' : 'which';
-    const result = spawnSync(checker, [command], { stdio: 'ignore' });
-    return result.status === 0;
+    return new Promise((resolve) => {
+        const child = spawn(checker, [command], { stdio: 'ignore' });
+        child.on('close', (code) => resolve(code === 0));
+        child.on('error', () => resolve(false));
+    });
 };
 
 const ensureNativeDotnet = async (allowInstall: boolean) => {
     const existing = getEiDotnetPath();
-    if (fs.existsSync(existing)) return existing;
+    try {
+        await fs.promises.access(existing);
+        return existing;
+    } catch {
+        // File doesn't exist, continue
+    }
     if (!allowInstall) return null;
     await fs.promises.mkdir(getEiDotnetInstallDir(), { recursive: true });
     const scriptPath = path.join(getEiBaseDir(), 'dotnet-install.sh');
     await downloadFile(DOTNET_INSTALL_URL, scriptPath);
     try {
-        fs.chmodSync(scriptPath, 0o755);
+        await fs.promises.chmod(scriptPath, 0o755);
     } catch {
         // ignore chmod failures
     }
@@ -170,20 +178,31 @@ const ensureNativeDotnet = async (allowInstall: boolean) => {
         });
         child.on('error', reject);
     });
-    return fs.existsSync(existing) ? existing : null;
+    try {
+        await fs.promises.access(existing);
+        return existing;
+    } catch {
+        return null;
+    }
+};
+
+const runWinepath = (p: string): Promise<string> => {
+    return new Promise((resolve) => {
+        const child = spawn('winepath', ['-w', p], { encoding: 'utf8' } as any);
+        let stdout = '';
+        child.stdout?.on('data', (data) => { stdout += data; });
+        child.on('close', (code) => {
+            resolve(code === 0 ? stdout.trim() : p);
+        });
+        child.on('error', () => resolve(p));
+    });
 };
 
 const resolveWinePaths = async (pathsToConvert: string[]) => {
-    if (!commandExists('winepath')) {
+    if (!(await commandExists('winepath'))) {
         return pathsToConvert;
     }
-    const converted: string[] = [];
-    for (const p of pathsToConvert) {
-        const result = spawnSync('winepath', ['-w', p], { encoding: 'utf8' });
-        const value = result.status === 0 ? result.stdout.trim() : '';
-        converted.push(value || p);
-    }
-    return converted;
+    return Promise.all(pathsToConvert.map(runWinepath));
 };
 
 const ensureEiCliInstalled = async (settings: EiCliSettings): Promise<{ ok: boolean; version?: string; error?: string }> => {
@@ -335,12 +354,8 @@ const pickOutputFile = async (outputDir: string, baseName: string) => {
 };
 
 const readOutputJson = async (filePath: string) => {
-    const raw = await fs.promises.readFile(filePath);
-    if (filePath.toLowerCase().endsWith('.gz')) {
-        const inflated = zlib.gunzipSync(raw);
-        return JSON.parse(inflated.toString('utf8'));
-    }
-    return JSON.parse(raw.toString('utf8'));
+    const isGzipped = filePath.toLowerCase().endsWith('.gz');
+    return getWorkerPool().parseJson(filePath, isGzipped);
 };
 
 export const loadEiCliJsonForLog = async (payload: {
@@ -375,13 +390,13 @@ export const loadEiCliJsonForLog = async (payload: {
     const dllPath = binaries.dll;
     let dotnetPath: string | null = null;
     if (dllPath) {
-        dotnetPath = commandExists('dotnet') ? 'dotnet' : null;
+        dotnetPath = (await commandExists('dotnet')) ? 'dotnet' : null;
         if (!dotnetPath && process.platform !== 'win32') {
             dotnetPath = await ensureNativeDotnet(settings.autoSetup !== false);
         }
     }
     const hasDotnet = Boolean(dotnetPath);
-    const hasWine = commandExists('wine') && Boolean(exePath);
+    const hasWine = (await commandExists('wine')) && Boolean(exePath);
 
     let runtime: 'native' | 'dotnet' | 'wine' | null = null;
     if (process.platform === 'win32' && exePath) {

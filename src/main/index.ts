@@ -2,14 +2,14 @@ import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } f
 import fs from 'fs'
 import path from 'node:path'
 import https from 'node:https'
-import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
-import { computeOutgoingConditions } from '../shared/conditionsMetrics';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { DEFAULT_EI_CLI_SETTINGS, loadEiCliJsonForLog, updateEiCliIfNeeded } from './eiCli';
 import { LogWatcher } from './watcher'
 import { Uploader, UploadResult } from './uploader'
+import { initWorkerPool, shutdownWorkerPool, getWorkerPool } from '../workers/main/workerPool';
 import { DiscordNotifier } from './discord';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -157,22 +157,16 @@ const pruneDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) =>
 };
 
 const computeFileHash = (filePath: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const hash = createHash('sha256');
-        const stream = fs.createReadStream(filePath);
-        stream.on('data', (chunk) => hash.update(chunk));
-        stream.on('error', reject);
-        stream.on('end', () => resolve(hash.digest('hex')));
-    });
+    return getWorkerPool().hash(filePath);
 };
 
-const attachConditionMetrics = (details: any) => {
+const attachConditionMetrics = async (details: any): Promise<any> => {
     if (!details || details.conditionMetrics) return details;
     const players = Array.isArray(details.players) ? details.players : [];
     const targets = Array.isArray(details.targets) ? details.targets : [];
     if (!players.length || !targets.length) return details;
     try {
-        details.conditionMetrics = computeOutgoingConditions({
+        details.conditionMetrics = await getWorkerPool().computeMetrics({
             players,
             targets,
             skillMap: details.skillMap,
@@ -208,7 +202,7 @@ const loadDpsReportCacheEntry = async (hash: string) => {
 const saveDpsReportCacheEntry = async (hash: string, result: UploadResult, jsonDetails: any | null) => {
     const cacheDir = getDpsReportCacheDir();
     try {
-        fs.mkdirSync(cacheDir, { recursive: true });
+        await fs.promises.mkdir(cacheDir, { recursive: true });
     } catch {
         // Cache directory creation failures should not block uploads.
     }
@@ -239,7 +233,7 @@ const saveDpsReportCacheEntry = async (hash: string, result: UploadResult, jsonD
 const updateDpsReportCacheDetails = async (hash: string, jsonDetails: any) => {
     const cacheDir = getDpsReportCacheDir();
     try {
-        fs.mkdirSync(cacheDir, { recursive: true });
+        await fs.promises.mkdir(cacheDir, { recursive: true });
     } catch {
         return;
     }
@@ -349,7 +343,7 @@ const processLogFile = async (filePath: string) => {
             }
 
             if (jsonDetails && !jsonDetails.error) {
-                jsonDetails = attachConditionMetrics(jsonDetails);
+                jsonDetails = await attachConditionMetrics(jsonDetails);
             }
 
             win?.webContents.send('upload-status', {
@@ -1186,6 +1180,9 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
     isQuitting = true;
+    shutdownWorkerPool().catch((err) => {
+        console.warn('[Main] Worker pool shutdown error:', err?.message || err);
+    });
 });
 
 app.on('open-url', (event) => {
@@ -1217,6 +1214,14 @@ if (!gotTheLock) {
         }
         createWindow();
         createTray();
+
+        // Initialize background worker pool for CPU-intensive tasks
+        try {
+            await initWorkerPool();
+            console.log('[Main] Worker pool initialized');
+        } catch (err: any) {
+            console.warn('[Main] Worker pool init failed, will use fallback:', err?.message || err);
+        }
 
         const eiCliSettings = store.get('eiCliSettings', DEFAULT_EI_CLI_SETTINGS) as any;
         if (eiCliSettings?.enabled && eiCliSettings?.autoUpdate !== false) {

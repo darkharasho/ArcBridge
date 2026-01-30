@@ -8,6 +8,7 @@ import { getProfessionColor, getProfessionIconPath } from '../shared/professionU
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IMvpWeights, IStatsViewSettings } from './global.d';
 import { computeOutgoingConditions, resolveConditionNameFromEntry } from '../shared/conditionsMetrics';
+import { useStatsWorker } from '../workers/renderer/useStatsWorker';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -576,6 +577,17 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const expandedCloseTimerRef = useRef<number | null>(null);
     const [fightBreakdownTab, setFightBreakdownTab] = useState<'sizes' | 'outcomes' | 'damage' | 'barrier'>('sizes');
     const [skillUsageView, setSkillUsageView] = useState<'total' | 'perSecond'>('total');
+
+    // Worker-based stats computation (for large log sets)
+    const validLogsForWorker = logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details);
+    const useWorkerComputation = validLogsForWorker.length > 100 && !precomputedStats;
+    const workerStats = useStatsWorker(
+        useWorkerComputation ? logs : [],
+        activeMvpWeights,
+        activeStatsViewSettings,
+        method,
+        useWorkerComputation ? undefined : precomputedStats
+    );
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -1294,7 +1306,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             Object.entries(conditionResult.playerConditions).forEach(([key, conditionTotals]) => {
                 const playerStat = playerStats.get(key);
                 if (!playerStat) return;
-                Object.entries(conditionTotals).forEach(([conditionName, entry]) => {
+                Object.entries(conditionTotals as Record<string, { applications: number; damage: number; skills: Record<string, { name: string; hits: number; damage: number }>; applicationsFromBuffs?: number }>).forEach(([conditionName, entry]) => {
                     const existing = playerStat.outgoingConditions[conditionName] || {
                         applications: 0,
                         damage: 0,
@@ -1315,7 +1327,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 });
             });
 
-            Object.entries(conditionResult.summary).forEach(([conditionName, entry]) => {
+            Object.entries(conditionResult.summary as Record<string, { name: string; applications: number; damage: number; applicationsFromBuffs?: number }>).forEach(([conditionName, entry]) => {
                 const existing = outgoingCondiTotals[conditionName] || {
                     name: entry.name || conditionName,
                     applications: 0,
@@ -2308,12 +2320,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         };
     }, [validLogs, precomputedStats]);
 
+    // Use worker stats when available and computing large datasets
+    const finalStats = (useWorkerComputation && workerStats.stats) ? workerStats.stats : stats;
+    const isStatsLoading = useWorkerComputation && workerStats.isComputing;
+
     const conditionSummary = conditionDirection === 'outgoing'
-        ? stats.outgoingConditionSummary
-        : stats.incomingConditionSummary;
+        ? finalStats.outgoingConditionSummary
+        : finalStats.incomingConditionSummary;
     const conditionPlayers = conditionDirection === 'outgoing'
-        ? stats.outgoingConditionPlayers
-        : stats.incomingConditionPlayers;
+        ? finalStats.outgoingConditionPlayers
+        : finalStats.incomingConditionPlayers;
 
     const skillUsageData = useMemo<SkillUsageSummary>(() => {
         const precomputedSkillUsage = precomputedStats?.skillUsageData as SkillUsageSummary | undefined;
@@ -2664,37 +2680,37 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
     const filteredBoonTables = useMemo(() => {
         const term = boonSearch.trim().toLowerCase();
-        if (!term) return stats.boonTables;
-        return stats.boonTables.filter((boon: any) => boon.name.toLowerCase().includes(term));
-    }, [stats.boonTables, boonSearch]);
+        if (!term) return finalStats.boonTables;
+        return finalStats.boonTables.filter((boon: any) => boon.name.toLowerCase().includes(term));
+    }, [finalStats.boonTables, boonSearch]);
     const activeBoonTable = useMemo(() => {
         if (!activeBoonTab) return null;
-        return stats.boonTables.find((boon: any) => boon.id === activeBoonTab) ?? null;
-    }, [stats.boonTables, activeBoonTab]);
+        return finalStats.boonTables.find((boon: any) => boon.id === activeBoonTab) ?? null;
+    }, [finalStats.boonTables, activeBoonTab]);
     const filteredSpecialTables = useMemo(() => {
         const term = specialSearch.trim().toLowerCase();
-        const sorted = [...stats.specialTables].sort((a: any, b: any) => a.name.localeCompare(b.name));
+        const sorted = [...finalStats.specialTables].sort((a: any, b: any) => a.name.localeCompare(b.name));
         if (!term) return sorted;
         return sorted.filter((buff: any) => buff.name.toLowerCase().includes(term));
-    }, [stats.specialTables, specialSearch]);
+    }, [finalStats.specialTables, specialSearch]);
     const activeSpecialTable = useMemo(() => {
         if (!activeSpecialTab) return null;
-        return stats.specialTables.find((buff: any) => buff.id === activeSpecialTab) ?? null;
-    }, [stats.specialTables, activeSpecialTab]);
+        return finalStats.specialTables.find((buff: any) => buff.id === activeSpecialTab) ?? null;
+    }, [finalStats.specialTables, activeSpecialTab]);
 
     useEffect(() => {
-        if (!stats.boonTables || stats.boonTables.length === 0) return;
-        if (!activeBoonTab || !stats.boonTables.some((tab: any) => tab.id === activeBoonTab)) {
-            setActiveBoonTab(stats.boonTables[0].id);
+        if (!finalStats.boonTables || finalStats.boonTables.length === 0) return;
+        if (!activeBoonTab || !finalStats.boonTables.some((tab: any) => tab.id === activeBoonTab)) {
+            setActiveBoonTab(finalStats.boonTables[0].id);
         }
-    }, [stats.boonTables, activeBoonTab]);
+    }, [finalStats.boonTables, activeBoonTab]);
 
     useEffect(() => {
-        if (!stats.specialTables || stats.specialTables.length === 0) return;
-        if (!activeSpecialTab || !stats.specialTables.some((tab: any) => tab.id === activeSpecialTab)) {
-            setActiveSpecialTab(stats.specialTables[0].id);
+        if (!finalStats.specialTables || finalStats.specialTables.length === 0) return;
+        if (!activeSpecialTab || !finalStats.specialTables.some((tab: any) => tab.id === activeSpecialTab)) {
+            setActiveSpecialTab(finalStats.specialTables[0].id);
         }
-    }, [stats.specialTables, activeSpecialTab]);
+    }, [finalStats.specialTables, activeSpecialTab]);
 
     useEffect(() => {
         const clearSelection = () => {
@@ -3037,8 +3053,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         if (diff !== 0) return diff;
         return String(a?.name || '').localeCompare(String(b?.name || ''));
     };
-    const sortedSquadClassData = [...stats.squadClassData].sort(sortByCountDesc);
-    const sortedEnemyClassData = [...stats.enemyClassData].sort(sortByCountDesc);
+    const sortedSquadClassData = [...finalStats.squadClassData].sort(sortByCountDesc);
+    const sortedEnemyClassData = [...finalStats.enemyClassData].sort(sortByCountDesc);
 
     const containerClass = embedded
         ? 'stats-view min-h-screen flex flex-col p-1 w-full max-w-6xl mx-auto'
@@ -3055,6 +3071,23 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
     return (
         <div className={containerClass}>
+            {isStatsLoading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-800 border border-white/10 rounded-xl p-6 shadow-xl flex flex-col items-center gap-4">
+                        <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
+                        <div className="text-white font-medium">Computing Statistics...</div>
+                        <div className="text-sm text-gray-400">{workerStats.stage || 'Processing logs'}</div>
+                        {workerStats.progress > 0 && (
+                            <div className="w-48 bg-slate-700 rounded-full h-2 overflow-hidden">
+                                <div
+                                    className="bg-blue-500 h-full transition-all duration-300"
+                                    style={{ width: `${workerStats.progress}%` }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
             {expandedSection && (
                 <div
                     className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-md modal-backdrop ${
@@ -3080,7 +3113,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             Statistics Dashboard
                         </h1>
                         <p className="text-gray-400 text-xs">
-                            Performance across {stats.total} uploaded logs
+                            Performance across {finalStats.total} uploaded logs
                         </p>
                     </div>
                 </div>
@@ -3189,16 +3222,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     <div
                         className="bg-gradient-to-br from-green-500/20 to-emerald-900/20 border border-green-500/30 rounded-2xl p-6 flex flex-col items-center justify-center relative"
                     >
-                        <div className="text-5xl font-black text-green-400">{stats.wins}</div>
+                        <div className="text-5xl font-black text-green-400">{finalStats.wins}</div>
                         <div className="text-green-200/50 font-bold uppercase tracking-widest text-sm mt-2 mb-4">Victories</div>
 
                         <div className={`grid grid-cols-2 gap-4 pt-3 w-full ${embedded ? 'border-t border-white/10' : 'border-t border-green-500/20'}`}>
                             <div className="flex flex-col items-center">
-                                <div className="text-green-200 text-lg font-bold">{stats.avgSquadSize}</div>
+                                <div className="text-green-200 text-lg font-bold">{finalStats.avgSquadSize}</div>
                                 <div className="text-green-200/40 text-[10px] uppercase font-bold tracking-wider">Avg Squad</div>
                             </div>
                             <div className="flex flex-col items-center">
-                                <div className="text-green-200 text-lg font-bold">{stats.squadKDR}</div>
+                                <div className="text-green-200 text-lg font-bold">{finalStats.squadKDR}</div>
                                 <div className="text-green-200/40 text-[10px] uppercase font-bold tracking-wider">Squad KDR</div>
                             </div>
                         </div>
@@ -3206,16 +3239,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     <div
                         className="bg-gradient-to-br from-red-500/20 to-rose-900/20 border border-red-500/30 rounded-2xl p-6 flex flex-col items-center justify-center relative"
                     >
-                        <div className="text-5xl font-black text-red-400">{stats.losses}</div>
+                        <div className="text-5xl font-black text-red-400">{finalStats.losses}</div>
                         <div className="text-red-200/50 font-bold uppercase tracking-widest text-sm mt-2 mb-4">Defeats</div>
 
                         <div className={`grid grid-cols-2 gap-4 pt-3 w-full ${embedded ? 'border-t border-white/10' : 'border-t border-red-500/20'}`}>
                             <div className="flex flex-col items-center">
-                                <div className="text-red-200 text-lg font-bold">{stats.avgEnemies}</div>
+                                <div className="text-red-200 text-lg font-bold">{finalStats.avgEnemies}</div>
                                 <div className="text-red-200/40 text-[10px] uppercase font-bold tracking-wider">Avg Enemies</div>
                             </div>
                             <div className="flex flex-col items-center">
-                                <div className="text-red-200 text-lg font-bold">{stats.enemyKDR}</div>
+                                <div className="text-red-200 text-lg font-bold">{finalStats.enemyKDR}</div>
                                 <div className="text-red-200/40 text-[10px] uppercase font-bold tracking-wider">Enemy KDR</div>
                             </div>
                         </div>
@@ -3246,11 +3279,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     </button>
                                 ))}
                                 <span className="text-[10px] uppercase tracking-widest text-gray-500">
-                                    {stats.fightBreakdown?.length || 0} Fights
+                                    {finalStats.fightBreakdown?.length || 0} Fights
                                 </span>
                             </div>
                         </div>
-                        {(stats.fightBreakdown || []).length === 0 ? (
+                        {(finalStats.fightBreakdown || []).length === 0 ? (
                             <div className="text-center text-gray-500 italic py-6">No fight data available</div>
                         ) : (
                             <div className="overflow-x-auto">
@@ -3307,7 +3340,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(stats.fightBreakdown || []).map((fight: any, idx: number) => (
+                                        {(finalStats.fightBreakdown || []).map((fight: any, idx: number) => (
                                             <tr key={fight.id || `${fight.label}-${idx}`} className="border-b border-white/5 hover:bg-white/5">
                                                 <td className="py-2 px-3 text-right font-mono text-gray-500">{idx + 1}</td>
                                                 <td className="py-2 px-3 w-[240px]">
@@ -3432,20 +3465,20 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         <span className="text-yellow-400 font-bold uppercase tracking-widest text-xs">Squad MVP</span>
                                     </div>
                                     <div className="text-3xl font-black text-white mb-2 flex items-center gap-3">
-                                        {stats.mvp.account}
-                                        {renderProfessionIcon(stats.mvp.profession, stats.mvp.professionList, 'w-6 h-6')}
+                                        {finalStats.mvp.account}
+                                        {renderProfessionIcon(finalStats.mvp.profession, finalStats.mvp.professionList, 'w-6 h-6')}
                                         <span className="text-lg font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 rounded border border-yellow-500/20">
-                                            {stats.mvp.profession}
+                                            {finalStats.mvp.profession}
                                         </span>
                                     </div>
                                     <p className="text-yellow-200/80 italic flex items-center gap-2 mb-3">
                                         <Star className="w-4 h-4 text-yellow-400 fill-yellow-500/40" />
-                                        "{stats.mvp.reason}"
+                                        "{finalStats.mvp.reason}"
                                     </p>
 
                                     {/* Top Stats Breakdown */}
                                     <div className="flex flex-wrap gap-2">
-                                        {stats.mvp.topStats && stats.mvp.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, i: number) => {
+                                        {finalStats.mvp.topStats && finalStats.mvp.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, i: number) => {
                                             const rank = Math.max(1, Math.round(stat.ratio));
                                             const mod100 = rank % 100;
                                             const mod10 = rank % 10;
@@ -3471,8 +3504,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
                                 <div className="hidden lg:block text-right">
                                     <div className="text-yellow-500/40 font-mono text-sm uppercase tracking-wider font-bold">Contribution Score</div>
-                                    <div className="text-4xl font-black text-yellow-500/80">{stats.mvp.score > 0 ? stats.mvp.score.toFixed(1) : '-'}</div>
-                                    <div className="text-xs text-yellow-500/30 font-mono mt-1">Avg: {stats.avgMvpScore.toFixed(1)}</div>
+                                    <div className="text-4xl font-black text-yellow-500/80">{finalStats.mvp.score > 0 ? finalStats.mvp.score.toFixed(1) : '-'}</div>
+                                    <div className="text-xs text-yellow-500/30 font-mono mt-1">Avg: {finalStats.avgMvpScore.toFixed(1)}</div>
                                 </div>
                             </div>
                         </div>
@@ -3480,8 +3513,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         {[
-                            { label: 'Silver', data: stats.silver, accent: 'text-slate-200' },
-                            { label: 'Bronze', data: stats.bronze, accent: 'text-orange-200' }
+                            { label: 'Silver', data: finalStats.silver, accent: 'text-slate-200' },
+                            { label: 'Bronze', data: finalStats.bronze, accent: 'text-orange-200' }
                         ].map((entry) => (
                             <div
                                 key={entry.label}
@@ -3547,15 +3580,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
                     {(() => {
                         const leaderCards = [
-                            { icon: HelpingHand, title: 'Down Contribution', data: stats.maxDownContrib, color: 'red', statKey: 'downContrib' },
-                            { icon: Shield, title: 'Total Barrier', data: stats.maxBarrier, color: 'yellow', statKey: 'barrier' },
-                            { icon: Activity, title: 'Total Healing', data: stats.maxHealing, color: 'green', statKey: 'healing' },
-                            { icon: Wind, title: 'Total Dodges', data: stats.maxDodges, color: 'cyan', statKey: 'dodges' },
-                            { icon: Zap, title: 'Total Strips', data: stats.maxStrips, color: 'purple', statKey: 'strips' },
-                            { icon: Flame, title: 'Total Cleanses', data: stats.maxCleanses, color: 'blue', statKey: 'cleanses' },
-                            { icon: Hammer, title: 'Total CC', data: stats.maxCC, color: 'pink', statKey: 'cc' },
-                            { icon: ShieldCheck, title: 'Total Stab Gen', data: stats.maxStab, color: 'cyan', statKey: 'stability' },
-                            { icon: Crosshair, title: 'Closest to Tag', data: stats.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag' }
+                            { icon: HelpingHand, title: 'Down Contribution', data: finalStats.maxDownContrib, color: 'red', statKey: 'downContrib' },
+                            { icon: Shield, title: 'Total Barrier', data: finalStats.maxBarrier, color: 'yellow', statKey: 'barrier' },
+                            { icon: Activity, title: 'Total Healing', data: finalStats.maxHealing, color: 'green', statKey: 'healing' },
+                            { icon: Wind, title: 'Total Dodges', data: finalStats.maxDodges, color: 'cyan', statKey: 'dodges' },
+                            { icon: Zap, title: 'Total Strips', data: finalStats.maxStrips, color: 'purple', statKey: 'strips' },
+                            { icon: Flame, title: 'Total Cleanses', data: finalStats.maxCleanses, color: 'blue', statKey: 'cleanses' },
+                            { icon: Hammer, title: 'Total CC', data: finalStats.maxCC, color: 'pink', statKey: 'cc' },
+                            { icon: ShieldCheck, title: 'Total Stab Gen', data: finalStats.maxStab, color: 'cyan', statKey: 'stability' },
+                            { icon: Crosshair, title: 'Closest to Tag', data: finalStats.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag' }
                         ];
                         const formatValue = (value: number) => Math.round(value).toLocaleString();
                         return (
@@ -3563,7 +3596,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {leaderCards.map((card) => {
                                         const isActive = expandedLeader === card.statKey;
-                                        const rows = stats.leaderboards?.[card.statKey] || [];
+                                        const rows = finalStats.leaderboards?.[card.statKey] || [];
                                         return (
                                         <LeaderCard
                                             key={card.statKey}
@@ -3611,7 +3644,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             </button>
                         </div>
                         <div className={`${expandedSection === 'top-skills-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                            {stats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
+                            {finalStats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                                     <div className="flex-1">
@@ -3625,13 +3658,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-orange-500 rounded-full"
-                                                style={{ width: `${(skill.damage / (stats.topSkills[0]?.damage || 1)) * 100}%` }}
+                                                style={{ width: `${(skill.damage / (finalStats.topSkills[0]?.damage || 1)) * 100}%` }}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             ))}
-                            {stats.topSkills.length === 0 && (
+                            {finalStats.topSkills.length === 0 && (
                                 <div className="text-center text-gray-500 italic py-4">No damage data available</div>
                             )}
                         </div>
@@ -3664,7 +3697,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             </button>
                         </div>
                         <div className={`${expandedSection === 'top-skills-incoming' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                            {stats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
+                            {finalStats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
                                 <div key={i} className="flex items-center gap-4">
                                     <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                                     <div className="flex-1">
@@ -3678,13 +3711,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-red-500 rounded-full"
-                                                style={{ width: `${(skill.damage / (stats.topIncomingSkills[0]?.damage || 1)) * 100}%` }}
+                                                style={{ width: `${(skill.damage / (finalStats.topIncomingSkills[0]?.damage || 1)) * 100}%` }}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             ))}
-                            {stats.topIncomingSkills.length === 0 && (
+                            {finalStats.topIncomingSkills.length === 0 && (
                                 <div className="text-center text-gray-500 italic py-4">No incoming damage data available</div>
                             )}
                         </div>
@@ -3852,12 +3885,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             </div>
                         </div>
                     </div>
-                    {stats.timelineData.length === 0 ? (
+                    {finalStats.timelineData.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-10">No timeline data available</div>
                     ) : (
                         <div className="h-[260px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={stats.timelineData} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
+                                <LineChart data={finalStats.timelineData} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
                                     <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
                                     <XAxis
                                         dataKey="index"
@@ -3917,7 +3950,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={stats.mapData}
+                                    data={finalStats.mapData}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
@@ -3925,7 +3958,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
-                                    {stats.mapData.map((entry: any, index: number) => (
+                                    {finalStats.mapData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
                                     ))}
                                 </Pie>
@@ -3937,7 +3970,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     verticalAlign="bottom"
                                     height={36}
                                     // @ts-ignore
-                                    payload={stats.mapData.map(item => ({
+                                    payload={finalStats.mapData.map(item => ({
                                         id: item.name,
                                         type: 'square',
                                         value: item.name,
@@ -3981,7 +4014,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'boon-output' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
-                    {stats.boonTables.length === 0 ? (
+                    {finalStats.boonTables.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No boon data available</div>
                     ) : (
                         <>
@@ -4134,7 +4167,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'offense-detailed' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
-                    {stats.offensePlayers.length === 0 ? (
+                    {finalStats.offensePlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No offensive stats available</div>
                     ) : (
                         <>
@@ -4191,7 +4224,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         const formatted = formatWithCommas(val, 2);
                                         return metric.isPercent ? `${formatted}%` : formatted;
                                     };
-                                    const rows = [...stats.offensePlayers]
+                                    const rows = [...finalStats.offensePlayers]
                                         .map((row: any) => ({
                                             ...row,
                                             total: totalValue(row),
@@ -4553,7 +4586,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'defense-detailed' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
-                    {stats.defensePlayers.length === 0 ? (
+                    {finalStats.defensePlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No defensive stats available</div>
                     ) : (
                         <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'defense-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
@@ -4592,7 +4625,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                 {(() => {
                                     const metric = DEFENSE_METRICS.find((entry) => entry.id === activeDefenseStat) || DEFENSE_METRICS[0];
                                     const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
-                                    const rows = [...stats.defensePlayers]
+                                    const rows = [...finalStats.defensePlayers]
                                         .map((row: any) => ({
                                             ...row,
                                             total: row.defenseTotals?.[metric.id] || 0,
@@ -4695,7 +4728,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'support-detailed' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
-                    {stats.supportPlayers.length === 0 ? (
+                    {finalStats.supportPlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No support stats available</div>
                     ) : (
                         <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'support-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
@@ -4742,7 +4775,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         return row.supportTotals?.[metric.id] || 0;
                                     };
                                     const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
-                                    const rows = [...stats.supportPlayers]
+                                    const rows = [...finalStats.supportPlayers]
                                         .map((row: any) => ({
                                             ...row,
                                             total: resolveSupportTotal(row),
@@ -4886,7 +4919,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'healing-stats' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
-                    {stats.healingPlayers.length === 0 ? (
+                    {finalStats.healingPlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No healing stats available</div>
                     ) : (
                         <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'healing-stats' ? 'flex-1 min-h-0 h-full' : ''}`}>
@@ -4924,7 +4957,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         : prefix
                                             ? `${prefix}${metric.baseField[0].toUpperCase()}${metric.baseField.slice(1)}`
                                             : metric.baseField;
-                                    const rows = [...stats.healingPlayers]
+                                    const rows = [...finalStats.healingPlayers]
                                         .filter((row: any) => Object.values(row.healingTotals || {}).some((val: any) => Number(val) > 0))
                                         .map((row: any) => {
                                             const baseValue = Number(row.healingTotals?.[fieldName] ?? 0);
@@ -5050,7 +5083,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             {expandedSection === 'special-buffs' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
-                    {stats.specialTables.length === 0 ? (
+                    {finalStats.specialTables.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No special buff data available</div>
                     ) : (
                         <>

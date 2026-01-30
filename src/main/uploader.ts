@@ -80,7 +80,7 @@ export class Uploader {
         const maxRetries = 10; // Increase retries significantly
 
         try {
-            const stats = fs.statSync(filePath);
+            const stats = await fs.promises.stat(filePath);
             console.log(`[Uploader] Processing file: ${filePath} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
         } catch (e) {
             console.error(`[Uploader] Failed to get file stats:`, e);
