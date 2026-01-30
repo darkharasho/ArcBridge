@@ -1,23 +1,25 @@
 # Release Notes
 
-Version v1.9.0 — January 28, 2026
+Version v1.10.0 — January 29, 2026
 
 ## 🌟 Highlights
-- GW2 Arc Log Uploader v1.9.0 is here
-- Tiled mode for Discord posts is fully released
-- Added DPS report cache to optimize recalculating of repeat logs
-- DPS report cache can now be cleared with a dedicated option
-- Embeds now show more precise enemy class counts
-- Class stats in Discord embeds now include a summary feature
-- Profession icons include tooltips for multi-profession displays
+- Version bumped to 1.10.0
+- Added support for incoming conditions tracking and metrics in StatsView
+- Added outgoing conditions audit functionality with metrics computation
+- New eiCli module for GW2 Elite Insights CLI integration
+- Auto-update improvements with checks and user notifications
 
 ## 🛠️ Improvements
-- Fix tooltip positioning and improve table layout in StatsView
-- Profession icons now support multi-profession tooltips and improved rendering
-- Add Proof of Work modal and metrics specification documentation
+- StatsView enhancements: incoming/outgoing conditions metrics; MVP stats weighting and filtering; Skill Usage per second; refactored sorting logic
+- Settings/MVP UI: added support button and improved saving status; toggle for MVP/top stats; web report now respects MVP/top stats
+- UI polish: updated tooltip background color and backdrop blur; timeline-friendly scope and prevention of text selection in charts
+- EI CLI integration: added eiCli module for GW2 Elite Insights CLI integration
+- Code quality: refactor code structure for readability and maintainability
 
 ## 🧯 Fixes
-- General errors and minor issues addressed (5-mini)
+- Fix: 3rd party notices wording around non ei condis
+- Fix: disable OS level input selecting UI
+- Fix: change webhook text to disabled
 
 ## ⚠️ Breaking Changes
-- None.
+None.
