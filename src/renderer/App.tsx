@@ -148,17 +148,27 @@ function App() {
     }, [uiTheme]);
 
 
-    // Stats calculation
-    const totalUploads = logs.length;
-    const avgSquadSize = logs.length > 0
-        ? Math.round(logs.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logs.length)
-        : 0;
-    const avgEnemies = logs.length > 0
-        ? Math.round(logs.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logs.length)
-        : 0;
-    const successRate = logs.length > 0
-        ? Math.round((logs.filter(log => log.details?.success).length / logs.length) * 100)
-        : 0;
+    // Stats calculation - memoized to avoid expensive recalculations on every render
+    const { totalUploads, avgSquadSize, avgEnemies, successRate } = useMemo(() => {
+        const total = logs.length;
+        if (total === 0) {
+            return { totalUploads: 0, avgSquadSize: 0, avgEnemies: 0, successRate: 0 };
+        }
+        let squadSum = 0;
+        let enemySum = 0;
+        let successCount = 0;
+        for (const log of logs) {
+            squadSum += log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0;
+            enemySum += log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0;
+            if (log.details?.success) successCount++;
+        }
+        return {
+            totalUploads: total,
+            avgSquadSize: Math.round(squadSum / total),
+            avgEnemies: Math.round(enemySum / total),
+            successRate: Math.round((successCount / total) * 100)
+        };
+    }, [logs]);
 
     useEffect(() => {
         // Load saved settings
@@ -208,37 +218,80 @@ function App() {
         loadSettings();
 
         // Listen for status updates during upload process
-        const cleanupStatus = window.electronAPI.onUploadStatus((data: ILogData) => {
-            if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
-                return;
-            }
-            setLogs((currentLogs) => {
-                const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
-                if (existingIndex >= 0) {
-                    const updated = [...currentLogs];
-                    updated[existingIndex] = { ...updated[existingIndex], ...data };
-                    return updated;
-                } else {
-                    return [data, ...currentLogs];
+        // Use batch callbacks for efficient state updates (single state change for multiple items)
+        const cleanupStatus = window.electronAPI.onUploadStatus(
+            // Single item callback
+            (data: ILogData) => {
+                if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
+                    return;
                 }
-            });
-        });
+                setLogs((currentLogs) => {
+                    const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
+                    if (existingIndex >= 0) {
+                        const updated = [...currentLogs];
+                        updated[existingIndex] = { ...updated[existingIndex], ...data };
+                        return updated;
+                    } else {
+                        return [data, ...currentLogs];
+                    }
+                });
+            },
+            // Batch callback - process all items in a SINGLE state update
+            (items: ILogData[]) => {
+                setLogs((currentLogs) => {
+                    let updated = [...currentLogs];
+                    for (const data of items) {
+                        if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
+                            continue;
+                        }
+                        const existingIndex = updated.findIndex(log => log.filePath === data.filePath);
+                        if (existingIndex >= 0) {
+                            updated[existingIndex] = { ...updated[existingIndex], ...data };
+                        } else {
+                            updated = [data, ...updated];
+                        }
+                    }
+                    return updated;
+                });
+            }
+        );
 
-        const cleanupUpload = window.electronAPI.onUploadComplete((data: ILogData) => {
-            if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
-                return;
-            }
-            setLogs((currentLogs) => {
-                const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
-                if (existingIndex >= 0) {
-                    const updated = [...currentLogs];
-                    updated[existingIndex] = data;
-                    return updated;
-                } else {
-                    return [data, ...currentLogs];
+        const cleanupUpload = window.electronAPI.onUploadComplete(
+            // Single item callback
+            (data: ILogData) => {
+                if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
+                    return;
                 }
-            });
-        });
+                setLogs((currentLogs) => {
+                    const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
+                    if (existingIndex >= 0) {
+                        const updated = [...currentLogs];
+                        updated[existingIndex] = data;
+                        return updated;
+                    } else {
+                        return [data, ...currentLogs];
+                    }
+                });
+            },
+            // Batch callback - process all items in a SINGLE state update
+            (items: ILogData[]) => {
+                setLogs((currentLogs) => {
+                    let updated = [...currentLogs];
+                    for (const data of items) {
+                        if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
+                            continue;
+                        }
+                        const existingIndex = updated.findIndex(log => log.filePath === data.filePath);
+                        if (existingIndex >= 0) {
+                            updated[existingIndex] = data;
+                        } else {
+                            updated = [data, ...updated];
+                        }
+                    }
+                    return updated;
+                });
+            }
+        );
 
         const cleanupScreenshot = window.electronAPI.onRequestScreenshot(async (data: ILogData) => {
             const logKey = data.id || data.filePath;
@@ -1014,34 +1067,32 @@ function App() {
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto pr-2 space-y-3">
-                                    <AnimatePresence mode='popLayout'>
-                                        {logs.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-20">
-                                                <UploadCloud className="w-12 h-12 mb-3" />
-                                                <p>Drop logs to upload</p>
-                                            </div>
-                                        ) : (
-                                            logs.map((log) => (
-                                                <ExpandableLogCard
-                                                    key={log.filePath}
-                                                    log={log}
-                                                    isExpanded={expandedLogId === log.filePath}
-                                                    onToggle={() => setExpandedLogId(expandedLogId === log.filePath ? null : log.filePath)}
-                                                    onCancel={() => {
-                                                        if (!log.filePath) return;
-                                                        canceledLogsRef.current.add(log.filePath);
-                                                        setLogs((currentLogs) => currentLogs.filter((entry) => entry.filePath !== log.filePath));
-                                                        if (expandedLogId === log.filePath) {
-                                                            setExpandedLogId(null);
-                                                        }
-                                                    }}
-                                                    embedStatSettings={embedStatSettings}
-                                                    disruptionMethod={disruptionMethod}
+                                    {logs.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-20">
+                                            <UploadCloud className="w-12 h-12 mb-3" />
+                                            <p>Drop logs to upload</p>
+                                        </div>
+                                    ) : (
+                                        logs.map((log) => (
+                                            <ExpandableLogCard
+                                                key={log.filePath}
+                                                log={log}
+                                                isExpanded={expandedLogId === log.filePath}
+                                                onToggle={() => setExpandedLogId(expandedLogId === log.filePath ? null : log.filePath)}
+                                                onCancel={() => {
+                                                    if (!log.filePath) return;
+                                                    canceledLogsRef.current.add(log.filePath);
+                                                    setLogs((currentLogs) => currentLogs.filter((entry) => entry.filePath !== log.filePath));
+                                                    if (expandedLogId === log.filePath) {
+                                                        setExpandedLogId(null);
+                                                    }
+                                                }}
+                                                embedStatSettings={embedStatSettings}
+                                                disruptionMethod={disruptionMethod}
                                                     useClassIcons={showClassIcons}
                                                 />
                                             ))
                                         )}
-                                    </AnimatePresence>
                                 </div>
                             </motion.div>
                         </div>

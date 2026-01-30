@@ -10,16 +10,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.removeAllListeners('log-detected')
         }
     },
-    onUploadComplete: (callback: (data: any) => void) => {
+    onUploadComplete: (callback: (data: any) => void, batchCallback?: (items: any[]) => void) => {
         ipcRenderer.on('upload-complete', (_event, value) => callback(value))
+        // Handle batched complete messages - use batch callback if provided for efficiency
+        ipcRenderer.on('upload-complete-batch', (_event, items: any[]) => {
+            if (batchCallback) {
+                batchCallback(items)
+            } else {
+                items.forEach(item => callback(item))
+            }
+        })
         return () => {
             ipcRenderer.removeAllListeners('upload-complete')
+            ipcRenderer.removeAllListeners('upload-complete-batch')
         }
     },
-    onUploadStatus: (callback: (data: any) => void) => {
+    onUploadStatus: (callback: (data: any) => void, batchCallback?: (items: any[]) => void) => {
         ipcRenderer.on('upload-status', (_event, value) => callback(value))
+        // Handle batched status messages - use batch callback if provided for efficiency
+        ipcRenderer.on('upload-status-batch', (_event, items: any[]) => {
+            if (batchCallback) {
+                batchCallback(items)
+            } else {
+                items.forEach(item => callback(item))
+            }
+        })
         return () => {
             ipcRenderer.removeAllListeners('upload-status')
+            ipcRenderer.removeAllListeners('upload-status-batch')
         }
     },
     setDiscordWebhook: (url: string) => ipcRenderer.send('set-discord-webhook', url),
@@ -42,8 +60,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sendScreenshots: (id: string, buffers: Uint8Array[]) => ipcRenderer.send('send-screenshots', id, buffers),
     sendScreenshotsGroups: (id: string, groups: Uint8Array[][]) => ipcRenderer.send('send-screenshots-groups', id, groups),
     onConsoleLog: (callback: (log: any) => void) => {
+        // Handle single log messages (legacy)
         ipcRenderer.on('console-log', (_event, value) => callback(value))
-        return () => ipcRenderer.removeAllListeners('console-log')
+        // Handle batched log messages (new)
+        ipcRenderer.on('console-log-batch', (_event, logs: any[]) => {
+            logs.forEach(log => callback(log))
+        })
+        return () => {
+            ipcRenderer.removeAllListeners('console-log')
+            ipcRenderer.removeAllListeners('console-log-batch')
+        }
     },
     logToMain: (payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => {
         ipcRenderer.send('renderer-log', payload)

@@ -128,8 +128,8 @@ export interface IElectronAPI {
     selectDirectory: () => Promise<string | null>;
     startWatching: (path: string) => void;
     onLogDetected: (callback: (path: string) => void) => () => void;
-    onUploadComplete: (callback: (data: any) => void) => () => void;
-    onUploadStatus: (callback: (data: any) => void) => () => void;
+    onUploadComplete: (callback: (data: any) => void, batchCallback?: (items: any[]) => void) => () => void;
+    onUploadStatus: (callback: (data: any) => void, batchCallback?: (items: any[]) => void) => () => void;
     setDiscordWebhook: (url: string) => void;
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
     getSettings: () => Promise<{

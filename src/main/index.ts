@@ -30,7 +30,7 @@ process.stderr?.on?.('error', (err: NodeJS.ErrnoException) => {
 log.transports.file.level = 'info';
 autoUpdater.logger = log;
 
-// Hook console logging to send to renderer
+// Hook console logging to send to renderer (with throttling to avoid IPC flooding)
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 
@@ -50,22 +50,177 @@ function formatLogArgs(args: any[]) {
     }).join(' ');
 }
 
+// Throttled console log queue to avoid IPC flooding during batch operations
+let consoleLogQueue: Array<{ type: string; message: string; timestamp: string }> = [];
+let consoleLogFlushTimer: ReturnType<typeof setTimeout> | null = null;
+const CONSOLE_LOG_FLUSH_INTERVAL_MS = 100;
+
+function flushConsoleLogQueue() {
+    consoleLogFlushTimer = null;
+    if (consoleLogQueue.length === 0) return;
+    if (win && !win.isDestroyed()) {
+        // Send all queued logs in a single IPC message
+        win.webContents.send('console-log-batch', consoleLogQueue);
+    }
+    consoleLogQueue = [];
+}
+
+function queueConsoleLog(type: string, message: string) {
+    consoleLogQueue.push({ type, message, timestamp: new Date().toISOString() });
+    if (!consoleLogFlushTimer) {
+        consoleLogFlushTimer = setTimeout(flushConsoleLogQueue, CONSOLE_LOG_FLUSH_INTERVAL_MS);
+    }
+}
+
+// Batching for upload status/complete IPC to reduce renderer state update frequency
+let uploadStatusQueue: Array<any> = [];
+let uploadCompleteQueue: Array<any> = [];
+let uploadStatusFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let uploadCompleteFlushTimer: ReturnType<typeof setTimeout> | null = null;
+const UPLOAD_IPC_FLUSH_INTERVAL_MS = 50; // Faster flush for responsiveness
+
+function flushUploadStatusQueue() {
+    uploadStatusFlushTimer = null;
+    if (uploadStatusQueue.length === 0) return;
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('upload-status-batch', uploadStatusQueue);
+    }
+    uploadStatusQueue = [];
+}
+
+function flushUploadCompleteQueue() {
+    uploadCompleteFlushTimer = null;
+    if (uploadCompleteQueue.length === 0) return;
+    if (win && !win.isDestroyed()) {
+        win.webContents.send('upload-complete-batch', uploadCompleteQueue);
+    }
+    uploadCompleteQueue = [];
+}
+
+function queueUploadStatus(data: any) {
+    uploadStatusQueue.push(data);
+    if (!uploadStatusFlushTimer) {
+        uploadStatusFlushTimer = setTimeout(flushUploadStatusQueue, UPLOAD_IPC_FLUSH_INTERVAL_MS);
+    }
+}
+
+function queueUploadComplete(data: any) {
+    uploadCompleteQueue.push(data);
+    if (!uploadCompleteFlushTimer) {
+        uploadCompleteFlushTimer = setTimeout(flushUploadCompleteQueue, UPLOAD_IPC_FLUSH_INTERVAL_MS);
+    }
+}
+
 console.log = (...args) => {
     originalConsoleLog(...args);
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('console-log', { type: 'info', message: formatLogArgs(args), timestamp: new Date().toISOString() });
-    }
+    queueConsoleLog('info', formatLogArgs(args));
 };
 
 console.error = (...args) => {
     originalConsoleError(...args);
-    if (win && !win.isDestroyed()) {
-        win.webContents.send('console-log', { type: 'error', message: formatLogArgs(args), timestamp: new Date().toISOString() });
-    }
+    queueConsoleLog('error', formatLogArgs(args));
 };
 
 const Store = require('electron-store');
 const store = new Store();
+
+// Settings cache to avoid repeated synchronous disk reads during batch processing
+interface CachedSettings {
+    eiCliSettings: any;
+    dpsReportToken: string | null;
+    discordNotificationType: string;
+    selectedWebhookId: string | null;
+    discordWebhookUrl: string | null;
+    timestamp: number;
+}
+let settingsCache: CachedSettings | null = null;
+const SETTINGS_CACHE_TTL_MS = 5000; // Cache for 5 seconds
+
+const getCachedSettings = (): CachedSettings => {
+    const now = Date.now();
+    if (settingsCache && (now - settingsCache.timestamp) < SETTINGS_CACHE_TTL_MS) {
+        return settingsCache;
+    }
+    settingsCache = {
+        eiCliSettings: store.get('eiCliSettings', DEFAULT_EI_CLI_SETTINGS),
+        dpsReportToken: store.get('dpsReportToken', null),
+        discordNotificationType: store.get('discordNotificationType', 'image'),
+        selectedWebhookId: store.get('selectedWebhookId', null),
+        discordWebhookUrl: store.get('discordWebhookUrl', null),
+        timestamp: now
+    };
+    return settingsCache;
+};
+
+const invalidateSettingsCache = () => {
+    settingsCache = null;
+};
+
+/**
+ * Strips unnecessary data from dps.report JSON to reduce IPC payload size.
+ * The full JSON can be 5-10MB; this reduces it to only what the UI needs (~50KB).
+ */
+const slimDownDetails = (details: any): any => {
+    if (!details) return details;
+
+    // Extract only stability buff entry (b1122) from buffMap - the only one actually used
+    const stabilityBuff = details.buffMap?.['b1122'];
+    const slimBuffMap = stabilityBuff ? { 'b1122': { stacking: stabilityBuff.stacking } } : {};
+
+    // Slim down player data - keep only what's used in ExpandableLogCard and dashboardMetrics
+    const slimPlayers = (details.players || []).map((player: any) => ({
+        name: player.name,
+        account: player.account,
+        profession: player.profession,
+        group: player.group,
+        notInSquad: player.notInSquad,
+        // Only keep first element of arrays (all-phases summary)
+        dpsAll: player.dpsAll?.[0] ? [player.dpsAll[0]] : [],
+        support: player.support?.[0] ? [player.support[0]] : [],
+        statsAll: player.statsAll?.[0] ? [player.statsAll[0]] : [],
+        defenses: player.defenses?.[0] ? [player.defenses[0]] : [],
+        // statsTargets needed for down contribution
+        statsTargets: player.statsTargets?.map((targetStats: any[]) =>
+            targetStats?.[0] ? [targetStats[0]] : []
+        ) || [],
+        // selfBuffs and squadBuffs needed for stability generation calculation
+        // Only extract stability (id 1122) entries to minimize payload
+        selfBuffs: (player.selfBuffs || []).filter((b: any) => b.id === 1122).map((b: any) => ({
+            id: b.id,
+            buffData: b.buffData?.[0] ? [{ generation: b.buffData[0].generation, wasted: b.buffData[0].wasted }] : []
+        })),
+        squadBuffs: (player.squadBuffs || []).filter((b: any) => b.id === 1122).map((b: any) => ({
+            id: b.id,
+            buffData: b.buffData?.[0] ? [{ generation: b.buffData[0].generation, wasted: b.buffData[0].wasted }] : []
+        })),
+        // Keep activeClones for mesmer
+        activeClones: player.activeClones,
+        // Keep conditionMetrics if present (added by attachConditionMetrics)
+        conditionMetrics: player.conditionMetrics
+    }));
+
+    // Slim down target data
+    const slimTargets = (details.targets || []).map((target: any) => ({
+        name: target.name,
+        id: target.id,
+        isFake: target.isFake,
+        totalHealth: target.totalHealth,
+        finalHealth: target.finalHealth,
+        healthPercentBurned: target.healthPercentBurned
+    }));
+
+    return {
+        fightName: details.fightName,
+        encounterDuration: details.encounterDuration,
+        uploadTime: details.uploadTime,
+        success: details.success,
+        durationMS: details.durationMS,
+        buffMap: slimBuffMap,
+        players: slimPlayers,
+        targets: slimTargets,
+        conditionMetrics: details.conditionMetrics
+    };
+};
 
 type DpsReportCacheEntry = {
     hash: string;
@@ -159,6 +314,9 @@ const pruneDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) =>
 const computeFileHash = (filePath: string): Promise<string> => {
     return getWorkerPool().hash(filePath);
 };
+
+// Yield to the event loop to prevent blocking - allows IPC and other events to process
+const yieldToEventLoop = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
 
 const attachConditionMetrics = async (details: any): Promise<any> => {
     if (!details || details.conditionMetrics) return details;
@@ -270,7 +428,10 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] || 'http://localh
 
 const processLogFile = async (filePath: string) => {
     const fileId = path.basename(filePath);
-    win?.webContents.send('upload-status', { id: fileId, filePath, status: 'uploading' });
+    queueUploadStatus({ id: fileId, filePath, status: 'uploading' });
+
+    // Get cached settings once at the start to avoid repeated sync disk reads
+    const settings = getCachedSettings();
 
     try {
         if (!uploader) {
@@ -284,7 +445,7 @@ const processLogFile = async (filePath: string) => {
         }
 
         let localEiDetails: any | null = null;
-            const eiCliSettings = store.get('eiCliSettings', DEFAULT_EI_CLI_SETTINGS) as any;
+            const eiCliSettings = settings.eiCliSettings;
             if (eiCliSettings?.enabled) {
                 try {
                     const eiResult = await loadEiCliJsonForLog({
@@ -296,7 +457,7 @@ const processLogFile = async (filePath: string) => {
                             autoUpdate: eiCliSettings.autoUpdate !== false,
                             preferredRuntime: eiCliSettings.preferredRuntime || 'auto'
                         },
-                        dpsReportToken: store.get('dpsReportToken', null)
+                        dpsReportToken: settings.dpsReportToken
                     });
                 if (eiResult.json) {
                     const sourceLabel = eiResult.source === 'cache' ? 'cache hit' : 'parsed';
@@ -317,6 +478,9 @@ const processLogFile = async (filePath: string) => {
                 console.log(`[Cache] Miss for ${filePath}.`);
             }
         }
+
+        // Yield to event loop after cache operations (which use sync store.get)
+        await yieldToEventLoop();
 
         const result = cached?.entry?.result || await uploader.upload(filePath);
 
@@ -342,11 +506,17 @@ const processLogFile = async (filePath: string) => {
                 await updateDpsReportCacheDetails(cacheKey, cacheableDetails);
             }
 
+            // Yield to event loop after cache save operations (which use sync store.set)
+            await yieldToEventLoop();
+
             if (jsonDetails && !jsonDetails.error) {
                 jsonDetails = await attachConditionMetrics(jsonDetails);
             }
 
-            win?.webContents.send('upload-status', {
+            // Yield before sending IPC updates to allow pending events to process
+            await yieldToEventLoop();
+
+            queueUploadStatus({
                 id: fileId,
                 filePath,
                 status: 'discord',
@@ -356,9 +526,9 @@ const processLogFile = async (filePath: string) => {
                 fightName: result.fightName
             });
 
-            const notificationType = store.get('discordNotificationType', 'image');
-            const selectedWebhookId = store.get('selectedWebhookId', null);
-            const webhookUrl = store.get('discordWebhookUrl', null);
+            const notificationType = settings.discordNotificationType;
+            const selectedWebhookId = settings.selectedWebhookId;
+            const webhookUrl = settings.discordWebhookUrl;
             const shouldSendDiscord = Boolean(selectedWebhookId) && typeof webhookUrl === 'string' && webhookUrl.length > 0;
             console.log(`[Main] Preparing Discord delivery. Configured type: ${notificationType}`);
 
@@ -370,7 +540,7 @@ const processLogFile = async (filePath: string) => {
                             console.error('[Main] Discord notification skipped: missing log identifier.');
                         } else {
                             pendingDiscordLogs.set(logKey, { result: { ...result, filePath, id: logKey }, jsonDetails });
-                            win?.webContents.send('request-screenshot', { ...result, id: logKey, filePath, details: jsonDetails, mode: notificationType });
+                            win?.webContents.send('request-screenshot', { ...result, id: logKey, filePath, details: slimDownDetails(jsonDetails), mode: notificationType });
                         }
                     } else {
                         await discord?.sendLog({ ...result, filePath, mode: 'embed' }, jsonDetails);
@@ -383,19 +553,22 @@ const processLogFile = async (filePath: string) => {
                 console.log('[Main] Discord notification skipped: no webhook selected.');
             }
 
-            win?.webContents.send('upload-complete', {
+            // Yield before final IPC to allow UI to stay responsive
+            await yieldToEventLoop();
+
+            queueUploadComplete({
                 ...result,
                 filePath,
                 status: 'success',
-                details: jsonDetails,
+                details: slimDownDetails(jsonDetails),
                 eiDetails: localEiDetails || undefined
             });
         } else {
-            win?.webContents.send('upload-complete', { ...result, filePath, status: 'error' });
+            queueUploadComplete({ ...result, filePath, status: 'error' });
         }
     } catch (error: any) {
         console.error('[Main] Log processing failed:', error?.message || error);
-        win?.webContents.send('upload-complete', {
+        queueUploadComplete({
             id: fileId,
             filePath,
             status: 'error',
@@ -1529,6 +1702,8 @@ if (!gotTheLock) {
             if (settings.githubLogoPath !== undefined) {
                 store.set('githubLogoPath', settings.githubLogoPath);
             }
+            // Invalidate settings cache so next processLogFile picks up new values
+            invalidateSettingsCache();
         });
 
         ipcMain.handle('select-directory', async () => {
@@ -1607,7 +1782,7 @@ if (!gotTheLock) {
             if (win && filePaths.length > 1) {
                 filePaths.forEach((filePath) => {
                     const fileId = path.basename(filePath);
-                    win?.webContents.send('upload-status', { id: fileId, filePath, status: 'queued' });
+                    queueUploadStatus({ id: fileId, filePath, status: 'queued' });
                 });
             }
             // Process sequentially to avoid overwhelming the system

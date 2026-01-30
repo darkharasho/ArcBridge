@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { applyStabilityGeneration, getIncomingDisruptions, getPlayerDamage, getPlayerDps, getPlayerDownsTaken, getPlayerDeaths, getPlayerDamageTaken, getPlayerDodges, getPlayerMissed, getPlayerBlocked, getPlayerEvaded, getPlayerResurrects, getPlayerDownContribution, getPlayerOutgoingCrowdControl, getPlayerSquadBarrier, getPlayerSquadHealing, getTargetStatTotal } from '../shared/dashboardMetrics';
@@ -25,15 +26,68 @@ interface ExpandableLogCardProps {
     };
 }
 
-export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screenshotMode, embedStatSettings, disruptionMethod, screenshotSection, useClassIcons }: ExpandableLogCardProps) {
+// Custom comparison function for memo - only re-render when relevant props change
+const arePropsEqual = (prevProps: ExpandableLogCardProps, nextProps: ExpandableLogCardProps): boolean => {
+    // Always re-render if expansion state changes
+    if (prevProps.isExpanded !== nextProps.isExpanded) return false;
+
+    // Check screenshot-related props
+    if (prevProps.screenshotMode !== nextProps.screenshotMode) return false;
+    if (prevProps.useClassIcons !== nextProps.useClassIcons) return false;
+
+    // Compare log by key fields that affect rendering, not by reference
+    const prevLog = prevProps.log;
+    const nextLog = nextProps.log;
+
+    if (prevLog.filePath !== nextLog.filePath) return false;
+    if (prevLog.status !== nextLog.status) return false;
+    if (prevLog.permalink !== nextLog.permalink) return false;
+    if (prevLog.uploadTime !== nextLog.uploadTime) return false;
+    if (prevLog.fightName !== nextLog.fightName) return false;
+    if (prevLog.encounterDuration !== nextLog.encounterDuration) return false;
+
+    // Compare details by reference - if details object changes, we need to re-render
+    // This is a shallow check but sufficient since details are immutable once set
+    if (prevLog.details !== nextLog.details) return false;
+
+    // Compare settings by reference (they're typically stable)
+    if (prevProps.embedStatSettings !== nextProps.embedStatSettings) return false;
+    if (prevProps.disruptionMethod !== nextProps.disruptionMethod) return false;
+
+    // Compare screenshot section
+    const prevSection = prevProps.screenshotSection;
+    const nextSection = nextProps.screenshotSection;
+    if (prevSection !== nextSection) {
+        if (!prevSection || !nextSection) return false;
+        if (prevSection.type !== nextSection.type) return false;
+        if (prevSection.tileKind !== nextSection.tileKind) return false;
+        if (prevSection.tileId !== nextSection.tileId) return false;
+        if (prevSection.tileIndex !== nextSection.tileIndex) return false;
+    }
+
+    return true;
+};
+
+export const ExpandableLogCard = memo(function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screenshotMode, embedStatSettings, disruptionMethod, screenshotSection, useClassIcons }: ExpandableLogCardProps) {
     const details = log.details || {};
-    const players: Player[] = details.players || [];
-    const targets = details.targets || [];
     const settings = embedStatSettings || DEFAULT_EMBED_STATS;
     const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
-    applyStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
-    const squadPlayers = players.filter((p: any) => !p.notInSquad);
-    const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
+
+    // Memoize player arrays and stability generation to avoid recalculating on every render
+    const { players, squadPlayers, nonSquadPlayers, targets } = useMemo(() => {
+        const rawPlayers: Player[] = details.players || [];
+        const rawTargets = details.targets || [];
+
+        // Apply stability generation only when details change
+        applyStabilityGeneration(rawPlayers, { durationMS: details.durationMS, buffMap: details.buffMap });
+
+        return {
+            players: rawPlayers,
+            squadPlayers: rawPlayers.filter((p: any) => !p.notInSquad),
+            nonSquadPlayers: rawPlayers.filter((p: any) => p.notInSquad),
+            targets: rawTargets
+        };
+    }, [details]);
 
     const isQueued = log.status === 'queued';
     const isPending = log.status === 'pending';
@@ -46,122 +100,145 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
                 : isDiscord ? 'Preparing Discord preview'
                     : null;
 
-    // --- Stats Calculation ---
-    let totalDps = 0;
-    let totalDmg = 0;
-    let totalDowns = 0;
-    let totalDeaths = 0;
-    let totalDmgTaken = 0;
+    // Memoize all expensive stats calculations
+    const stats = useMemo(() => {
+        let totalDps = 0;
+        let totalDmg = 0;
+        let totalDowns = 0;
+        let totalDeaths = 0;
+        let totalDmgTaken = 0;
 
-    let totalMiss = 0;
-    let totalBlock = 0;
-    let totalEvade = 0;
-    let totalDodge = 0;
+        let totalMiss = 0;
+        let totalBlock = 0;
+        let totalEvade = 0;
+        let totalDodge = 0;
 
-    let squadDps = 0;
-    let squadDmg = 0;
-    let squadDowns = 0;
-    let squadDeaths = 0;
-    let squadCC = 0;
-    let squadResurrects = 0;
+        let squadDps = 0;
+        let squadDmg = 0;
+        let squadDowns = 0;
+        let squadDeaths = 0;
+        let squadCC = 0;
+        let squadResurrects = 0;
 
-    let totalCCTaken = 0;
-    let totalCCMissed = 0;
-    let totalCCBlocked = 0;
+        let totalCCTaken = 0;
+        let totalCCMissed = 0;
+        let totalCCBlocked = 0;
 
-    let totalStripsTaken = 0;
-    let totalStripsMissed = 0;
-    let totalStripsBlocked = 0;
+        let totalStripsTaken = 0;
+        let totalStripsMissed = 0;
+        let totalStripsBlocked = 0;
 
-    players.forEach((p: any) => {
-        const isSquad = !p.notInSquad;
-        totalDps += getPlayerDps(p);
-        totalDmg += getPlayerDamage(p);
-        if (isSquad) {
-            squadDps += getPlayerDps(p);
-            squadDmg += getPlayerDamage(p);
-            squadCC += getPlayerOutgoingCrowdControl(p, method);
-            squadResurrects += getPlayerResurrects(p);
-        }
-        totalDowns += getPlayerDownsTaken(p);
-        totalDeaths += getPlayerDeaths(p);
-        totalDmgTaken += getPlayerDamageTaken(p);
-        if (isSquad) {
-            squadDowns += getPlayerDownsTaken(p);
-            squadDeaths += getPlayerDeaths(p);
-        }
-        totalMiss += getPlayerMissed(p);
-        totalBlock += getPlayerBlocked(p);
-        totalEvade += getPlayerEvaded(p);
-        totalDodge += getPlayerDodges(p);
+        players.forEach((p: any) => {
+            const isSquad = !p.notInSquad;
+            totalDps += getPlayerDps(p);
+            totalDmg += getPlayerDamage(p);
+            if (isSquad) {
+                squadDps += getPlayerDps(p);
+                squadDmg += getPlayerDamage(p);
+                squadCC += getPlayerOutgoingCrowdControl(p, method);
+                squadResurrects += getPlayerResurrects(p);
+            }
+            totalDowns += getPlayerDownsTaken(p);
+            totalDeaths += getPlayerDeaths(p);
+            totalDmgTaken += getPlayerDamageTaken(p);
+            if (isSquad) {
+                squadDowns += getPlayerDownsTaken(p);
+                squadDeaths += getPlayerDeaths(p);
+            }
+            totalMiss += getPlayerMissed(p);
+            totalBlock += getPlayerBlocked(p);
+            totalEvade += getPlayerEvaded(p);
+            totalDodge += getPlayerDodges(p);
 
-        const pStats = getIncomingDisruptions(p, method);
-        totalCCTaken += pStats.cc.total;
-        totalCCMissed += pStats.cc.missed;
-        totalCCBlocked += pStats.cc.blocked;
+            const pStats = getIncomingDisruptions(p, method);
+            totalCCTaken += pStats.cc.total;
+            totalCCMissed += pStats.cc.missed;
+            totalCCBlocked += pStats.cc.blocked;
 
-        totalStripsTaken += pStats.strips.total;
-        totalStripsMissed += pStats.strips.missed;
-        totalStripsBlocked += pStats.strips.blocked;
-    });
-
-    // Calculate Enemy (Target) Stats - how many times WE downed/killed them
-    // We aggregate from player statsTargets, which records what each player did to targets
-    let enemyDowns = 0;
-    let enemyDeaths = 0;
-    let enemyCount = 0;
-
-    // Count non-fake targets
-    targets.forEach((t: any) => {
-        if (!t.isFake) enemyCount++;
-    });
-
-    // Aggregate downed/killed from statsTargets
-    players.forEach((p: any) => {
-        if (p.notInSquad) return; // Only count squad contributions
-        enemyDowns += getTargetStatTotal(p, 'downed');
-        enemyDeaths += getTargetStatTotal(p, 'killed');
-    });
-
-    // Calculate enemy DPS (damage they dealt to us per second)
-    const durationSec = (details.durationMS || 0) / 1000 || 1;
-    const enemyDps = Math.round(totalDmgTaken / durationSec);
-
-    const buildClassCounts = (list: Player[]) => {
-        const counts: Record<string, number> = {};
-        list.forEach((p: any) => {
-            const prof = p.profession || 'Unknown';
-            counts[prof] = (counts[prof] || 0) + 1;
+            totalStripsTaken += pStats.strips.total;
+            totalStripsMissed += pStats.strips.missed;
+            totalStripsBlocked += pStats.strips.blocked;
         });
-        return Object.entries(counts)
-            .filter(([, count]) => count > 0)
-            .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
-            .map(([profession, count]) => ({ profession, count }));
-    };
 
-    const squadClassCounts = buildClassCounts(squadPlayers);
-    const enemyClassCounts = (() => {
-        const counts: Record<string, number> = {};
-        const seenEnemyIdsInFight = new Set<string>();
+        // Calculate Enemy (Target) Stats
+        let enemyDowns = 0;
+        let enemyDeaths = 0;
+        let enemyCount = 0;
+
         targets.forEach((t: any) => {
-            if (t?.isFake) return;
-            const rawName = t?.name || 'Unknown';
-            const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
-            const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
-            if (seenEnemyIdsInFight.has(idKey)) return;
-            seenEnemyIdsInFight.add(idKey);
-
-            const cleanName = String(rawName)
-                .replace(/\s+pl-\d+$/i, '')
-                .replace(/\s*\([^)]*\)/, '')
-                .trim();
-            counts[cleanName] = (counts[cleanName] || 0) + 1;
+            if (!t.isFake) enemyCount++;
         });
-        return Object.entries(counts)
-            .filter(([, count]) => count > 0)
-            .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
-            .map(([profession, count]) => ({ profession, count }));
-    })();
+
+        players.forEach((p: any) => {
+            if (p.notInSquad) return;
+            enemyDowns += getTargetStatTotal(p, 'downed');
+            enemyDeaths += getTargetStatTotal(p, 'killed');
+        });
+
+        const durationSec = (details.durationMS || 0) / 1000 || 1;
+        const enemyDps = Math.round(totalDmgTaken / durationSec);
+
+        return {
+            totalDps, totalDmg, totalDowns, totalDeaths, totalDmgTaken,
+            totalMiss, totalBlock, totalEvade, totalDodge,
+            squadDps, squadDmg, squadDowns, squadDeaths, squadCC, squadResurrects,
+            totalCCTaken, totalCCMissed, totalCCBlocked,
+            totalStripsTaken, totalStripsMissed, totalStripsBlocked,
+            enemyDowns, enemyDeaths, enemyCount, enemyDps
+        };
+    }, [players, targets, details.durationMS, method]);
+
+    // Destructure stats for easier use
+    const {
+        totalDmgTaken, totalMiss, totalBlock, totalEvade, totalDodge,
+        squadDps, squadDmg, squadDowns, squadDeaths,
+        totalCCTaken, totalCCMissed, totalCCBlocked,
+        totalStripsTaken, totalStripsMissed, totalStripsBlocked,
+        enemyDowns, enemyDeaths, enemyCount, enemyDps
+    } = stats;
+
+    // Memoize class counts
+    const { squadClassCounts, enemyClassCounts } = useMemo(() => {
+        const buildClassCounts = (list: Player[]) => {
+            const counts: Record<string, number> = {};
+            list.forEach((p: any) => {
+                const prof = p.profession || 'Unknown';
+                counts[prof] = (counts[prof] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .filter(([, count]) => count > 0)
+                .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+                .map(([profession, count]) => ({ profession, count }));
+        };
+
+        const enemyCounts = (() => {
+            const counts: Record<string, number> = {};
+            const seenEnemyIdsInFight = new Set<string>();
+            targets.forEach((t: any) => {
+                if (t?.isFake) return;
+                const rawName = t?.name || 'Unknown';
+                const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
+                const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
+                if (seenEnemyIdsInFight.has(idKey)) return;
+                seenEnemyIdsInFight.add(idKey);
+
+                const cleanName = String(rawName)
+                    .replace(/\s+pl-\d+$/i, '')
+                    .replace(/\s*\([^)]*\)/, '')
+                    .trim();
+                counts[cleanName] = (counts[cleanName] || 0) + 1;
+            });
+            return Object.entries(counts)
+                .filter(([, count]) => count > 0)
+                .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+                .map(([profession, count]) => ({ profession, count }));
+        })();
+
+        return {
+            squadClassCounts: buildClassCounts(squadPlayers),
+            enemyClassCounts: enemyCounts
+        };
+    }, [squadPlayers, targets]);
 
     
 
@@ -316,7 +393,8 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
         );
     };
 
-    const topListItems = [
+    // Memoize topListItems to prevent recreation on every render
+    const topListItems = useMemo(() => [
         {
             enabled: settings.showDamage,
             title: "Damage",
@@ -429,9 +507,9 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             valFn: (p: any) => getDodges(p),
             fmtVal: (v: number) => v.toString()
         }
-    ];
+    ], [settings, method]);
 
-    const visibleTopLists = topListItems.filter(item => item.enabled);
+    const visibleTopLists = useMemo(() => topListItems.filter(item => item.enabled), [topListItems]);
     const showSummarySection = settings.showSquadSummary || settings.showEnemySummary;
     const showIncomingSection = settings.showIncomingStats;
     const showClassSummary = settings.showClassSummary;
@@ -852,4 +930,4 @@ export function ExpandableLogCard({ log, isExpanded, onToggle, onCancel, screens
             </AnimatePresence >
         </motion.div >
     );
-}
+}, arePropsEqual);
