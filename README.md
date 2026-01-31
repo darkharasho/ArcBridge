@@ -53,8 +53,8 @@ A premium, high-performance Electron application for Guild Wars 2 players to aut
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/darkharasho/gw2_arc_log_uploader.git
-   cd gw2_arc_log_uploader
+   git clone https://github.com/darkharasho/ArcBridge.git
+   cd ArcBridge
    ```
 
 2. Install dependencies:

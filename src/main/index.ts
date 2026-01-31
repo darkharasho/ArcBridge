@@ -430,7 +430,7 @@ const fetchGithubReleaseNotesRange = async (currentVersion: string, lastSeenVers
     const current = parseVersion(currentVersion);
     if (!current) return null;
     const lastSeen = parseVersion(lastSeenVersion);
-    const url = 'https://api.github.com/repos/darkharasho/gw2_arc_log_uploader/releases?per_page=100';
+    const url = 'https://api.github.com/repos/darkharasho/ArcBridge/releases?per_page=100';
 
     return new Promise((resolve) => {
         const req = https.get(

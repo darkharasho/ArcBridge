@@ -5,17 +5,24 @@ import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 
-const readBumpArg = () => {
-    if (args.length === 0) return null;
-    const direct = args.find((arg) => !arg.startsWith('-'));
-    if (direct) return direct;
-    const bumpIndex = args.findIndex((arg) => arg === '--bump');
-    if (bumpIndex >= 0 && args[bumpIndex + 1]) return args[bumpIndex + 1];
-    return null;
+const readArgValue = (flag) => {
+    const index = args.indexOf(flag);
+    if (index === -1) return null;
+    return args[index + 1] || null;
 };
 
-const bumpType = readBumpArg();
+const readBumpArg = () => {
+    if (args.length === 0) return null;
+    const bumpIndex = args.findIndex((arg) => arg === '--bump');
+    if (bumpIndex >= 0 && args[bumpIndex + 1]) return args[bumpIndex + 1];
+    const direct = args.find((arg) => allowedBumps.has(arg));
+    return direct || null;
+};
+
 const allowedBumps = new Set(['patch', 'minor', 'major']);
+const bumpType = readBumpArg();
+const releaseOwner = readArgValue('--release-owner');
+const releaseRepo = readArgValue('--release-repo');
 
 const isWin = process.platform === 'win32';
 const npmCmd = isWin ? 'npm.cmd' : 'npm';
@@ -81,4 +88,7 @@ run(npmCmd, ['run', 'generate:release-notes']);
 run(npmCmd, ['run', 'build']);
 run(process.execPath, ['scripts/run-electron-builder.mjs']);
 run(process.execPath, ['scripts/commit-web-index.mjs']);
-run(process.execPath, ['scripts/update-github-release.mjs']);
+const releaseArgs = ['scripts/update-github-release.mjs'];
+if (releaseOwner) releaseArgs.push('--release-owner', releaseOwner);
+if (releaseRepo) releaseArgs.push('--release-repo', releaseRepo);
+run(process.execPath, releaseArgs);

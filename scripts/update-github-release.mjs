@@ -42,11 +42,20 @@ const version = packageJson?.version || '0.0.0';
 const tagName = `v${version}`;
 const outputDir = path.join(rootDir, packageJson?.build?.directories?.output || 'dist_out');
 
+const args = process.argv.slice(2);
+const readArgValue = (flag) => {
+    const index = args.indexOf(flag);
+    if (index === -1) return null;
+    return args[index + 1] || null;
+};
+
 const publishConfig = packageJson?.build?.publish || {};
 const owner = publishConfig.owner;
 const repo = publishConfig.repo;
-if (!owner || !repo) {
-    console.error('Missing GitHub owner/repo in package.json build.publish.');
+const releaseOwner = readArgValue('--release-owner') || process.env.GITHUB_RELEASE_OWNER || owner;
+const releaseRepo = readArgValue('--release-repo') || process.env.GITHUB_RELEASE_REPO || repo;
+if (!releaseOwner || !releaseRepo) {
+    console.error('Missing GitHub release owner/repo. Configure build.publish or pass --release-owner/--release-repo.');
     process.exit(1);
 }
 
@@ -104,7 +113,7 @@ const request = async (method, url, body) => {
     return { ok: resp.ok, status: resp.status, data };
 };
 
-const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
+const baseUrl = `https://api.github.com/repos/${releaseOwner}/${releaseRepo}`;
 
 const findReleaseByTag = async () => {
     const releasesResp = await request('GET', `${baseUrl}/releases?per_page=100`);

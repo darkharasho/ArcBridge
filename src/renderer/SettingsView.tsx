@@ -1434,7 +1434,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         See the{' '}
                         <button
                             type="button"
-                            onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/gw2_arc_log_uploader/blob/main/LICENSE')}
+                            onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/ArcBridge/blob/main/LICENSE')}
                             className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
                         >
                             LICENSE
@@ -1442,7 +1442,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         {' '}and{' '}
                         <button
                             type="button"
-                            onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/gw2_arc_log_uploader/blob/main/THIRD_PARTY_NOTICES.md')}
+                            onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/ArcBridge/blob/main/THIRD_PARTY_NOTICES.md')}
                             className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
                         >
                             THIRD_PARTY_NOTICES.md
