@@ -38,8 +38,8 @@ if (!outPath && positionals.length > 1) {
     outPath = positionals[1];
 }
 
-if (!watchDir && process.env.GW2_LOG_DIR) {
-    watchDir = process.env.GW2_LOG_DIR;
+if (!watchDir && process.env.ARCBRIDGE_LOG_DIR) {
+    watchDir = process.env.ARCBRIDGE_LOG_DIR;
 }
 
 const readConfigLogDir = async () => {
@@ -47,12 +47,8 @@ const readConfigLogDir = async () => {
     const candidates = [
         path.join(xdgConfigHome, 'ArcBridge', 'config.json'),
         path.join(xdgConfigHome, 'arcbridge', 'config.json'),
-        path.join(xdgConfigHome, 'gw2-arc-log-uploader', 'config.json'),
-        path.join(xdgConfigHome, 'GW2 Arc Log Uploader', 'config.json'),
         path.join(os.homedir(), '.config', 'ArcBridge', 'config.json'),
-        path.join(os.homedir(), '.config', 'arcbridge', 'config.json'),
-        path.join(os.homedir(), '.config', 'gw2-arc-log-uploader', 'config.json'),
-        path.join(os.homedir(), '.config', 'GW2 Arc Log Uploader', 'config.json')
+        path.join(os.homedir(), '.config', 'arcbridge', 'config.json')
     ];
 
     for (const candidate of candidates) {
@@ -76,7 +72,7 @@ if (!watchDir) {
 
 if (!watchDir) {
     console.error('Usage: node scripts/fetch-latest-log-json.mjs <watch-dir> [output-json]');
-    console.error('  Or set GW2_LOG_DIR, or configure the app log directory so it can be detected.');
+    console.error('  Or set ARCBRIDGE_LOG_DIR, or configure the app log directory so it can be detected.');
     process.exit(1);
 }
 

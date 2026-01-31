@@ -1,5 +1,5 @@
 {
-    "name": "gw2-arc-log-uploader",
+    "name": "arcbridge",
     "private": true,
     "version": "1.12.1",
     "description": "ArcBridge - Guild Wars 2 arcDPS Log Uploader",
@@ -76,7 +76,7 @@
         "wait-on": "^7.2.0"
     },
     "build": {
-        "appId": "com.gw2.arc.uploader",
+        "appId": "com.arcbridge.app",
         "productName": "ArcBridge",
         "directories": {
             "output": "dist_out"
@@ -99,15 +99,15 @@
             "THIRD_PARTY_NOTICES.md"
         ],
         "linux": {
-            "artifactName": "gw2_arc_log_uploader-${version}.${ext}",
+            "artifactName": "ArcBridge-${version}.${ext}",
             "target": [
-                "AppImage",
-                "deb"
+                "AppImage"
             ],
             "category": "Utility",
             "icon": "public/img/ArcBridgeAppIcon.png"
         },
         "win": {
+            "artifactName": "ArcBridge-${version}-Setup.${ext}",
             "target": [
                 "nsis"
             ],

@@ -268,7 +268,7 @@ let watcher: LogWatcher | null = null
 let uploader: Uploader | null = null
 let discord: DiscordNotifier | null = null
 const pendingDiscordLogs = new Map<string, { result: any, jsonDetails: any }>();
-const GITHUB_PROTOCOL = 'gw2-arc-log-uploader';
+const GITHUB_PROTOCOL = 'arcbridge';
 const GITHUB_DEVICE_CLIENT_ID = process.env.GITHUB_DEVICE_CLIENT_ID || 'Ov23liFh1ih9LAcnLACw';
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] || 'http://localhost:5173';
@@ -398,6 +398,48 @@ const compareVersion = (a: number[], b: number[]) => {
     return 0;
 };
 
+const migrateLegacySettings = () => {
+    if (!app.isPackaged) return;
+    if (store.get('bridgeSettingsMigrated')) return;
+
+    const appData = app.getPath('appData');
+    const legacyDirs = ['gw2-arc-log-uploader', 'GW2 Arc Log Uploader'];
+    const legacyPaths = legacyDirs.map((dir) => path.join(appData, dir, 'config.json'));
+
+    let legacyData: Record<string, any> | null = null;
+    for (const legacyPath of legacyPaths) {
+        if (!fs.existsSync(legacyPath)) continue;
+        try {
+            const raw = fs.readFileSync(legacyPath, 'utf8');
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                legacyData = parsed;
+                break;
+            }
+        } catch {
+            // Ignore invalid legacy config.
+        }
+    }
+
+    if (!legacyData) {
+        store.set('bridgeSettingsMigrated', true);
+        return;
+    }
+
+    const currentData = store.store || {};
+    if (Object.keys(currentData).length === 0) {
+        store.store = { ...legacyData, bridgeSettingsMigrated: true };
+        return;
+    }
+
+    Object.entries(legacyData).forEach(([key, value]) => {
+        if (currentData[key] === undefined) {
+            store.set(key, value);
+        }
+    });
+    store.set('bridgeSettingsMigrated', true);
+};
+
 const shouldRunBridgeMigration = (version: string | null) => {
     const parsed = parseVersion(version);
     if (!parsed) return false;
@@ -483,7 +525,7 @@ const fetchGithubReleaseNotesRange = async (currentVersion: string, lastSeenVers
             url,
             {
                 headers: {
-                    'User-Agent': 'gw2-arc-log-uploader',
+                    'User-Agent': 'ArcBridge',
                     'Accept': 'application/vnd.github+json'
                 }
             },
@@ -576,7 +618,7 @@ const requestGithubDeviceCode = (scope: string): Promise<{ deviceCode?: string; 
                 hostname: 'github.com',
                 path: '/login/device/code',
                 headers: {
-                    'User-Agent': 'gw2-arc-log-uploader',
+                    'User-Agent': 'ArcBridge',
                     'Accept': 'application/json',
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Content-Length': Buffer.byteLength(postData)
@@ -629,7 +671,7 @@ const pollGithubDeviceToken = async (deviceCode: string, intervalSeconds: number
                     hostname: 'github.com',
                     path: '/login/oauth/access_token',
                     headers: {
-                        'User-Agent': 'gw2-arc-log-uploader',
+                        'User-Agent': 'ArcBridge',
                         'Accept': 'application/json',
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'Content-Length': Buffer.byteLength(postData)
@@ -690,7 +732,7 @@ const githubApiRequest = (method: string, apiPath: string, token: string, body?:
                 hostname: 'api.github.com',
                 path: apiPath,
                 headers: {
-                    'User-Agent': 'gw2-arc-log-uploader',
+                    'User-Agent': 'ArcBridge',
                     'Accept': 'application/vnd.github+json',
                     'Authorization': `Bearer ${token}`,
                     ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {})
@@ -1232,6 +1274,7 @@ if (!gotTheLock) {
         } else {
             app.setAsDefaultProtocolClient(GITHUB_PROTOCOL);
         }
+        migrateLegacySettings();
         migrateLegacyInstallName();
         createWindow();
         createTray();

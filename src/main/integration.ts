@@ -5,7 +5,7 @@ export class DesktopIntegrator {
     private appImage: string | undefined;
 
     constructor() {
-        this.appName = app.name || 'gw2-arc-log-uploader';
+        this.appName = app.name || 'ArcBridge';
         this.appImage = process.env.APPIMAGE;
     }
 

@@ -69,7 +69,11 @@ if (!notes) {
 
 const allowedAssetNames = new Set(['latest.yml', 'latest-linux.yml']);
 const allowedAssetExts = new Set(['.AppImage', '.deb', '.exe', '.blockmap']);
-const artifactNames = [packageJson?.build?.artifactName, packageJson?.build?.linux?.artifactName]
+const artifactNames = [
+    packageJson?.build?.artifactName,
+    packageJson?.build?.linux?.artifactName,
+    packageJson?.build?.win?.artifactName
+]
     .filter((name) => typeof name === 'string' && name.trim().length > 0);
 const artifactPrefixes = artifactNames
     .map((name) => String(name)
