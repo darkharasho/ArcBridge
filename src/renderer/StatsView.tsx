@@ -5281,12 +5281,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                             onClick={() => setSelectedSkillId(entry.skillId)}
                                                             className={`w-full space-y-1 rounded-lg border px-2 py-1.5 text-left transition-colors ${isSelected ? 'border-white/60 bg-white/10' : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'}`}
                                                         >
-                                                                <div className="flex items-center justify-between text-sm text-white">
-                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                <div className="flex items-center justify-between text-sm text-white min-w-0">
+                                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
                                                                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
-                                                                        <span className="font-semibold truncate">{entry.name}</span>
+                                                                        <span className="font-semibold truncate min-w-0 flex-1 block max-w-[58vw] sm:max-w-none sm:whitespace-normal sm:overflow-visible">{entry.name}</span>
                                                                     </div>
-                                                                    <span className="text-cyan-200 font-mono text-xs">{formatSkillUsageValue(entry.total)}</span>
+                                                                    <span className="text-cyan-200 font-mono text-xs shrink-0">{formatSkillUsageValue(entry.total)}</span>
                                                                 </div>
                                                             <div className="h-1 w-full rounded-full bg-white/10">
                                                                 <div
