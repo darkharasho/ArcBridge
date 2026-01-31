@@ -69,17 +69,23 @@ if (!notes) {
 
 const allowedAssetNames = new Set(['latest.yml', 'latest-linux.yml']);
 const allowedAssetExts = new Set(['.AppImage', '.deb', '.exe', '.blockmap']);
-const artifactName = packageJson?.build?.artifactName || '';
-const artifactPrefix = artifactName
-    .replace(/\$\{version\}/g, version)
-    .replace(/\$\{ext\}/g, '')
-    .replace(/\$\{os\}/g, '')
-    .replace(/\$\{arch\}/g, '');
+const artifactNames = [packageJson?.build?.artifactName, packageJson?.build?.linux?.artifactName]
+    .filter((name) => typeof name === 'string' && name.trim().length > 0);
+const artifactPrefixes = artifactNames
+    .map((name) => String(name)
+        .replace(/\$\{version\}/g, version)
+        .replace(/\$\{ext\}/g, '')
+        .replace(/\$\{os\}/g, '')
+        .replace(/\$\{arch\}/g, '')
+    )
+    .filter(Boolean);
 const shouldIncludeAsset = (fileName) => {
     if (allowedAssetNames.has(fileName)) return true;
     const ext = path.extname(fileName);
     if (!allowedAssetExts.has(ext)) return false;
-    if (artifactPrefix) return fileName.startsWith(artifactPrefix);
+    if (artifactPrefixes.length > 0) {
+        return artifactPrefixes.some((prefix) => fileName.startsWith(prefix));
+    }
     return true;
 };
 

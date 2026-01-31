@@ -398,6 +398,52 @@ const compareVersion = (a: number[], b: number[]) => {
     return 0;
 };
 
+const shouldRunBridgeMigration = (version: string | null) => {
+    const parsed = parseVersion(version);
+    if (!parsed) return false;
+    return compareVersion(parsed, [1, 12, 0]) > 0;
+};
+
+const migrateLegacyInstallName = () => {
+    if (!app.isPackaged || !shouldRunBridgeMigration(app.getVersion())) return;
+    const legacyPrefix = 'gw2_arc_log_uploader';
+    const newPrefix = 'ArcBridge';
+
+    if (process.platform === 'linux') {
+        const appImagePath = process.env.APPIMAGE;
+        if (!appImagePath) return;
+        const baseName = path.basename(appImagePath);
+        if (!baseName.startsWith(legacyPrefix)) return;
+        const newName = baseName.replace(legacyPrefix, newPrefix);
+        const targetPath = path.join(path.dirname(appImagePath), newName);
+        if (fs.existsSync(targetPath)) return;
+        try {
+            fs.copyFileSync(appImagePath, targetPath);
+            fs.chmodSync(targetPath, 0o755);
+            log.info(`[Bridge] Created new AppImage name: ${targetPath}`);
+        } catch (err: any) {
+            log.warn(`[Bridge] Failed to copy AppImage to new name: ${err?.message || err}`);
+        }
+        return;
+    }
+
+    if (process.platform === 'win32') {
+        const portablePath = process.env.PORTABLE_EXECUTABLE;
+        if (!portablePath) return;
+        const baseName = path.basename(portablePath);
+        if (!baseName.startsWith(legacyPrefix)) return;
+        const newName = baseName.replace(legacyPrefix, newPrefix);
+        const targetPath = path.join(path.dirname(portablePath), newName);
+        if (fs.existsSync(targetPath)) return;
+        try {
+            fs.copyFileSync(portablePath, targetPath);
+            log.info(`[Bridge] Created new portable name: ${targetPath}`);
+        } catch (err: any) {
+            log.warn(`[Bridge] Failed to copy portable exe to new name: ${err?.message || err}`);
+        }
+    }
+};
+
 const extractReleaseNotesRangeFromFile = (rawNotes: string, currentVersion: string, lastSeenVersion: string | null) => {
     const current = parseVersion(currentVersion);
     if (!current) return null;
@@ -1186,6 +1232,7 @@ if (!gotTheLock) {
         } else {
             app.setAsDefaultProtocolClient(GITHUB_PROTOCOL);
         }
+        migrateLegacyInstallName();
         createWindow();
         createTray();
 

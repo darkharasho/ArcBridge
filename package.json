@@ -99,6 +99,7 @@
             "THIRD_PARTY_NOTICES.md"
         ],
         "linux": {
+            "artifactName": "gw2_arc_log_uploader-${version}.${ext}",
             "target": [
                 "AppImage",
                 "deb"
