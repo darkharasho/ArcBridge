@@ -356,15 +356,33 @@ export function ReportApp() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-gray-400">
             <div className="flex items-center justify-between mb-2">
                 <div className="text-sm font-semibold text-gray-200">Legal Notice</div>
-                <button
-                    onClick={() => setProofOfWorkOpen(true)}
-                    className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border bg-white/5 text-gray-300 border-white/10 hover:text-white"
-                >
-                    Proof of Work
-                </button>
+                <div className="flex items-center gap-2">
+                    <a
+                        href="https://github.com/darkharasho/ArcBridge"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                    >
+                        GitHub
+                    </a>
+                    <a
+                        href="https://discord.gg/UjzMXMGXEg"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                    >
+                        Discord
+                    </a>
+                    <button
+                        onClick={() => setProofOfWorkOpen(true)}
+                        className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                    >
+                        Proof of Work
+                    </button>
+                </div>
             </div>
             <p>
-                ArcBridge is free software: you can redistribute it and/or modify it under the terms
+                ArcBridge is free software by harasho: you can redistribute it and/or modify it under the terms
                 of the GNU General Public License v3.0 only. This program comes with ABSOLUTELY NO WARRANTY.
             </p>
             <p className="mt-2">
