@@ -9,7 +9,7 @@ Version v1.14.0 — January 31, 2026
 
 ## 🛠️ Improvements
 - Truncate long skill names on mobile for cleaner layouts.
-- Better mobile experience (pt1) for easier navigation.
+- Better mobile experience for easier navigation.
 - Improve web report spacing for easier reading.
 - Documentation updates to clarify features and improve readability.
 
