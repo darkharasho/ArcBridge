@@ -1,16 +1,17 @@
 # Release Notes
 
-Version v1.11.3 — January 30, 2026
+Version v1.11.5 — January 30, 2026
 
 ## 🌟 Highlights
-- The app now loads its icons using a dynamic base URL, ensuring icons display reliably in more environments.
+- All references now point to ArcBridge (docs and UI) instead of gw2_arc_log_uploader.
+- The app now pulls release notes from ArcBridge, keeping you up to date with the latest.
 
 ## 🛠️ Improvements
-- The header icon and the main app icon now pull from a dynamic path, improving compatibility with different install locations.
-- Icons render correctly no matter where the app is opened from.
+- None.
 
 ## 🧯 Fixes
-None.
+- The app now fetches release notes from ArcBridge instead of the old repository.
+- License and Third-Party Notices links in Settings now point to the ArcBridge repository.
 
 ## ⚠️ Breaking Changes
-None.
+- None.
