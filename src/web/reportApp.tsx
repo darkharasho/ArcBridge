@@ -417,15 +417,41 @@ export function ReportApp() {
                 <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
                     <div className="flex flex-col w-full">
                         <div className="px-6 pt-6 pb-5">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-[color:var(--accent)]">
-                                    <LayoutDashboard className="w-5 h-5" />
+                                <div className="flex items-center gap-3">
+                                    {logoUrl ? (
+                                        logoIsDefault ? (
+                                            <div
+                                                className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20"
+                                                style={{
+                                                    backgroundColor: 'var(--accent)',
+                                                    maskImage: `url(${logoUrl})`,
+                                                    WebkitMaskImage: `url(${logoUrl})`,
+                                                    maskRepeat: 'no-repeat',
+                                                    WebkitMaskRepeat: 'no-repeat',
+                                                    maskPosition: 'center',
+                                                    WebkitMaskPosition: 'center',
+                                                    maskSize: '65%',
+                                                    WebkitMaskSize: '65%'
+                                                }}
+                                                aria-label="ArcBridge logo"
+                                            />
+                                        ) : (
+                                            <img
+                                                src={logoUrl}
+                                                alt="Squad logo"
+                                                className="h-10 w-10 rounded-2xl object-cover border border-white/20"
+                                            />
+                                        )
+                                    ) : (
+                                        <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-[color:var(--accent)]">
+                                            <LayoutDashboard className="w-5 h-5" />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">ArcBridge Reports</div>
+                                        <div className="text-sm font-semibold text-white">Navigation</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">ArcBridge Reports</div>
-                                    <div className="text-sm font-semibold text-white">Navigation</div>
-                                </div>
-                            </div>
                         </div>
                         <nav className="px-4 space-y-1.5 text-sm flex-1 overflow-y-auto">
                             {tocItems.map((item) => {

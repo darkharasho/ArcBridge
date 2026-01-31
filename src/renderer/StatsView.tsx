@@ -2202,6 +2202,25 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             const squadClassCountsFight = countByProfession(squadPlayers);
             const allyClassCountsFight = countByProfession(allyPlayers);
 
+            let squadDownsDeaths = 0;
+            let enemyDownsDeaths = 0;
+
+            squadPlayers.forEach((p) => {
+                if (p.defenses && p.defenses.length > 0) {
+                    squadDownsDeaths += Number(p.defenses[0].downCount || 0) + Number(p.defenses[0].deadCount || 0);
+                }
+            });
+
+            squadPlayers.forEach((p: any) => {
+                if (!p.statsTargets || p.statsTargets.length === 0) return;
+                p.statsTargets.forEach((targetStats: any) => {
+                    if (targetStats && targetStats.length > 0) {
+                        const st = targetStats[0];
+                        enemyDownsDeaths += Number(st.downed || 0) + Number(st.killed || 0);
+                    }
+                });
+            });
+
             let alliesDown = 0;
             let alliesDead = 0;
             let alliesRevived = 0;
@@ -2253,6 +2272,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 alliesRevived,
                 rallies,
                 enemyDeaths,
+                isWin: squadDownsDeaths < enemyDownsDeaths,
                 totalOutgoingDamage,
                 totalIncomingDamage,
                 incomingBarrierAbsorbed,
@@ -3257,9 +3277,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     <table className="w-full text-xs table-fixed">
                                     <thead>
                                         <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
-                                            <th className="text-right py-2 px-3">#</th>
+                                            <th className="text-right py-2 px-2 w-8">#</th>
                                             <th className="text-left py-2 px-3 w-[240px]">Report</th>
                                             <th className="text-left py-2 px-3 w-20">Duration</th>
+                                            {fightBreakdownTab === 'outcomes' && (
+                                                <th className="text-left py-2 px-3 w-20">Outcome</th>
+                                            )}
                                             {fightBreakdownTab === 'sizes' && (
                                                 <>
                                                     <th className="text-right py-2 px-3">Squad</th>
@@ -3308,7 +3331,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     <tbody>
                                         {(stats.fightBreakdown || []).map((fight: any, idx: number) => (
                                             <tr key={fight.id || `${fight.label}-${idx}`} className="border-b border-white/5 hover:bg-white/5">
-                                                <td className="py-2 px-3 text-right font-mono text-gray-500">{idx + 1}</td>
+                                                <td className="py-2 px-2 text-right font-mono text-gray-500 w-8">{idx + 1}</td>
                                                 <td className="py-2 px-3 w-[240px]">
                                                     {fight.permalink ? (
                                                         <button
@@ -3328,6 +3351,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                     )}
                                                 </td>
                                                 <td className="py-2 px-3 text-gray-200 w-20">{fight.duration || '--:--'}</td>
+                                                {fightBreakdownTab === 'outcomes' && (
+                                                    <td className={`py-2 px-3 font-semibold ${fight.isWin ? 'text-emerald-300' : 'text-red-300'}`}>
+                                                        {fight.isWin ? 'Win' : 'Loss'}
+                                                    </td>
+                                                )}
                                                 {fightBreakdownTab === 'sizes' && (
                                                     <>
                                                         <td className="py-2 px-3 text-right font-mono">
