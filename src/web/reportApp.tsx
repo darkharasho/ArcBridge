@@ -176,8 +176,16 @@ export function ReportApp() {
         '--accent-glow': `rgba(${accentRgb}, 0.18)`,
         '--accent-glow-soft': `rgba(${accentRgb}, 0.08)`
     } as CSSProperties;
+    const isModernUi = uiTheme === 'modern';
+    const reportBackgroundImage = resolvedTheme.pattern
+        ? (isModernUi
+            ? `linear-gradient(180deg, rgba(14, 18, 26, 0.72), rgba(18, 24, 34, 0.78)), ${resolvedTheme.pattern}`
+            : resolvedTheme.pattern)
+        : undefined;
     const glassCardStyle: CSSProperties = {
-        backgroundImage: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.22), rgba(15, 23, 42, 0.72) 70%)'
+        backgroundImage: isModernUi
+            ? 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.18), rgba(14, 18, 26, 0.78) 70%)'
+            : 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.22), rgba(15, 23, 42, 0.72) 70%)'
     };
 
     useEffect(() => {
@@ -360,8 +368,8 @@ export function ReportApp() {
             <div
                 className="min-h-screen text-white relative overflow-x-hidden"
                 style={{
-                    backgroundColor: '#0f172a',
-                    backgroundImage: resolvedTheme.pattern || undefined,
+                    backgroundColor: isModernUi ? '#0f141c' : '#0f172a',
+                    backgroundImage: reportBackgroundImage,
                     ...accentVars
                 }}
             >
@@ -587,8 +595,8 @@ export function ReportApp() {
         <div
             className="min-h-screen text-white relative overflow-x-hidden"
             style={{
-                backgroundColor: '#0f172a',
-                backgroundImage: resolvedTheme.pattern || undefined,
+                backgroundColor: isModernUi ? '#0f141c' : '#0f172a',
+                backgroundImage: reportBackgroundImage,
                 ...accentVars
             }}
         >
@@ -607,6 +615,7 @@ export function ReportApp() {
                 />
             </div>
             <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-10">
+                <div id="report-list-container" className="rounded-2xl border border-white/5 bg-black/20 p-4 sm:p-6">
                     <div className={`${glassCard} p-5 sm:p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-h-[56px] text-center sm:text-left">
                             {logoUrl && (
@@ -645,97 +654,98 @@ export function ReportApp() {
                             {filteredIndex.length} Reports
                         </div>
                     </div>
-                </div>
-
-                <div className={`${glassCard} px-4 py-3 mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between`} style={glassCardStyle}>
-                    <input
-                        type="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search reports, commanders, or date..."
-                        className="w-full md:flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
-                    />
-                    <div className="text-[11px] sm:text-xs text-gray-400">
-                        Showing <span className="text-[color:var(--accent)]">{filteredIndex.length}</span> of{' '}
-                        <span className="text-[color:var(--accent)]">{sortedIndex.length}</span>
                     </div>
-                </div>
 
-                {error && (
-                    <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-6 py-5 text-amber-100 shadow-xl backdrop-blur-md" style={glassCardStyle}>
-                        <div className="text-sm uppercase tracking-widest text-amber-200/70">Warning</div>
-                        <div className="mt-2 text-base font-semibold text-white">{error}</div>
-                        {reportPathHint && (
-                            <div className="text-xs text-amber-100/80 mt-2">
-                                Looking for: <span className="text-amber-50">{reportPathHint}</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {!error && !index && (
-                    <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>Loading reports...</div>
-                )}
-
-                {filteredIndex.length > 0 && (
-                    <div className="flex flex-col gap-3">
-                        {filteredIndex.map((entry) => (
-                            <a
-                                key={entry.id}
-                                href={entry.url}
-                                className={`${glassCard} px-5 py-4 hover:border-[color:var(--accent-border)] transition-colors group`}
-                                style={glassCardStyle}
-                            >
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                        <div className="min-w-0 block text-left">
-                            <div className="text-[11px] uppercase tracking-widest text-gray-400">
-                                {entry.dateLabel}
-                            </div>
-                            <div className="text-base sm:text-lg font-semibold mt-1 truncate">
-                                {formatReportTitle(entry.dateStart)}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                                <Users className="w-4 h-4 text-[color:var(--accent)]" />
-                                <span className="truncate">
-                                                {entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}
-                                            </span>
-                                        </div>
-                                    </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 sm:mt-0 mt-2 w-full sm:w-auto">
-                            <div className="flex flex-col items-center gap-1 text-[10px] text-gray-400">
-                                {entry.summary?.mapSlices && entry.summary.mapSlices.length > 0 ? (
-                                    <>
-                                        <MapDonut slices={entry.summary.mapSlices} />
-                                        <span className="uppercase tracking-widest">Maps</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <BorderlandsPie value={entry.summary?.borderlandsPct} />
-                                                    <span className="uppercase tracking-widest">Borderlands</span>
-                                                </>
-                                            )}
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                            <div className="text-[10px] uppercase tracking-widest text-gray-400">Avg Squad / Enemy</div>
-                                <div className="text-sm text-white font-semibold">
-                                    {entry.summary?.avgSquadSize ?? '--'} / {entry.summary?.avgEnemySize ?? '--'}
-                                </div>
-                            </div>
-                            <ExternalLink className="w-5 h-5 text-[color:var(--accent)] opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
+                    <div className={`${glassCard} px-4 py-3 mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between`} style={glassCardStyle}>
+                        <input
+                            type="search"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            placeholder="Search reports, commanders, or date..."
+                            className="w-full md:flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                        />
+                        <div className="text-[11px] sm:text-xs text-gray-400">
+                            Showing <span className="text-[color:var(--accent)]">{filteredIndex.length}</span> of{' '}
+                            <span className="text-[color:var(--accent)]">{sortedIndex.length}</span>
                         </div>
                     </div>
-                </a>
-            ))}
-                    </div>
-                )}
 
-                {!error && index && sortedIndex.length === 0 && (
-                    <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>No reports uploaded yet.</div>
-                )}
+                    {error && (
+                        <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-6 py-5 text-amber-100 shadow-xl backdrop-blur-md" style={glassCardStyle}>
+                            <div className="text-sm uppercase tracking-widest text-amber-200/70">Warning</div>
+                            <div className="mt-2 text-base font-semibold text-white">{error}</div>
+                            {reportPathHint && (
+                                <div className="text-xs text-amber-100/80 mt-2">
+                                    Looking for: <span className="text-amber-50">{reportPathHint}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                {!error && index && sortedIndex.length > 0 && filteredIndex.length === 0 && (
-                    <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>No reports match your search.</div>
-                )}
+                    {!error && !index && (
+                        <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>Loading reports...</div>
+                    )}
+
+                    {filteredIndex.length > 0 && (
+                        <div className="flex flex-col gap-3">
+                            {filteredIndex.map((entry) => (
+                                <a
+                                    key={entry.id}
+                                    href={entry.url}
+                                    className={`${glassCard} px-5 py-4 hover:border-[color:var(--accent-border)] transition-colors group`}
+                                    style={glassCardStyle}
+                                >
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                                        <div className="min-w-0 block text-left">
+                                            <div className="text-[11px] uppercase tracking-widest text-gray-400">
+                                                {entry.dateLabel}
+                                            </div>
+                                            <div className="text-base sm:text-lg font-semibold mt-1 truncate">
+                                                {formatReportTitle(entry.dateStart)}
+                                            </div>
+                                            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                                                <Users className="w-4 h-4 text-[color:var(--accent)]" />
+                                                <span className="truncate">
+                                                    {entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 sm:mt-0 mt-2 w-full sm:w-auto">
+                                            <div className="flex flex-col items-center gap-1 text-[10px] text-gray-400">
+                                                {entry.summary?.mapSlices && entry.summary.mapSlices.length > 0 ? (
+                                                    <>
+                                                        <MapDonut slices={entry.summary.mapSlices} />
+                                                        <span className="uppercase tracking-widest">Maps</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <BorderlandsPie value={entry.summary?.borderlandsPct} />
+                                                        <span className="uppercase tracking-widest">Borderlands</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <div className="text-[10px] uppercase tracking-widest text-gray-400">Avg Squad / Enemy</div>
+                                                <div className="text-sm text-white font-semibold">
+                                                    {entry.summary?.avgSquadSize ?? '--'} / {entry.summary?.avgEnemySize ?? '--'}
+                                                </div>
+                                            </div>
+                                            <ExternalLink className="w-5 h-5 text-[color:var(--accent)] opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {!error && index && sortedIndex.length === 0 && (
+                        <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>No reports uploaded yet.</div>
+                    )}
+
+                    {!error && index && sortedIndex.length > 0 && filteredIndex.length === 0 && (
+                        <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>No reports match your search.</div>
+                    )}
+                </div>
             </div>
         </div>
     );
