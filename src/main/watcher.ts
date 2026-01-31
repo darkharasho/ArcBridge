@@ -10,16 +10,18 @@ export class LogWatcher extends EventEmitter {
         super();
     }
 
-    public start(logDirectory: string): void {
+    public async start(logDirectory: string): Promise<void> {
         if (this.watcher) {
-            this.watcher.close();
+            await this.watcher.close();
         }
 
         // ... (rest of the logic)
 
         console.log(`Starting watcher on: ${logDirectory}`);
 
-        if (!fs.existsSync(logDirectory)) {
+        try {
+            await fs.promises.access(logDirectory);
+        } catch {
             console.error(`Directory does not exist: ${logDirectory}`);
             return;
         }

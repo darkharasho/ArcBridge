@@ -353,7 +353,12 @@ export class MainWorkerPool {
     private async parseJsonFallback(filePath: string, isGzipped: boolean): Promise<any> {
         const raw = await fs.promises.readFile(filePath);
         if (isGzipped) {
-            const inflated = zlib.gunzipSync(raw);
+            const inflated = await new Promise<Buffer>((resolve, reject) => {
+                zlib.gunzip(raw, (err, result) => {
+                    if (err) reject(err);
+                    else resolve(result);
+                });
+            });
             return JSON.parse(inflated.toString('utf8'));
         }
         return JSON.parse(raw.toString('utf8'));

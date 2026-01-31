@@ -234,6 +234,14 @@ const DPS_REPORT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DPS_REPORT_CACHE_MAX_ENTRIES = 100;
 
 const getDpsReportCacheDir = () => path.join(app.getPath('userData'), 'dps-report-cache');
+const pathExists = async (targetPath: string): Promise<boolean> => {
+    try {
+        await fs.promises.access(targetPath);
+        return true;
+    } catch {
+        return false;
+    }
+};
 
 const loadDpsReportCacheIndex = (): Record<string, DpsReportCacheEntry> => {
     const raw = store.get(DPS_REPORT_CACHE_KEY, {});
@@ -245,14 +253,14 @@ const saveDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => 
     store.set(DPS_REPORT_CACHE_KEY, index);
 };
 
-const clearDpsReportCache = () => {
+const clearDpsReportCache = async () => {
     const index = loadDpsReportCacheIndex();
     const clearedEntries = Object.keys(index).length;
     store.delete(DPS_REPORT_CACHE_KEY);
 
     const cacheDir = getDpsReportCacheDir();
     try {
-        fs.rmSync(cacheDir, { recursive: true, force: true });
+        await fs.promises.rm(cacheDir, { recursive: true, force: true });
     } catch (err: any) {
         console.warn('[Main] Failed to remove dps.report cache directory:', err?.message || err);
         return { success: false, clearedEntries, error: 'Failed to remove cache directory.' };
@@ -261,11 +269,11 @@ const clearDpsReportCache = () => {
     return { success: true, clearedEntries };
 };
 
-const removeDpsReportCacheEntry = (index: Record<string, DpsReportCacheEntry>, key: string) => {
+const removeDpsReportCacheEntry = async (index: Record<string, DpsReportCacheEntry>, key: string) => {
     const entry = index[key];
     if (entry?.detailsPath) {
         try {
-            fs.unlinkSync(entry.detailsPath);
+            await fs.promises.unlink(entry.detailsPath);
         } catch {
             // Ignore cache cleanup errors.
         }
@@ -273,39 +281,39 @@ const removeDpsReportCacheEntry = (index: Record<string, DpsReportCacheEntry>, k
     delete index[key];
 };
 
-const pruneDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => {
+const pruneDpsReportCacheIndex = async (index: Record<string, DpsReportCacheEntry>) => {
     const now = Date.now();
     let changed = false;
 
-    Object.keys(index).forEach((key) => {
+    for (const key of Object.keys(index)) {
         const entry = index[key];
         if (!entry || typeof entry.createdAt !== 'number' || !entry.result?.permalink) {
             console.log(`[Cache] Removing invalid cache entry for ${key}.`);
-            removeDpsReportCacheEntry(index, key);
+            await removeDpsReportCacheEntry(index, key);
             changed = true;
-            return;
+            continue;
         }
         if (now - entry.createdAt > DPS_REPORT_CACHE_TTL_MS) {
             console.log(`[Cache] Busting cache for ${key} (expired).`);
-            removeDpsReportCacheEntry(index, key);
+            await removeDpsReportCacheEntry(index, key);
             changed = true;
-            return;
+            continue;
         }
-        if (entry.detailsPath && !fs.existsSync(entry.detailsPath)) {
+        if (entry.detailsPath && !(await pathExists(entry.detailsPath))) {
             console.log(`[Cache] Cache details missing for ${key}; will refetch JSON.`);
             entry.detailsPath = null;
             changed = true;
         }
-    });
+    }
 
     const keys = Object.keys(index);
     if (keys.length > DPS_REPORT_CACHE_MAX_ENTRIES) {
         const sorted = keys.sort((a, b) => (index[b]?.createdAt || 0) - (index[a]?.createdAt || 0));
-        sorted.slice(DPS_REPORT_CACHE_MAX_ENTRIES).forEach((key) => {
+        for (const key of sorted.slice(DPS_REPORT_CACHE_MAX_ENTRIES)) {
             console.log(`[Cache] Evicting cache entry for ${key} (limit ${DPS_REPORT_CACHE_MAX_ENTRIES}).`);
-            removeDpsReportCacheEntry(index, key);
+            await removeDpsReportCacheEntry(index, key);
             changed = true;
-        });
+        }
     }
 
     return changed;
@@ -338,7 +346,7 @@ const attachConditionMetrics = async (details: any): Promise<any> => {
 
 const loadDpsReportCacheEntry = async (hash: string) => {
     const index = loadDpsReportCacheIndex();
-    const changed = pruneDpsReportCacheIndex(index);
+    const changed = await pruneDpsReportCacheIndex(index);
     if (changed) saveDpsReportCacheIndex(index);
 
     const entry = index[hash];
@@ -384,7 +392,7 @@ const saveDpsReportCacheEntry = async (hash: string, result: UploadResult, jsonD
     }
 
     index[hash] = entry;
-    pruneDpsReportCacheIndex(index);
+    await pruneDpsReportCacheIndex(index);
     saveDpsReportCacheIndex(index);
 };
 
@@ -1098,36 +1106,36 @@ const resolvePagesSource = async (owner: string, repo: string, branch: string, t
     return { pagesInfo, pagesPath };
 };
 
-const collectFiles = (dir: string) => {
+const collectFiles = async (dir: string) => {
     const result: Array<{ absPath: string; relPath: string }> = [];
-    const walk = (current: string) => {
-        const entries = fs.readdirSync(current, { withFileTypes: true });
-        entries.forEach((entry) => {
+    const walk = async (current: string) => {
+        const entries = await fs.promises.readdir(current, { withFileTypes: true });
+        for (const entry of entries) {
             const absPath = path.join(current, entry.name);
             const relPath = path.relative(dir, absPath).replace(/\\/g, '/');
             if (entry.isDirectory()) {
-                walk(absPath);
+                await walk(absPath);
             } else {
                 result.push({ absPath, relPath });
             }
-        });
+        }
     };
-    walk(dir);
+    await walk(dir);
     return result;
 };
 
-const copyDir = (src: string, dest: string) => {
-    fs.mkdirSync(dest, { recursive: true });
-    const entries = fs.readdirSync(src, { withFileTypes: true });
-    entries.forEach((entry) => {
+const copyDir = async (src: string, dest: string) => {
+    await fs.promises.mkdir(dest, { recursive: true });
+    const entries = await fs.promises.readdir(src, { withFileTypes: true });
+    for (const entry of entries) {
         const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
         if (entry.isDirectory()) {
-            copyDir(srcPath, destPath);
+            await copyDir(srcPath, destPath);
         } else {
-            fs.copyFileSync(srcPath, destPath);
+            await fs.promises.copyFile(srcPath, destPath);
         }
-    });
+    }
 };
 
 const sendWebUploadStatus = (stage: string, message?: string, progress?: number) => {
@@ -1166,7 +1174,7 @@ const buildWebTemplate = async (appRoot: string) => {
     });
 };
 
-const getWebRoot = () => {
+const getWebRoot = async () => {
     if (app.isPackaged) {
         return app.getAppPath();
     }
@@ -1176,7 +1184,7 @@ const getWebRoot = () => {
         path.resolve(__dirname, '../../'),
     ];
     for (const candidate of candidates) {
-        if (fs.existsSync(path.join(candidate, 'package.json'))) {
+        if (await pathExists(path.join(candidate, 'package.json'))) {
             return candidate;
         }
     }
@@ -1424,7 +1432,7 @@ if (!gotTheLock) {
         // Check for updates (skip for portable/zip builds without app-update.yml)
         const updateConfigPath = path.join(process.resourcesPath, 'app-update.yml');
         const isPortable = Boolean(process.env.PORTABLE_EXECUTABLE);
-        const canAutoUpdate = app.isPackaged && !isPortable && fs.existsSync(updateConfigPath);
+        const canAutoUpdate = app.isPackaged && !isPortable && await pathExists(updateConfigPath);
         if (canAutoUpdate) {
             setupAutoUpdater();
         } else {
@@ -1512,7 +1520,7 @@ if (!gotTheLock) {
                 const basePath = app.isPackaged ? process.resourcesPath : process.cwd();
                 const notesPath = path.join(basePath, 'RELEASE_NOTES.md');
                 try {
-                    const rawNotes = fs.readFileSync(notesPath, 'utf8');
+                    const rawNotes = await fs.promises.readFile(notesPath, 'utf8');
                     releaseNotes = extractReleaseNotesRangeFromFile(rawNotes, version, lastSeenVersion);
                     if (!releaseNotes) {
                         const nextHeaderIndex = rawNotes.indexOf('\n# Release Notes', 1);
@@ -1574,10 +1582,10 @@ if (!gotTheLock) {
         };
         const DEFAULT_EI_SETTINGS = DEFAULT_EI_CLI_SETTINGS;
 
-        ipcMain.handle('get-settings', () => {
+        ipcMain.handle('get-settings', async () => {
             const updateConfigPath = path.join(process.resourcesPath, 'app-update.yml');
             const isPortable = Boolean(process.env.PORTABLE_EXECUTABLE);
-            const updateSupported = app.isPackaged && !isPortable && fs.existsSync(updateConfigPath);
+            const updateSupported = app.isPackaged && !isPortable && await pathExists(updateConfigPath);
             let updateDisabledReason: string | null = null;
             if (!updateSupported) {
                 if (!app.isPackaged) {
@@ -1615,7 +1623,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle('clear-dps-report-cache', async () => {
-            return clearDpsReportCache();
+            return await clearDpsReportCache();
         });
 
         // Clear logs from store to improve boot time (persistence removed)
@@ -1742,7 +1750,7 @@ if (!gotTheLock) {
             try {
                 const dir = payload?.dir;
                 if (!dir) return { success: false, error: 'Missing directory.' };
-                if (!fs.existsSync(dir)) return { success: false, error: 'Directory not found.' };
+                if (!(await pathExists(dir))) return { success: false, error: 'Directory not found.' };
                 const entries = await fs.promises.readdir(dir, { withFileTypes: true });
                 const files = await Promise.all(entries
                     .filter((entry) => entry.isFile() && (entry.name.endsWith('.evtc') || entry.name.endsWith('.zevtc')))
@@ -1764,7 +1772,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.on('start-watching', (_event, dirPath: string) => {
-            watcher?.start(dirPath);
+            void watcher?.start(dirPath);
             store.set('logDirectory', dirPath);
         });
 
@@ -2072,14 +2080,14 @@ if (!gotTheLock) {
                     return { success: true, updated: false };
                 }
 
-                const appRoot = getWebRoot();
+                const appRoot = await getWebRoot();
                 const templateDir = path.join(appRoot, 'dist-web');
-                if (app.isPackaged && !fs.existsSync(templateDir)) {
+                if (app.isPackaged && !(await pathExists(templateDir))) {
                     return { success: false, error: 'Web template missing from the app build.' };
                 }
                 if (!app.isPackaged) {
                     const built = await buildWebTemplate(appRoot);
-                    if (!built.ok || !fs.existsSync(templateDir)) {
+                    if (!built.ok || !(await pathExists(templateDir))) {
                         return { success: false, error: built.error || 'Failed to generate the web template automatically.' };
                     }
                 }
@@ -2096,9 +2104,9 @@ if (!gotTheLock) {
                     });
                 };
 
-                const rootFiles = collectFiles(templateDir);
+                const rootFiles = await collectFiles(templateDir);
                 for (const file of rootFiles) {
-                    const content = fs.readFileSync(file.absPath);
+                    const content = await fs.promises.readFile(file.absPath);
                     queueFile(withPagesPath(pagesPath, file.relPath), content);
                 }
 
@@ -2136,7 +2144,7 @@ if (!gotTheLock) {
                 if (!owner || !repo) {
                     return { success: false, error: 'Select or create a repository in Settings first.' };
                 }
-                if (!logoPath || !fs.existsSync(logoPath)) {
+                if (!logoPath || !(await pathExists(logoPath))) {
                     return { success: false, error: 'Logo file not found.' };
                 }
                 let pagesPath = getStoredPagesPath();
@@ -2178,7 +2186,7 @@ if (!gotTheLock) {
                     });
                 };
 
-                const logoBuffer = fs.readFileSync(logoPath);
+                const logoBuffer = await fs.promises.readFile(logoPath);
                 const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
                 queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
                 queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
@@ -2363,16 +2371,16 @@ if (!gotTheLock) {
                 store.set('githubPagesSourcePath', pagesPath);
 
                 sendWebUploadStatus('Preparing', 'Checking web template...', 25);
-                const appRoot = getWebRoot();
+                const appRoot = await getWebRoot();
                 sendWebUploadStatus('Preparing', `Using web root: ${appRoot}`, 27);
                 const templateDir = path.join(appRoot, 'dist-web');
-                if (app.isPackaged && !fs.existsSync(templateDir)) {
+                if (app.isPackaged && !(await pathExists(templateDir))) {
                     return { success: false, error: 'Web template missing from the app build.' };
                 }
                 if (!app.isPackaged) {
                     sendWebUploadStatus('Building', 'Generating web template...', 30);
                     const built = await buildWebTemplate(appRoot);
-                    if (!built.ok || !fs.existsSync(templateDir)) {
+                    if (!built.ok || !(await pathExists(templateDir))) {
                         sendWebUploadStatus('Build failed', built.error || 'Failed to generate web template.', 30);
                         return { success: false, error: built.error || 'Failed to generate the web template automatically.' };
                     }
@@ -2387,9 +2395,12 @@ if (!gotTheLock) {
 
                 sendWebUploadStatus('Packaging', 'Preparing report bundle...', 40);
                 const stagingRoot = path.join(app.getPath('userData'), 'web-report-staging', reportMeta.id);
-                fs.rmSync(stagingRoot, { recursive: true, force: true });
-                fs.mkdirSync(stagingRoot, { recursive: true });
-                fs.writeFileSync(path.join(stagingRoot, 'report.json'), JSON.stringify({ meta: reportMeta, stats: payload.stats }, null, 2));
+                await fs.promises.rm(stagingRoot, { recursive: true, force: true });
+                await fs.promises.mkdir(stagingRoot, { recursive: true });
+                await fs.promises.writeFile(
+                    path.join(stagingRoot, 'report.json'),
+                    JSON.stringify({ meta: reportMeta, stats: payload.stats }, null, 2)
+                );
                 const redirectHtml = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -2405,7 +2416,7 @@ if (!gotTheLock) {
   </body>
 </html>
 `;
-                fs.writeFileSync(path.join(stagingRoot, 'index.html'), redirectHtml);
+                await fs.promises.writeFile(path.join(stagingRoot, 'index.html'), redirectHtml);
 
                 const reportUrl = baseUrl
                     ? `${baseUrl.replace(/\/$/, '')}/?report=${reportMeta.id}`
@@ -2488,17 +2499,17 @@ if (!gotTheLock) {
                     });
                 };
 
-                const rootFiles = collectFiles(templateDir);
+                const rootFiles = await collectFiles(templateDir);
                 for (const file of rootFiles) {
                     const repoPath = file.relPath;
-                    const content = fs.readFileSync(file.absPath);
+                    const content = await fs.promises.readFile(file.absPath);
                     queueFile(withPagesPath(pagesPath, repoPath), content);
                 }
 
-                const reportFiles = collectFiles(stagingRoot);
+                const reportFiles = await collectFiles(stagingRoot);
                 for (const file of reportFiles) {
                     const repoPath = withPagesPath(pagesPath, `reports/${reportMeta.id}/${file.relPath}`);
-                    const content = fs.readFileSync(file.absPath);
+                    const content = await fs.promises.readFile(file.absPath);
                     queueFile(repoPath, content);
                 }
 
@@ -2512,11 +2523,11 @@ if (!gotTheLock) {
                 const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiTheme }, null, 2));
                 queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
                 const logoPath = store.get('githubLogoPath') as string | undefined;
-                if (logoPath && fs.existsSync(logoPath)) {
-                const logoBuffer = fs.readFileSync(logoPath);
-                queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
-                const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
-                queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
+                if (logoPath && await pathExists(logoPath)) {
+                    const logoBuffer = await fs.promises.readFile(logoPath);
+                    queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
+                    const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
+                    queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
                 }
 
                 if (pendingEntries.length === 0) {
