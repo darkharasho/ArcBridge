@@ -1,6 +1,9 @@
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { StatsView } from '../renderer/StatsView';
 import { DEFAULT_WEB_THEME, WebTheme } from '../shared/webThemes';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
 import {
     ShieldCheck,
     CalendarDays,
@@ -19,7 +22,8 @@ import {
     PanelLeft,
     Zap,
     ArrowLeft,
-    ArrowUp
+    ArrowUp,
+    X as CloseIcon
 } from 'lucide-react';
 
 interface ReportMeta {
@@ -152,6 +156,7 @@ export function ReportApp() {
     const [logoIsDefault, setLogoIsDefault] = useState(false);
     const [tocOpen, setTocOpen] = useState(false);
     const [uiTheme, setUiTheme] = useState<'classic' | 'modern'>('classic');
+    const [proofOfWorkOpen, setProofOfWorkOpen] = useState(false);
     const basePath = useMemo(() => {
         let pathName = window.location.pathname || '/';
         if (pathName.endsWith('/index.html')) {
@@ -346,6 +351,154 @@ export function ReportApp() {
             return haystack.includes(term);
         });
     }, [sortedIndex, searchTerm]);
+
+    const legalNoticePane = (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-gray-400">
+            <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-semibold text-gray-200">Legal Notice</div>
+                <button
+                    onClick={() => setProofOfWorkOpen(true)}
+                    className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                >
+                    Proof of Work
+                </button>
+            </div>
+            <p>
+                ArcBridge is free software: you can redistribute it and/or modify it under the terms
+                of the GNU General Public License v3.0 only. This program comes with ABSOLUTELY NO WARRANTY.
+            </p>
+            <p className="mt-2">
+                Class Icons, artwork, and skill icons are created and owned by Arenanet as detailed in their{' '}
+                <a
+                    href="https://www.arena.net/en/legal/content-terms-of-use"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                >
+                    Content Terms of Use
+                </a>
+                . I do not own or profit from this work in any way. Assets were obtained from asset packs distributed by Arenanet.
+                The official statement from the Content Terms of Use:
+            </p>
+            <p className="mt-2">
+                © ArenaNet LLC. All rights reserved. NCSOFT, ArenaNet, Guild Wars, Guild Wars 2, GW2, Guild Wars 2: Heart of Thorns,
+                Guild Wars 2: Path of Fire, Guild Wars 2: End of Dragons, and Guild Wars 2: Secrets of the Obscure and all associated logos,
+                designs, and composite marks are trademarks or registered trademarks of NCSOFT Corporation.
+            </p>
+            <p className="mt-2">
+                See the{' '}
+                <a
+                    href="https://github.com/darkharasho/ArcBridge/blob/main/LICENSE"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                >
+                    LICENSE
+                </a>
+                {' '}and{' '}
+                <a
+                    href="https://github.com/darkharasho/ArcBridge/blob/main/THIRD_PARTY_NOTICES.md"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                >
+                    THIRD_PARTY_NOTICES.md
+                </a>
+                {' '}files for full terms and upstream attributions.
+            </p>
+        </div>
+    );
+
+    const proofOfWorkModal = proofOfWorkOpen && (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg"
+            onClick={(event) => event.target === event.currentTarget && setProofOfWorkOpen(false)}
+        >
+            <div className="w-full max-w-4xl bg-[#101826]/90 border border-white/10 rounded-2xl shadow-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <div className="text-lg font-bold text-white">Proof of Work</div>
+                        <div className="text-xs text-gray-400">Metrics Specification</div>
+                    </div>
+                    <button
+                        onClick={() => setProofOfWorkOpen(false)}
+                        className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+                        aria-label="Close proof of work"
+                    >
+                        <CloseIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="max-h-[65vh] overflow-y-auto pr-2">
+                    <div className="space-y-4 text-sm text-gray-200">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                h1: ({ children }) => <h1 className="text-2xl font-bold text-white">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-xl font-semibold text-white">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-lg font-semibold text-white">{children}</h3>,
+                                p: ({ children }) => <p className="leading-6 text-gray-200">{children}</p>,
+                                ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 text-gray-200">{children}</ul>,
+                                ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 text-gray-200">{children}</ol>,
+                                li: ({ children }) => <li className="leading-6">{children}</li>,
+                                blockquote: ({ children }) => (
+                                    <blockquote className="border-l-2 border-blue-400/40 pl-4 text-gray-300 italic">
+                                        {children}
+                                    </blockquote>
+                                ),
+                                a: ({ href, children }) => (
+                                    <a
+                                        className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                                        href={href}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        {children}
+                                    </a>
+                                ),
+                                table: ({ children }) => (
+                                    <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/30">
+                                        <table className="w-full border-collapse text-left text-sm">
+                                            {children}
+                                        </table>
+                                    </div>
+                                ),
+                                th: ({ children }) => (
+                                    <th className="border-b border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-gray-300">
+                                        {children}
+                                    </th>
+                                ),
+                                td: ({ children }) => (
+                                    <td className="border-b border-white/10 px-3 py-2 text-gray-200">
+                                        {children}
+                                    </td>
+                                ),
+                                pre: ({ children }) => (
+                                    <pre className="overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-blue-100">
+                                        {children}
+                                    </pre>
+                                ),
+                                code: (props: any) => {
+                                    const { inline, className, children } = props;
+                                    const isInline = inline ?? !className;
+                                    return isInline ? (
+                                        <code className="rounded bg-black/40 px-1.5 py-0.5 text-[11px] text-blue-200">
+                                            {children}
+                                        </code>
+                                    ) : (
+                                        <code className="whitespace-pre-wrap text-blue-100">
+                                            {children}
+                                        </code>
+                                    );
+                                }
+                            }}
+                        >
+                            {metricsSpecMarkdown}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     if (report) {
         const arcbridgeLogoUrl = `${basePath}img/ArcBridge.svg`.replace(/\/{2,}/g, '/');
@@ -572,6 +725,9 @@ export function ReportApp() {
                     <div className="flex-1 min-w-0">
                         <StatsView logs={[]} onBack={() => {}} mvpWeights={undefined} precomputedStats={report.stats} statsViewSettings={report.stats?.statsViewSettings} embedded />
                     </div>
+                    <div className="mt-10">
+                        {legalNoticePane}
+                    </div>
                 </div>
                 <div className="fixed bottom-4 left-4 right-4 z-30 sm:hidden mobile-action-bar">
                     <div className="flex items-center justify-between gap-2 rounded-2xl bg-slate-950/70 border border-white/15 backdrop-blur-xl px-3 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
@@ -598,6 +754,7 @@ export function ReportApp() {
                         </button>
                     </div>
                 </div>
+                {proofOfWorkModal}
             </div>
         );
     }
@@ -757,7 +914,11 @@ export function ReportApp() {
                         <div className={`${glassCard} p-6 text-gray-300`} style={glassCardStyle}>No reports match your search.</div>
                     )}
                 </div>
+                <div className="mt-8">
+                    {legalNoticePane}
+                </div>
             </div>
+            {proofOfWorkModal}
         </div>
     );
 }
