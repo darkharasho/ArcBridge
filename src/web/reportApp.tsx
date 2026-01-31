@@ -249,6 +249,17 @@ export function ReportApp() {
     }, [basePath]);
 
     useEffect(() => {
+        if (report) {
+            const dateLabel = report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd);
+            document.title = dateLabel
+                ? `ArcBridge — ${report.meta.title} — ${dateLabel}`
+                : `ArcBridge — ${report.meta.title}`;
+            return;
+        }
+        document.title = 'ArcBridge Reports';
+    }, [report]);
+
+    useEffect(() => {
         const body = document.body;
         body.classList.add('web-report');
         body.classList.remove('theme-classic', 'theme-modern');
