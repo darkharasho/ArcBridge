@@ -1,21 +1,18 @@
 # Release Notes
 
-Version v1.10.2 — January 29, 2026
+Version v1.11.0 — January 30, 2026
 
 ## 🌟 Highlights
-- Version bumped to 1.10.2 in package.json and package-lock.json.
-- Code cleanup and structural refactor for easier maintenance.
-- Added a new script to help commit updated dist-web index files.
+- New darker theme and a refreshed app icon.
+- Updated icon assets and visuals for a sleeker look.
 
 ## 🛠️ Improvements
-- Added a new script to commit updated dist-web index files.
-- Cleaned up code structure and removed unused blocks.
-- Refactored key parts of the codebase for better readability and maintainability.
+- Updated application icon files to match the new look.
+- Implemented a darker theme option for the UI.
+- Updated dist-web index files to support the new visuals.
 
 ## 🧯 Fixes
-- Fix Skill Usage table having character name instead of account name like the rest.
-- Fixed the conditions navbar entry missing.
-- Fixed intermittent 422s from github.
+- None.
 
 ## ⚠️ Breaking Changes
-- None.
+- Removal of EI CLI integration and related settings may affect workflows that relied on that feature. An initial EI CLI configuration file with default settings is included for future use.
