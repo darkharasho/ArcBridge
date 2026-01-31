@@ -473,6 +473,11 @@ const isResUtilitySkill = (id: number, skillMap: Record<string, { name?: string 
     return RES_UTILITY_NAME_MATCHES.some((match) => name.includes(match));
 };
 
+const isAutoAttackName = (name: string) => {
+    const lowered = name.toLowerCase();
+    return lowered.includes('autoattack') || lowered.includes('auto attack');
+};
+
 interface SkillUsagePlayer {
     key: string;
     account: string;
@@ -488,6 +493,7 @@ interface SkillOption {
     id: string;
     name: string;
     total: number;
+    autoAttack?: boolean;
 }
 
 interface SkillUsageLogRecord {
@@ -578,6 +584,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const expandedCloseTimerRef = useRef<number | null>(null);
     const [fightBreakdownTab, setFightBreakdownTab] = useState<'sizes' | 'outcomes' | 'damage' | 'barrier'>('sizes');
     const [skillUsageView, setSkillUsageView] = useState<'total' | 'perSecond'>('total');
+    const [apmView, setApmView] = useState<'total' | 'perSecond'>('total');
+    const [activeApmSpec, setActiveApmSpec] = useState<string | null>(null);
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -2479,6 +2487,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             });
             return {
                 ...precomputedSkillUsage,
+                skillOptions: (precomputedSkillUsage.skillOptions || []).map((option) => ({
+                    ...option,
+                    autoAttack: typeof option.autoAttack === 'boolean' ? option.autoAttack : isAutoAttackName(option.name)
+                })),
                 players: (precomputedSkillUsage.players || []).map((player) => ({
                     ...player,
                     totalActiveSeconds: player.totalActiveSeconds ?? activeSecondsByPlayer.get(player.key) ?? 0
@@ -2487,13 +2499,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         }
         const skillNameMap = new Map<string, string>();
         const skillTotals = new Map<string, number>();
+        const skillAutoAttackMap = new Map<string, boolean>();
         const playerMap = new Map<string, SkillUsagePlayer>();
         const logRecords: SkillUsageLogRecord[] = [];
         const resUtilitySkillNameMap = new Map<string, string>();
 
-        const resolveSkillName = (map: Record<string, { name?: string }>, id: number) => {
+        const resolveSkillEntry = (map: Record<string, { name?: string; autoAttack?: boolean }> | undefined, id: number) => {
             const keyed = map?.[`s${id}`] || map?.[`${id}`];
-            return keyed?.name || `Skill ${id}`;
+            const name = keyed?.name || `Skill ${id}`;
+            const autoAttack = typeof keyed?.autoAttack === 'boolean' ? keyed.autoAttack : isAutoAttackName(name);
+            return { name, autoAttack };
         };
 
         validLogs.forEach((log) => {
@@ -2553,7 +2568,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     const castCount = Array.isArray(rotationSkill.skills) ? rotationSkill.skills.length : 0;
                     if (castCount === 0) return;
                     const skillId = `s${rotationSkill.id}`;
-                    const skillName = resolveSkillName(skillMap, rotationSkill.id);
+                    const { name: skillName, autoAttack } = resolveSkillEntry(skillMap, rotationSkill.id);
                     const existingEntry = record.skillEntries[skillId] ?? { name: skillName, players: {} };
                     if (existingEntry.name.startsWith('Skill ') && !skillName.startsWith('Skill ')) {
                         existingEntry.name = skillName;
@@ -2564,6 +2579,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     playerRecord.skillTotals[skillId] = (playerRecord.skillTotals[skillId] || 0) + castCount;
                     skillNameMap.set(skillId, skillName);
                     skillTotals.set(skillId, (skillTotals.get(skillId) || 0) + castCount);
+                    skillAutoAttackMap.set(skillId, autoAttack);
 
                     if (isResUtilitySkill(rotationSkill.id, skillMap)) {
                         resUtilitySkillNameMap.set(skillId, skillName);
@@ -2587,7 +2603,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             .map(([id, name]) => ({
                 id,
                 name,
-                total: skillTotals.get(id) || 0
+                total: skillTotals.get(id) || 0,
+                autoAttack: skillAutoAttackMap.get(id) ?? isAutoAttackName(name)
             }))
             .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 
@@ -2620,6 +2637,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     };
 
     const skillNameLookup = useMemo(() => new Map(skillUsageData.skillOptions.map((option) => [option.id, option.name])), [skillUsageData.skillOptions]);
+    const skillAutoAttackLookup = useMemo(() => new Map(
+        skillUsageData.skillOptions.map((option) => {
+            const autoAttack = typeof option.autoAttack === 'boolean' ? option.autoAttack : isAutoAttackName(option.name);
+            return [option.id, autoAttack];
+        })
+    ), [skillUsageData.skillOptions]);
     const isSkillUsagePerSecond = skillUsageView === 'perSecond';
     const formatSkillUsageValue = (value: number) => {
         if (isSkillUsagePerSecond) {
@@ -2627,6 +2650,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         }
         return Math.round(value).toLocaleString();
     };
+    const formatApmValue = (value: number) => value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
     const getPlayerActiveSeconds = (playerKey: string) => {
         const player = playerMapByKey.get(playerKey);
@@ -2800,6 +2824,123 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
     const selectedSkillName = skillUsageData.skillOptions.find((option) => option.id === selectedSkillId)?.name || '';
     const skillUsageReady = skillUsageAvailable && Boolean(selectedSkillId) && selectedPlayers.length > 0;
+
+    const apmSpecTables = useMemo(() => {
+        const specMap = new Map<string, {
+            profession: string;
+            players: SkillUsagePlayer[];
+            playerRows: Array<{
+                key: string;
+                account: string;
+                displayName: string;
+                profession: string;
+                professionList: string[];
+                logs: number;
+                totalActiveSeconds: number;
+                totalCasts: number;
+                totalAutoCasts: number;
+                apm: number;
+                apmNoAuto: number;
+                aps: number;
+                apsNoAuto: number;
+            }>;
+            totalActiveSeconds: number;
+            totalCasts: number;
+            totalAutoCasts: number;
+        }>();
+
+        skillUsageData.players.forEach((player) => {
+            const profession = player.profession || 'Unknown';
+            const entry = specMap.get(profession) || {
+                profession,
+                players: [],
+                playerRows: [],
+                totalActiveSeconds: 0,
+                totalCasts: 0,
+                totalAutoCasts: 0
+            };
+            const activeSeconds = player.totalActiveSeconds || 0;
+            let totalCasts = 0;
+            let totalAutoCasts = 0;
+            Object.entries(player.skillTotals || {}).forEach(([skillId, count]) => {
+                if (!count) return;
+                totalCasts += count;
+                if (skillAutoAttackLookup.get(skillId)) {
+                    totalAutoCasts += count;
+                }
+            });
+            const nonAutoCasts = Math.max(0, totalCasts - totalAutoCasts);
+            const activeMinutes = activeSeconds > 0 ? activeSeconds / 60 : 0;
+            const apm = activeMinutes > 0 ? totalCasts / activeMinutes : 0;
+            const apmNoAuto = activeMinutes > 0 ? nonAutoCasts / activeMinutes : 0;
+            const aps = activeSeconds > 0 ? totalCasts / activeSeconds : 0;
+            const apsNoAuto = activeSeconds > 0 ? nonAutoCasts / activeSeconds : 0;
+
+            entry.players.push(player);
+            entry.playerRows.push({
+                key: player.key,
+                account: player.account,
+                displayName: player.displayName,
+                profession,
+                professionList: player.professionList || [],
+                logs: player.logs,
+                totalActiveSeconds: activeSeconds,
+                totalCasts,
+                totalAutoCasts,
+                apm,
+                apmNoAuto,
+                aps,
+                apsNoAuto
+            });
+            entry.totalActiveSeconds += activeSeconds;
+            entry.totalCasts += totalCasts;
+            entry.totalAutoCasts += totalAutoCasts;
+            specMap.set(profession, entry);
+        });
+
+        const sortKey: 'apm' | 'aps' = apmView === 'perSecond' ? 'aps' : 'apm';
+        return Array.from(specMap.values())
+            .map((spec) => {
+                const activeMinutes = spec.totalActiveSeconds > 0 ? spec.totalActiveSeconds / 60 : 0;
+                const totalApm = activeMinutes > 0 ? spec.totalCasts / activeMinutes : 0;
+                const nonAutoTotal = Math.max(0, spec.totalCasts - spec.totalAutoCasts);
+                const totalApmNoAuto = activeMinutes > 0 ? nonAutoTotal / activeMinutes : 0;
+                const totalAps = spec.totalActiveSeconds > 0 ? spec.totalCasts / spec.totalActiveSeconds : 0;
+                const totalApsNoAuto = spec.totalActiveSeconds > 0 ? nonAutoTotal / spec.totalActiveSeconds : 0;
+                const playerRows = [...spec.playerRows].sort((a, b) => {
+                    const diff = b[sortKey] - a[sortKey];
+                    if (diff !== 0) return diff;
+                    return a.displayName.localeCompare(b.displayName);
+                });
+                return {
+                    ...spec,
+                    totalApm,
+                    totalApmNoAuto,
+                    totalAps,
+                    totalApsNoAuto,
+                    playerRows
+                };
+            })
+            .sort((a, b) => b.totalCasts - a.totalCasts || a.profession.localeCompare(b.profession));
+    }, [skillUsageData.players, skillAutoAttackLookup, apmView]);
+
+    const apmSpecAvailable = skillUsageAvailable && apmSpecTables.length > 0;
+    const activeApmSpecTable = useMemo(
+        () => apmSpecTables.find((spec) => spec.profession === activeApmSpec) ?? null,
+        [apmSpecTables, activeApmSpec]
+    );
+
+    useEffect(() => {
+        if (apmSpecTables.length === 0) {
+            if (activeApmSpec !== null) {
+                setActiveApmSpec(null);
+            }
+            return;
+        }
+        if (!activeApmSpec || !apmSpecTables.some((spec) => spec.profession === activeApmSpec)) {
+            setActiveApmSpec(apmSpecTables[0].profession);
+        }
+    }, [apmSpecTables, activeApmSpec]);
 
     const togglePlayerSelection = (playerKey: string) => {
         setSelectedPlayers((prev) => {
@@ -5503,6 +5644,125 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* APM Breakdown */}
+                <div
+                    id="apm-stats"
+                    className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24"
+                >
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-emerald-300" />
+                            APM Breakdown
+                        </h3>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 text-[10px] uppercase tracking-[0.25em] text-gray-400">
+                                {[
+                                    { id: 'total', label: 'Total' },
+                                    { id: 'perSecond', label: 'Per Sec' }
+                                ].map((mode) => (
+                                    <button
+                                        key={mode.id}
+                                        type="button"
+                                        onClick={() => setApmView(mode.id as 'total' | 'perSecond')}
+                                        className={`px-2.5 py-1 rounded-full transition-colors ${
+                                            apmView === mode.id
+                                                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40'
+                                                : 'border border-transparent text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        {mode.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="text-xs uppercase tracking-[0.3em] text-gray-500">
+                                {apmSpecTables.length} {apmSpecTables.length === 1 ? 'spec' : 'specs'}
+                            </div>
+                        </div>
+                    </div>
+                    {!apmSpecAvailable ? (
+                        <div className="rounded-2xl border border-dashed border-white/20 px-4 py-6 text-center text-xs text-gray-400">
+                            {skillUsageAvailable
+                                ? 'No APM data available for the current selection.'
+                                : 'Upload or highlight logs with rotation data to enable the APM table.'}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
+                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Elite Specs</div>
+                                <div className={sidebarListClass}>
+                                    {apmSpecTables.map((spec) => (
+                                        <button
+                                            key={spec.profession}
+                                            onClick={() => setActiveApmSpec(spec.profession)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                                                activeApmSpec === spec.profession
+                                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                    : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {renderProfessionIcon(spec.profession, undefined, 'w-4 h-4')}
+                                                    <span className="truncate">{spec.profession}</span>
+                                                </div>
+                                                <span className="text-[10px] text-gray-400">{spec.players.length}p</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                                {!activeApmSpecTable ? (
+                                    <div className="px-4 py-10 text-center text-gray-500 italic text-sm">
+                                        Select an elite spec to view APM details
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                            <div className="flex items-center gap-2">
+                                                {renderProfessionIcon(activeApmSpecTable.profession, undefined, 'w-4 h-4')}
+                                                <div className="text-sm font-semibold text-gray-200">{activeApmSpecTable.profession}</div>
+                                            </div>
+                                            <div className="text-[11px] text-gray-400">
+                                                {activeApmSpecTable.players.length} {activeApmSpecTable.players.length === 1 ? 'player' : 'players'}
+                                                {' '}| {formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalAps : activeApmSpecTable.totalApm)} {apmView === 'perSecond' ? 'APS' : 'APM'}
+                                                {' '}| {formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalApsNoAuto : activeApmSpecTable.totalApmNoAuto)} {apmView === 'perSecond' ? 'APS' : 'APM'} (no auto)
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                            <div>Player</div>
+                                            <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'}</div>
+                                            <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto)</div>
+                                        </div>
+                                        <div className="max-h-72 overflow-y-auto">
+                                            {activeApmSpecTable.playerRows.map((row, index) => (
+                                                <div
+                                                    key={`${activeApmSpecTable.profession}-${row.key}`}
+                                                    className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"
+                                                >
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">{`#${index + 1}`}</span>
+                                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                        <div className="min-w-0">
+                                                            <div className="font-semibold text-white truncate">{row.displayName}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right font-mono text-gray-300">
+                                                        {formatApmValue(apmView === 'perSecond' ? row.aps : row.apm)}
+                                                    </div>
+                                                    <div className="text-right font-mono text-gray-300">
+                                                        {formatApmValue(apmView === 'perSecond' ? row.apsNoAuto : row.apmNoAuto)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
