@@ -74,6 +74,7 @@ if (bumpType) {
     run(npmCmd, ['install']);
     run(gitCmd, ['add', 'package.json', 'package-lock.json']);
     run(gitCmd, ['commit', '-m', `chore: bump version to ${nextVersion}`]);
+    run(gitCmd, ['push']);
 }
 
 run(npmCmd, ['run', 'generate:release-notes']);
