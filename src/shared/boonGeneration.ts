@@ -158,14 +158,18 @@ export const formatBoonMetricDisplay = (
     category: BoonCategory,
     stacking: boolean,
     metric: BoonMetric,
+    options?: { roundCountStats?: boolean },
 ) => {
     const value = getBoonMetricValue(row, category, stacking, metric);
+    const isPercent = metric === 'uptime' && !stacking;
+    const isRate = metric === 'average';
+    const decimals = options?.roundCountStats && !isPercent && !isRate ? 0 : 2;
     const formatted = value.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
     });
 
-    if (metric === 'uptime' && !stacking) {
+    if (isPercent) {
         return `${formatted}%`;
     }
     return formatted;

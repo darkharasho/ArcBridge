@@ -53,6 +53,7 @@ export interface IMvpWeights {
 export interface IStatsViewSettings {
     showTopStats: boolean;
     showMvp: boolean;
+    roundCountStats: boolean;
 }
 
 export type UiTheme = 'classic' | 'modern';
@@ -105,7 +106,8 @@ export const DEFAULT_MVP_WEIGHTS: IMvpWeights = {
 
 export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     showTopStats: true,
-    showMvp: true
+    showMvp: true,
+    roundCountStats: false
 };
 
 export const DEFAULT_UI_THEME: UiTheme = 'classic';

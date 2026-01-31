@@ -1434,7 +1434,8 @@ if (!gotTheLock) {
         };
         const DEFAULT_STATS_VIEW_SETTINGS = {
             showTopStats: true,
-            showMvp: true
+            showMvp: true,
+            roundCountStats: false
         };
         ipcMain.handle('get-settings', () => {
             const updateConfigPath = path.join(process.resourcesPath, 'app-update.yml');

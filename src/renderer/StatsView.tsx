@@ -510,6 +510,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const showTopStats = activeStatsViewSettings.showTopStats;
     const showMvp = activeStatsViewSettings.showMvp;
+    const roundCountStats = activeStatsViewSettings.roundCountStats;
     const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
         'Down Contribution': 'downContribution',
         'Healing': 'healing',
@@ -4100,7 +4101,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                                     <span className="truncate">{row.account}</span>
                                                                 </div>
                                                                 <div className="text-right font-mono text-gray-300">
-                                                                    {formatBoonMetricDisplay(row, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)}
+                                                                    {formatBoonMetricDisplay(row, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric, { roundCountStats })}
                                                                 </div>
                                                                 <div className="text-right font-mono text-gray-400">
                                                                     {row.activeTimeMs ? `${(row.activeTimeMs / 1000).toFixed(1)}s` : '-'}
@@ -4197,7 +4198,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         return row.offenseTotals?.[metric.id] || 0;
                                     };
                                     const formatValue = (val: number) => {
-                                        const formatted = formatWithCommas(val, 2);
+                                        const decimals = roundCountStats && !metric.isPercent && offenseViewMode === 'total' ? 0 : 2;
+                                        const formatted = formatWithCommas(val, decimals);
                                         return metric.isPercent ? `${formatted}%` : formatted;
                                     };
                                     const rows = [...stats.offensePlayers]
@@ -4654,7 +4656,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                                     : defenseViewMode === 'per1s'
                                                                         ? row.per1s
                                                                         : row.per60s;
-                                                                return formatWithCommas(value, 2);
+                                                                const decimals = roundCountStats && defenseViewMode === 'total' ? 0 : 2;
+                                                                return formatWithCommas(value, decimals);
                                                             })()}
                                                         </div>
                                                         <div className="text-right font-mono text-gray-400">
@@ -4844,7 +4847,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                                     : supportViewMode === 'per1s'
                                                                         ? row.per1s
                                                                         : row.per60s;
-                                                                const decimals = metric.isTime ? 1 : 2;
+                                                                const decimals = metric.isTime
+                                                                    ? 1
+                                                                    : (roundCountStats && supportViewMode === 'total' ? 0 : 2);
                                                                 return formatWithCommas(value, decimals);
                                                             })()}
                                                         </div>

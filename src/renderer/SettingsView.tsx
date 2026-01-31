@@ -1315,6 +1315,12 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                             label="Calculate MVP"
                             description="MVP scoring + squad/silver/bronze highlights"
                         />
+                        <Toggle
+                            enabled={statsViewSettings.roundCountStats}
+                            onChange={(v) => updateStatsViewSetting('roundCountStats', v)}
+                            label="Round count stats to whole numbers"
+                            description="Percent-based stats keep decimals"
+                        />
                     </div>
                 </SettingsSection>
 
