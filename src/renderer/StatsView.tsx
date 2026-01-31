@@ -3063,10 +3063,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         ? 'stats-view min-h-screen flex flex-col p-2 sm:p-3 w-full max-w-6xl mx-auto'
         : 'stats-view h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
     const scrollContainerClass = embedded
-        ? 'space-y-5 sm:space-y-6 min-h-0 p-3 sm:p-4 rounded-xl bg-black/20 border border-white/5 [contain:paint]'
-        : `flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl ${
-            expandedSection ? '' : 'backdrop-blur-2xl'
-        } [contain:paint]`;
+        ? 'space-y-5 sm:space-y-6 min-h-0 p-3 sm:p-4 rounded-xl bg-black/20 border border-white/5 backdrop-blur-xl'
+        : 'flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl backdrop-blur-2xl';
     const scrollContainerStyle: CSSProperties | undefined = embedded
         ? {
             backgroundColor: 'rgba(3, 7, 18, 0.75)',
@@ -3751,28 +3749,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
-                                {selectedPlayers.length > 0 && (
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                        {selectedPlayers.map((playerKey) => {
-                                            const player = playerMapByKey.get(playerKey);
-                                            const total = playerTotalsForSkill[playerKey] ?? 0;
-                                            return (
-                                                <div
-                                                    key={playerKey}
-                                                    className="rounded-2xl border border-white/10 bg-white/5 p-3 flex items-center justify-between"
-                                                    onMouseEnter={() => setHoveredSkillPlayer([playerKey])}
-                                                    onMouseLeave={() => setHoveredSkillPlayer([])}
-                                                >
-                                                    <div>
-                                                        <div className="text-[10px] uppercase tracking-[0.4em] text-gray-400">Player</div>
-                                                        <div className="font-semibold text-white">{player?.displayName || playerKey}</div>
-                                                    </div>
-                                                    <div className="text-3xl font-black text-white font-mono">{total.toLocaleString()}</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
                             </div>
                             <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
                                 <div className="space-y-1.5 text-[11px] mx-auto pb-2">
@@ -5151,14 +5127,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 {/* Skill Usage Tracker */}
                 <div
                     id="skill-usage"
-                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 isolate ${
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
                         expandedSection === 'skill-usage'
                             ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane pb-10 ${
                                 expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
                             }`
                             : 'overflow-hidden'
                     }`}
-                    style={{ contain: 'paint' }}
                 >
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4 relative">
                         <div className={expandedSection === 'skill-usage' ? 'pr-10 md:pr-0' : ''}>
@@ -5331,139 +5306,146 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     </div>
                     <div className="space-y-3">
                         {skillUsageReady ? (
-                            <div className="space-y-4 rounded-2xl bg-black/50 p-4 mt-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="text-sm font-semibold text-gray-200">
-                                        {selectedSkillName || 'Selected Skill Usage'}
+                            <div className="space-y-4">
+                                <div className="space-y-4 rounded-2xl bg-black/50 p-4 mt-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm font-semibold text-gray-200">
+                                            {selectedSkillName || 'Selected Skill Usage'}
+                                        </div>
+                                        <div className="text-[11px] text-gray-400">
+                                            ({isSkillUsagePerSecond ? 'casts per second' : 'casts per log'})
+                                        </div>
                                     </div>
-                                    <div className="text-[11px] text-gray-400">
-                                        ({isSkillUsagePerSecond ? 'casts per second' : 'casts per log'})
-                                    </div>
-                                </div>
-                                <ResponsiveContainer width="100%" height={250}>
-                                    <LineChart data={skillChartData}>
-                                        <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
-                                        <XAxis
-                                            dataKey="index"
-                                            type="number"
-                                            tick={{ fill: '#e2e8f0', fontSize: 10 }}
-                                            interval={0}
-                                            tickFormatter={(value: number) => {
-                                                const entry = skillChartData[value];
-                                                const label = String(entry?.shortLabel ?? value);
-                                                return label.length > 20 ? `${label.slice(0, 20)}…` : label;
-                                            }}
-                                        />
-                                        <YAxis
-                                            tick={{ fill: '#e2e8f0', fontSize: 10 }}
-                                            domain={[0, Math.max(1, skillChartMaxY)]}
-                                            allowDecimals={false}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}
-                                            content={({ active, payload, label }) => {
-                                                if (!active || !payload || payload.length === 0) return null;
-                                                const sorted = [...payload].sort((a, b) => (b.value || 0) - (a.value || 0));
-                                                const first = sorted[0];
-                                                const header = (first?.payload as any)?.fullLabel || label;
-                                                return (
-                                                    <div className="rounded-lg bg-slate-900/95 border border-white/10 px-3 py-2 shadow-xl">
-                                                        <div className="text-sm text-white mb-1">{header}</div>
-                                                        <div className="space-y-1">
-                                                            {sorted.map((item) => {
-                                                                const name = String(item.name || '');
-                                                                const player = playerMapByKey.get(name);
-                                                                const labelText = player?.displayName || name || 'Player';
-                                                                const value = formatSkillUsageValue(Number(item.value || 0));
-                                                                const color = item.color || '#38bdf8';
-                                                                return (
-                                                                    <div key={`${labelText}-${value}`} className="flex items-center justify-between text-sm">
-                                                                        <span className="truncate" style={{ color }}>{labelText}</span>
-                                                                        <span className="text-gray-200 font-mono">{value}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }}
-                                        />
-                                        {selectedPlayers.map((playerKey) => {
-                                            const isSelected = hoveredSkillPlayer.includes(playerKey);
-                                            const hasSelection = hoveredSkillPlayer.length > 0;
-                                            const color = getLineStrokeColor(playerKey, isSelected, hasSelection);
-                                            const dash = getLineDashForPlayer(playerKey);
-                                            const isDimmed = hoveredSkillPlayer.length > 0 && !isSelected;
-                                            return (
-                                            <Line
-                                                key={playerKey}
-                                                dataKey={playerKey}
-                                                stroke={color}
-                                                strokeWidth={isSelected ? 4 : 3}
-                                                strokeDasharray={dash}
-                                                opacity={isDimmed ? 0.6 : 1}
-                                                dot={false}
-                                                isAnimationActive={false}
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <LineChart data={skillChartData}>
+                                            <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                                            <XAxis
+                                                dataKey="index"
+                                                type="number"
+                                                tick={{ fill: '#e2e8f0', fontSize: 10 }}
+                                                interval={0}
+                                                tickFormatter={(value: number) => {
+                                                    const entry = skillChartData[value];
+                                                    const label = String(entry?.shortLabel ?? value);
+                                                    return label.length > 20 ? `${label.slice(0, 20)}…` : label;
+                                                }}
                                             />
-                                            );
-                                        })}
-                                    </LineChart>
-                                </ResponsiveContainer>
-                                {selectedPlayers.length > 0 && (
-                                    <div
-                                        className={`grid gap-3 md:grid-cols-2 ${expandedSection === 'skill-usage' ? '' : 'max-h-40 overflow-y-auto pr-1'} relative isolate`}
-                                        style={{ contain: 'paint', backfaceVisibility: 'hidden' }}
-                                    >
-                                        {[...selectedPlayers]
-                                            .sort((a, b) => (playerTotalsForSkill[b] || 0) - (playerTotalsForSkill[a] || 0))
-                                            .map((playerKey) => {
-                                                const player = playerMapByKey.get(playerKey);
-                                                const total = playerTotalsForSkill[playerKey] ?? 0;
-                                            const isActive = hoveredSkillPlayer.includes(playerKey);
-                                            const hasSelection = hoveredSkillPlayer.length > 0;
-                                            const swatchColor = getLineStrokeColor(playerKey, isActive, hasSelection);
-                                                return (
-                                                    <button
-                                                        key={playerKey}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setHoveredSkillPlayer((prev) => {
-                                                                if (prev.includes(playerKey)) {
-                                                                    return prev.filter((key) => key !== playerKey);
-                                                                }
-                                                                return [...prev, playerKey];
-                                                            });
-                                                        }}
-                                                        className={`w-full rounded-2xl border bg-white/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 min-w-0 ${
-                                                            isActive ? 'border-white/40 bg-white/10' : 'border-white/10 hover:border-white/30 hover:bg-white/10'
-                                                        }`}
-                                                        aria-pressed={isActive}
-                                                    >
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            <svg className="h-2 w-6" viewBox="0 0 24 4" aria-hidden="true">
-                                                                <line
-                                                                    x1="0"
-                                                                    y1="2"
-                                                                    x2="24"
-                                                                    y2="2"
-                                                                    stroke={swatchColor}
-                                                                    strokeWidth="2"
-                                                                    strokeDasharray={getLineDashForPlayer(playerKey)}
-                                                                    strokeLinecap="round"
-                                                                />
-                                                            </svg>
-                                                            {renderProfessionIcon(player?.profession, player?.professionList, 'w-4 h-4')}
-                                                            <div className="min-w-0">
-                                                                <div className="text-[10px] uppercase tracking-[0.4em] text-gray-400">Player</div>
-                                                                <div className="font-semibold text-white truncate">{player?.displayName || playerKey}</div>
+                                            <YAxis
+                                                tick={{ fill: '#e2e8f0', fontSize: 10 }}
+                                                domain={[0, Math.max(1, skillChartMaxY)]}
+                                                allowDecimals={false}
+                                            />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}
+                                                content={({ active, payload, label }) => {
+                                                    if (!active || !payload || payload.length === 0) return null;
+                                                    const sorted = [...payload].sort((a, b) => (b.value || 0) - (a.value || 0));
+                                                    const first = sorted[0];
+                                                    const header = (first?.payload as any)?.fullLabel || label;
+                                                    return (
+                                                        <div className="rounded-lg bg-slate-900/95 border border-white/10 px-3 py-2 shadow-xl">
+                                                            <div className="text-sm text-white mb-1">{header}</div>
+                                                            <div className="space-y-1">
+                                                                {sorted.map((item) => {
+                                                                    const name = String(item.name || '');
+                                                                    const player = playerMapByKey.get(name);
+                                                                    const labelText = player?.displayName || name || 'Player';
+                                                                    const value = formatSkillUsageValue(Number(item.value || 0));
+                                                                    const color = item.color || '#38bdf8';
+                                                                    return (
+                                                                        <div key={`${labelText}-${value}`} className="flex items-center justify-between text-sm">
+                                                                            <span className="truncate" style={{ color }}>{labelText}</span>
+                                                                            <span className="text-gray-200 font-mono">{value}</span>
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
-                                                        <div className="text-2xl sm:text-3xl font-black text-white font-mono self-end sm:self-auto shrink-0">
-                                                            {formatSkillUsageValue(total)}
-                                                        </div>
-                                                    </button>
+                                                    );
+                                                }}
+                                            />
+                                            {selectedPlayers.map((playerKey) => {
+                                                const isSelected = hoveredSkillPlayer.includes(playerKey);
+                                                const hasSelection = hoveredSkillPlayer.length > 0;
+                                                const color = getLineStrokeColor(playerKey, isSelected, hasSelection);
+                                                const dash = getLineDashForPlayer(playerKey);
+                                                const isDimmed = hoveredSkillPlayer.length > 0 && !isSelected;
+                                                return (
+                                                <Line
+                                                    key={playerKey}
+                                                    dataKey={playerKey}
+                                                    stroke={color}
+                                                    strokeWidth={isSelected ? 4 : 3}
+                                                    strokeDasharray={dash}
+                                                    opacity={isDimmed ? 0.6 : 1}
+                                                    dot={false}
+                                                    isAnimationActive={false}
+                                                />
                                                 );
                                             })}
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                {selectedPlayers.length > 0 && (
+                                    <div className="rounded-2xl bg-black/40 border border-white/10 p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-xs uppercase tracking-[0.4em] text-gray-400">Selected Players</div>
+                                            <div className="text-[11px] text-gray-500">
+                                                {selectedPlayers.length} {selectedPlayers.length === 1 ? 'player' : 'players'}
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                            {[...selectedPlayers]
+                                                .sort((a, b) => (playerTotalsForSkill[b] || 0) - (playerTotalsForSkill[a] || 0))
+                                                .map((playerKey) => {
+                                                    const player = playerMapByKey.get(playerKey);
+                                                    const total = playerTotalsForSkill[playerKey] ?? 0;
+                                                const isActive = hoveredSkillPlayer.includes(playerKey);
+                                                const hasSelection = hoveredSkillPlayer.length > 0;
+                                                const swatchColor = getLineStrokeColor(playerKey, isActive, hasSelection);
+                                                    return (
+                                                        <button
+                                                            key={playerKey}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setHoveredSkillPlayer((prev) => {
+                                                                    if (prev.includes(playerKey)) {
+                                                                        return prev.filter((key) => key !== playerKey);
+                                                                    }
+                                                                    return [...prev, playerKey];
+                                                                });
+                                                            }}
+                                                            className={`w-full rounded-2xl border bg-white/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 min-w-0 ${
+                                                                isActive ? 'border-white/40 bg-white/10' : 'border-white/10 hover:border-white/30 hover:bg-white/10'
+                                                            }`}
+                                                            aria-pressed={isActive}
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <svg className="h-2 w-6" viewBox="0 0 24 4" aria-hidden="true">
+                                                                    <line
+                                                                        x1="0"
+                                                                        y1="2"
+                                                                        x2="24"
+                                                                        y2="2"
+                                                                        stroke={swatchColor}
+                                                                        strokeWidth="2"
+                                                                        strokeDasharray={getLineDashForPlayer(playerKey)}
+                                                                        strokeLinecap="round"
+                                                                    />
+                                                                </svg>
+                                                                {renderProfessionIcon(player?.profession, player?.professionList, 'w-4 h-4')}
+                                                                <div className="min-w-0">
+                                                                    <div className="text-[10px] uppercase tracking-[0.4em] text-gray-400">Player</div>
+                                                                    <div className="font-semibold text-white truncate">{player?.displayName || playerKey}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-2xl sm:text-3xl font-black text-white font-mono self-end sm:self-auto shrink-0">
+                                                                {formatSkillUsageValue(total)}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                        </div>
                                     </div>
                                 )}
                             </div>
