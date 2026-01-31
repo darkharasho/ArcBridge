@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout, RefreshCw, Trophy, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, LayoutGrid, Trash2, FilePlus2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -29,6 +29,10 @@ const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
     return buffer;
 };
 
+const LOG_UPDATE_FLUSH_MS = 50;
+const LOG_RENDER_INITIAL = 200;
+const LOG_RENDER_STEP = 100;
+
 function App() {
     const [logDirectory, setLogDirectory] = useState<string | null>(null);
     const [notificationType, setNotificationType] = useState<'image' | 'image-beta' | 'embed'>('image');
@@ -37,6 +41,10 @@ function App() {
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
     const canceledLogsRef = useRef<Set<string>>(new Set());
     const detailsRequestInFlight = useRef<Set<string>>(new Set());
+    const logsRef = useRef<ILogData[]>([]);
+    const pendingLogUpdatesRef = useRef<ILogData[]>([]);
+    const logUpdateRafRef = useRef<number | null>(null);
+    const logUpdateTimeoutRef = useRef<number | null>(null);
     const [embedStatSettings, setEmbedStatSettings] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
@@ -93,6 +101,7 @@ function App() {
     const lastPickedIndexRef = useRef<number | null>(null);
     const [filePickerAtBottom, setFilePickerAtBottom] = useState(false);
     const filePickerListRef = useRef<HTMLDivElement | null>(null);
+    const [logRenderLimit, setLogRenderLimit] = useState(LOG_RENDER_INITIAL);
 
     // Persistence removed
 
@@ -121,9 +130,12 @@ function App() {
         [webhooks, selectedWebhookId]
     );
 
+    const deferredLogs = useDeferredValue(logs);
+    const visibleLogs = useMemo(() => deferredLogs.slice(0, logRenderLimit), [deferredLogs, logRenderLimit]);
+
     const fetchLogDetails = useCallback(async (log: ILogData, options?: { force?: boolean }) => {
         if (!log?.filePath) return;
-        if (log.details) return;
+        if (log.details && !options?.force) return;
         if (!options?.force && (log.detailsLoading || log.detailsError)) return;
         if (detailsRequestInFlight.current.has(log.filePath)) return;
 
@@ -169,6 +181,78 @@ function App() {
         }
     }, [setLogs]);
 
+    const flushPendingLogUpdates = useCallback(() => {
+        if (logUpdateTimeoutRef.current !== null) {
+            window.clearTimeout(logUpdateTimeoutRef.current);
+            logUpdateTimeoutRef.current = null;
+        }
+        if (logUpdateRafRef.current !== null) {
+            window.cancelAnimationFrame(logUpdateRafRef.current);
+            logUpdateRafRef.current = null;
+        }
+        const pending = pendingLogUpdatesRef.current;
+        if (pending.length === 0) return;
+        pendingLogUpdatesRef.current = [];
+        setLogs((currentLogs) => {
+            let updated = [...currentLogs];
+            for (const data of pending) {
+                if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
+                    continue;
+                }
+                const existingIndex = updated.findIndex(log => log.filePath === data.filePath);
+                if (existingIndex >= 0) {
+                    updated[existingIndex] = { ...updated[existingIndex], ...data };
+                } else {
+                    updated = [data, ...updated];
+                }
+            }
+            return updated;
+        });
+    }, []);
+
+    const scheduleLogUpdatesFlush = useCallback(() => {
+        if (logUpdateRafRef.current === null && typeof window !== 'undefined') {
+            logUpdateRafRef.current = window.requestAnimationFrame(() => {
+                logUpdateRafRef.current = null;
+                flushPendingLogUpdates();
+            });
+        }
+        if (logUpdateTimeoutRef.current === null && typeof window !== 'undefined') {
+            logUpdateTimeoutRef.current = window.setTimeout(() => {
+                logUpdateTimeoutRef.current = null;
+                flushPendingLogUpdates();
+            }, LOG_UPDATE_FLUSH_MS);
+        }
+    }, [flushPendingLogUpdates]);
+
+    const enqueueLogUpdates = useCallback((items: ILogData[]) => {
+        if (!items?.length) return;
+        pendingLogUpdatesRef.current.push(...items);
+        scheduleLogUpdatesFlush();
+    }, [scheduleLogUpdatesFlush]);
+
+    useEffect(() => {
+        logsRef.current = logs;
+    }, [logs]);
+
+    useEffect(() => {
+        if (logs.length === 0 && logRenderLimit !== LOG_RENDER_INITIAL) {
+            setLogRenderLimit(LOG_RENDER_INITIAL);
+        }
+    }, [logs.length, logRenderLimit]);
+
+    useEffect(() => () => {
+        if (logUpdateRafRef.current !== null) {
+            window.cancelAnimationFrame(logUpdateRafRef.current);
+            logUpdateRafRef.current = null;
+        }
+        if (logUpdateTimeoutRef.current !== null) {
+            window.clearTimeout(logUpdateTimeoutRef.current);
+            logUpdateTimeoutRef.current = null;
+        }
+        pendingLogUpdatesRef.current = [];
+    }, []);
+
     useEffect(() => {
         if (view !== 'stats') return;
         logs
@@ -177,6 +261,23 @@ function App() {
                 fetchLogDetails(log);
             });
     }, [view, logs, fetchLogDetails]);
+
+    useEffect(() => {
+        const cleanup = window.electronAPI.onEiDetailsReady((payload) => {
+            const currentLogs = logsRef.current;
+            const target = currentLogs.find((log) => {
+                if (payload.filePath && log.filePath === payload.filePath) return true;
+                if (payload.permalink && log.permalink === payload.permalink) return true;
+                if (payload.id && log.id === payload.id) return true;
+                return false;
+            });
+            if (!target) return;
+            if (view === 'stats' || expandedLogId === target.filePath || target.details) {
+                fetchLogDetails(target, { force: true });
+            }
+        });
+        return cleanup;
+    }, [fetchLogDetails, view, expandedLogId]);
 
     useEffect(() => {
         if (!webhookDropdownOpen) return;
@@ -280,74 +381,22 @@ function App() {
         const cleanupStatus = window.electronAPI.onUploadStatus(
             // Single item callback
             (data: ILogData) => {
-                if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
-                    return;
-                }
-                setLogs((currentLogs) => {
-                    const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
-                    if (existingIndex >= 0) {
-                        const updated = [...currentLogs];
-                        updated[existingIndex] = { ...updated[existingIndex], ...data };
-                        return updated;
-                    } else {
-                        return [data, ...currentLogs];
-                    }
-                });
+                enqueueLogUpdates([data]);
             },
             // Batch callback - process all items in a SINGLE state update
             (items: ILogData[]) => {
-                setLogs((currentLogs) => {
-                    let updated = [...currentLogs];
-                    for (const data of items) {
-                        if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
-                            continue;
-                        }
-                        const existingIndex = updated.findIndex(log => log.filePath === data.filePath);
-                        if (existingIndex >= 0) {
-                            updated[existingIndex] = { ...updated[existingIndex], ...data };
-                        } else {
-                            updated = [data, ...updated];
-                        }
-                    }
-                    return updated;
-                });
+                enqueueLogUpdates(items);
             }
         );
 
         const cleanupUpload = window.electronAPI.onUploadComplete(
             // Single item callback
             (data: ILogData) => {
-                if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
-                    return;
-                }
-                setLogs((currentLogs) => {
-                    const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
-                    if (existingIndex >= 0) {
-                        const updated = [...currentLogs];
-                        updated[existingIndex] = { ...updated[existingIndex], ...data };
-                        return updated;
-                    } else {
-                        return [data, ...currentLogs];
-                    }
-                });
+                enqueueLogUpdates([data]);
             },
             // Batch callback - process all items in a SINGLE state update
             (items: ILogData[]) => {
-                setLogs((currentLogs) => {
-                    let updated = [...currentLogs];
-                    for (const data of items) {
-                        if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
-                            continue;
-                        }
-                        const existingIndex = updated.findIndex(log => log.filePath === data.filePath);
-                        if (existingIndex >= 0) {
-                            updated[existingIndex] = { ...updated[existingIndex], ...data };
-                        } else {
-                            updated = [data, ...updated];
-                        }
-                    }
-                    return updated;
-                });
+                enqueueLogUpdates(items);
             }
         );
 
@@ -1131,32 +1180,47 @@ function App() {
                                             <p>Drop logs to upload</p>
                                         </div>
                                     ) : (
-                                        logs.map((log) => (
-                                            <ExpandableLogCard
-                                                key={log.filePath}
-                                                log={log}
-                                                isExpanded={expandedLogId === log.filePath}
-                                                onToggle={() => {
-                                                    const nextExpanded = expandedLogId === log.filePath ? null : log.filePath;
-                                                    setExpandedLogId(nextExpanded);
-                                                    if (nextExpanded && (log.status === 'success' || log.status === 'discord') && !log.details) {
-                                                        fetchLogDetails(log, { force: true });
-                                                    }
-                                                }}
-                                                onCancel={() => {
-                                                    if (!log.filePath) return;
-                                                    canceledLogsRef.current.add(log.filePath);
-                                                    setLogs((currentLogs) => currentLogs.filter((entry) => entry.filePath !== log.filePath));
-                                                    if (expandedLogId === log.filePath) {
-                                                        setExpandedLogId(null);
-                                                    }
-                                                }}
-                                                embedStatSettings={embedStatSettings}
-                                                disruptionMethod={disruptionMethod}
+                                        <>
+                                            {visibleLogs.map((log) => (
+                                                <ExpandableLogCard
+                                                    key={log.filePath}
+                                                    log={log}
+                                                    isExpanded={expandedLogId === log.filePath}
+                                                    onToggle={() => {
+                                                        const nextExpanded = expandedLogId === log.filePath ? null : log.filePath;
+                                                        setExpandedLogId(nextExpanded);
+                                                        if (nextExpanded
+                                                            && (log.status === 'success' || log.status === 'discord')
+                                                            && (!log.details || !log.eiDetails)
+                                                        ) {
+                                                            fetchLogDetails(log, { force: true });
+                                                        }
+                                                    }}
+                                                    onCancel={() => {
+                                                        if (!log.filePath) return;
+                                                        canceledLogsRef.current.add(log.filePath);
+                                                        setLogs((currentLogs) => currentLogs.filter((entry) => entry.filePath !== log.filePath));
+                                                        if (expandedLogId === log.filePath) {
+                                                            setExpandedLogId(null);
+                                                        }
+                                                    }}
+                                                    embedStatSettings={embedStatSettings}
+                                                    disruptionMethod={disruptionMethod}
                                                     useClassIcons={showClassIcons}
                                                 />
-                                            ))
-                                        )}
+                                            ))}
+                                            {logs.length > visibleLogs.length && (
+                                                <div className="flex justify-center pt-2">
+                                                    <button
+                                                        onClick={() => setLogRenderLimit((prev) => Math.min(prev + LOG_RENDER_STEP, logs.length))}
+                                                        className="px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                                                    >
+                                                        Load more logs ({visibleLogs.length}/{logs.length})
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             </motion.div>
                         </div>

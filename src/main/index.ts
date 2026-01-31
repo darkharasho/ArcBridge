@@ -6,10 +6,11 @@ import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
-import { DEFAULT_EI_CLI_SETTINGS, loadEiCliJsonForLog, updateEiCliIfNeeded } from './eiCli';
+import { DEFAULT_EI_CLI_SETTINGS, updateEiCliIfNeeded } from './eiCli';
 import { LogWatcher } from './watcher'
 import { Uploader, UploadResult } from './uploader'
 import { initWorkerPool, shutdownWorkerPool, getWorkerPool } from '../workers/main/workerPool';
+import { initEiCliWorkerPool, shutdownEiCliWorkerPool, getEiCliWorkerPool } from '../workers/main/eiCliWorkerPool';
 import { DiscordNotifier } from './discord';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -263,13 +264,20 @@ const saveDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => 
 const logDetailsCache = new Map<string, LogDetailsCacheEntry>();
 
 const cacheLogDetails = (keys: Array<string | null | undefined>, entry: LogDetailsCacheEntry) => {
+    const existing = getLogDetailsFromCache(keys);
+    const mergedEntry: LogDetailsCacheEntry = {
+        details: entry.details,
+        eiDetails: entry.eiDetails ?? existing?.eiDetails ?? null,
+        cachedAt: entry.cachedAt
+    };
+
     keys.forEach((key) => {
         const normalized = typeof key === 'string' ? key.trim() : '';
         if (!normalized) return;
         if (logDetailsCache.has(normalized)) {
             logDetailsCache.delete(normalized);
         }
-        logDetailsCache.set(normalized, entry);
+        logDetailsCache.set(normalized, mergedEntry);
     });
     while (logDetailsCache.size > LOG_DETAILS_CACHE_MAX_ENTRIES) {
         const oldestKey = logDetailsCache.keys().next().value;
@@ -286,6 +294,63 @@ const getLogDetailsFromCache = (keys: Array<string | null | undefined>) => {
         if (entry) return entry;
     }
     return null;
+};
+
+const updateLogDetailsCache = (keys: Array<string | null | undefined>, update: { details?: any; eiDetails?: any | null }) => {
+    const entry = getLogDetailsFromCache(keys);
+    if (!entry) return false;
+    if (update.details !== undefined) {
+        entry.details = update.details;
+    }
+    if (update.eiDetails !== undefined) {
+        entry.eiDetails = update.eiDetails;
+    }
+    entry.cachedAt = Date.now();
+    return true;
+};
+
+const scheduleEiCliParse = (payload: {
+    filePath: string;
+    cacheKey?: string | null;
+    permalink?: string;
+    id?: string;
+    settings: { enabled: boolean; autoSetup: boolean; autoUpdate: boolean; preferredRuntime: 'auto' | 'dotnet' | 'wine' };
+    dpsReportToken?: string | null;
+}) => {
+    if (!payload.settings.enabled) return;
+
+    let pool: ReturnType<typeof getEiCliWorkerPool> | null = null;
+    try {
+        pool = getEiCliWorkerPool();
+    } catch (err: any) {
+        console.warn('[Main] EI worker pool unavailable:', err?.message || err);
+        return;
+    }
+
+    pool.parseLog({
+        filePath: payload.filePath,
+        cacheKey: payload.cacheKey,
+        settings: payload.settings,
+        dpsReportToken: payload.dpsReportToken
+    }).then((result) => {
+        if (result?.json) {
+            updateLogDetailsCache(
+                [payload.filePath, payload.permalink, payload.id, payload.cacheKey || null],
+                { eiDetails: result.json }
+            );
+            if (win && !win.isDestroyed()) {
+                win.webContents.send('ei-details-ready', {
+                    filePath: payload.filePath,
+                    id: payload.id,
+                    permalink: payload.permalink
+                });
+            }
+        } else if (result?.error) {
+            console.warn('[Main] EI CLI returned error:', result.error);
+        }
+    }).catch((err: any) => {
+        console.warn('[Main] EI CLI parse failed:', err?.message || err);
+    });
 };
 
 const clearDpsReportCache = async () => {
@@ -487,32 +552,7 @@ const processLogFile = async (filePath: string) => {
             console.warn('[Main] Failed to compute log hash for cache:', hashError?.message || hashError);
         }
 
-        let localEiDetails: any | null = null;
-            const eiCliSettings = settings.eiCliSettings;
-            if (eiCliSettings?.enabled) {
-                try {
-                    const eiResult = await loadEiCliJsonForLog({
-                        filePath,
-                        cacheKey,
-                        settings: {
-                            enabled: Boolean(eiCliSettings.enabled),
-                            autoSetup: eiCliSettings.autoSetup !== false,
-                            autoUpdate: eiCliSettings.autoUpdate !== false,
-                            preferredRuntime: eiCliSettings.preferredRuntime || 'auto'
-                        },
-                        dpsReportToken: settings.dpsReportToken
-                    });
-                if (eiResult.json) {
-                    const sourceLabel = eiResult.source === 'cache' ? 'cache hit' : 'parsed';
-                    console.log(`[Main] EI CLI ${sourceLabel}: ${filePath}`);
-                    localEiDetails = eiResult.json;
-                } else if (eiResult.error) {
-                    console.warn('[Main] EI CLI unavailable:', eiResult.error);
-                }
-            } catch (err: any) {
-                console.warn('[Main] EI CLI failed:', err?.message || err);
-            }
-        }
+        const eiCliSettings = settings.eiCliSettings;
 
         let cached = null as null | { entry: DpsReportCacheEntry; jsonDetails: any | null };
         if (cacheKey) {
@@ -604,13 +644,26 @@ const processLogFile = async (filePath: string) => {
                     [filePath, result.permalink, result.id, cacheKey || null],
                     {
                         details: jsonDetails,
-                        eiDetails: localEiDetails || null,
                         cachedAt: Date.now()
                     }
                 );
             }
 
-            const summary = {
+            scheduleEiCliParse({
+                filePath,
+                cacheKey,
+                permalink: result.permalink,
+                id: result.id,
+                settings: {
+                    enabled: Boolean(eiCliSettings?.enabled),
+                    autoSetup: eiCliSettings?.autoSetup !== false,
+                    autoUpdate: eiCliSettings?.autoUpdate !== false,
+                    preferredRuntime: eiCliSettings?.preferredRuntime || 'auto'
+                },
+                dpsReportToken: settings.dpsReportToken
+            });
+
+const summary = {
                 fightName: result.fightName ?? jsonDetails?.fightName,
                 encounterDuration: result.encounterDuration ?? jsonDetails?.encounterDuration,
                 uploadTime: result.uploadTime ?? jsonDetails?.uploadTime,
@@ -1417,6 +1470,9 @@ app.on('before-quit', () => {
     shutdownWorkerPool().catch((err) => {
         console.warn('[Main] Worker pool shutdown error:', err?.message || err);
     });
+    shutdownEiCliWorkerPool().catch((err) => {
+        console.warn('[Main] EI worker pool shutdown error:', err?.message || err);
+    });
 });
 
 app.on('open-url', (event) => {
@@ -1455,6 +1511,16 @@ if (!gotTheLock) {
             console.log('[Main] Worker pool initialized');
         } catch (err: any) {
             console.warn('[Main] Worker pool init failed, will use fallback:', err?.message || err);
+        }
+
+        try {
+            await initEiCliWorkerPool({
+                userDataPath: app.getPath('userData'),
+                taskTimeoutMs: 15 * 60 * 1000
+            });
+            console.log('[Main] EI worker pool initialized');
+        } catch (err: any) {
+            console.warn('[Main] EI worker pool init failed:', err?.message || err);
         }
 
         const eiCliSettings = store.get('eiCliSettings', DEFAULT_EI_CLI_SETTINGS) as any;

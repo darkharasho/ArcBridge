@@ -130,6 +130,7 @@ export interface IElectronAPI {
     onLogDetected: (callback: (path: string) => void) => () => void;
     onUploadComplete: (callback: (data: any) => void, batchCallback?: (items: any[]) => void) => () => void;
     onUploadStatus: (callback: (data: any) => void, batchCallback?: (items: any[]) => void) => () => void;
+    onEiDetailsReady: (callback: (data: { filePath?: string; id?: string; permalink?: string }) => void) => () => void;
     setDiscordWebhook: (url: string) => void;
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
     getSettings: () => Promise<{

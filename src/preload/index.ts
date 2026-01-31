@@ -40,6 +40,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.removeAllListeners('upload-status-batch')
         }
     },
+    onEiDetailsReady: (callback: (data: { filePath?: string; id?: string; permalink?: string }) => void) => {
+        ipcRenderer.on('ei-details-ready', (_event, value) => callback(value))
+        return () => {
+            ipcRenderer.removeAllListeners('ei-details-ready')
+        }
+    },
     setDiscordWebhook: (url: string) => ipcRenderer.send('set-discord-webhook', url),
     windowControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.send('window-control', action),
     getSettings: () => ipcRenderer.invoke('get-settings'),

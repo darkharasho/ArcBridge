@@ -22,6 +22,53 @@ interface StatsViewProps {
 }
 
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
+const EMPTY_STATS = {
+    total: 0,
+    wins: 0,
+    losses: 0,
+    avgSquadSize: 0,
+    avgEnemies: 0,
+    squadKDR: '0.00',
+    enemyKDR: '0.00',
+    totalSquadKills: 0,
+    totalSquadDeaths: 0,
+    totalEnemyKills: 0,
+    totalEnemyDeaths: 0,
+    maxDownContrib: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxCleanses: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxStrips: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxStab: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxHealing: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxBarrier: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxCC: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    closestToTag: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxDodges: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxDamage: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxDps: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    maxRevives: { value: 0, player: '', count: 0, profession: 'Unknown', professionList: [] },
+    topSkills: [],
+    topIncomingSkills: [],
+    outgoingConditionSummary: [],
+    outgoingConditionPlayers: [],
+    incomingConditionSummary: [],
+    incomingConditionPlayers: [],
+    mapData: [],
+    squadClassData: [],
+    enemyClassData: [],
+    timelineData: [],
+    fightBreakdown: [],
+    boonTables: [],
+    specialTables: [],
+    offensePlayers: [],
+    defensePlayers: [],
+    supportPlayers: [],
+    healingPlayers: [],
+    mvp: null,
+    silver: null,
+    bronze: null,
+    avgMvpScore: 0,
+    leaderboards: {}
+};
 
 const useSmartTooltipPlacement = (
     open: boolean,
@@ -582,7 +629,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const validLogsForWorker = logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details);
     const useWorkerComputation = validLogsForWorker.length > 100 && !precomputedStats;
     const workerStats = useStatsWorker(
-        useWorkerComputation ? logs : [],
+        useWorkerComputation ? validLogsForWorker : [],
         activeMvpWeights,
         activeStatsViewSettings,
         method,
@@ -697,6 +744,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const stats = useMemo(() => {
         if (precomputedStats) {
             return precomputedStats;
+        }
+        if (useWorkerComputation) {
+            return EMPTY_STATS;
         }
         const total = validLogs.length;
 
@@ -2318,7 +2368,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             avgMvpScore,
             leaderboards
         };
-    }, [validLogs, precomputedStats]);
+    }, [validLogs, precomputedStats, useWorkerComputation]);
 
     // Use worker stats when available and computing large datasets
     const finalStats = (useWorkerComputation && workerStats.stats) ? workerStats.stats : stats;

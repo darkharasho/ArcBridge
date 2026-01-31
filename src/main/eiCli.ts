@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
@@ -35,7 +34,23 @@ const EI_REPO = 'baaron4/GW2-Elite-Insights-Parser';
 const EI_ASSET = 'GW2EICLI.zip';
 const DOTNET_INSTALL_URL = 'https://dot.net/v1/dotnet-install.sh';
 
-const getEiBaseDir = () => path.join(app.getPath('userData'), 'ei-cli');
+const getUserDataRoot = () => {
+    if (process.env.EI_CLI_USER_DATA) {
+        return process.env.EI_CLI_USER_DATA;
+    }
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const electron = require('electron') as typeof import('electron');
+        if (electron?.app?.getPath) {
+            return electron.app.getPath('userData');
+        }
+    } catch {
+        // ignore
+    }
+    return process.cwd();
+};
+
+const getEiBaseDir = () => path.join(getUserDataRoot(), 'ei-cli');
 const getEiCliDir = () => path.join(getEiBaseDir(), 'cli');
 const getEiCacheDir = () => path.join(getEiBaseDir(), 'cache');
 const getEiOutputDir = () => path.join(getEiBaseDir(), 'output');
