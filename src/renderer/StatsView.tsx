@@ -3063,8 +3063,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         ? 'stats-view min-h-screen flex flex-col p-2 sm:p-3 w-full max-w-6xl mx-auto'
         : 'stats-view h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
     const scrollContainerClass = embedded
-        ? 'space-y-5 sm:space-y-6 min-h-0 p-3 sm:p-4 rounded-xl bg-black/20 border border-white/5 backdrop-blur-xl'
-        : 'flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl backdrop-blur-2xl';
+        ? `space-y-5 sm:space-y-6 min-h-0 p-3 sm:p-4 rounded-xl bg-black/20 border border-white/5 ${
+            expandedSection ? '' : 'backdrop-blur-xl'
+        }`
+        : `flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl ${
+            expandedSection ? '' : 'backdrop-blur-2xl'
+        }`;
     const scrollContainerStyle: CSSProperties | undefined = embedded
         ? {
             backgroundColor: 'rgba(3, 7, 18, 0.75)',
