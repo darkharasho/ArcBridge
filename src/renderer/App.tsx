@@ -601,7 +601,7 @@ function App() {
             <div className="app-titlebar h-10 shrink-0 w-full flex justify-between items-center px-4 bg-black/20 backdrop-blur-md border-b border-white/5 drag-region select-none z-50">
                 <div className="flex items-center gap-2">
                     <img src={appIconPath} alt="Icon" className="h-4 w-auto" />
-                    <span className="text-xs font-medium text-gray-400">GW2 Arc Log Uploader</span>
+                    <span className="text-xs font-medium text-gray-400">ArcBridge</span>
                 </div>
                 <div className="flex items-center gap-4 no-drag">
                     <button onClick={() => window.electronAPI.windowControl('minimize')} className="text-gray-400 hover:text-white transition-colors">
@@ -630,7 +630,7 @@ function App() {
                         <div className="flex items-center gap-3">
                             <img src={appIconPath} alt="ArcBridge" className="h-8 w-auto rounded-md" />
                             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                                GW2 Arc Log Uploader
+                                ArcBridge
                             </h1>
                         </div>
                     </motion.div>

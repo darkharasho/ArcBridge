@@ -27,6 +27,8 @@ import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSe
 import { getProfessionAbbrev, getProfessionEmoji } from '../shared/professionUtils';
 import { Player } from '../shared/dpsReportTypes';
 
+const DISCORD_WEBHOOK_AVATAR_URL = 'https://raw.githubusercontent.com/darkharasho/ArcBridge/main/public/img/ArcBridgeGradient.png';
+
 // Embed stat settings interface
 export interface IEmbedStatSettings {
     showSquadSummary: boolean;
@@ -128,7 +130,8 @@ export class DiscordNotifier {
                 }
 
                 const payload: any = {
-                    username: "GW2 Arc Log Uploader"
+                    username: "ArcBridge",
+                    avatar_url: DISCORD_WEBHOOK_AVATAR_URL
                 };
 
                 if (content) {
@@ -673,7 +676,7 @@ export class DiscordNotifier {
                         color: getEmbedColor(jsonDetails.fightName),
                         timestamp: new Date().toISOString(),
                         footer: {
-                            text: `GW2 Arc Log Uploader • ${new Date().toLocaleTimeString()}`
+                            text: `ArcBridge • ${new Date().toLocaleTimeString()}`
                         }
                     };
 
@@ -738,14 +741,16 @@ export class DiscordNotifier {
                     const embeds = buildEmbeds(embedFields);
 
                     await axios.post(this.webhookUrl, {
-                        username: "GW2 Arc Log Uploader",
+                        username: "ArcBridge",
+                        avatar_url: DISCORD_WEBHOOK_AVATAR_URL,
                         embeds
                     });
                     console.log("Sent complex Discord notification.");
                 } else {
                     // Fallback Simple Embed
                     await axios.post(this.webhookUrl, {
-                        username: "GW2 Arc Log Uploader",
+                        username: "ArcBridge",
+                        avatar_url: DISCORD_WEBHOOK_AVATAR_URL,
                         embeds: [{
                             title: "Log Uploaded",
                             description: `**Log:** [${logData.filePath.split(/[\\\/]/).pop()}](${logData.permalink})`,

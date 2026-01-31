@@ -1412,7 +1412,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         </button>
                     </div>
                     <p>
-                        GW2 Arc Log Uploader is free software: you can redistribute it and/or modify it under the terms
+                        ArcBridge is free software: you can redistribute it and/or modify it under the terms
                         of the GNU General Public License v3.0 only. This program comes with ABSOLUTELY NO WARRANTY.
                     </p>
                     <p className="mt-2">

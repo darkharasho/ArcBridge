@@ -2,7 +2,7 @@
     "name": "gw2-arc-log-uploader",
     "private": true,
     "version": "1.11.5",
-    "description": "Guild Wars 2 arcDPS Log Uploader",
+    "description": "ArcBridge - Guild Wars 2 arcDPS Log Uploader",
     "author": {
         "name": "darkharasho",
         "email": "mstephens@example.com"
@@ -77,11 +77,11 @@
     },
     "build": {
         "appId": "com.gw2.arc.uploader",
-        "productName": "GW2 Arc Log Uploader",
+        "productName": "ArcBridge",
         "directories": {
             "output": "dist_out"
         },
-        "artifactName": "GW2.Arc.Log.Uploader-${version}.${ext}",
+        "artifactName": "ArcBridge-${version}.${ext}",
         "publish": {
             "provider": "github",
             "owner": "darkharasho",

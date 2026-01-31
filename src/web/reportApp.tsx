@@ -418,7 +418,7 @@ export function ReportApp() {
                                     <LayoutDashboard className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">GW2 Reports</div>
+                                    <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">ArcBridge Reports</div>
                                     <div className="text-sm font-semibold text-white">Navigation</div>
                                 </div>
                             </div>
@@ -463,7 +463,7 @@ export function ReportApp() {
                                     />
                                 )}
                                 <div>
-                                    <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">GW2 Arc Log Report</div>
+                                    <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge Log Report</div>
                                     <h1 className="text-3xl font-bold mt-1">{report.meta.title}</h1>
                                     <div className="text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
                                 </div>
@@ -533,7 +533,7 @@ export function ReportApp() {
                                 />
                             )}
                             <div>
-                                <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">GW2 Arc Log Uploader</div>
+                                <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge</div>
                                 <h1 className="text-3xl font-bold mt-2">Command Reports</h1>
                                 <p className="text-gray-400 mt-1">Select a report to view the full stats dashboard.</p>
                             </div>

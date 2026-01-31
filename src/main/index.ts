@@ -836,7 +836,7 @@ const ensureGithubRepo = async (owner: string, repo: string, token: string) => {
         name: repo,
         private: false,
         auto_init: true,
-        description: 'GW2 Arc Log Reports'
+        description: 'ArcBridge Reports'
     });
     if (createResp.status >= 300) {
         const detail = createResp.data?.message || 'Unknown error';
@@ -853,7 +853,7 @@ const createGithubRepo = async (owner: string, repo: string, token: string) => {
         name: repo,
         private: false,
         auto_init: true,
-        description: 'GW2 Arc Log Reports'
+        description: 'ArcBridge Reports'
     });
     if (resp.status >= 300) {
         const detail = resp.data?.message || 'Unknown error';
@@ -1019,7 +1019,7 @@ function createTray() {
         }
     ]);
 
-    tray.setToolTip('GW2 Arc Log Uploader');
+    tray.setToolTip('ArcBridge');
     tray.setContextMenu(contextMenu);
 
     tray.on('click', () => {
