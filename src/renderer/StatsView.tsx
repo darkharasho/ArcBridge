@@ -7,7 +7,7 @@ import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IMvpWeights, IStatsViewSettings } from './global.d';
-import { computeOutgoingConditions, resolveConditionNameFromEntry } from '../shared/conditionsMetrics';
+import { computeOutgoingConditions, resolveConditionNameFromEntry, type OutgoingConditionsResult } from '../shared/conditionsMetrics';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -1272,7 +1272,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             }
             });
 
-            const conditionResult = log?.details?.conditionMetrics || computeOutgoingConditions({
+            const conditionResult: OutgoingConditionsResult = (log?.details?.conditionMetrics as OutgoingConditionsResult) || computeOutgoingConditions({
                 players: conditionPlayers,
                 targets: conditionTargets,
                 skillMap: conditionSkillMap,
