@@ -1,13 +1,15 @@
 # Release Notes
 
-Version v1.12.0 — January 31, 2026
+Version v1.12.1 — January 31, 2026
 
 ## 🌟 Highlights
-- Brand refresh across the app visuals, including updated logos and icons.
-- New and refreshed visuals for ArcBridge and its Discord presence to align with the new branding.
+- Added an artifact duplication script to support both legacy and new ArcBridge release assets.
+- Implemented a migration that renames legacy install components to the ArcBridge naming on startup.
 
 ## 🛠️ Improvements
-- Behind-the-scenes refactor to improve readability and maintainability of the codebase.
+- Release builds now run the new duplication script to ensure assets are available under both old and new names.
+- On Linux, ArcBridge will copy a legacy AppImage to a new ArcBridge-named file when appropriate.
+- On Windows, ArcBridge will copy a legacy portable executable to a new ArcBridge-named file when appropriate.
 
 ## 🧯 Fixes
 - None.
