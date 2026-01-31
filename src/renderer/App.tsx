@@ -156,9 +156,63 @@ function App() {
     const avgEnemies = logs.length > 0
         ? Math.round(logs.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logs.length)
         : 0;
-    const successRate = logs.length > 0
-        ? Math.round((logs.filter(log => log.details?.success).length / logs.length) * 100)
-        : 0;
+    const winLoss = logs.reduce(
+        (acc, log) => {
+            const details: any = log.details;
+            if (!details?.players || !details?.targets) return acc;
+            const players = details.players as any[];
+            const squadPlayers = players.filter((p) => !p.notInSquad);
+            let squadDownsDeaths = 0;
+            let enemyDownsDeaths = 0;
+
+            squadPlayers.forEach((p) => {
+                if (p.defenses && p.defenses.length > 0) {
+                    squadDownsDeaths += Number(p.defenses[0].downCount || 0) + Number(p.defenses[0].deadCount || 0);
+                }
+            });
+
+            squadPlayers.forEach((p: any) => {
+                if (!p.statsTargets || p.statsTargets.length === 0) return;
+                p.statsTargets.forEach((targetStats: any) => {
+                    if (targetStats && targetStats.length > 0) {
+                        const st = targetStats[0];
+                        enemyDownsDeaths += Number(st.downed || 0) + Number(st.killed || 0);
+                    }
+                });
+            });
+
+            if (squadDownsDeaths < enemyDownsDeaths) {
+                acc.wins += 1;
+            } else {
+                acc.losses += 1;
+            }
+            return acc;
+        },
+        { wins: 0, losses: 0 }
+    );
+    const squadKdr = (() => {
+        let totalSquadDeaths = 0;
+        let totalEnemyKills = 0;
+        logs.forEach((log) => {
+            const details: any = log.details;
+            const players = details?.players || [];
+            const squadPlayers = players.filter((p: any) => !p.notInSquad);
+            squadPlayers.forEach((p: any) => {
+                totalSquadDeaths += Number(p.defenses?.[0]?.deadCount || 0);
+            });
+            squadPlayers.forEach((p: any) => {
+                if (!p.statsTargets || p.statsTargets.length === 0) return;
+                p.statsTargets.forEach((targetStats: any) => {
+                    if (targetStats && targetStats.length > 0) {
+                        const st = targetStats[0];
+                        totalEnemyKills += Number(st.killed || 0);
+                    }
+                });
+            });
+        });
+        const denom = totalSquadDeaths === 0 ? 1 : totalSquadDeaths;
+        return Number((totalEnemyKills / denom).toFixed(2));
+    })();
 
     useEffect(() => {
         // Load saved settings
@@ -916,16 +970,24 @@ function App() {
                                     <div className="text-2xl font-bold text-white">{totalUploads}</div>
                                 </div>
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Success Rate</div>
-                                    <div className="text-2xl font-bold text-green-400">{successRate}%</div>
+                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">W / L</div>
+                                    <div className="text-2xl font-bold text-white">
+                                        <span className="text-emerald-300">{winLoss.wins}</span>
+                                        <span className="text-gray-500 mx-2">/</span>
+                                        <span className="text-red-400">{winLoss.losses}</span>
+                                    </div>
                                 </div>
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Squad</div>
-                                    <div className="text-2xl font-bold text-green-400">{avgSquadSize}</div>
+                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Squad / Enemy</div>
+                                    <div className="text-2xl font-bold text-white">
+                                        <span className="text-emerald-300">{avgSquadSize}</span>
+                                        <span className="text-gray-500 mx-2">/</span>
+                                        <span className="text-red-400">{avgEnemies}</span>
+                                    </div>
                                 </div>
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Enemies</div>
-                                    <div className="text-2xl font-bold text-red-400">{avgEnemies}</div>
+                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Squad KDR</div>
+                                    <div className="text-2xl font-bold text-emerald-300">{squadKdr}</div>
                                 </div>
                             </motion.div>
                         </div>
