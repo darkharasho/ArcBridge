@@ -218,3 +218,23 @@ for (const file of files) {
 }
 
 console.log(`Published GitHub release ${tagName} with ${files.length} assets.`);
+
+if (releaseData?.draft) {
+    const publishResp = await request('PATCH', `${baseUrl}/releases/${releaseId}`, {
+        draft: false
+    });
+    if (!publishResp.ok) {
+        console.error(`Failed to publish draft release ${tagName}.`);
+        process.exit(1);
+    }
+    console.log(`Released ${tagName} (draft cleared).`);
+}
+
+const touchResp = await request('PATCH', `${baseUrl}/releases/${releaseId}`, {
+    body: notes
+});
+if (!touchResp.ok) {
+    console.error(`Failed to refresh release body for ${tagName}.`);
+    process.exit(1);
+}
+console.log(`Refreshed release body for ${tagName}.`);
