@@ -6,7 +6,7 @@ import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayer
 import { Player, Target } from '../shared/dpsReportTypes';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
-import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IMvpWeights, IStatsViewSettings } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import { computeOutgoingConditions, resolveConditionNameFromEntry, type OutgoingConditionsResult } from '../shared/conditionsMetrics';
 
 interface StatsViewProps {
@@ -14,6 +14,8 @@ interface StatsViewProps {
     onBack: () => void;
     mvpWeights?: IMvpWeights;
     statsViewSettings?: IStatsViewSettings;
+    webUploadState?: IWebUploadState;
+    onWebUpload?: (payload: { meta: any; stats: any }) => Promise<void> | void;
     disruptionMethod?: DisruptionMethod;
     precomputedStats?: any;
     embedded?: boolean;
@@ -504,13 +506,18 @@ interface SkillUsageSummary {
     resUtilitySkills?: Array<{ id: string; name: string }>;
 }
 
-export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disruptionMethod, precomputedStats, embedded = false, uiTheme }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, uiTheme }: StatsViewProps) {
     const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
+    const activeWebUploadState = webUploadState || DEFAULT_WEB_UPLOAD_STATE;
     const showTopStats = activeStatsViewSettings.showTopStats;
     const showMvp = activeStatsViewSettings.showMvp;
     const roundCountStats = activeStatsViewSettings.roundCountStats;
+    const uploadingWeb = activeWebUploadState.uploading;
+    const webUploadMessage = activeWebUploadState.message;
+    const webUploadUrl = activeWebUploadState.url;
+    const webUploadBuildStatus = activeWebUploadState.buildStatus;
     const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
         'Down Contribution': 'downContribution',
         'Healing': 'healing',
@@ -559,13 +566,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const [supportViewMode, setSupportViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [cleanseScope, setCleanseScope] = useState<'squad' | 'all'>('all');
     const [timelineFriendlyScope, setTimelineFriendlyScope] = useState<'squad' | 'squadAllies'>('squad');
-    const [uploadingWeb, setUploadingWeb] = useState(false);
-    const [webUploadMessage, setWebUploadMessage] = useState<string | null>(null);
-    const [webUploadStage, setWebUploadStage] = useState<string | null>(null);
-    const [webUploadProgress, setWebUploadProgress] = useState<number | null>(null);
-    const [webUploadDetail, setWebUploadDetail] = useState<string | null>(null);
-    const [webUploadUrl, setWebUploadUrl] = useState<string | null>(null);
-    const [webUploadBuildStatus, setWebUploadBuildStatus] = useState<'idle' | 'checking' | 'building' | 'built' | 'errored' | 'unknown'>('idle');
     const [webCopyStatus, setWebCopyStatus] = useState<'idle' | 'copied'>('idle');
     const [skillUsagePlayerFilter, setSkillUsagePlayerFilter] = useState('');
     const [skillUsageSkillFilter, setSkillUsageSkillFilter] = useState('');
@@ -2793,19 +2793,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
 
     const handleWebUpload = async () => {
         if (embedded) return;
-        if (!window.electronAPI?.uploadWebReport) {
-            setWebUploadMessage('Web upload is not available in this build.');
-            return;
-        }
-        setUploadingWeb(true);
-        setWebUploadMessage('Preparing report...');
-        setWebUploadStage('Preparing report');
-        setWebUploadProgress(0);
-        setWebUploadUrl(null);
-        setWebUploadBuildStatus('idle');
+        if (!onWebUpload) return;
         try {
             const meta = buildReportMeta();
-            const result = await window.electronAPI.uploadWebReport({
+            await onWebUpload({
                 meta,
                 stats: {
                     ...stats,
@@ -2814,29 +2805,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     uiTheme: uiTheme || 'classic'
                 }
             });
-            if (result?.success) {
-                const url = result.url || '';
-                setWebUploadUrl(url);
-                setWebUploadMessage(`Uploaded: ${url || 'GitHub Pages'}`);
-                setWebUploadStage('Upload complete');
-                setWebUploadProgress(100);
-                setWebUploadBuildStatus('checking');
-            } else {
-                setWebUploadMessage(result?.error || 'Upload failed.');
-                setWebUploadStage('Upload failed');
-                setWebUploadBuildStatus('idle');
-            }
-        } catch (err: any) {
-            setWebUploadMessage(err?.message || 'Upload failed.');
-            setWebUploadStage('Upload failed');
-            setWebUploadBuildStatus('idle');
-        } finally {
-            setUploadingWeb(false);
-            setTimeout(() => {
-                setWebUploadStage(null);
-                setWebUploadProgress(null);
-                setWebUploadDetail(null);
-            }, 2500);
+        } catch (err) {
+            console.error('[StatsView] Web upload failed:', err);
         }
     };
 
@@ -2887,62 +2857,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         setTimeout(() => setSharing(false), 2000);
     };
 
-    useEffect(() => {
-        if (!window.electronAPI?.onWebUploadStatus) return;
-        const unsubscribe = window.electronAPI.onWebUploadStatus((data) => {
-            if (!data) return;
-            setWebUploadStage(data.stage || 'Uploading');
-            if (typeof data.progress === 'number') {
-                setWebUploadProgress(data.progress);
-            }
-            if (data.message) {
-                setWebUploadDetail(data.message);
-            }
-        });
-        return unsubscribe;
-    }, []);
-
-    useEffect(() => {
-        if (webUploadBuildStatus !== 'checking' && webUploadBuildStatus !== 'building') return;
-        if (!window.electronAPI?.getGithubPagesBuildStatus) {
-            setWebUploadBuildStatus('unknown');
-            return;
-        }
-        let attempts = 0;
-        const interval = setInterval(async () => {
-            attempts += 1;
-            try {
-                const resp = await window.electronAPI.getGithubPagesBuildStatus();
-                if (resp?.success) {
-                    const status = String(resp.status || '').toLowerCase();
-                    if (status === 'built' || status === 'success') {
-                        setWebUploadBuildStatus('built');
-                        clearInterval(interval);
-                        return;
-                    }
-                    if (status === 'errored' || status === 'error' || status === 'failed') {
-                        setWebUploadBuildStatus('errored');
-                        clearInterval(interval);
-                        return;
-                    }
-                    setWebUploadBuildStatus('building');
-                } else if (resp?.error) {
-                    setWebUploadBuildStatus('unknown');
-                    clearInterval(interval);
-                    return;
-                }
-            } catch {
-                setWebUploadBuildStatus('unknown');
-                clearInterval(interval);
-                return;
-            }
-            if (attempts >= 18) {
-                setWebUploadBuildStatus('unknown');
-                clearInterval(interval);
-            }
-        }, 10000);
-        return () => clearInterval(interval);
-    }, [webUploadBuildStatus]);
 
     const openExpandedSection = (sectionId: string) => {
         if (expandedCloseTimerRef.current) {
@@ -3182,27 +3096,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     >
                         {webCopyStatus === 'copied' ? 'Copied' : 'Copy URL'}
                     </button>
-                </div>
-            )}
-
-            {!embedded && (uploadingWeb || webUploadStage) && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg">
-                    <div className="w-full max-w-md bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl">
-                        <div className="text-sm uppercase tracking-widest text-cyan-300/70">Web Upload</div>
-                        <div className="text-2xl font-bold text-white mt-2">{webUploadStage || 'Uploading'}</div>
-                        <div className="text-sm text-gray-400 mt-2">
-                            {webUploadDetail || webUploadMessage || 'Working...'}
-                        </div>
-                        <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
-                                style={{ width: `${webUploadProgress ?? (uploadingWeb ? 35 : 100)}%` }}
-                            />
-                        </div>
-                        <div className="text-xs text-gray-500 mt-2">
-                            {typeof webUploadProgress === 'number' ? `${Math.round(webUploadProgress)}%` : 'Preparing...'}
-                        </div>
-                    </div>
                 </div>
             )}
 

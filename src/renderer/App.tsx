@@ -9,7 +9,7 @@ import { WebhookModal, Webhook } from './WebhookModal';
 import { UpdateErrorModal } from './UpdateErrorModal';
 import { Terminal } from './Terminal';
 import { Terminal as TerminalIcon } from 'lucide-react';
-import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IEmbedStatSettings, IMvpWeights, IStatsViewSettings } from './global.d';
+import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IEmbedStatSettings, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
 
 const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
@@ -41,6 +41,8 @@ function App() {
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [uiTheme, setUiTheme] = useState<'classic' | 'modern'>('classic');
+    const [webUploadState, setWebUploadState] = useState<IWebUploadState>(DEFAULT_WEB_UPLOAD_STATE);
+    const webUploadClearTimerRef = useRef<number | null>(null);
 
     const [screenshotData, setScreenshotData] = useState<ILogData | null>(null);
 
@@ -472,6 +474,64 @@ function App() {
     }, []);
 
     useEffect(() => {
+        if (!window.electronAPI?.onWebUploadStatus) return;
+        const cleanupWebUpload = window.electronAPI.onWebUploadStatus((data) => {
+            if (!data) return;
+            setWebUploadState((prev) => ({
+                ...prev,
+                stage: data.stage || 'Uploading',
+                progress: typeof data.progress === 'number' ? data.progress : prev.progress,
+                detail: data.message || prev.detail
+            }));
+        });
+        return () => {
+            cleanupWebUpload();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (webUploadState.buildStatus !== 'checking' && webUploadState.buildStatus !== 'building') return;
+        if (!window.electronAPI?.getGithubPagesBuildStatus) {
+            setWebUploadState((prev) => ({ ...prev, buildStatus: 'unknown' }));
+            return;
+        }
+        let attempts = 0;
+        const interval = setInterval(async () => {
+            attempts += 1;
+            try {
+                const resp = await window.electronAPI.getGithubPagesBuildStatus();
+                if (resp?.success) {
+                    const status = String(resp.status || '').toLowerCase();
+                    if (status === 'built' || status === 'success') {
+                        setWebUploadState((prev) => ({ ...prev, buildStatus: 'built' }));
+                        clearInterval(interval);
+                        return;
+                    }
+                    if (status === 'errored' || status === 'error' || status === 'failed') {
+                        setWebUploadState((prev) => ({ ...prev, buildStatus: 'errored' }));
+                        clearInterval(interval);
+                        return;
+                    }
+                    setWebUploadState((prev) => ({ ...prev, buildStatus: 'building' }));
+                } else if (resp?.error) {
+                    setWebUploadState((prev) => ({ ...prev, buildStatus: 'unknown' }));
+                    clearInterval(interval);
+                    return;
+                }
+            } catch {
+                setWebUploadState((prev) => ({ ...prev, buildStatus: 'unknown' }));
+                clearInterval(interval);
+                return;
+            }
+            if (attempts >= 18) {
+                setWebUploadState((prev) => ({ ...prev, buildStatus: 'unknown' }));
+                clearInterval(interval);
+            }
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [webUploadState.buildStatus]);
+
+    useEffect(() => {
         if (updateStatus) console.log('[Updater]', updateStatus);
     }, [updateStatus]);
 
@@ -643,6 +703,76 @@ function App() {
         }
     };
 
+    const scheduleWebUploadClear = () => {
+        if (webUploadClearTimerRef.current) {
+            window.clearTimeout(webUploadClearTimerRef.current);
+        }
+        webUploadClearTimerRef.current = window.setTimeout(() => {
+            setWebUploadState((prev) => ({
+                ...prev,
+                stage: null,
+                progress: null,
+                detail: null
+            }));
+            webUploadClearTimerRef.current = null;
+        }, 2500);
+    };
+
+    const handleWebUpload = async (payload: { meta: any; stats: any }) => {
+        if (!window.electronAPI?.uploadWebReport) {
+            setWebUploadState((prev) => ({
+                ...prev,
+                message: 'Web upload is not available in this build.'
+            }));
+            return;
+        }
+        if (webUploadClearTimerRef.current) {
+            window.clearTimeout(webUploadClearTimerRef.current);
+            webUploadClearTimerRef.current = null;
+        }
+        setWebUploadState((prev) => ({
+            ...prev,
+            uploading: true,
+            message: 'Preparing report...',
+            stage: 'Preparing report',
+            progress: 0,
+            detail: null,
+            url: null,
+            buildStatus: 'idle'
+        }));
+        try {
+            const result = await window.electronAPI.uploadWebReport(payload);
+            if (result?.success) {
+                const url = result.url || '';
+                setWebUploadState((prev) => ({
+                    ...prev,
+                    url,
+                    message: `Uploaded: ${url || 'GitHub Pages'}`,
+                    stage: 'Upload complete',
+                    progress: 100,
+                    buildStatus: 'checking'
+                }));
+            } else {
+                setWebUploadState((prev) => ({
+                    ...prev,
+                    message: result?.error || 'Upload failed.',
+                    stage: 'Upload failed',
+                    buildStatus: 'idle'
+                }));
+            }
+        } catch (err: any) {
+            setWebUploadState((prev) => ({
+                ...prev,
+                message: err?.message || 'Upload failed.',
+                stage: 'Upload failed',
+                buildStatus: 'idle'
+            }));
+        } finally {
+            setWebUploadState((prev) => ({ ...prev, uploading: false }));
+            scheduleWebUploadClear();
+        }
+    };
+
     const isModernTheme = uiTheme === 'modern';
     const appIconPath = `${import.meta.env.BASE_URL || './'}img/ArcBridgeGradient.png`;
     const shellClassName = isModernTheme
@@ -783,8 +913,29 @@ function App() {
                     </div>
                 </header>
 
+                {(webUploadState.uploading || webUploadState.stage) && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg">
+                        <div className="w-full max-w-md bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl">
+                            <div className="text-sm uppercase tracking-widest text-cyan-300/70">Web Upload</div>
+                            <div className="text-2xl font-bold text-white mt-2">{webUploadState.stage || 'Uploading'}</div>
+                            <div className="text-sm text-gray-400 mt-2">
+                                {webUploadState.detail || webUploadState.message || 'Working...'}
+                            </div>
+                            <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
+                                    style={{ width: `${webUploadState.progress ?? (webUploadState.uploading ? 35 : 100)}%` }}
+                                />
+                            </div>
+                            <div className="text-xs text-gray-500 mt-2">
+                                {typeof webUploadState.progress === 'number' ? `${Math.round(webUploadState.progress)}%` : 'Preparing...'}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {view === 'stats' ? (
-                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} statsViewSettings={statsViewSettings} uiTheme={uiTheme} />
+                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} statsViewSettings={statsViewSettings} uiTheme={uiTheme} webUploadState={webUploadState} onWebUpload={handleWebUpload} />
                 ) : view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}

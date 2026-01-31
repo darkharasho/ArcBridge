@@ -56,6 +56,18 @@ export interface IStatsViewSettings {
     roundCountStats: boolean;
 }
 
+export type WebUploadBuildStatus = 'idle' | 'checking' | 'building' | 'built' | 'errored' | 'unknown';
+
+export interface IWebUploadState {
+    uploading: boolean;
+    message: string | null;
+    stage: string | null;
+    progress: number | null;
+    detail: string | null;
+    url: string | null;
+    buildStatus: WebUploadBuildStatus;
+}
+
 export type UiTheme = 'classic' | 'modern';
 
 export type DisruptionMethod = 'count' | 'duration' | 'tiered';
@@ -108,6 +120,16 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     showTopStats: true,
     showMvp: true,
     roundCountStats: false
+};
+
+export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {
+    uploading: false,
+    message: null,
+    stage: null,
+    progress: null,
+    detail: null,
+    url: null,
+    buildStatus: 'idle'
 };
 
 export const DEFAULT_UI_THEME: UiTheme = 'classic';
