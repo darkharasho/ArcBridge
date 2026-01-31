@@ -229,9 +229,16 @@ type DpsReportCacheEntry = {
     detailsPath?: string | null;
 };
 
+type LogDetailsCacheEntry = {
+    details: any;
+    eiDetails?: any | null;
+    cachedAt: number;
+};
+
 const DPS_REPORT_CACHE_KEY = 'dpsReportCacheIndex';
 const DPS_REPORT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DPS_REPORT_CACHE_MAX_ENTRIES = 100;
+const LOG_DETAILS_CACHE_MAX_ENTRIES = 200;
 
 const getDpsReportCacheDir = () => path.join(app.getPath('userData'), 'dps-report-cache');
 const pathExists = async (targetPath: string): Promise<boolean> => {
@@ -251,6 +258,34 @@ const loadDpsReportCacheIndex = (): Record<string, DpsReportCacheEntry> => {
 
 const saveDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => {
     store.set(DPS_REPORT_CACHE_KEY, index);
+};
+
+const logDetailsCache = new Map<string, LogDetailsCacheEntry>();
+
+const cacheLogDetails = (keys: Array<string | null | undefined>, entry: LogDetailsCacheEntry) => {
+    keys.forEach((key) => {
+        const normalized = typeof key === 'string' ? key.trim() : '';
+        if (!normalized) return;
+        if (logDetailsCache.has(normalized)) {
+            logDetailsCache.delete(normalized);
+        }
+        logDetailsCache.set(normalized, entry);
+    });
+    while (logDetailsCache.size > LOG_DETAILS_CACHE_MAX_ENTRIES) {
+        const oldestKey = logDetailsCache.keys().next().value;
+        if (!oldestKey) break;
+        logDetailsCache.delete(oldestKey);
+    }
+};
+
+const getLogDetailsFromCache = (keys: Array<string | null | undefined>) => {
+    for (const key of keys) {
+        const normalized = typeof key === 'string' ? key.trim() : '';
+        if (!normalized) continue;
+        const entry = logDetailsCache.get(normalized);
+        if (entry) return entry;
+    }
+    return null;
 };
 
 const clearDpsReportCache = async () => {
@@ -564,12 +599,30 @@ const processLogFile = async (filePath: string) => {
             // Yield before final IPC to allow UI to stay responsive
             await yieldToEventLoop();
 
+            if (jsonDetails && !jsonDetails.error) {
+                cacheLogDetails(
+                    [filePath, result.permalink, result.id, cacheKey || null],
+                    {
+                        details: jsonDetails,
+                        eiDetails: localEiDetails || null,
+                        cachedAt: Date.now()
+                    }
+                );
+            }
+
+            const summary = {
+                fightName: result.fightName ?? jsonDetails?.fightName,
+                encounterDuration: result.encounterDuration ?? jsonDetails?.encounterDuration,
+                uploadTime: result.uploadTime ?? jsonDetails?.uploadTime,
+                durationMS: jsonDetails?.durationMS,
+                dashboardSummary: jsonDetails?.dashboardSummary
+            };
+
             queueUploadComplete({
                 ...result,
                 filePath,
                 status: 'success',
-                details: slimDownDetails(jsonDetails),
-                eiDetails: localEiDetails || undefined
+                ...summary
             });
         } else {
             queueUploadComplete({ ...result, filePath, status: 'error' });
@@ -1624,6 +1677,15 @@ if (!gotTheLock) {
 
         ipcMain.handle('clear-dps-report-cache', async () => {
             return await clearDpsReportCache();
+        });
+
+        ipcMain.handle('get-log-details', async (_event, payload?: { filePath?: string; id?: string; permalink?: string; cacheKey?: string }) => {
+            const keys = [payload?.filePath, payload?.id, payload?.permalink, payload?.cacheKey];
+            const cached = getLogDetailsFromCache(keys);
+            if (!cached) {
+                return { success: false, error: 'Details not available.' };
+            }
+            return { success: true, details: cached.details, eiDetails: cached.eiDetails || null };
         });
 
         // Clear logs from store to improve boot time (persistence removed)

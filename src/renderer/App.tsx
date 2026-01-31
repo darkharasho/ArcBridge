@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, UploadCloud, FileText, Settings, Minus, Square, X, Image as ImageIcon, Layout, RefreshCw, Trophy, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, LayoutGrid, Trash2, FilePlus2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -36,6 +36,7 @@ function App() {
     const [isDragging, setIsDragging] = useState(false);
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
     const canceledLogsRef = useRef<Set<string>>(new Set());
+    const detailsRequestInFlight = useRef<Set<string>>(new Set());
     const [embedStatSettings, setEmbedStatSettings] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
@@ -119,6 +120,63 @@ function App() {
         () => webhooks.find((hook) => hook.id === selectedWebhookId) || null,
         [webhooks, selectedWebhookId]
     );
+
+    const fetchLogDetails = useCallback(async (log: ILogData, options?: { force?: boolean }) => {
+        if (!log?.filePath) return;
+        if (log.details) return;
+        if (!options?.force && (log.detailsLoading || log.detailsError)) return;
+        if (detailsRequestInFlight.current.has(log.filePath)) return;
+
+        detailsRequestInFlight.current.add(log.filePath);
+        setLogs((currentLogs) => currentLogs.map((entry) => (
+            entry.filePath === log.filePath
+                ? { ...entry, detailsLoading: true, detailsError: undefined }
+                : entry
+        )));
+
+        try {
+            const response = await window.electronAPI.getLogDetails({
+                filePath: log.filePath,
+                id: log.id,
+                permalink: log.permalink
+            });
+            if (response?.success && response.details) {
+                setLogs((currentLogs) => currentLogs.map((entry) => (
+                    entry.filePath === log.filePath
+                        ? {
+                            ...entry,
+                            details: response.details,
+                            eiDetails: response.eiDetails || entry.eiDetails,
+                            detailsLoading: false
+                        }
+                        : entry
+                )));
+            } else {
+                setLogs((currentLogs) => currentLogs.map((entry) => (
+                    entry.filePath === log.filePath
+                        ? { ...entry, detailsLoading: false, detailsError: response?.error || 'Details unavailable' }
+                        : entry
+                )));
+            }
+        } catch (err) {
+            setLogs((currentLogs) => currentLogs.map((entry) => (
+                entry.filePath === log.filePath
+                    ? { ...entry, detailsLoading: false, detailsError: 'Details unavailable' }
+                    : entry
+            )));
+        } finally {
+            detailsRequestInFlight.current.delete(log.filePath);
+        }
+    }, [setLogs]);
+
+    useEffect(() => {
+        if (view !== 'stats') return;
+        logs
+            .filter((log) => (log.status === 'success' || log.status === 'discord') && !log.details && !log.detailsLoading && !log.detailsError)
+            .forEach((log) => {
+                fetchLogDetails(log);
+            });
+    }, [view, logs, fetchLogDetails]);
 
     useEffect(() => {
         if (!webhookDropdownOpen) return;
@@ -266,7 +324,7 @@ function App() {
                     const existingIndex = currentLogs.findIndex(log => log.filePath === data.filePath);
                     if (existingIndex >= 0) {
                         const updated = [...currentLogs];
-                        updated[existingIndex] = data;
+                        updated[existingIndex] = { ...updated[existingIndex], ...data };
                         return updated;
                     } else {
                         return [data, ...currentLogs];
@@ -283,7 +341,7 @@ function App() {
                         }
                         const existingIndex = updated.findIndex(log => log.filePath === data.filePath);
                         if (existingIndex >= 0) {
-                            updated[existingIndex] = data;
+                            updated[existingIndex] = { ...updated[existingIndex], ...data };
                         } else {
                             updated = [data, ...updated];
                         }
@@ -1078,7 +1136,13 @@ function App() {
                                                 key={log.filePath}
                                                 log={log}
                                                 isExpanded={expandedLogId === log.filePath}
-                                                onToggle={() => setExpandedLogId(expandedLogId === log.filePath ? null : log.filePath)}
+                                                onToggle={() => {
+                                                    const nextExpanded = expandedLogId === log.filePath ? null : log.filePath;
+                                                    setExpandedLogId(nextExpanded);
+                                                    if (nextExpanded && (log.status === 'success' || log.status === 'discord') && !log.details) {
+                                                        fetchLogDetails(log, { force: true });
+                                                    }
+                                                }}
                                                 onCancel={() => {
                                                     if (!log.filePath) return;
                                                     canceledLogsRef.current.add(log.filePath);

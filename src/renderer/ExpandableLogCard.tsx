@@ -94,6 +94,10 @@ export const ExpandableLogCard = memo(function ExpandableLogCard({ log, isExpand
     const isUploading = log.status === 'uploading';
     const hasError = log.status === 'error';
     const isDiscord = log.status === 'discord';
+    const isUploadComplete = log.status === 'success' || log.status === 'discord';
+    const isDetailsAvailable = Boolean(log.details);
+    const isDetailsLoading = Boolean(log.detailsLoading);
+    const showCancel = !isExpanded && !isDetailsAvailable && !isUploadComplete && onCancel;
     const statusLabel = isQueued ? 'Queued'
         : isPending ? 'Pending'
             : isUploading ? 'Parsing with dps.report'
@@ -779,20 +783,24 @@ export const ExpandableLogCard = memo(function ExpandableLogCard({ log, isExpand
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (!log.details && !isExpanded && onCancel) {
+                        if (showCancel) {
                             onCancel();
                             return;
                         }
                         onToggle();
                     }}
-                    disabled={!log.details && !isExpanded && !onCancel}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 border ${!log.details
-                        ? onCancel ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20' : 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed opacity-50'
-                        : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white group-hover:border-white/20'
+                    disabled={isDetailsLoading || (!isDetailsAvailable && !isUploadComplete && !onCancel)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 border ${showCancel
+                        ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20'
+                        : (isDetailsAvailable || isUploadComplete)
+                            ? `bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white group-hover:border-white/20${isDetailsLoading ? ' opacity-70 cursor-wait' : ''}`
+                            : 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed opacity-50'
                         }`}
                 >
-                    {!log.details && !isExpanded ? (
+                    {showCancel ? (
                         <><span>Cancel</span></>
+                    ) : isDetailsLoading ? (
+                        <><span>Loading...</span></>
                     ) : isExpanded ? (
                         <><ChevronUp className="w-3 h-3" /><span>Hide</span></>
                     ) : (

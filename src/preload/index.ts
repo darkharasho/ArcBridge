@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     windowControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.send('window-control', action),
     getSettings: () => ipcRenderer.invoke('get-settings'),
     clearDpsReportCache: () => ipcRenderer.invoke('clear-dps-report-cache'),
+    getLogDetails: (payload: { filePath?: string; id?: string; permalink?: string }) => ipcRenderer.invoke('get-log-details', payload),
     manualUpload: (path: string) => ipcRenderer.send('manual-upload', path),
     manualUploadBatch: (paths: string[]) => ipcRenderer.send('manual-upload-batch', paths),
     saveSettings: (settings: any) => ipcRenderer.send('save-settings', settings),

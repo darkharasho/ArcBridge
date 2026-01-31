@@ -222,6 +222,7 @@ export interface IElectronAPI {
     getGithubPagesBuildStatus: () => Promise<{ success: boolean; status?: string; updatedAt?: string; errorMessage?: string; error?: string }>;
     onWebUploadStatus: (callback: (data: { stage: string; message?: string; progress?: number }) => void) => () => void;
     onGithubThemeStatus: (callback: (data: { stage?: string; message?: string; progress?: number }) => void) => () => void;
+    getLogDetails: (payload: { filePath?: string; id?: string; permalink?: string }) => Promise<{ success: boolean; details?: any; eiDetails?: any; error?: string }>;
 }
 
 declare global {
@@ -238,6 +239,8 @@ declare global {
         uploadTime?: number;
         encounterDuration?: string;
         fightName?: string;
+        durationMS?: number;
+        dashboardSummary?: any;
         details?: {
             fightName: string;
             encounterDuration: string;
@@ -249,6 +252,8 @@ declare global {
         eiDetails?: {
             [key: string]: any;
         };
+        detailsLoading?: boolean;
+        detailsError?: string;
     }
 
     interface IPlayer {
