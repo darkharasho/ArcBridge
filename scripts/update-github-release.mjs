@@ -115,7 +115,6 @@ const findReleaseByTag = async () => {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let releaseResp = await request('GET', `${baseUrl}/releases/tags/${tagName}`);
-let createdRelease = false;
 if (releaseResp.status === 404) {
     const retryDelays = [800, 1200, 1800, 2600, 3400];
     for (const delay of retryDelays) {
@@ -134,7 +133,6 @@ if (releaseResp.status === 404) {
             draft: false,
             prerelease: false
         });
-        createdRelease = releaseResp.ok;
     }
 }
 
@@ -144,16 +142,9 @@ if (!releaseResp.ok || !releaseResp.data?.id) {
 }
 
 let releaseData = releaseResp.data;
-if (!createdRelease) {
-    const updateResp = await request('PATCH', `${baseUrl}/releases/${releaseResp.data.id}`, {
-        body: notes,
-        draft: false
-    });
-    if (!updateResp.ok) {
-        console.error(`Failed to update release body (${updateResp.status}).`);
-        process.exit(1);
-    }
-    releaseData = updateResp.data || releaseResp.data;
+if (releaseResp.status === 200 && releaseData?.id && releaseData?.tag_name === tagName) {
+    console.error(`Release ${tagName} already exists. Aborting to avoid multiple posts.`);
+    process.exit(1);
 }
 
 const releaseId = releaseData?.id;

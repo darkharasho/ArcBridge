@@ -63,10 +63,24 @@ try {
     commits = '';
 }
 
-const commitLines = commits
+const rawCommitLines = commits
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
+
+const ignoreCommitPatterns = [
+    /release notes/i,
+    /update release notes/i,
+    /bump version/i,
+    /^chore:/i,
+    /^build:/i,
+    /dependency/i,
+    /dependencies/i
+];
+
+const commitLines = rawCommitLines.filter(
+    (line) => !ignoreCommitPatterns.some((pattern) => pattern.test(line))
+);
 
 let diffStat = '';
 let diffPatch = '';
@@ -81,10 +95,23 @@ try {
     diffPatch = '';
 }
 
+const ignoreDiffFiles = new Set(['RELEASE_NOTES.md', 'package.json', 'package-lock.json']);
+const filteredDiffPatch = diffPatch
+    .split('\n')
+    .reduce((acc, line) => {
+        if (line.startsWith('diff --git ')) {
+            const match = line.match(/^diff --git a\/([^\s]+) b\/([^\s]+)/);
+            const file = match?.[1] || '';
+            acc.skip = ignoreDiffFiles.has(file);
+        }
+        if (!acc.skip) acc.lines.push(line);
+        return acc;
+    }, { lines: [], skip: false }).lines.join('\n');
+
 const maxPatchChars = 12000;
-const trimmedPatch = diffPatch.length > maxPatchChars
-    ? `${diffPatch.slice(0, maxPatchChars)}\n... (diff truncated)`
-    : diffPatch;
+const trimmedPatch = filteredDiffPatch.length > maxPatchChars
+    ? `${filteredDiffPatch.slice(0, maxPatchChars)}\n... (diff truncated)`
+    : filteredDiffPatch;
 
 const prompt = [
     `Write friendly, non-technical release notes for the "GW2 Arc Log Uploader" app.`,
