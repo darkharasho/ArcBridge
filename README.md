@@ -1,4 +1,4 @@
-# <img width="36" height="36" alt="logo" src="https://github.com/user-attachments/assets/25424e86-4a8e-4d99-bd4a-abe9867ed99f" /> ArcBridge
+# <img width="36" height="36" alt="ArcBridge logo" src="public/img/ArcBridge.png" /> ArcBridge
 
 A premium, high-performance Electron application for Guild Wars 2 players to automatically upload arcdps combat logs, notify Discord, and view detailed WvW statistics in a stunning, modern interface.
 

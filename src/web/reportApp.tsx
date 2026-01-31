@@ -147,6 +147,7 @@ export function ReportApp() {
     const [searchTerm, setSearchTerm] = useState('');
     const [theme, setTheme] = useState<WebTheme | null>(null);
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [logoIsDefault, setLogoIsDefault] = useState(false);
     const [tocOpen, setTocOpen] = useState(false);
     const [uiTheme, setUiTheme] = useState<'classic' | 'modern'>('classic');
     const basePath = useMemo(() => {
@@ -287,15 +288,18 @@ export function ReportApp() {
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
-                const path = data?.path ? String(data.path) : 'img/ArcBridge.png';
+                const defaultPath = 'img/ArcBridge.svg';
+                const path = data?.path ? String(data.path) : defaultPath;
                 const version = data?.updatedAt ? String(data.updatedAt) : '';
                 const urlBase = `${basePath}${path}`.replace(/\/{2,}/g, '/');
                 const url = version ? `${urlBase}?v=${encodeURIComponent(version)}` : urlBase;
                 setLogoUrl(url);
+                setLogoIsDefault(!data?.path || path === defaultPath);
             })
             .catch(() => {
                 if (!isMounted) return;
                 setLogoUrl(null);
+                setLogoIsDefault(false);
             });
         return () => {
             isMounted = false;
@@ -456,11 +460,29 @@ export function ReportApp() {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex items-center gap-4">
                                 {logoUrl && (
-                                    <img
-                                        src={logoUrl}
-                                        alt="Squad logo"
-                                        className="w-24 h-24 rounded-lg object-cover"
-                                    />
+                                    logoIsDefault ? (
+                                        <div
+                                            className="w-24 h-24"
+                                            style={{
+                                                backgroundColor: 'var(--accent)',
+                                                maskImage: `url(${logoUrl})`,
+                                                WebkitMaskImage: `url(${logoUrl})`,
+                                                maskRepeat: 'no-repeat',
+                                                WebkitMaskRepeat: 'no-repeat',
+                                                maskPosition: 'center',
+                                                WebkitMaskPosition: 'center',
+                                                maskSize: 'contain',
+                                                WebkitMaskSize: 'contain'
+                                            }}
+                                            aria-label="ArcBridge logo"
+                                        />
+                                    ) : (
+                                        <img
+                                            src={logoUrl}
+                                            alt="Squad logo"
+                                            className="w-24 h-24 rounded-lg object-cover"
+                                        />
+                                    )
                                 )}
                                 <div>
                                     <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge Log Report</div>
@@ -526,11 +548,29 @@ export function ReportApp() {
                     <div className={`${glassCard} p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
                         <div className="flex items-center gap-4 min-h-[56px]">
                             {logoUrl && (
-                                <img
-                                    src={logoUrl}
-                                    alt="Squad logo"
-                                    className="w-24 h-24 rounded-lg object-cover"
-                                />
+                                logoIsDefault ? (
+                                    <div
+                                        className="w-24 h-24"
+                                        style={{
+                                            backgroundColor: 'var(--accent)',
+                                            maskImage: `url(${logoUrl})`,
+                                            WebkitMaskImage: `url(${logoUrl})`,
+                                            maskRepeat: 'no-repeat',
+                                            WebkitMaskRepeat: 'no-repeat',
+                                            maskPosition: 'center',
+                                            WebkitMaskPosition: 'center',
+                                            maskSize: 'contain',
+                                            WebkitMaskSize: 'contain'
+                                        }}
+                                        aria-label="ArcBridge logo"
+                                    />
+                                ) : (
+                                    <img
+                                        src={logoUrl}
+                                        alt="Squad logo"
+                                        className="w-24 h-24 rounded-lg object-cover"
+                                    />
+                                )
                             )}
                             <div>
                                 <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge</div>
