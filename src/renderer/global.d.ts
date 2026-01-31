@@ -54,6 +54,7 @@ export interface IStatsViewSettings {
     showTopStats: boolean;
     showMvp: boolean;
     roundCountStats: boolean;
+    topStatsMode: 'total' | 'perSecond';
 }
 
 export type WebUploadBuildStatus = 'idle' | 'checking' | 'building' | 'built' | 'errored' | 'unknown';
@@ -119,7 +120,8 @@ export const DEFAULT_MVP_WEIGHTS: IMvpWeights = {
 export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     showTopStats: true,
     showMvp: true,
-    roundCountStats: false
+    roundCountStats: false,
+    topStatsMode: 'total'
 };
 
 export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {

@@ -514,6 +514,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const showTopStats = activeStatsViewSettings.showTopStats;
     const showMvp = activeStatsViewSettings.showMvp;
     const roundCountStats = activeStatsViewSettings.roundCountStats;
+    const topStatsMode = activeStatsViewSettings.topStatsMode || 'total';
     const uploadingWeb = activeWebUploadState.uploading;
     const webUploadMessage = activeWebUploadState.message;
     const webUploadUrl = activeWebUploadState.url;
@@ -1411,6 +1412,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         let maxDamage = { ...emptyLeader };
         let maxDps = { ...emptyLeader };
         let maxRevives = { ...emptyLeader };
+        let topStatsPerSecond: Record<string, typeof emptyLeader> | null = null;
+        let topStatsLeaderboardsPerSecond: Record<string, Array<{ rank: number; account: string; profession: string; professionList?: string[]; value: number }>> | null = null;
         let leaderboards: Record<string, Array<{ rank: number; account: string; profession: string; professionList?: string[]; value: number }>> = {
             downContrib: [],
             barrier: [],
@@ -1567,6 +1570,36 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 });
             };
 
+            const getTopStatValue = (stat: PlayerStats, key: string) => {
+                switch (key) {
+                    case 'downContrib':
+                        return stat.downContrib;
+                    case 'barrier':
+                        return stat.barrier;
+                    case 'healing':
+                        return stat.healing;
+                    case 'dodges':
+                        return stat.dodges;
+                    case 'strips':
+                        return stat.strips;
+                    case 'cleanses':
+                        return stat.cleanses;
+                    case 'cc':
+                        return stat.cc;
+                    case 'stability':
+                        return stat.stab;
+                    case 'revives':
+                        return stat.revives;
+                    default:
+                        return 0;
+                }
+            };
+
+            const getTopStatPerSecond = (stat: PlayerStats, key: string) => {
+                const seconds = Math.max(1, (stat.totalFightMs || 0) / 1000);
+                return getTopStatValue(stat, key) / seconds;
+            };
+
             leaderboards = {
                 downContrib: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
                     key,
@@ -1665,6 +1698,102 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     professionList: stat.professionList,
                     value: stat.damage
                 })), true)
+            };
+
+            topStatsPerSecond = {
+                maxDownContrib: { ...emptyLeader },
+                maxCleanses: { ...emptyLeader },
+                maxStrips: { ...emptyLeader },
+                maxStab: { ...emptyLeader },
+                maxHealing: { ...emptyLeader },
+                maxBarrier: { ...emptyLeader },
+                maxCC: { ...emptyLeader },
+                maxDodges: { ...emptyLeader },
+                maxRevives: { ...emptyLeader },
+                closestToTag: { ...closestToTag }
+            };
+
+            playerEntries.forEach(({ stat }) => {
+                const pInfo = { player: stat.account, count: stat.logsJoined, profession: stat.profession || 'Unknown', professionList: stat.professionList || [] };
+                const downContrib = getTopStatPerSecond(stat, 'downContrib');
+                const cleanses = getTopStatPerSecond(stat, 'cleanses');
+                const strips = getTopStatPerSecond(stat, 'strips');
+                const stab = getTopStatPerSecond(stat, 'stability');
+                const healing = getTopStatPerSecond(stat, 'healing');
+                const barrier = getTopStatPerSecond(stat, 'barrier');
+                const cc = getTopStatPerSecond(stat, 'cc');
+                const dodges = getTopStatPerSecond(stat, 'dodges');
+                const revives = getTopStatPerSecond(stat, 'revives');
+
+                if (downContrib > topStatsPerSecond.maxDownContrib.value) topStatsPerSecond.maxDownContrib = { value: downContrib, ...pInfo };
+                if (cleanses > topStatsPerSecond.maxCleanses.value) topStatsPerSecond.maxCleanses = { value: cleanses, ...pInfo };
+                if (strips > topStatsPerSecond.maxStrips.value) topStatsPerSecond.maxStrips = { value: strips, ...pInfo };
+                if (stab > topStatsPerSecond.maxStab.value) topStatsPerSecond.maxStab = { value: stab, ...pInfo };
+                if (healing > topStatsPerSecond.maxHealing.value) topStatsPerSecond.maxHealing = { value: healing, ...pInfo };
+                if (barrier > topStatsPerSecond.maxBarrier.value) topStatsPerSecond.maxBarrier = { value: barrier, ...pInfo };
+                if (cc > topStatsPerSecond.maxCC.value) topStatsPerSecond.maxCC = { value: cc, ...pInfo };
+                if (dodges > topStatsPerSecond.maxDodges.value) topStatsPerSecond.maxDodges = { value: dodges, ...pInfo };
+                if (revives > topStatsPerSecond.maxRevives.value) topStatsPerSecond.maxRevives = { value: revives, ...pInfo };
+            });
+
+            topStatsLeaderboardsPerSecond = {
+                downContrib: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'downContrib')
+                })), true),
+                barrier: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'barrier')
+                })), true),
+                healing: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'healing')
+                })), true),
+                dodges: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'dodges')
+                })), true),
+                strips: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'strips')
+                })), true),
+                cleanses: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'cleanses')
+                })), true),
+                cc: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'cc')
+                })), true),
+                stability: buildLeaderboard(playerEntries.map(({ key, stat }) => ({
+                    key,
+                    account: stat.account,
+                    profession: stat.profession,
+                    professionList: stat.professionList,
+                    value: getTopStatPerSecond(stat, 'stability')
+                })), true),
+                closestToTag: leaderboards.closestToTag
             };
         }
 
@@ -2325,7 +2454,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             silver,
             bronze,
             avgMvpScore,
-            leaderboards
+            leaderboards,
+            topStatsPerSecond,
+            topStatsLeaderboardsPerSecond
         };
     }, [validLogs, precomputedStats]);
 
@@ -2912,6 +3043,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
     const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active, rows, formatValue }: any) => {
         const classes = colorClasses[color] || colorClasses.blue;
+        const displayValue = formatValue ? formatValue(data.value) : Math.round(data.value).toLocaleString();
         return (
             <div
                 role="button"
@@ -2932,7 +3064,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     <div className="min-w-0 flex-1">
                         <div className="text-gray-400 text-xs font-bold uppercase tracking-wider truncate">{title}</div>
                         <div className="text-2xl font-bold text-white mt-0.5 break-words">
-                            {Math.round(data.value).toLocaleString()} <span className="text-sm font-normal text-gray-500">{unit}</span>
+                            {displayValue} <span className="text-sm font-normal text-gray-500">{unit}</span>
                         </div>
                     </div>
                 </div>
@@ -3471,24 +3603,36 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     )}
 
                     {(() => {
+                        const isPerSecond = topStatsMode === 'perSecond';
+                        const topStatsData = isPerSecond && stats.topStatsPerSecond ? stats.topStatsPerSecond : stats;
+                        const topStatsLeaderboards = isPerSecond && stats.topStatsLeaderboardsPerSecond
+                            ? stats.topStatsLeaderboardsPerSecond
+                            : stats.leaderboards;
+                        const titlePrefix = isPerSecond ? '' : 'Total ';
+                        const titleSuffix = isPerSecond ? ' /s' : '';
                         const leaderCards = [
-                            { icon: HelpingHand, title: 'Down Contribution', data: stats.maxDownContrib, color: 'red', statKey: 'downContrib' },
-                            { icon: Shield, title: 'Total Barrier', data: stats.maxBarrier, color: 'yellow', statKey: 'barrier' },
-                            { icon: Activity, title: 'Total Healing', data: stats.maxHealing, color: 'green', statKey: 'healing' },
-                            { icon: Wind, title: 'Total Dodges', data: stats.maxDodges, color: 'cyan', statKey: 'dodges' },
-                            { icon: Zap, title: 'Total Strips', data: stats.maxStrips, color: 'purple', statKey: 'strips' },
-                            { icon: Flame, title: 'Total Cleanses', data: stats.maxCleanses, color: 'blue', statKey: 'cleanses' },
-                            { icon: Hammer, title: 'Total CC', data: stats.maxCC, color: 'pink', statKey: 'cc' },
-                            { icon: ShieldCheck, title: 'Total Stab Gen', data: stats.maxStab, color: 'cyan', statKey: 'stability' },
-                            { icon: Crosshair, title: 'Closest to Tag', data: stats.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag' }
+                            { icon: HelpingHand, title: `Down Contribution${titleSuffix}`, data: topStatsData.maxDownContrib, color: 'red', statKey: 'downContrib' },
+                            { icon: Shield, title: `${titlePrefix}Barrier${titleSuffix}`, data: topStatsData.maxBarrier, color: 'yellow', statKey: 'barrier' },
+                            { icon: Activity, title: `${titlePrefix}Healing${titleSuffix}`, data: topStatsData.maxHealing, color: 'green', statKey: 'healing' },
+                            { icon: Wind, title: `${titlePrefix}Dodges${titleSuffix}`, data: topStatsData.maxDodges, color: 'cyan', statKey: 'dodges' },
+                            { icon: Zap, title: `${titlePrefix}Strips${titleSuffix}`, data: topStatsData.maxStrips, color: 'purple', statKey: 'strips' },
+                            { icon: Flame, title: `${titlePrefix}Cleanses${titleSuffix}`, data: topStatsData.maxCleanses, color: 'blue', statKey: 'cleanses' },
+                            { icon: Hammer, title: `${titlePrefix}CC${titleSuffix}`, data: topStatsData.maxCC, color: 'pink', statKey: 'cc' },
+                            { icon: ShieldCheck, title: `${titlePrefix}Stab Gen${titleSuffix}`, data: topStatsData.maxStab, color: 'cyan', statKey: 'stability' },
+                            { icon: Crosshair, title: 'Closest to Tag', data: topStatsData.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag' }
                         ];
-                        const formatValue = (value: number) => Math.round(value).toLocaleString();
+                        const formatValue = (value: number) => {
+                            if (!isPerSecond || !Number.isFinite(value)) {
+                                return Math.round(value).toLocaleString();
+                            }
+                            return formatWithCommas(value, 2);
+                        };
                         return (
                             <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {leaderCards.map((card) => {
                                         const isActive = expandedLeader === card.statKey;
-                                        const rows = stats.leaderboards?.[card.statKey] || [];
+                                        const rows = topStatsLeaderboards?.[card.statKey] || [];
                                         return (
                                         <LeaderCard
                                             key={card.statKey}

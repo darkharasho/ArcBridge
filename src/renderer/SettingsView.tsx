@@ -560,6 +560,10 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         setStatsViewSettings(prev => ({ ...prev, [key]: value }));
     };
 
+    const updateTopStatsMode = (mode: IStatsViewSettings['topStatsMode']) => {
+        setStatsViewSettings(prev => ({ ...prev, topStatsMode: mode }));
+    };
+
     const updateMaxTopRows = (value: number) => {
         const clamped = Math.min(10, Math.max(1, Math.floor(value)));
         setEmbedStats(prev => ({ ...prev, maxTopListRows: clamped }));
@@ -1321,6 +1325,29 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                             label="Round count stats to whole numbers"
                             description="Percent-based stats keep decimals"
                         />
+                        <div className="py-3">
+                            <div className="text-sm font-medium text-gray-200 mb-2">Top Stats Calculation</div>
+                            <div className="flex gap-2">
+                                {([
+                                    { id: 'total', label: 'Total' },
+                                    { id: 'perSecond', label: 'Per Second' }
+                                ] as const).map((option) => (
+                                    <button
+                                        key={option.id}
+                                        type="button"
+                                        onClick={() => updateTopStatsMode(option.id)}
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                                            statsViewSettings.topStatsMode === option.id
+                                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">Applies to Top Stats cards and breakdown.</div>
+                        </div>
                     </div>
                 </SettingsSection>
 
