@@ -3060,11 +3060,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     const sortedEnemyClassData = [...stats.enemyClassData].sort(sortByCountDesc);
 
     const containerClass = embedded
-        ? 'stats-view min-h-screen flex flex-col p-1 w-full max-w-6xl mx-auto'
+        ? 'stats-view min-h-screen flex flex-col p-2 sm:p-3 w-full max-w-6xl mx-auto'
         : 'stats-view h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
     const scrollContainerClass = embedded
-        ? 'space-y-6 min-h-0 p-4 rounded-xl bg-black/20 border border-white/5 backdrop-blur-xl'
-        : 'flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl backdrop-blur-2xl';
+        ? 'space-y-5 sm:space-y-6 min-h-0 p-3 sm:p-4 rounded-xl bg-black/20 border border-white/5 [contain:paint]'
+        : `flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 bg-black/30 border border-white/5 p-4 rounded-xl ${
+            expandedSection ? '' : 'backdrop-blur-2xl'
+        } [contain:paint]`;
     const scrollContainerStyle: CSSProperties | undefined = embedded
         ? {
             backgroundColor: 'rgba(3, 7, 18, 0.75)',
@@ -3083,8 +3085,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 />
             )}
             {/* Header */}
-            <div className="flex items-center justify-between mb-3 shrink-0">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 shrink-0">
+                <div className="flex items-start gap-3 sm:items-center sm:gap-4">
                     {!embedded && (
                         <button
                             onClick={onBack}
@@ -3094,11 +3096,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                         </button>
                     )}
                     <div className="space-y-0">
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
                             <Trophy className="w-6 h-6 text-yellow-500" />
                             Statistics Dashboard
                         </h1>
-                        <p className="text-gray-400 text-xs">
+                        <p className="text-gray-400 text-[11px] sm:text-xs">
                             Performance across {stats.total} uploaded logs
                         </p>
                     </div>
@@ -3244,9 +3246,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 {/* Fight Breakdown (excluded from share screenshots) */}
                 <div id="fight-breakdown" className="mt-6 stats-share-exclude">
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-4">
                             <h3 className="text-lg font-bold text-gray-200">Fight Breakdown</h3>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 {([
                                     { id: 'sizes', label: 'Sizes' },
                                     { id: 'outcomes', label: 'Outcome' },
@@ -3264,7 +3266,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         {tab.label}
                                     </button>
                                 ))}
-                                <span className="text-[10px] uppercase tracking-widest text-gray-500">
+                                <span className="text-[10px] uppercase tracking-widest text-gray-500 sm:ml-1 w-full sm:w-auto">
                                     {stats.fightBreakdown?.length || 0} Fights
                                 </span>
                             </div>
@@ -3274,7 +3276,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                         ) : (
                             <div className="overflow-x-auto">
                                 <div className="max-h-[360px] overflow-y-auto">
-                                    <table className="w-full text-xs table-fixed">
+                                    <table className="w-full text-xs table-auto min-w-[720px]">
                                     <thead>
                                         <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
                                             <th className="text-right py-2 px-2 w-8">#</th>
@@ -3458,10 +3460,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                         <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
                                         <span className="text-yellow-400 font-bold uppercase tracking-widest text-xs">Squad MVP</span>
                                     </div>
-                                    <div className="text-3xl font-black text-white mb-2 flex items-center gap-3">
-                                        {stats.mvp.account}
+                                    <div className="text-2xl sm:text-3xl font-black text-white mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                                        <span className="min-w-0 max-w-full truncate">{stats.mvp.account}</span>
                                         {renderProfessionIcon(stats.mvp.profession, stats.mvp.professionList, 'w-6 h-6')}
-                                        <span className="text-lg font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 rounded border border-yellow-500/20">
+                                        <span className="text-sm sm:text-lg font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 rounded border border-yellow-500/20 max-w-full truncate">
                                             {stats.mvp.profession}
                                         </span>
                                     </div>
@@ -3726,16 +3728,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             <Users className="w-5 h-5 text-green-400" />
                             Squad Composition
                         </h3>
-                        <div className="grid grid-cols-[1fr_150px] h-[300px] gap-4">
-                            <div className="h-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] sm:h-[300px] gap-4">
+                            <div className="h-[240px] sm:h-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
                                             data={sortedSquadClassData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={100}
+                                            innerRadius="45%"
+                                            outerRadius="70%"
                                             paddingAngle={2}
                                             dataKey="value"
                                         >
@@ -3772,8 +3774,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     </div>
                                 )}
                             </div>
-                            <div className="w-full h-full overflow-y-auto pr-1 flex items-center">
-                                <div className="space-y-1.5 text-[11px] mx-auto">
+                            <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
+                                <div className="space-y-1.5 text-[11px] mx-auto pb-2">
                                     {sortedSquadClassData.map((entry: any) => (
                                         <div key={entry.name} className="flex items-center gap-2 text-gray-300">
                                             <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
@@ -3801,16 +3803,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             <Skull className="w-5 h-5 text-red-400" />
                             Enemy Composition (Top 10)
                         </h3>
-                        <div className="grid grid-cols-[1fr_150px] h-[300px] gap-4">
-                            <div className="h-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] sm:h-[300px] gap-4">
+                            <div className="h-[240px] sm:h-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
                                             data={sortedEnemyClassData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={100}
+                                            innerRadius="45%"
+                                            outerRadius="70%"
                                             paddingAngle={2}
                                             dataKey="value"
                                         >
@@ -3825,8 +3827,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
-                            <div className="w-full h-full overflow-y-auto pr-1 flex items-center">
-                                <div className="space-y-1.5 text-[11px] mx-auto">
+                            <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
+                                <div className="space-y-1.5 text-[11px] mx-auto pb-2">
                                     {sortedEnemyClassData.map((entry: any) => (
                                         <div key={entry.name} className="flex items-center gap-2 text-gray-300">
                                             <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
@@ -3940,15 +3942,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                         <MapIcon className="w-5 h-5 text-blue-400" />
                         Map Distribution
                     </h3>
-                    <div className="h-[300px] w-full">
+                    <div className="h-[260px] sm:h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={stats.mapData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
+                                    innerRadius="45%"
+                                    outerRadius="70%"
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
@@ -4782,8 +4784,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                 <div className="text-xs uppercase tracking-widest text-gray-500">Support</div>
                                             </div>
                                             {metric.id === 'condiCleanse' ? (
-                                                <div className="flex items-center justify-between gap-2 px-4 py-2 bg-white/5">
-                                                    <div className="flex items-center gap-2">
+                                                <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-white/5">
+                                                    <div className="flex flex-wrap items-center gap-2">
                                                         {([
                                                             { value: 'all', label: 'All' },
                                                             { value: 'squad', label: 'Squad' }
@@ -4800,7 +4802,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
                                                         {([
                                                             { value: 'total', label: 'Total' },
                                                             { value: 'per1s', label: 'Stat/1s' },
@@ -4820,7 +4822,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 px-4 py-2 bg-white/5">
                                                     {([
                                                         { value: 'total', label: 'Total' },
                                                         { value: 'per1s', label: 'Stat/1s' },
@@ -5149,16 +5151,17 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 {/* Skill Usage Tracker */}
                 <div
                     id="skill-usage"
-                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 isolate ${
                         expandedSection === 'skill-usage'
                             ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane pb-10 ${
                                 expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
                             }`
-                            : ''
+                            : 'overflow-hidden'
                     }`}
+                    style={{ contain: 'paint' }}
                 >
-                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
-                        <div>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4 relative">
+                        <div className={expandedSection === 'skill-usage' ? 'pr-10 md:pr-0' : ''}>
                             <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
                                 <Zap className="w-5 h-5 text-cyan-400" />
                                 Skill Usage Tracker
@@ -5193,7 +5196,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             <button
                                 type="button"
                                 onClick={() => (expandedSection === 'skill-usage' ? closeExpandedSection() : openExpandedSection('skill-usage'))}
-                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
+                                className={`p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors ${
+                                    expandedSection === 'skill-usage' ? 'absolute top-2 right-2 md:static' : ''
+                                }`}
                                 aria-label={expandedSection === 'skill-usage' ? 'Close Skill Usage' : 'Expand Skill Usage'}
                                 title={expandedSection === 'skill-usage' ? 'Close' : 'Expand'}
                             >
@@ -5202,12 +5207,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                         </div>
                     </div>
                     {selectedPlayers.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pb-2">
+                        <div className="flex gap-2 pb-2 overflow-x-auto pr-1 -mx-1 px-1">
                             {selectedPlayers.map((playerKey) => {
                                 const player = playerMapByKey.get(playerKey);
                                 if (!player) return null;
                                 return (
-                                    <span key={player.key} className="flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200">
+                                    <span key={player.key} className="flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 shrink-0">
                                         <span className="truncate max-w-[140px]">{player.displayName}</span>
                                         <button type="button" onClick={() => removeSelectedPlayer(player.key)} className="rounded-full p-1 text-cyan-200 hover:bg-white/20">
                                             <XCircle className="w-3 h-3" />
@@ -5405,7 +5410,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                     </LineChart>
                                 </ResponsiveContainer>
                                 {selectedPlayers.length > 0 && (
-                                    <div className="grid gap-3 md:grid-cols-2">
+                                    <div
+                                        className={`grid gap-3 md:grid-cols-2 ${expandedSection === 'skill-usage' ? '' : 'max-h-40 overflow-y-auto pr-1'} relative isolate`}
+                                        style={{ contain: 'paint', backfaceVisibility: 'hidden' }}
+                                    >
                                         {[...selectedPlayers]
                                             .sort((a, b) => (playerTotalsForSkill[b] || 0) - (playerTotalsForSkill[a] || 0))
                                             .map((playerKey) => {
@@ -5426,7 +5434,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                                 return [...prev, playerKey];
                                                             });
                                                         }}
-                                                        className={`rounded-2xl border bg-white/5 p-3 flex items-center justify-between text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 ${
+                                                        className={`w-full rounded-2xl border bg-white/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 min-w-0 ${
                                                             isActive ? 'border-white/40 bg-white/10' : 'border-white/10 hover:border-white/30 hover:bg-white/10'
                                                         }`}
                                                         aria-pressed={isActive}
@@ -5450,7 +5458,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                                                                 <div className="font-semibold text-white truncate">{player?.displayName || playerKey}</div>
                                                             </div>
                                                         </div>
-                                                        <div className="text-3xl font-black text-white font-mono">{formatSkillUsageValue(total)}</div>
+                                                        <div className="text-2xl sm:text-3xl font-black text-white font-mono self-end sm:self-auto shrink-0">
+                                                            {formatSkillUsageValue(total)}
+                                                        </div>
                                                     </button>
                                                 );
                                             })}

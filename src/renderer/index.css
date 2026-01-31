@@ -361,6 +361,16 @@ body.web-report #root {
     overflow: visible;
 }
 
+@media (max-width: 640px) {
+    body.web-report .mobile-bottom-pad {
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    }
+
+    body.web-report .mobile-action-bar {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
 .drag-region {
     -webkit-app-region: drag;
 }
@@ -474,6 +484,9 @@ button:focus-visible,
     animation-timing-function: ease-out;
     animation-fill-mode: both;
     will-change: transform, opacity;
+    background-color: rgba(2, 6, 23, 0.96);
+    backdrop-filter: blur(18px);
+    padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
 }
 
 .modal-pane-enter {

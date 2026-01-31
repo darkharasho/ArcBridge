@@ -978,7 +978,7 @@ function App() {
                                     </div>
                                 </div>
                                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Squad / Enemy</div>
+                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Players</div>
                                     <div className="text-2xl font-bold text-white">
                                         <span className="text-emerald-300">{avgSquadSize}</span>
                                         <span className="text-gray-500 mx-2">/</span>

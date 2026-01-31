@@ -17,7 +17,9 @@ import {
     Star,
     Skull,
     PanelLeft,
-    Zap
+    Zap,
+    ArrowLeft,
+    ArrowUp
 } from 'lucide-react';
 
 interface ReportMeta {
@@ -460,9 +462,9 @@ export function ReportApp() {
                         </div>
                     </div>
                 </aside>
-                <div className="max-w-7xl mx-auto px-6 py-6 lg:pl-64 lg:pr-10">
-                    <div className={`${glassCard} p-6 mb-6`} style={glassCardStyle}>
-                        <div className="mb-4">
+                <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:pl-64 lg:pr-10 mobile-bottom-pad">
+                    <div className={`${glassCard} p-5 sm:p-6 mb-6`} style={glassCardStyle}>
+                        <div className="mb-4 hidden sm:block">
                             <a
                                 href="./"
                                 className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[color:var(--accent)] hover:text-[color:var(--accent-strong)] transition-colors"
@@ -470,12 +472,12 @@ export function ReportApp() {
                                 <span className="text-[color:var(--accent-strong)]">←</span> Back to Reports
                             </a>
                         </div>
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-center sm:text-left">
                                 {logoUrl && (
                                     logoIsDefault ? (
                                         <div
-                                            className="w-24 h-24"
+                                            className="w-16 h-16 sm:w-24 sm:h-24 mx-auto sm:mx-0"
                                             style={{
                                                 backgroundColor: 'var(--accent)',
                                                 maskImage: `url(${logoUrl})`,
@@ -493,41 +495,88 @@ export function ReportApp() {
                                         <img
                                             src={logoUrl}
                                             alt="Squad logo"
-                                            className="w-24 h-24 rounded-lg object-cover"
+                                            className="w-16 h-16 sm:w-24 sm:h-24 rounded-lg object-cover mx-auto sm:mx-0"
                                         />
                                     )
                                 )}
-                                <div>
+                                <div className="min-w-0">
                                     <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge Log Report</div>
-                                    <h1 className="text-3xl font-bold mt-1">{report.meta.title}</h1>
-                                    <div className="text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
+                                    <h1 className="text-2xl sm:text-3xl font-bold mt-1">{report.meta.title}</h1>
+                                    <div className="text-xs sm:text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setTocOpen(true)}
-                                className="lg:hidden px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 hover:border-white/30 transition-colors flex items-center gap-2"
+                                className="hidden sm:flex lg:hidden px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 hover:border-white/30 transition-colors items-center gap-2"
                             >
                                 <PanelLeft className="w-4 h-4" />
                                 Contents
                             </button>
-                            <div className="flex flex-wrap gap-3">
-                                <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2">
+                            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:overflow-visible pr-1 sm:pr-2">
+                                <div className="col-span-2 sm:col-span-1 w-full px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2 min-w-0 justify-center sm:justify-start">
                                     <CalendarDays className="w-4 h-4 text-[color:var(--accent)]" />
                                     {report.meta.dateLabel || 'Log Range'}
                                 </div>
-                                <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2">
+                                <div className="col-span-2 sm:col-span-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2 min-w-0">
                                     <Users className="w-4 h-4 text-[color:var(--accent)]" />
-                                    {report.meta.commanders.length ? report.meta.commanders.join(', ') : 'No Commanders'}
+                                    <span className="truncate">
+                                        {report.meta.commanders.length ? report.meta.commanders.join(', ') : 'No Commanders'}
+                                    </span>
                                 </div>
-                                <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2">
+                                <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2 min-w-0">
                                     <ShieldCheck className="w-4 h-4 text-[color:var(--accent)]" />
                                     Report {report.meta.appVersion ? `v${report.meta.appVersion}` : 'build'}
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <div className="sm:hidden mb-4">
+                        <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-2">Jump to</div>
+                        <div className="flex gap-2 overflow-x-auto pr-2 pb-1 snap-x snap-mandatory">
+                            {tocItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <button
+                                        key={`chip-${item.id}`}
+                                        onClick={() => handleTocClick(item.id)}
+                                        className="group flex items-center gap-2 px-3 py-2 rounded-full text-[10px] uppercase tracking-widest text-gray-200 whitespace-nowrap border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_10px_25px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[color:var(--accent-border)] hover:shadow-[0_18px_35px_rgba(0,0,0,0.45)] active:translate-y-0 active:scale-[0.98] snap-start"
+                                    >
+                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 border border-white/10 group-hover:border-[color:var(--accent-border)] group-hover:bg-[color:var(--accent-glow)] transition-colors">
+                                            <Icon className="w-3 h-3 text-[color:var(--accent)]" />
+                                        </span>
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                     <div className="flex-1 min-w-0">
                         <StatsView logs={[]} onBack={() => {}} mvpWeights={undefined} precomputedStats={report.stats} statsViewSettings={report.stats?.statsViewSettings} embedded />
+                    </div>
+                </div>
+                <div className="fixed bottom-4 left-4 right-4 z-30 sm:hidden mobile-action-bar">
+                    <div className="flex items-center justify-between gap-2 rounded-2xl bg-slate-950/70 border border-white/15 backdrop-blur-xl px-3 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+                        <a
+                            href="./"
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                        >
+                            <ArrowLeft className="w-4 h-4 text-[color:var(--accent)]" />
+                            Back
+                        </a>
+                        <button
+                            onClick={() => setTocOpen(true)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                        >
+                            <PanelLeft className="w-4 h-4 text-[color:var(--accent)]" />
+                            Contents
+                        </button>
+                        <button
+                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                        >
+                            <ArrowUp className="w-4 h-4 text-[color:var(--accent)]" />
+                            Top
+                        </button>
                     </div>
                 </div>
             </div>
@@ -557,13 +606,13 @@ export function ReportApp() {
                     style={{ backgroundColor: 'var(--accent-glow-soft)' }}
                 />
             </div>
-            <div className="max-w-7xl mx-auto px-6 py-10">
-                    <div className={`${glassCard} p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
-                        <div className="flex items-center gap-4 min-h-[56px]">
+            <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-10">
+                    <div className={`${glassCard} p-5 sm:p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-h-[56px] text-center sm:text-left">
                             {logoUrl && (
                                 logoIsDefault ? (
                                     <div
-                                        className="w-24 h-24"
+                                        className="w-16 h-16 sm:w-24 sm:h-24 mx-auto sm:mx-0"
                                         style={{
                                             backgroundColor: 'var(--accent)',
                                             maskImage: `url(${logoUrl})`,
@@ -581,18 +630,18 @@ export function ReportApp() {
                                     <img
                                         src={logoUrl}
                                         alt="Squad logo"
-                                        className="w-24 h-24 rounded-lg object-cover"
+                                        className="w-16 h-16 sm:w-24 sm:h-24 rounded-lg object-cover mx-auto sm:mx-0"
                                     />
                                 )
                             )}
                             <div>
                                 <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge</div>
-                                <h1 className="text-3xl font-bold mt-2">Command Reports</h1>
-                                <p className="text-gray-400 mt-1">Select a report to view the full stats dashboard.</p>
+                                <h1 className="text-2xl sm:text-3xl font-bold mt-2">Command Reports</h1>
+                                <p className="text-xs sm:text-sm text-gray-400 mt-1">Select a report to view the full stats dashboard.</p>
                             </div>
                         </div>
                     <div className="flex items-center gap-3">
-                        <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-gray-300">
+                        <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300">
                             {filteredIndex.length} Reports
                         </div>
                     </div>
@@ -606,7 +655,7 @@ export function ReportApp() {
                         placeholder="Search reports, commanders, or date..."
                         className="w-full md:flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
                     />
-                    <div className="text-xs text-gray-400">
+                    <div className="text-[11px] sm:text-xs text-gray-400">
                         Showing <span className="text-[color:var(--accent)]">{filteredIndex.length}</span> of{' '}
                         <span className="text-[color:var(--accent)]">{sortedIndex.length}</span>
                     </div>
@@ -637,27 +686,27 @@ export function ReportApp() {
                                 className={`${glassCard} px-5 py-4 hover:border-[color:var(--accent-border)] transition-colors group`}
                                 style={glassCardStyle}
                             >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="min-w-0 block text-left">
-                                        <div className="text-[11px] uppercase tracking-widest text-gray-400">
-                                            {entry.dateLabel}
-                                        </div>
-                                        <div className="text-lg font-semibold mt-1 truncate">
-                                            {formatReportTitle(entry.dateStart)}
-                                        </div>
-                                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-[color:var(--accent)]" />
-                                            <span className="truncate">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                        <div className="min-w-0 block text-left">
+                            <div className="text-[11px] uppercase tracking-widest text-gray-400">
+                                {entry.dateLabel}
+                            </div>
+                            <div className="text-base sm:text-lg font-semibold mt-1 truncate">
+                                {formatReportTitle(entry.dateStart)}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                                <Users className="w-4 h-4 text-[color:var(--accent)]" />
+                                <span className="truncate">
                                                 {entry.commanders.length ? entry.commanders.join(', ') : 'No Commanders'}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-center gap-1 text-[10px] text-gray-400">
-                                            {entry.summary?.mapSlices && entry.summary.mapSlices.length > 0 ? (
-                                                <>
-                                                    <MapDonut slices={entry.summary.mapSlices} />
-                                                    <span className="uppercase tracking-widest">Maps</span>
+                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 sm:mt-0 mt-2 w-full sm:w-auto">
+                            <div className="flex flex-col items-center gap-1 text-[10px] text-gray-400">
+                                {entry.summary?.mapSlices && entry.summary.mapSlices.length > 0 ? (
+                                    <>
+                                        <MapDonut slices={entry.summary.mapSlices} />
+                                        <span className="uppercase tracking-widest">Maps</span>
                                                 </>
                                             ) : (
                                                 <>
@@ -665,18 +714,18 @@ export function ReportApp() {
                                                     <span className="uppercase tracking-widest">Borderlands</span>
                                                 </>
                                             )}
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1">
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
                                             <div className="text-[10px] uppercase tracking-widest text-gray-400">Avg Squad / Enemy</div>
-                                            <div className="text-sm text-white font-semibold">
-                                                {entry.summary?.avgSquadSize ?? '--'} / {entry.summary?.avgEnemySize ?? '--'}
-                                            </div>
-                                        </div>
-                                        <ExternalLink className="w-5 h-5 text-[color:var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
+                                <div className="text-sm text-white font-semibold">
+                                    {entry.summary?.avgSquadSize ?? '--'} / {entry.summary?.avgEnemySize ?? '--'}
                                 </div>
-                            </a>
-                        ))}
+                            </div>
+                            <ExternalLink className="w-5 h-5 text-[color:var(--accent)] opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
+                        </div>
+                    </div>
+                </a>
+            ))}
                     </div>
                 )}
 
