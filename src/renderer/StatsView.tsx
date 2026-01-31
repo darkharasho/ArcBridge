@@ -675,13 +675,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
     };
 
     const validLogs = useMemo(() => logs.filter(l => (l.status === 'success' || l.status === 'discord') && l.details), [logs]);
-    const hasEiDetails = useMemo(() => {
-        if (embedded) {
-            return Boolean(precomputedStats?.eiParserUsed);
-        }
-        return validLogs.some((log) => Boolean(log.eiDetails));
-    }, [embedded, precomputedStats, validLogs]);
-
     const stats = useMemo(() => {
         if (precomputedStats) {
             return precomputedStats;
@@ -731,6 +724,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 damage: number;
                 skills: Record<string, { name: string; hits: number; damage: number }>;
                 applicationsFromBuffs?: number;
+                applicationsFromBuffsActive?: number;
             }>;
             incomingConditions: Record<string, {
                 applications: number;
@@ -745,7 +739,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
         // --- Skill Aggregation ---
         // skillId -> { name, damage, hits }
         const skillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
-        const outgoingCondiTotals: Record<string, { name: string; applications: number; damage: number; applicationsFromBuffs?: number }> = {};
+        const outgoingCondiTotals: Record<string, { name: string; applications: number; damage: number; applicationsFromBuffs?: number; applicationsFromBuffsActive?: number }> = {};
         const incomingCondiTotals: Record<string, { name: string; applications: number; damage: number }> = {};
         const incomingSkillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
 
@@ -763,7 +757,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
             if (!details) return;
             const players = details.players as unknown as Player[];
             const targets = details.targets || [];
-            const conditionDetails = log.eiDetails || details;
+            const conditionDetails = details;
             const conditionPlayers = (conditionDetails?.players as unknown as Player[]) || players;
             const conditionTargets = conditionDetails?.targets || targets;
             const conditionSkillMap = conditionDetails?.skillMap || details.skillMap;
@@ -984,7 +978,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 s.stab += p.stabGeneration || 0;
 
                 // Stack Distance (Distance to Tag)
-                // statsAll[0] contains the stackDist field in Elite Insights JSON
+        // statsAll[0] contains the stackDist field in hosted JSON
                 const dist = getDistanceToTag(p);
                 if (dist <= RUN_BACK_RANGE) {
                     s.totalDist += dist;
@@ -1305,6 +1299,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     if (entry.applicationsFromBuffs) {
                         existing.applicationsFromBuffs = (existing.applicationsFromBuffs || 0) + entry.applicationsFromBuffs;
                     }
+                    if (entry.applicationsFromBuffsActive) {
+                        existing.applicationsFromBuffsActive = (existing.applicationsFromBuffsActive || 0) + entry.applicationsFromBuffsActive;
+                    }
                     Object.entries(entry.skills || {}).forEach(([skillName, skillEntry]) => {
                         const skillExisting = existing.skills[skillName] || { name: skillEntry.name, hits: 0, damage: 0 };
                         skillExisting.hits += Number(skillEntry.hits || 0);
@@ -1325,6 +1322,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                 existing.damage += Number(entry.damage || 0);
                 if (entry.applicationsFromBuffs) {
                     existing.applicationsFromBuffs = (existing.applicationsFromBuffs || 0) + entry.applicationsFromBuffs;
+                }
+                if (entry.applicationsFromBuffsActive) {
+                    existing.applicationsFromBuffsActive = (existing.applicationsFromBuffsActive || 0) + entry.applicationsFromBuffsActive;
                 }
                 outgoingCondiTotals[conditionName] = existing;
             });
@@ -2790,7 +2790,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                     ...stats,
                     skillUsageData,
                     statsViewSettings: activeStatsViewSettings,
-                    eiParserUsed: hasEiDetails,
                     uiTheme: uiTheme || 'classic'
                 }
             });
@@ -4317,13 +4316,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, disrupt
                             </button>
                         </div>
                     </div>
-                    {!hasEiDetails && (
-                        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
-                            {embedded
-                                ? 'This table has been generated with an external parser; condition application counts may be incomplete.'
-                                : 'Local Elite Insights parsing is disabled. Condition application counts may be incomplete. For more accurate counts enable Elite Insights in the settings.'}
-                        </div>
-                    )}
                     {conditionSummary && conditionSummary.length > 0 ? (
                         <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'conditions-outgoing' ? 'flex-1 min-h-0 h-full' : ''}`}>
                             <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'conditions-outgoing' ? 'h-full flex-1' : 'self-start'}`}>

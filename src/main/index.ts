@@ -7,7 +7,6 @@ import { spawn } from 'node:child_process'
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 import { computeOutgoingConditions } from '../shared/conditionsMetrics';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
-import { DEFAULT_EI_CLI_SETTINGS, loadEiCliJsonForLog, updateEiCliIfNeeded } from './eiCli';
 import { LogWatcher } from './watcher'
 import { Uploader, UploadResult } from './uploader'
 import { DiscordNotifier } from './discord';
@@ -289,33 +288,6 @@ const processLogFile = async (filePath: string) => {
             console.warn('[Main] Failed to compute log hash for cache:', hashError?.message || hashError);
         }
 
-        let localEiDetails: any | null = null;
-            const eiCliSettings = store.get('eiCliSettings', DEFAULT_EI_CLI_SETTINGS) as any;
-            if (eiCliSettings?.enabled) {
-                try {
-                    const eiResult = await loadEiCliJsonForLog({
-                        filePath,
-                        cacheKey,
-                        settings: {
-                            enabled: Boolean(eiCliSettings.enabled),
-                            autoSetup: eiCliSettings.autoSetup !== false,
-                            autoUpdate: eiCliSettings.autoUpdate !== false,
-                            preferredRuntime: eiCliSettings.preferredRuntime || 'auto'
-                        },
-                        dpsReportToken: store.get('dpsReportToken', null)
-                    });
-                if (eiResult.json) {
-                    const sourceLabel = eiResult.source === 'cache' ? 'cache hit' : 'parsed';
-                    console.log(`[Main] EI CLI ${sourceLabel}: ${filePath}`);
-                    localEiDetails = eiResult.json;
-                } else if (eiResult.error) {
-                    console.warn('[Main] EI CLI unavailable:', eiResult.error);
-                }
-            } catch (err: any) {
-                console.warn('[Main] EI CLI failed:', err?.message || err);
-            }
-        }
-
         let cached = null as null | { entry: DpsReportCacheEntry; jsonDetails: any | null };
         if (cacheKey) {
             cached = await loadDpsReportCacheEntry(cacheKey);
@@ -393,8 +365,7 @@ const processLogFile = async (filePath: string) => {
                 ...result,
                 filePath,
                 status: 'success',
-                details: jsonDetails,
-                eiDetails: localEiDetails || undefined
+                details: jsonDetails
             });
         } else {
             win?.webContents.send('upload-complete', { ...result, filePath, status: 'error' });
@@ -1218,25 +1189,6 @@ if (!gotTheLock) {
         createWindow();
         createTray();
 
-        const eiCliSettings = store.get('eiCliSettings', DEFAULT_EI_CLI_SETTINGS) as any;
-        if (eiCliSettings?.enabled && eiCliSettings?.autoUpdate !== false) {
-            setTimeout(async () => {
-                try {
-                    const result = await updateEiCliIfNeeded({
-                        enabled: Boolean(eiCliSettings.enabled),
-                        autoSetup: eiCliSettings.autoSetup !== false,
-                        autoUpdate: eiCliSettings.autoUpdate !== false,
-                        preferredRuntime: eiCliSettings.preferredRuntime || 'auto'
-                    });
-                    if (result?.updated) {
-                        console.log(`[Main] EI CLI updated${result.version ? ` to ${result.version}` : ''}.`);
-                    }
-                } catch (err: any) {
-                    console.warn('[Main] EI CLI update check failed:', err?.message || err);
-                }
-            }, 1000);
-        }
-
         // Desktop Integration for Linux AppImage
         if (process.platform === 'linux') {
             const integrator = new DesktopIntegrator();
@@ -1394,8 +1346,6 @@ if (!gotTheLock) {
             showTopStats: true,
             showMvp: true
         };
-        const DEFAULT_EI_SETTINGS = DEFAULT_EI_CLI_SETTINGS;
-
         ipcMain.handle('get-settings', () => {
             const updateConfigPath = path.join(process.resourcesPath, 'app-update.yml');
             const isPortable = Boolean(process.env.PORTABLE_EXECUTABLE);
@@ -1422,7 +1372,6 @@ if (!gotTheLock) {
                 mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) },
                 statsViewSettings: { ...DEFAULT_STATS_VIEW_SETTINGS, ...(store.get('statsViewSettings') as any || {}) },
                 disruptionMethod: store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD),
-                eiCliSettings: { ...DEFAULT_EI_SETTINGS, ...(store.get('eiCliSettings') as any || {}) },
                 uiTheme: store.get('uiTheme', 'classic'),
                 autoUpdateSupported: updateSupported,
                 autoUpdateDisabledReason: updateDisabledReason,
@@ -1448,7 +1397,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, eiCliSettings?: any, uiTheme?: 'classic' | 'modern', githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, uiTheme?: 'classic' | 'modern', githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -1496,9 +1445,6 @@ if (!gotTheLock) {
             if (settings.disruptionMethod !== undefined) {
                 store.set('disruptionMethod', settings.disruptionMethod);
                 discord?.setDisruptionMethod(settings.disruptionMethod);
-            }
-            if (settings.eiCliSettings !== undefined) {
-                store.set('eiCliSettings', settings.eiCliSettings);
             }
             if (settings.uiTheme !== undefined) {
                 store.set('uiTheme', settings.uiTheme);

@@ -42,6 +42,7 @@ export type PlayerConditionTotals = Record<string, {
     damage: number;
     skills: Record<string, ConditionSkillEntry>;
     applicationsFromBuffs?: number;
+    applicationsFromBuffsActive?: number;
 }>;
 
 export type OutgoingConditionSummaryEntry = {
@@ -49,6 +50,7 @@ export type OutgoingConditionSummaryEntry = {
     applications: number;
     damage: number;
     applicationsFromBuffs?: number;
+    applicationsFromBuffsActive?: number;
 };
 
 export type OutgoingConditionsResult = {
@@ -73,21 +75,33 @@ const defaultGetPlayerKey: GetPlayerKey = (player) => {
 const countAppliedFromStates = (states: Array<[number, number]> | undefined) => {
     if (!states || states.length === 0) return 0;
     let applied = 0;
-    let prev = 0;
+    let prev: number | null = null;
     states.forEach((entry) => {
-        const time = Number(entry[0] ?? 0);
         const value = Number(entry[1] ?? 0);
-        if (!Number.isFinite(time) || !Number.isFinite(value)) return;
-        if (time === 0) {
+        if (!Number.isFinite(value)) return;
+        if (prev === null) {
             prev = value;
             return;
         }
-        if (prev === 0 && value > 0) {
-            applied += 1;
+        if (value > prev) {
+            applied += (value - prev);
         }
         prev = value;
     });
     return applied;
+};
+
+const countActiveStateEntries = (states: Array<[number, number]> | undefined) => {
+    if (!states || states.length === 0) return 0;
+    let count = 0;
+    states.forEach((entry) => {
+        const time = Number(entry[0] ?? 0);
+        const value = Number(entry[1] ?? 0);
+        if (!Number.isFinite(value)) return;
+        if (time === 0) return;
+        if (value > 0) count += 1;
+    });
+    return count;
 };
 
 export const computeOutgoingConditions = (payload: {
@@ -187,7 +201,7 @@ export const computeOutgoingConditions = (payload: {
                 if (!key) return;
                 buffStateSourcesSeen += 1;
                 const appliedCounts = countAppliedFromStates(states as Array<[number, number]>);
-                if (!appliedCounts) return;
+                const activeCounts = countActiveStateEntries(states as Array<[number, number]>);
                 buffStateApplicationsTotal += appliedCounts;
 
                 const playerConditionTotals = playerConditions[key]?.[conditionName] || {
@@ -196,6 +210,7 @@ export const computeOutgoingConditions = (payload: {
                     skills: {}
                 };
                 playerConditionTotals.applicationsFromBuffs = (playerConditionTotals.applicationsFromBuffs || 0) + appliedCounts;
+                playerConditionTotals.applicationsFromBuffsActive = (playerConditionTotals.applicationsFromBuffsActive || 0) + activeCounts;
                 playerConditions[key] = playerConditions[key] || {};
                 playerConditions[key][conditionName] = playerConditionTotals;
 
@@ -205,9 +220,24 @@ export const computeOutgoingConditions = (payload: {
                     damage: 0
                 };
                 overallTotals.applicationsFromBuffs = (overallTotals.applicationsFromBuffs || 0) + appliedCounts;
+                overallTotals.applicationsFromBuffsActive = (overallTotals.applicationsFromBuffsActive || 0) + activeCounts;
                 summary[conditionName] = overallTotals;
             });
         });
+    });
+
+    Object.values(playerConditions).forEach((conditionTotals) => {
+        Object.values(conditionTotals).forEach((entry) => {
+            if (typeof entry.applicationsFromBuffs === 'number') {
+                entry.applications = entry.applicationsFromBuffs;
+            }
+        });
+    });
+
+    Object.values(summary).forEach((entry) => {
+        if (typeof entry.applicationsFromBuffs === 'number') {
+            entry.applications = entry.applicationsFromBuffs;
+        }
     });
 
     return {

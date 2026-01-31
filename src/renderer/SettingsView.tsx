@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Terminal } from 'lucide-react';
-import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, IEiCliSettings, DEFAULT_EI_CLI_SETTINGS, UiTheme, DEFAULT_UI_THEME } from './global.d';
+import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap } from 'lucide-react';
+import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
@@ -87,7 +87,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
-    const [eiCliSettings, setEiCliSettings] = useState<IEiCliSettings>(DEFAULT_EI_CLI_SETTINGS);
     const [uiTheme, setUiTheme] = useState<UiTheme>(DEFAULT_UI_THEME);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
@@ -155,7 +154,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setEmbedStats({ ...DEFAULT_EMBED_STATS, ...(settings.embedStatSettings || {}) });
             setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
             setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...(settings.statsViewSettings || {}) });
-            setEiCliSettings({ ...DEFAULT_EI_CLI_SETTINGS, ...(settings.eiCliSettings || {}) });
             setUiTheme((settings.uiTheme as UiTheme) || DEFAULT_UI_THEME);
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
@@ -183,7 +181,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             mvpWeights: mvpWeights,
             statsViewSettings: statsViewSettings,
             disruptionMethod: disruptionMethod,
-            eiCliSettings: eiCliSettings,
             uiTheme,
             githubRepoName: githubRepoName || null,
             githubRepoOwner: githubRepoOwner || null,
@@ -217,7 +214,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         mvpWeights,
         statsViewSettings,
         disruptionMethod,
-        eiCliSettings,
         uiTheme,
         githubRepoName,
         githubRepoOwner,
@@ -762,36 +758,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         {dpsCacheStatus && (
                             <div className="text-xs text-gray-400">{dpsCacheStatus}</div>
                         )}
-                    </div>
-                </SettingsSection>
-
-                <SettingsSection title="Elite Insights CLI (Local Parsing)" icon={Terminal} delay={0.07}>
-                    <p className="text-sm text-gray-400 mb-4">
-                        Run the Elite Insights parser locally to generate full JSON data for each log.
-                        This can fill in missing or reduced fields when hosted JSON outputs omit data.
-                    </p>
-                    <div className="space-y-2">
-                        <Toggle
-                            enabled={eiCliSettings.enabled}
-                            onChange={(value) => setEiCliSettings((prev) => ({ ...prev, enabled: value }))}
-                            label="Enable local parsing (experimental)"
-                            description="Uses GW2 EI CLI locally instead of relying solely on dps.report JSON."
-                        />
-                        <Toggle
-                            enabled={eiCliSettings.autoSetup}
-                            onChange={(value) => setEiCliSettings((prev) => ({ ...prev, autoSetup: value }))}
-                            label="Auto download & setup"
-                            description="Downloads the latest EI CLI automatically if missing."
-                        />
-                        <Toggle
-                            enabled={eiCliSettings.autoUpdate}
-                            onChange={(value) => setEiCliSettings((prev) => ({ ...prev, autoUpdate: value }))}
-                            label="Auto update on app start"
-                            description="Checks for EI CLI updates when the app launches."
-                        />
-                    </div>
-                    <div className="mt-3 text-xs text-gray-500">
-                        Linux requires Wine or a system dotnet runtime to execute the parser.
                     </div>
                 </SettingsSection>
 

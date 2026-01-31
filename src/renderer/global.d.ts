@@ -55,13 +55,6 @@ export interface IStatsViewSettings {
     showMvp: boolean;
 }
 
-export interface IEiCliSettings {
-    enabled: boolean;
-    autoSetup: boolean;
-    autoUpdate: boolean;
-    preferredRuntime: 'auto' | 'dotnet' | 'wine';
-}
-
 export type UiTheme = 'classic' | 'modern';
 
 export type DisruptionMethod = 'count' | 'duration' | 'tiered';
@@ -115,13 +108,6 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     showMvp: true
 };
 
-export const DEFAULT_EI_CLI_SETTINGS: IEiCliSettings = {
-    enabled: false,
-    autoSetup: true,
-    autoUpdate: true,
-    preferredRuntime: 'auto'
-};
-
 export const DEFAULT_UI_THEME: UiTheme = 'classic';
 
 export interface IElectronAPI {
@@ -144,7 +130,6 @@ export interface IElectronAPI {
         mvpWeights: IMvpWeights;
         statsViewSettings: IStatsViewSettings;
         disruptionMethod: DisruptionMethod;
-        eiCliSettings?: IEiCliSettings;
         uiTheme?: UiTheme;
         autoUpdateSupported?: boolean;
         autoUpdateDisabledReason?: string | null;
@@ -171,7 +156,6 @@ export interface IElectronAPI {
         mvpWeights?: IMvpWeights;
         statsViewSettings?: IStatsViewSettings;
         disruptionMethod?: DisruptionMethod;
-        eiCliSettings?: IEiCliSettings;
         uiTheme?: UiTheme;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;
@@ -244,9 +228,6 @@ declare global {
             success: boolean;
             players: IPlayer[];
             uploadTime: number;
-            [key: string]: any;
-        };
-        eiDetails?: {
             [key: string]: any;
         };
     }

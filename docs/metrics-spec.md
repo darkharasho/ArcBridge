@@ -152,25 +152,63 @@ entry:
 - `applications` uses `hits`.
 - `damage` uses `totalDamage`.
 
-### Limitation (EI JSON)
+### Current Condition Labels (Normalization)
+
+Condition detection normalizes skill/buff names to the following labels. Only
+these are counted as conditions:
+
+- Bleeding
+- Burning
+- Confusion
+- Poison
+- Torment
+- Vulnerability
+- Weakness
+- Blind
+- Cripple
+- Chill
+- Immobilize
+- Slow
+- Fear
+- Taunt
+
+Notes:
+- The matcher lowercases and trims names, then maps variants like `crippled`
+  → `Cripple` and `chilled` → `Chill`.
+- If a skill/buff name does not normalize to one of the labels above, it is
+  excluded from condition totals.
+
+### Limitation (Hosted JSON)
 
 Accurate application counts for non-damaging conditions (e.g., vulnerability,
 weakness, blind, slow) require target buff state timelines
-(`targets[*].buffs[*].statesPerSource`). When this data is absent in the EI JSON,
-the app falls back to damage distribution (`totalDamageDist`) hit counts, which
-can significantly under-count applications for those conditions.
+(`targets[*].buffs[*].statesPerSource`). If hosted JSON lacks this data (common
+in older logs or trimmed outputs), the app falls back to damage distribution
+(`totalDamageDist`) hit counts, which can significantly under-count
+applications for those conditions.
 
-### Local Parsing (EI CLI)
+### Condition Application Counting (States Per Source)
 
-When enabled, the app can run a local Elite Insights parser (EI CLI) and use its
-JSON output as a more complete data source for **all** metrics (not only
-conditions). This is intended to fill gaps in hosted JSON outputs when they omit
-certain fields.
+When `targets[*].buffs[*].statesPerSource` is available, the app computes two
+separate application counts per condition:
 
-**Linux note:** if no system `dotnet` runtime is detected and auto-setup is
-enabled, the app will download and install a private .NET runtime under the app
-user data directory and use it to run the EI CLI DLL. No extra manual setup is
-required for local development beyond enabling the setting.
+- **Stack Delta Applications (`applicationsFromBuffs`)**  
+  Counts the **sum of positive stack increases** across the states timeline.
+  Example timeline: `0 → 1 → 3 → 2 → 5` contributes `+1 +2 +3 = 6`.  
+  This aligns with the technical definition of “applications” as **stacks
+  actually added**.
+
+- **Active State Entries (`applicationsFromBuffsActive`)**  
+  Counts **each non-zero state entry** (each time the state updates while the
+  condition is active). This tracks **how often the buff state changed while
+  active**, which often matches external tooling that counts active segments,
+  but can **over-count** true applications for stacking conditions.
+
+**Tradeoffs:**
+- *Stack delta* is closer to “how many stacks were applied” but can be lower
+  than tools that count refreshes/active entries.
+- *Active entries* better match some log combiner views but can overstate
+  application counts when stacks are refreshed without adding stacks.
 
 ## Deaths / Downs (Taken)
 

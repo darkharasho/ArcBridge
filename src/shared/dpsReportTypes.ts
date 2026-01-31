@@ -83,7 +83,7 @@ export interface StatsAll {
     appliedCrowdControlDuration?: number;
 }
 
-// Correct Defenses interface based on standard Elite Insights JSON
+// Defenses interface based on standard hosted JSON output
 export interface Defenses {
     downCount: number;
     deadCount: number;
