@@ -460,7 +460,7 @@ export function ReportApp() {
                         </div>
                     </div>
                 </aside>
-                <div className="max-w-6xl mx-auto px-6 py-6 lg:ml-[18rem]">
+                <div className="max-w-7xl mx-auto px-6 py-6 lg:pl-64 lg:pr-10">
                     <div className={`${glassCard} p-6 mb-6`} style={glassCardStyle}>
                         <div className="mb-4">
                             <a
@@ -557,7 +557,7 @@ export function ReportApp() {
                     style={{ backgroundColor: 'var(--accent-glow-soft)' }}
                 />
             </div>
-            <div className="max-w-6xl mx-auto px-6 py-10">
+            <div className="max-w-7xl mx-auto px-6 py-10">
                     <div className={`${glassCard} p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
                         <div className="flex items-center gap-4 min-h-[56px]">
                             {logoUrl && (
