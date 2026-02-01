@@ -603,8 +603,19 @@ export function ReportApp() {
                                 );
                             })}
                         </nav>
-                        <div className="mt-auto px-5 py-4 text-xs text-gray-500">
-                            Scroll the report and tap a section to jump.
+                        <div className="mt-auto border-t border-white/10">
+                            <a
+                                href="./"
+                                className="w-full inline-flex items-center gap-3 px-5 py-3 bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
+                            >
+                                <span className="h-8 w-8 rounded-full border border-[color:var(--accent-border)] inline-flex items-center justify-center text-[color:var(--accent-strong)]">
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M19 12H6.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                                        <path d="M12 6L6 12L12 18" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </span>
+                                Back to Reports
+                            </a>
                         </div>
                     </div>
                 </aside>
@@ -648,21 +659,24 @@ export function ReportApp() {
                                 );
                             })}
                         </nav>
-                        <div className="px-6 py-5 text-xs text-gray-500 border-t border-white/10">
-                            Scroll to explore the report sections.
+                        <div className="border-t border-white/10">
+                            <a
+                                href="./"
+                                className="w-full inline-flex items-center gap-3 px-6 py-4 bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
+                            >
+                                <span className="h-9 w-9 rounded-full border border-[color:var(--accent-border)] inline-flex items-center justify-center text-[color:var(--accent-strong)]">
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M19 12H6.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                                        <path d="M12 6L6 12L12 18" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </span>
+                                Back to Reports
+                            </a>
                         </div>
                     </div>
                 </aside>
                 <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:pl-64 lg:pr-10 mobile-bottom-pad">
                     <div className={`${glassCard} p-5 sm:p-6 mb-6`} style={glassCardStyle}>
-                        <div className="mb-4 hidden sm:block">
-                            <a
-                                href="./"
-                                className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[color:var(--accent)] hover:text-[color:var(--accent-strong)] transition-colors"
-                            >
-                                <span className="text-[color:var(--accent-strong)]">←</span> Back to Reports
-                            </a>
-                        </div>
                         <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-center sm:text-left">
                                 {logoUrl && (
