@@ -12,6 +12,8 @@ import { PillToggleGroup } from './stats/ui/PillToggleGroup';
 import { CountClassTooltip, SkillBreakdownTooltip, renderProfessionIcon } from './stats/ui/StatsViewShared';
 import { SkillUsageSection } from './stats/sections/SkillUsageSection';
 import { ApmSection } from './stats/sections/ApmSection';
+import { StatsTableLayout } from './stats/ui/StatsTableLayout';
+import { StatsTableShell } from './stats/ui/StatsTableShell';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -4327,96 +4329,111 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                     </div>
                                 </div>
 
-                                <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'boon-output' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                                    <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'boon-output' ? 'h-full flex-1' : 'self-start'}`}>
-                                        <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
-                                        <input
-                                            value={boonSearch}
-                                            onChange={(e) => setBoonSearch(e.target.value)}
-                                            placeholder="Search..."
-                                            className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
-                                        />
-                                        <div className={`${sidebarListClass} ${expandedSection === 'boon-output' ? 'max-h-none flex-1 min-h-0' : ''}`}>
-                                            {filteredBoonTables.length === 0 ? (
-                                                <div className="text-center text-gray-500 italic py-6 text-xs">No boons match this filter</div>
-                                            ) : (
-                                                filteredBoonTables.map((boon: any) => (
-                                                    <button
-                                                        key={boon.id}
-                                                        onClick={() => setActiveBoonTab(boon.id)}
-                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeBoonTab === boon.id
-                                                            ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
-                                                            : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        {boon.name}
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'boon-output' ? 'flex flex-col min-h-0' : ''}`}>
-                                        {!activeBoonTable ? (
+                                <StatsTableLayout
+                                    expanded={expandedSection === 'boon-output'}
+                                    sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'boon-output' ? 'h-full flex-1' : 'self-start'}`}
+                                    contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'boon-output' ? 'flex flex-col min-h-0' : ''}`}
+                                    sidebar={
+                                        <>
+                                            <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
+                                            <input
+                                                value={boonSearch}
+                                                onChange={(e) => setBoonSearch(e.target.value)}
+                                                placeholder="Search..."
+                                                className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                            />
+                                            <div className={`${sidebarListClass} ${expandedSection === 'boon-output' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                                                {filteredBoonTables.length === 0 ? (
+                                                    <div className="text-center text-gray-500 italic py-6 text-xs">No boons match this filter</div>
+                                                ) : (
+                                                    filteredBoonTables.map((boon: any) => (
+                                                        <button
+                                                            key={boon.id}
+                                                            onClick={() => setActiveBoonTab(boon.id)}
+                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeBoonTab === boon.id
+                                                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                                }`}
+                                                        >
+                                                            {boon.name}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
+                                    }
+                                    content={
+                                        !activeBoonTable ? (
                                             <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a boon to view details</div>
                                         ) : (
-                                            <div>
-                                                <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                    <div className="text-sm font-semibold text-gray-200">{activeBoonTable.name}</div>
-                                                    <div className="text-xs uppercase tracking-widest text-gray-500">
-                                                        {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
+                                            <StatsTableShell
+                                                expanded={expandedSection === 'boon-output'}
+                                                maxHeightClass="max-h-64"
+                                                header={
+                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                        <div className="text-sm font-semibold text-gray-200">{activeBoonTable.name}</div>
+                                                        <div className="text-xs uppercase tracking-widest text-gray-500">
+                                                            {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
-                                                    <PillToggleGroup
-                                                        value={activeBoonMetric}
-                                                        onChange={setActiveBoonMetric}
-                                                        options={[
-                                                            { value: 'total', label: 'Total Gen' },
-                                                            { value: 'average', label: 'Gen/Sec' },
-                                                            { value: 'uptime', label: 'Uptime' }
-                                                        ]}
-                                                        activeClassName="bg-blue-500/20 text-blue-200 border border-blue-500/40"
-                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                    <div className="text-center">#</div>
-                                                    <div>Player</div>
-                                                    <div className="text-right">
-                                                        {activeBoonMetric === 'total'
-                                                            ? 'Total'
-                                                            : activeBoonMetric === 'average'
-                                                                ? 'Gen/Sec'
-                                                                : 'Uptime'}
-                                                    </div>
-                                                    <div className="text-right">Fight Time</div>
-                                                </div>
-                                                <div className={`${expandedSection === 'boon-output' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-64 overflow-y-auto'}`}>
-                                                    {[...activeBoonTable.rows]
-                                                        .sort((a: any, b: any) => (
-                                                            getBoonMetricValue(b, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
-                                                            - getBoonMetricValue(a, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
-                                                        ))
-                                                        .map((row: any, idx: number) => (
-                                                            <div key={`${activeBoonTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                                <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                                    <span className="truncate">{row.account}</span>
-                                                                </div>
-                                                                <div className="text-right font-mono text-gray-300">
-                                                                    {formatBoonMetricDisplay(row, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric, { roundCountStats })}
-                                                                </div>
-                                                                <div className="text-right font-mono text-gray-400">
-                                                                    {row.activeTimeMs ? `${(row.activeTimeMs / 1000).toFixed(1)}s` : '-'}
-                                                                </div>
+                                                }
+                                                columns={
+                                                    <>
+                                                        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                            <PillToggleGroup
+                                                                value={activeBoonMetric}
+                                                                onChange={setActiveBoonMetric}
+                                                                options={[
+                                                                    { value: 'total', label: 'Total Gen' },
+                                                                    { value: 'average', label: 'Gen/Sec' },
+                                                                    { value: 'uptime', label: 'Uptime' }
+                                                                ]}
+                                                                activeClassName="bg-blue-500/20 text-blue-200 border border-blue-500/40"
+                                                                inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                            <div className="text-center">#</div>
+                                                            <div>Player</div>
+                                                            <div className="text-right">
+                                                                {activeBoonMetric === 'total'
+                                                                    ? 'Total'
+                                                                    : activeBoonMetric === 'average'
+                                                                        ? 'Gen/Sec'
+                                                                        : 'Uptime'}
                                                             </div>
-                                                        ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                                            <div className="text-right">Fight Time</div>
+                                                        </div>
+                                                    </>
+                                                }
+                                                rows={
+                                                    <>
+                                                        {[...activeBoonTable.rows]
+                                                            .sort((a: any, b: any) => (
+                                                                getBoonMetricValue(b, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
+                                                                - getBoonMetricValue(a, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
+                                                            ))
+                                                            .map((row: any, idx: number) => (
+                                                                <div key={`${activeBoonTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                    <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                        <span className="truncate">{row.account}</span>
+                                                                    </div>
+                                                                    <div className="text-right font-mono text-gray-300">
+                                                                        {formatBoonMetricDisplay(row, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric, { roundCountStats })}
+                                                                    </div>
+                                                                    <div className="text-right font-mono text-gray-400">
+                                                                        {row.activeTimeMs ? `${(row.activeTimeMs / 1000).toFixed(1)}s` : '-'}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                    </>
+                                                }
+                                            />
+                                        )
+                                    }
+                                />
                             </div>
                         </>
                     )}
@@ -4453,9 +4470,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     {stats.offensePlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No offensive stats available</div>
                     ) : (
-                        <>
-                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'offense-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'offense-detailed' ? 'h-full flex-1' : 'self-start'}`}>
+                        <StatsTableLayout
+                            expanded={expandedSection === 'offense-detailed'}
+                            sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'offense-detailed' ? 'h-full flex-1' : 'self-start'}`}
+                            contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'offense-detailed' ? 'flex flex-col min-h-0' : ''}`}
+                            sidebar={
+                                <>
                                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Offensive Tabs</div>
                                 <input
                                     value={offenseSearch}
@@ -4485,8 +4505,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                         ));
                                     })()}
                                 </div>
-                            </div>
-                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'offense-detailed' ? 'flex flex-col min-h-0' : ''}`}>
+                            </>
+                            }
+                            content={
+                                <>
                                 {(() => {
                                     const metric = OFFENSE_METRICS.find((entry) => entry.id === activeOffenseStat) || OFFENSE_METRICS[0];
                                     const totalSeconds = (row: any) => Math.max(1, (row.totalFightMs || 0) / 1000);
@@ -4522,62 +4544,71 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                         });
 
                                     return (
-                                        <>
-                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
-                                                <div className="text-xs uppercase tracking-widest text-gray-500">Offensive</div>
-                                            </div>
-                                            <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
-                                                <PillToggleGroup
-                                                    value={offenseViewMode}
-                                                    onChange={setOffenseViewMode}
-                                                    options={[
-                                                        { value: 'total', label: 'Total' },
-                                                        { value: 'per1s', label: 'Stat/1s' },
-                                                        { value: 'per60s', label: 'Stat/60s' }
-                                                    ]}
-                                                    activeClassName="bg-rose-500/20 text-rose-200 border border-rose-500/40"
-                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                />
-                                            </div>
-                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                <div className="text-center">#</div>
-                                                <div>Player</div>
-                                                <div className="text-right">
-                                                    {offenseViewMode === 'total' ? 'Total' : offenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
+                                        <StatsTableShell
+                                            expanded={expandedSection === 'offense-detailed'}
+                                            header={
+                                                <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                    <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
+                                                    <div className="text-xs uppercase tracking-widest text-gray-500">Offensive</div>
                                                 </div>
-                                                <div className="text-right">Fight Time</div>
-                                            </div>
-                                            <div className={`${expandedSection === 'offense-detailed' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
-                                                {rows.map((row: any, idx: number) => (
-                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                            <span className="truncate">{row.account}</span>
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-300">
-                                                            {(() => {
-                                                                const value = offenseViewMode === 'total'
-                                                                    ? row.total
-                                                                    : offenseViewMode === 'per1s'
-                                                                        ? row.per1s
-                                                                        : row.per60s;
-                                                                return formatValue(value);
-                                                            })()}
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-400">
-                                                            {row.totalFightMs ? `${(row.totalFightMs / 1000).toFixed(1)}s` : '-'}
-                                                        </div>
+                                            }
+                                            columns={
+                                                <>
+                                                    <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white/5">
+                                                        <PillToggleGroup
+                                                            value={offenseViewMode}
+                                                            onChange={setOffenseViewMode}
+                                                            options={[
+                                                                { value: 'total', label: 'Total' },
+                                                                { value: 'per1s', label: 'Stat/1s' },
+                                                                { value: 'per60s', label: 'Stat/60s' }
+                                                            ]}
+                                                            activeClassName="bg-rose-500/20 text-rose-200 border border-rose-500/40"
+                                                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                        />
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </>
+                                                    <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                        <div className="text-center">#</div>
+                                                        <div>Player</div>
+                                                        <div className="text-right">
+                                                            {offenseViewMode === 'total' ? 'Total' : offenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
+                                                        </div>
+                                                        <div className="text-right">Fight Time</div>
+                                                    </div>
+                                                </>
+                                            }
+                                            rows={
+                                                <>
+                                                    {rows.map((row: any, idx: number) => (
+                                                        <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                            <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                <span className="truncate">{row.account}</span>
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {(() => {
+                                                                    const value = offenseViewMode === 'total'
+                                                                        ? row.total
+                                                                        : offenseViewMode === 'per1s'
+                                                                            ? row.per1s
+                                                                            : row.per60s;
+                                                                    return formatValue(value);
+                                                                })()}
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-400">
+                                                                {row.totalFightMs ? `${(row.totalFightMs / 1000).toFixed(1)}s` : '-'}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            }
+                                        />
                                     );
                                 })()}
-                            </div>
-                        </div>
-                        </>
+                                </>
+                            }
+                        />
                     )}
                 </div>
 
@@ -4610,219 +4641,233 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                         </button>
                     </div>
                     {conditionSummary && conditionSummary.length > 0 ? (
-                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'conditions-outgoing' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'conditions-outgoing' ? 'h-full flex-1' : 'self-start'}`}>
-                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Conditions</div>
-                                <input
-                                    value={conditionSearch}
-                                    onChange={(e) => setConditionSearch(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
-                                />
-                                <div className={`${sidebarListClass} ${expandedSection === 'conditions-outgoing' ? 'max-h-none flex-1 min-h-0' : ''}`}>
-                                    {(() => {
-                                        const entries = [...(conditionSummary || [])].sort((a: any, b: any) => (b.damage || 0) - (a.damage || 0));
-                                        const filtered = entries.filter((entry: any) =>
-                                            entry.name.toLowerCase().includes(conditionSearch.trim().toLowerCase())
-                                        );
-                                        if (filtered.length === 0) {
-                                            return <div className="text-center text-gray-500 italic py-6 text-xs">No conditions match this filter</div>;
-                                        }
-                                        return (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setActiveConditionName('all')}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeConditionName === 'all'
-                                                        ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
-                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                        }`}
-                                                >
-                                                    All Conditions
-                                                </button>
-                                                {filtered.map((entry: any) => (
+                        <StatsTableLayout
+                            expanded={expandedSection === 'conditions-outgoing'}
+                            sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'conditions-outgoing' ? 'h-full flex-1' : 'self-start'}`}
+                            contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'conditions-outgoing' ? 'flex flex-col min-h-0' : ''}`}
+                            sidebar={
+                                <>
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Conditions</div>
+                                    <input
+                                        value={conditionSearch}
+                                        onChange={(e) => setConditionSearch(e.target.value)}
+                                        placeholder="Search..."
+                                        className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                    />
+                                    <div className={`${sidebarListClass} ${expandedSection === 'conditions-outgoing' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                                        {(() => {
+                                            const entries = [...(conditionSummary || [])].sort((a: any, b: any) => (b.damage || 0) - (a.damage || 0));
+                                            const filtered = entries.filter((entry: any) =>
+                                                entry.name.toLowerCase().includes(conditionSearch.trim().toLowerCase())
+                                            );
+                                            if (filtered.length === 0) {
+                                                return <div className="text-center text-gray-500 italic py-6 text-xs">No conditions match this filter</div>;
+                                            }
+                                            return (
+                                                <>
                                                     <button
-                                                        key={entry.name}
                                                         type="button"
-                                                        onClick={() => setActiveConditionName(entry.name)}
-                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeConditionName === entry.name
+                                                        onClick={() => setActiveConditionName('all')}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeConditionName === 'all'
                                                             ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
                                                             : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                             }`}
                                                     >
-                                                        {entry.name}
+                                                        All Conditions
                                                     </button>
-                                                ))}
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'conditions-outgoing' ? 'flex flex-col min-h-0' : ''}`}>
-                                <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
-                                    <div className="text-sm font-semibold text-gray-200">
-                                        {activeConditionName === 'all' ? 'All Conditions' : activeConditionName}
+                                                    {filtered.map((entry: any) => (
+                                                        <button
+                                                            key={entry.name}
+                                                            type="button"
+                                                            onClick={() => setActiveConditionName(entry.name)}
+                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeConditionName === entry.name
+                                                                ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
+                                                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                                }`}
+                                                        >
+                                                            {entry.name}
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
-                                    <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">
-                                        <div className="text-xs uppercase tracking-widest text-gray-500">Squad Totals</div>
-                                        <PillToggleGroup
-                                            value={conditionDirection}
-                                            onChange={setConditionDirection}
-                                            options={[
-                                                { value: 'outgoing', label: 'Outgoing' },
-                                                { value: 'incoming', label: 'Incoming' }
-                                            ]}
-                                            activeClassName="bg-amber-500/20 text-amber-200 border border-amber-500/40"
-                                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                        />
-                                    </div>
-                                </div>
-                                <div className={`grid ${conditionGridClass} text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2`}>
-                                    <div className="text-center">#</div>
-                                    <div>Player</div>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setConditionSort((prev) => ({
-                                                key: 'applications',
-                                                dir: prev.key === 'applications' ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-                                            }));
-                                        }}
-                                        className={`text-right transition-colors ${effectiveConditionSort.key === 'applications' ? 'text-amber-200' : 'text-gray-400 hover:text-gray-200'}`}
-                                    >
-                                        Applications {effectiveConditionSort.key === 'applications' ? (effectiveConditionSort.dir === 'desc' ? '↓' : '↑') : ''}
-                                    </button>
-                                    {showConditionDamage ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setConditionSort((prev) => ({
-                                                    key: 'damage',
-                                                    dir: prev.key === 'damage' ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-                                                }));
-                                            }}
-                                            className={`text-right transition-colors ${effectiveConditionSort.key === 'damage' ? 'text-amber-200' : 'text-gray-400 hover:text-gray-200'}`}
-                                        >
-                                            Damage {effectiveConditionSort.key === 'damage' ? (effectiveConditionSort.dir === 'desc' ? '↓' : '↑') : ''}
-                                        </button>
-                                    ) : null}
-                                </div>
-                                <div className={`${expandedSection === 'conditions-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
-                                    {(() => {
-                                        const entries = conditionPlayers || [];
-                                        const rows = entries
-                                            .map((player: any) => {
-                                                const conditionTotals = player.conditions || {};
-                                                if (activeConditionName === 'all') {
-                                                    return {
-                                                        ...player,
-                                                        applications: Number(player.totalApplications || 0),
-                                                        damage: Number(player.totalDamage || 0)
-                                                    };
-                                                }
-                                                const condition = conditionTotals[activeConditionName];
-                                                const applications = conditionDirection === 'outgoing' && condition?.applicationsFromBuffs && condition.applicationsFromBuffs > 0
-                                                    ? condition.applicationsFromBuffs
-                                                    : condition?.applications;
-                                                return {
-                                                    ...player,
-                                                    applications: Number(applications || 0),
-                                                    damage: Number(condition?.damage || 0)
-                                                };
-                                            })
-                                            .filter((row: any) => row.applications > 0 || row.damage > 0)
-                                            .sort((a: any, b: any) => {
-                                                const aVal = effectiveConditionSort.key === 'applications' ? (a.applications || 0) : (a.damage || 0);
-                                                const bVal = effectiveConditionSort.key === 'applications' ? (b.applications || 0) : (b.damage || 0);
-                                                const primary = effectiveConditionSort.dir === 'desc' ? bVal - aVal : aVal - bVal;
-                                                if (primary !== 0) return primary;
-                                                const secondary = effectiveConditionSort.key === 'applications'
-                                                    ? (b.damage || 0) - (a.damage || 0)
-                                                    : (b.applications || 0) - (a.applications || 0);
-                                                if (secondary !== 0) return secondary;
-                                                return String(a.account || '').localeCompare(String(b.account || ''));
-                                            });
-                                        if (rows.length === 0) {
-                                            return <div className="text-center text-gray-500 italic py-6">No condition data available</div>;
-                                        }
-                                        return rows.map((entry: any, idx: number) => {
-                                            const conditionTotals = entry.conditions || {};
-                                            let skillsMap: Record<string, { name: string; hits: number; damage: number }> = {};
-                                            if (activeConditionName === 'all') {
-                                                Object.values(conditionTotals).forEach((cond: any) => {
-                                                    const skills = cond?.skills || {};
-                                                    Object.values(skills).forEach((skill: any) => {
-                                                        const name = skill?.name || 'Unknown';
-                                                        const hits = Number(skill?.hits || 0);
-                                                        const damage = Number(skill?.damage || 0);
-                                                        if ((!Number.isFinite(hits) || hits <= 0) && (!Number.isFinite(damage) || damage <= 0)) {
-                                                            return;
-                                                        }
-                                                        const existing = skillsMap[name] || { name, hits: 0, damage: 0 };
-                                                        existing.hits += Number.isFinite(hits) ? hits : 0;
-                                                        existing.damage += Number.isFinite(damage) ? damage : 0;
-                                                        skillsMap[name] = existing;
-                                                    });
-                                                });
-                                            } else {
-                                                skillsMap = conditionTotals[activeConditionName]?.skills || {};
-                                            }
-                                            const skillsList = Object.values(skillsMap)
-                                                .filter((skill: any) => Number.isFinite(skill.hits) && skill.hits > 0)
-                                                .sort((a: any, b: any) => b.hits - a.hits || a.name.localeCompare(b.name));
-                                            const skillsDamageList = Object.values(skillsMap)
-                                                .filter((skill: any) => Number.isFinite(skill.damage) && skill.damage > 0)
-                                                .sort((a: any, b: any) => b.damage - a.damage || a.name.localeCompare(b.name));
-                                            const showTooltip = activeConditionName === 'all' && skillsList.length > 0;
-                                            const showDamageTooltip = activeConditionName === 'all' && skillsDamageList.length > 0;
-                                            const applicationsValue = Math.round(entry.applications || 0).toLocaleString();
-                                            const damageValue = Math.round(entry.damage || 0).toLocaleString();
-                                            return (
-                                            <div key={`${entry.account}-${idx}`} className={`grid ${conditionGridClass} px-4 py-2 text-sm text-gray-200 border-t border-white/5`}>
-                                                <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    {renderProfessionIcon(entry.profession, entry.professionList, 'w-4 h-4')}
-                                                    <span className="truncate">{entry.account}</span>
-                                                </div>
-                                                <div className="text-right font-mono text-gray-300">
-                                                    {showTooltip ? (
-                                                        <SkillBreakdownTooltip
-                                                            value={applicationsValue}
-                                                            label="Condition Sources"
-                                                            items={skillsList.map((skill: any) => ({
-                                                                name: skill.name,
-                                                                value: Math.round(skill.hits).toLocaleString()
-                                                            }))}
-                                                            className="justify-end"
-                                                        />
-                                                    ) : (
-                                                        applicationsValue
-                                                    )}
-                                                </div>
-                                                {showConditionDamage ? (
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {showDamageTooltip ? (
-                                                            <SkillBreakdownTooltip
-                                                                value={damageValue}
-                                                                label="Condition Damage Sources"
-                                                                items={skillsDamageList.map((skill: any) => ({
-                                                                    name: skill.name,
-                                                                    value: Math.round(skill.damage).toLocaleString()
-                                                                }))}
-                                                                className="justify-end"
-                                                            />
-                                                        ) : (
-                                                            damageValue
-                                                        )}
-                                                    </div>
-                                                ) : null}
+                                </>
+                            }
+                            content={
+                                <StatsTableShell
+                                    expanded={expandedSection === 'conditions-outgoing'}
+                                    header={
+                                        <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
+                                            <div className="text-sm font-semibold text-gray-200">
+                                                {activeConditionName === 'all' ? 'All Conditions' : activeConditionName}
                                             </div>
-                                        );
-                                        });
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
+                                            <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">
+                                                <div className="text-xs uppercase tracking-widest text-gray-500">Squad Totals</div>
+                                                <PillToggleGroup
+                                                    value={conditionDirection}
+                                                    onChange={setConditionDirection}
+                                                    options={[
+                                                        { value: 'outgoing', label: 'Outgoing' },
+                                                        { value: 'incoming', label: 'Incoming' }
+                                                    ]}
+                                                    activeClassName="bg-amber-500/20 text-amber-200 border border-amber-500/40"
+                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                />
+                                            </div>
+                                        </div>
+                                    }
+                                    columns={
+                                        <div className={`grid ${conditionGridClass} text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2`}>
+                                            <div className="text-center">#</div>
+                                            <div>Player</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setConditionSort((prev) => ({
+                                                        key: 'applications',
+                                                        dir: prev.key === 'applications' ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+                                                    }));
+                                                }}
+                                                className={`text-right transition-colors ${effectiveConditionSort.key === 'applications' ? 'text-amber-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                            >
+                                                Applications {effectiveConditionSort.key === 'applications' ? (effectiveConditionSort.dir === 'desc' ? '↓' : '↑') : ''}
+                                            </button>
+                                            {showConditionDamage ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setConditionSort((prev) => ({
+                                                            key: 'damage',
+                                                            dir: prev.key === 'damage' ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+                                                        }));
+                                                    }}
+                                                    className={`text-right transition-colors ${effectiveConditionSort.key === 'damage' ? 'text-amber-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    Damage {effectiveConditionSort.key === 'damage' ? (effectiveConditionSort.dir === 'desc' ? '↓' : '↑') : ''}
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    }
+                                    rows={
+                                        <>
+                                            {(() => {
+                                                const entries = conditionPlayers || [];
+                                                const rows = entries
+                                                    .map((player: any) => {
+                                                        const conditionTotals = player.conditions || {};
+                                                        if (activeConditionName === 'all') {
+                                                            return {
+                                                                ...player,
+                                                                applications: Number(player.totalApplications || 0),
+                                                                damage: Number(player.totalDamage || 0)
+                                                            };
+                                                        }
+                                                        const condition = conditionTotals[activeConditionName];
+                                                        const applications = conditionDirection === 'outgoing' && condition?.applicationsFromBuffs && condition.applicationsFromBuffs > 0
+                                                            ? condition.applicationsFromBuffs
+                                                            : condition?.applications;
+                                                        return {
+                                                            ...player,
+                                                            applications: Number(applications || 0),
+                                                            damage: Number(condition?.damage || 0)
+                                                        };
+                                                    })
+                                                    .filter((row: any) => row.applications > 0 || row.damage > 0)
+                                                    .sort((a: any, b: any) => {
+                                                        const aVal = effectiveConditionSort.key === 'applications' ? (a.applications || 0) : (a.damage || 0);
+                                                        const bVal = effectiveConditionSort.key === 'applications' ? (b.applications || 0) : (b.damage || 0);
+                                                        const primary = effectiveConditionSort.dir === 'desc' ? bVal - aVal : aVal - bVal;
+                                                        if (primary !== 0) return primary;
+                                                        const secondary = effectiveConditionSort.key === 'applications'
+                                                            ? (b.damage || 0) - (a.damage || 0)
+                                                            : (b.applications || 0) - (a.applications || 0);
+                                                        if (secondary !== 0) return secondary;
+                                                        return String(a.account || '').localeCompare(String(b.account || ''));
+                                                    });
+                                                if (rows.length === 0) {
+                                                    return <div className="text-center text-gray-500 italic py-6">No condition data available</div>;
+                                                }
+                                                return rows.map((entry: any, idx: number) => {
+                                                    const conditionTotals = entry.conditions || {};
+                                                    let skillsMap: Record<string, { name: string; hits: number; damage: number }> = {};
+                                                    if (activeConditionName === 'all') {
+                                                        Object.values(conditionTotals).forEach((cond: any) => {
+                                                            const skills = cond?.skills || {};
+                                                            Object.values(skills).forEach((skill: any) => {
+                                                                const name = skill?.name || 'Unknown';
+                                                                const hits = Number(skill?.hits || 0);
+                                                                const damage = Number(skill?.damage || 0);
+                                                                if ((!Number.isFinite(hits) || hits <= 0) && (!Number.isFinite(damage) || damage <= 0)) {
+                                                                    return;
+                                                                }
+                                                                const existing = skillsMap[name] || { name, hits: 0, damage: 0 };
+                                                                existing.hits += Number.isFinite(hits) ? hits : 0;
+                                                                existing.damage += Number.isFinite(damage) ? damage : 0;
+                                                                skillsMap[name] = existing;
+                                                            });
+                                                        });
+                                                    } else {
+                                                        skillsMap = conditionTotals[activeConditionName]?.skills || {};
+                                                    }
+                                                    const skillsList = Object.values(skillsMap)
+                                                        .filter((skill: any) => Number.isFinite(skill.hits) && skill.hits > 0)
+                                                        .sort((a: any, b: any) => b.hits - a.hits || a.name.localeCompare(b.name));
+                                                    const skillsDamageList = Object.values(skillsMap)
+                                                        .filter((skill: any) => Number.isFinite(skill.damage) && skill.damage > 0)
+                                                        .sort((a: any, b: any) => b.damage - a.damage || a.name.localeCompare(b.name));
+                                                    const showTooltip = activeConditionName === 'all' && skillsList.length > 0;
+                                                    const showDamageTooltip = activeConditionName === 'all' && skillsDamageList.length > 0;
+                                                    const applicationsValue = Math.round(entry.applications || 0).toLocaleString();
+                                                    const damageValue = Math.round(entry.damage || 0).toLocaleString();
+                                                    return (
+                                                        <div key={`${entry.account}-${idx}`} className={`grid ${conditionGridClass} px-4 py-2 text-sm text-gray-200 border-t border-white/5`}>
+                                                            <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {renderProfessionIcon(entry.profession, entry.professionList, 'w-4 h-4')}
+                                                                <span className="truncate">{entry.account}</span>
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {showTooltip ? (
+                                                                    <SkillBreakdownTooltip
+                                                                        value={applicationsValue}
+                                                                        label="Condition Sources"
+                                                                        items={skillsList.map((skill: any) => ({
+                                                                            name: skill.name,
+                                                                            value: Math.round(skill.hits).toLocaleString()
+                                                                        }))}
+                                                                        className="justify-end"
+                                                                    />
+                                                                ) : (
+                                                                    applicationsValue
+                                                                )}
+                                                            </div>
+                                                            {showConditionDamage ? (
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {showDamageTooltip ? (
+                                                                        <SkillBreakdownTooltip
+                                                                            value={damageValue}
+                                                                            label="Condition Damage Sources"
+                                                                            items={skillsDamageList.map((skill: any) => ({
+                                                                                name: skill.name,
+                                                                                value: Math.round(skill.damage).toLocaleString()
+                                                                            }))}
+                                                                            className="justify-end"
+                                                                        />
+                                                                    ) : (
+                                                                        damageValue
+                                                                    )}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </>
+                                    }
+                                />
+                            }
+                        />
                     ) : (
                         <div className="text-center text-gray-500 italic py-8">No condition data available</div>
                     )}
@@ -4859,112 +4904,128 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     {stats.defensePlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No defensive stats available</div>
                     ) : (
-                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'defense-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'defense-detailed' ? 'h-full flex-1' : 'self-start'}`}>
-                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Defensive Tabs</div>
-                                <input
-                                    value={defenseSearch}
-                                    onChange={(e) => setDefenseSearch(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
-                                />
-                                <div className={`${sidebarListClass} ${expandedSection === 'defense-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                        <StatsTableLayout
+                            expanded={expandedSection === 'defense-detailed'}
+                            sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'defense-detailed' ? 'h-full flex-1' : 'self-start'}`}
+                            contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'defense-detailed' ? 'flex flex-col min-h-0' : ''}`}
+                            sidebar={
+                                <>
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Defensive Tabs</div>
+                                    <input
+                                        value={defenseSearch}
+                                        onChange={(e) => setDefenseSearch(e.target.value)}
+                                        placeholder="Search..."
+                                        className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                    />
+                                    <div className={`${sidebarListClass} ${expandedSection === 'defense-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                                        {(() => {
+                                            const filtered = DEFENSE_METRICS.filter((metric) =>
+                                                metric.label.toLowerCase().includes(defenseSearch.trim().toLowerCase())
+                                            );
+                                            if (filtered.length === 0) {
+                                                return <div className="text-center text-gray-500 italic py-6 text-xs">No defensive stats match this filter</div>;
+                                            }
+                                            return filtered.map((metric) => (
+                                                <button
+                                                    key={metric.id}
+                                                    onClick={() => setActiveDefenseStat(metric.id)}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeDefenseStat === metric.id
+                                                        ? 'bg-sky-500/20 text-sky-200 border-sky-500/40'
+                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {metric.label}
+                                                </button>
+                                            ));
+                                        })()}
+                                    </div>
+                                </>
+                            }
+                            content={
+                                <>
                                     {(() => {
-                                        const filtered = DEFENSE_METRICS.filter((metric) =>
-                                            metric.label.toLowerCase().includes(defenseSearch.trim().toLowerCase())
-                                        );
-                                        if (filtered.length === 0) {
-                                            return <div className="text-center text-gray-500 italic py-6 text-xs">No defensive stats match this filter</div>;
-                                        }
-                                        return filtered.map((metric) => (
-                                            <button
-                                                key={metric.id}
-                                                onClick={() => setActiveDefenseStat(metric.id)}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeDefenseStat === metric.id
-                                                    ? 'bg-sky-500/20 text-sky-200 border-sky-500/40'
-                                                    : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                    }`}
-                                            >
-                                                {metric.label}
-                                            </button>
-                                        ));
-                                    })()}
-                                </div>
-                            </div>
-                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'defense-detailed' ? 'flex flex-col min-h-0' : ''}`}>
-                                {(() => {
-                                    const metric = DEFENSE_METRICS.find((entry) => entry.id === activeDefenseStat) || DEFENSE_METRICS[0];
-                                    const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
-                                    const rows = [...stats.defensePlayers]
-                                        .map((row: any) => ({
-                                            ...row,
-                                            total: row.defenseTotals?.[metric.id] || 0,
-                                            per1s: (row.defenseTotals?.[metric.id] || 0) / totalSeconds(row),
-                                            per60s: ((row.defenseTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
-                                        }))
-                                        .sort((a, b) => {
-                                            const aValue = defenseViewMode === 'total' ? a.total : defenseViewMode === 'per1s' ? a.per1s : a.per60s;
-                                            const bValue = defenseViewMode === 'total' ? b.total : defenseViewMode === 'per1s' ? b.per1s : b.per60s;
-                                            return bValue - aValue || a.account.localeCompare(b.account);
-                                        });
+                                        const metric = DEFENSE_METRICS.find((entry) => entry.id === activeDefenseStat) || DEFENSE_METRICS[0];
+                                        const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
+                                        const rows = [...stats.defensePlayers]
+                                            .map((row: any) => ({
+                                                ...row,
+                                                total: row.defenseTotals?.[metric.id] || 0,
+                                                per1s: (row.defenseTotals?.[metric.id] || 0) / totalSeconds(row),
+                                                per60s: ((row.defenseTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
+                                            }))
+                                            .sort((a, b) => {
+                                                const aValue = defenseViewMode === 'total' ? a.total : defenseViewMode === 'per1s' ? a.per1s : a.per60s;
+                                                const bValue = defenseViewMode === 'total' ? b.total : defenseViewMode === 'per1s' ? b.per1s : b.per60s;
+                                                return bValue - aValue || a.account.localeCompare(b.account);
+                                            });
 
-                                    return (
-                                        <>
-                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
-                                                <div className="text-xs uppercase tracking-widest text-gray-500">Defensive</div>
-                                            </div>
-                                            <div className="flex items-center justify-end px-4 py-2 bg-white/5">
-                                                <PillToggleGroup
-                                                    value={defenseViewMode}
-                                                    onChange={setDefenseViewMode}
-                                                    options={[
-                                                        { value: 'total', label: 'Total' },
-                                                        { value: 'per1s', label: 'Stat/1s' },
-                                                        { value: 'per60s', label: 'Stat/60s' }
-                                                    ]}
-                                                    activeClassName="bg-sky-500/20 text-sky-200 border border-sky-500/40"
-                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                />
-                                            </div>
-                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                <div className="text-center">#</div>
-                                                <div>Player</div>
-                                                <div className="text-right">
-                                                    {defenseViewMode === 'total' ? 'Total' : defenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
-                                                </div>
-                                                <div className="text-right">Fight Time</div>
-                                            </div>
-                                            <div className={`${expandedSection === 'defense-detailed' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
-                                                {rows.map((row: any, idx: number) => (
-                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                            <span className="truncate">{row.account}</span>
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-300">
-                                                            {(() => {
-                                                                const value = defenseViewMode === 'total'
-                                                                    ? row.total
-                                                                    : defenseViewMode === 'per1s'
-                                                                        ? row.per1s
-                                                                        : row.per60s;
-                                                                const decimals = roundCountStats && defenseViewMode === 'total' ? 0 : 2;
-                                                                return formatWithCommas(value, decimals);
-                                                            })()}
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-400">
-                                                            {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
-                                                        </div>
+                                        return (
+                                            <StatsTableShell
+                                                expanded={expandedSection === 'defense-detailed'}
+                                                header={
+                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                        <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
+                                                        <div className="text-xs uppercase tracking-widest text-gray-500">Defensive</div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        </div>
+                                                }
+                                                columns={
+                                                    <>
+                                                        <div className="flex items-center justify-end px-4 py-2 bg-white/5">
+                                                            <PillToggleGroup
+                                                                value={defenseViewMode}
+                                                                onChange={setDefenseViewMode}
+                                                                options={[
+                                                                    { value: 'total', label: 'Total' },
+                                                                    { value: 'per1s', label: 'Stat/1s' },
+                                                                    { value: 'per60s', label: 'Stat/60s' }
+                                                                ]}
+                                                                activeClassName="bg-sky-500/20 text-sky-200 border border-sky-500/40"
+                                                                inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                            <div className="text-center">#</div>
+                                                            <div>Player</div>
+                                                            <div className="text-right">
+                                                                {defenseViewMode === 'total' ? 'Total' : defenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
+                                                            </div>
+                                                            <div className="text-right">Fight Time</div>
+                                                        </div>
+                                                    </>
+                                                }
+                                                rows={
+                                                    <>
+                                                        {rows.map((row: any, idx: number) => (
+                                                            <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                    <span className="truncate">{row.account}</span>
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {(() => {
+                                                                        const value = defenseViewMode === 'total'
+                                                                            ? row.total
+                                                                            : defenseViewMode === 'per1s'
+                                                                                ? row.per1s
+                                                                                : row.per60s;
+                                                                        const decimals = roundCountStats && defenseViewMode === 'total' ? 0 : 2;
+                                                                        return formatWithCommas(value, decimals);
+                                                                    })()}
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-400">
+                                                                    {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                }
+                                            />
+                                        );
+                                    })()}
+                                </>
+                            }
+                        />
                     )}
                 </div>
 
@@ -4999,149 +5060,165 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     {stats.supportPlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No support stats available</div>
                     ) : (
-                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'support-detailed' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'support-detailed' ? 'h-full flex-1' : 'self-start'}`}>
-                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
-                                <input
-                                    value={supportSearch}
-                                    onChange={(e) => setSupportSearch(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
-                                />
-                                <div className={`${sidebarListClass} ${expandedSection === 'support-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                        <StatsTableLayout
+                            expanded={expandedSection === 'support-detailed'}
+                            sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'support-detailed' ? 'h-full flex-1' : 'self-start'}`}
+                            contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'support-detailed' ? 'flex flex-col min-h-0' : ''}`}
+                            sidebar={
+                                <>
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
+                                    <input
+                                        value={supportSearch}
+                                        onChange={(e) => setSupportSearch(e.target.value)}
+                                        placeholder="Search..."
+                                        className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                    />
+                                    <div className={`${sidebarListClass} ${expandedSection === 'support-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                                        {(() => {
+                                            const filtered = SUPPORT_METRICS.filter((metric) =>
+                                                metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
+                                            );
+                                            if (filtered.length === 0) {
+                                                return <div className="text-center text-gray-500 italic py-6 text-xs">No support stats match this filter</div>;
+                                            }
+                                            return filtered.map((metric) => (
+                                                <button
+                                                    key={metric.id}
+                                                    onClick={() => setActiveSupportStat(metric.id)}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSupportStat === metric.id
+                                                        ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {metric.label}
+                                                </button>
+                                            ));
+                                        })()}
+                                    </div>
+                                </>
+                            }
+                            content={
+                                <>
                                     {(() => {
-                                        const filtered = SUPPORT_METRICS.filter((metric) =>
-                                            metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
-                                        );
-                                        if (filtered.length === 0) {
-                                            return <div className="text-center text-gray-500 italic py-6 text-xs">No support stats match this filter</div>;
-                                        }
-                                        return filtered.map((metric) => (
-                                            <button
-                                                key={metric.id}
-                                                onClick={() => setActiveSupportStat(metric.id)}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSupportStat === metric.id
-                                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
-                                                    : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                    }`}
-                                            >
-                                                {metric.label}
-                                            </button>
-                                        ));
-                                    })()}
-                                </div>
-                            </div>
-                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'support-detailed' ? 'flex flex-col min-h-0' : ''}`}>
-                                {(() => {
-                                    const metric = SUPPORT_METRICS.find((entry) => entry.id === activeSupportStat) || SUPPORT_METRICS[0];
-                                    const resolveSupportTotal = (row: any) => {
-                                        if (metric.id === 'condiCleanse') {
-                                            const squad = row.supportTotals?.condiCleanse || 0;
-                                            const self = row.supportTotals?.condiCleanseSelf || 0;
-                                            return cleanseScope === 'all' ? squad + self : squad;
-                                        }
-                                        return row.supportTotals?.[metric.id] || 0;
-                                    };
-                                    const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
-                                    const rows = [...stats.supportPlayers]
-                                        .map((row: any) => ({
-                                            ...row,
-                                            total: resolveSupportTotal(row),
-                                            per1s: resolveSupportTotal(row) / totalSeconds(row),
-                                            per60s: (resolveSupportTotal(row) * 60) / totalSeconds(row)
-                                        }))
-                                        .sort((a, b) => {
-                                            const aValue = supportViewMode === 'total' ? a.total : supportViewMode === 'per1s' ? a.per1s : a.per60s;
-                                            const bValue = supportViewMode === 'total' ? b.total : supportViewMode === 'per1s' ? b.per1s : b.per60s;
-                                            return bValue - aValue || a.account.localeCompare(b.account);
-                                        });
+                                        const metric = SUPPORT_METRICS.find((entry) => entry.id === activeSupportStat) || SUPPORT_METRICS[0];
+                                        const resolveSupportTotal = (row: any) => {
+                                            if (metric.id === 'condiCleanse') {
+                                                const squad = row.supportTotals?.condiCleanse || 0;
+                                                const self = row.supportTotals?.condiCleanseSelf || 0;
+                                                return cleanseScope === 'all' ? squad + self : squad;
+                                            }
+                                            return row.supportTotals?.[metric.id] || 0;
+                                        };
+                                        const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
+                                        const rows = [...stats.supportPlayers]
+                                            .map((row: any) => ({
+                                                ...row,
+                                                total: resolveSupportTotal(row),
+                                                per1s: resolveSupportTotal(row) / totalSeconds(row),
+                                                per60s: (resolveSupportTotal(row) * 60) / totalSeconds(row)
+                                            }))
+                                            .sort((a, b) => {
+                                                const aValue = supportViewMode === 'total' ? a.total : supportViewMode === 'per1s' ? a.per1s : a.per60s;
+                                                const bValue = supportViewMode === 'total' ? b.total : supportViewMode === 'per1s' ? b.per1s : b.per60s;
+                                                return bValue - aValue || a.account.localeCompare(b.account);
+                                            });
 
-                                    return (
-                                        <>
-                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
-                                                <div className="text-xs uppercase tracking-widest text-gray-500">Support</div>
-                                            </div>
-                                            {metric.id === 'condiCleanse' ? (
-                                                <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-white/5">
-                                                    <PillToggleGroup
-                                                        value={cleanseScope}
-                                                        onChange={setCleanseScope}
-                                                        options={[
-                                                            { value: 'all', label: 'All' },
-                                                            { value: 'squad', label: 'Squad' }
-                                                        ]}
-                                                        activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
-                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                    />
-                                                    <PillToggleGroup
-                                                        value={supportViewMode}
-                                                        onChange={setSupportViewMode}
-                                                        options={[
-                                                            { value: 'total', label: 'Total' },
-                                                            { value: 'per1s', label: 'Stat/1s' },
-                                                            { value: 'per60s', label: 'Stat/60s' }
-                                                        ]}
-                                                        className="sm:ml-auto"
-                                                        activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
-                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-wrap items-center justify-start sm:justify-end px-4 py-2 bg-white/5">
-                                                    <PillToggleGroup
-                                                        value={supportViewMode}
-                                                        onChange={setSupportViewMode}
-                                                        options={[
-                                                            { value: 'total', label: 'Total' },
-                                                            { value: 'per1s', label: 'Stat/1s' },
-                                                            { value: 'per60s', label: 'Stat/60s' }
-                                                        ]}
-                                                        activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
-                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                    />
-                                                </div>
-                                            )}
-                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                <div className="text-center">#</div>
-                                                <div>Player</div>
-                                                <div className="text-right">
-                                                    {supportViewMode === 'total' ? 'Total' : supportViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
-                                                </div>
-                                                <div className="text-right">Fight Time</div>
-                                            </div>
-                                            <div className={`${expandedSection === 'support-detailed' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
-                                                {rows.map((row: any, idx: number) => (
-                                                    <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                            <span className="truncate">{row.account}</span>
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-300">
-                                                            {(() => {
-                                                                const value = supportViewMode === 'total'
-                                                                    ? row.total
-                                                                    : supportViewMode === 'per1s'
-                                                                        ? row.per1s
-                                                                        : row.per60s;
-                                                                const decimals = metric.isTime
-                                                                    ? 1
-                                                                    : (roundCountStats && supportViewMode === 'total' ? 0 : 2);
-                                                                return formatWithCommas(value, decimals);
-                                                            })()}
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-400">
-                                                            {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
-                                                        </div>
+                                        return (
+                                            <StatsTableShell
+                                                expanded={expandedSection === 'support-detailed'}
+                                                header={
+                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                        <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
+                                                        <div className="text-xs uppercase tracking-widest text-gray-500">Support</div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        </div>
+                                                }
+                                                columns={
+                                                    <>
+                                                        {metric.id === 'condiCleanse' ? (
+                                                            <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-white/5">
+                                                                <PillToggleGroup
+                                                                    value={cleanseScope}
+                                                                    onChange={setCleanseScope}
+                                                                    options={[
+                                                                        { value: 'all', label: 'All' },
+                                                                        { value: 'squad', label: 'Squad' }
+                                                                    ]}
+                                                                    activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
+                                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                                />
+                                                                <PillToggleGroup
+                                                                    value={supportViewMode}
+                                                                    onChange={setSupportViewMode}
+                                                                    options={[
+                                                                        { value: 'total', label: 'Total' },
+                                                                        { value: 'per1s', label: 'Stat/1s' },
+                                                                        { value: 'per60s', label: 'Stat/60s' }
+                                                                    ]}
+                                                                    className="sm:ml-auto"
+                                                                    activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
+                                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-wrap items-center justify-start sm:justify-end px-4 py-2 bg-white/5">
+                                                                <PillToggleGroup
+                                                                    value={supportViewMode}
+                                                                    onChange={setSupportViewMode}
+                                                                    options={[
+                                                                        { value: 'total', label: 'Total' },
+                                                                        { value: 'per1s', label: 'Stat/1s' },
+                                                                        { value: 'per60s', label: 'Stat/60s' }
+                                                                    ]}
+                                                                    activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
+                                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                            <div className="text-center">#</div>
+                                                            <div>Player</div>
+                                                            <div className="text-right">
+                                                                {supportViewMode === 'total' ? 'Total' : supportViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
+                                                            </div>
+                                                            <div className="text-right">Fight Time</div>
+                                                        </div>
+                                                    </>
+                                                }
+                                                rows={
+                                                    <>
+                                                        {rows.map((row: any, idx: number) => (
+                                                            <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                    <span className="truncate">{row.account}</span>
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {(() => {
+                                                                        const value = supportViewMode === 'total'
+                                                                            ? row.total
+                                                                            : supportViewMode === 'per1s'
+                                                                                ? row.per1s
+                                                                                : row.per60s;
+                                                                        const decimals = metric.isTime
+                                                                            ? 1
+                                                                            : (roundCountStats && supportViewMode === 'total' ? 0 : 2);
+                                                                        return formatWithCommas(value, decimals);
+                                                                    })()}
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-400">
+                                                                    {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                }
+                                            />
+                                        );
+                                    })()}
+                                </>
+                            }
+                        />
                     )}
                 </div>
 
@@ -5176,127 +5253,143 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     {stats.healingPlayers.length === 0 ? (
                         <div className="text-center text-gray-500 italic py-8">No healing stats available</div>
                     ) : (
-                        <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'healing-stats' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                            <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'healing-stats' ? 'h-full flex-1' : 'self-start'}`}>
-                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Healing Tabs</div>
-                                <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-                                    {HEALING_METRICS.map((metric) => (
-                                        <button
-                                            key={metric.id}
-                                            onClick={() => setActiveHealingMetric(metric.id)}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeHealingMetric === metric.id
-                                                ? 'bg-lime-500/20 text-lime-200 border-lime-500/40'
-                                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                }`}
-                                        >
-                                            {metric.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'healing-stats' ? 'flex flex-col min-h-0' : ''}`}>
-                                {(() => {
-                                    const metric = HEALING_METRICS.find((entry) => entry.id === activeHealingMetric) || HEALING_METRICS[0];
-                                    const isResUtilityMetric = metric.baseField === 'resUtility';
-                                    const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
-                                    const prefix = isResUtilityMetric
-                                        ? ''
-                                        : healingCategory === 'total'
+                        <StatsTableLayout
+                            expanded={expandedSection === 'healing-stats'}
+                            sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'healing-stats' ? 'h-full flex-1' : 'self-start'}`}
+                            contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'healing-stats' ? 'flex flex-col min-h-0' : ''}`}
+                            sidebar={
+                                <>
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Healing Tabs</div>
+                                    <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+                                        {HEALING_METRICS.map((metric) => (
+                                            <button
+                                                key={metric.id}
+                                                onClick={() => setActiveHealingMetric(metric.id)}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeHealingMetric === metric.id
+                                                    ? 'bg-lime-500/20 text-lime-200 border-lime-500/40'
+                                                    : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                    }`}
+                                            >
+                                                {metric.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            }
+                            content={
+                                <>
+                                    {(() => {
+                                        const metric = HEALING_METRICS.find((entry) => entry.id === activeHealingMetric) || HEALING_METRICS[0];
+                                        const isResUtilityMetric = metric.baseField === 'resUtility';
+                                        const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
+                                        const prefix = isResUtilityMetric
                                             ? ''
-                                            : healingCategory === 'offSquad'
-                                                ? 'offSquad'
-                                                : healingCategory;
-                                    const fieldName = isResUtilityMetric
-                                        ? (activeResUtilitySkill === 'all' ? 'resUtility' : `resUtility_${activeResUtilitySkill}`)
-                                        : prefix
-                                            ? `${prefix}${metric.baseField[0].toUpperCase()}${metric.baseField.slice(1)}`
-                                            : metric.baseField;
-                                    const rows = [...stats.healingPlayers]
-                                        .filter((row: any) => Object.values(row.healingTotals || {}).some((val: any) => Number(val) > 0))
-                                        .map((row: any) => {
-                                            const baseValue = Number(row.healingTotals?.[fieldName] ?? 0);
-                                            const value = metric.perSecond ? baseValue / totalSeconds(row) : baseValue;
-                                            return {
-                                                ...row,
-                                                value
-                                            };
-                                        })
-                                        .sort((a, b) => b.value - a.value || a.account.localeCompare(b.account));
+                                            : healingCategory === 'total'
+                                                ? ''
+                                                : healingCategory === 'offSquad'
+                                                    ? 'offSquad'
+                                                    : healingCategory;
+                                        const fieldName = isResUtilityMetric
+                                            ? (activeResUtilitySkill === 'all' ? 'resUtility' : `resUtility_${activeResUtilitySkill}`)
+                                            : prefix
+                                                ? `${prefix}${metric.baseField[0].toUpperCase()}${metric.baseField.slice(1)}`
+                                                : metric.baseField;
+                                        const rows = [...stats.healingPlayers]
+                                            .filter((row: any) => Object.values(row.healingTotals || {}).some((val: any) => Number(val) > 0))
+                                            .map((row: any) => {
+                                                const baseValue = Number(row.healingTotals?.[fieldName] ?? 0);
+                                                const value = metric.perSecond ? baseValue / totalSeconds(row) : baseValue;
+                                                return {
+                                                    ...row,
+                                                    value
+                                                };
+                                            })
+                                            .sort((a, b) => b.value - a.value || a.account.localeCompare(b.account));
 
-                                    return (
-                                        <>
-                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
-                                                <div className="text-xs uppercase tracking-widest text-gray-500">Healing</div>
-                                            </div>
-                                            {isResUtilityMetric && (
-                                                <div className="flex items-center justify-end px-4 py-2 bg-white/5 flex-wrap">
-                                                    <PillToggleGroup
-                                                        value={activeResUtilitySkill}
-                                                        onChange={setActiveResUtilitySkill}
-                                                        options={[
-                                                            { value: 'all', label: 'All' },
-                                                            ...(skillUsageData.resUtilitySkills || []).map((skill) => ({
-                                                                value: skill.id,
-                                                                label: skill.name
-                                                            }))
-                                                        ]}
-                                                        className="flex-wrap"
-                                                        activeClassName="bg-lime-500/20 text-lime-200 border border-lime-500/40"
-                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                    />
-                                                </div>
-                                            )}
-                                            {!isResUtilityMetric && (
-                                                <div className="flex items-center justify-end px-4 py-2 bg-white/5">
-                                                    <PillToggleGroup
-                                                        value={healingCategory}
-                                                        onChange={setHealingCategory}
-                                                        options={[
-                                                            { value: 'total', label: 'Total' },
-                                                            { value: 'squad', label: 'Squad' },
-                                                            { value: 'group', label: 'Group' },
-                                                            { value: 'self', label: 'Self' },
-                                                            { value: 'offSquad', label: 'OffSquad' }
-                                                        ]}
-                                                        className="flex-wrap"
-                                                        activeClassName="bg-lime-500/20 text-lime-200 border border-lime-500/40"
-                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                    />
-                                                </div>
-                                            )}
-                                            <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                <div className="text-center">#</div>
-                                                <div>Player</div>
-                                                <div className="text-right">{metric.label}</div>
-                                                <div className="text-right">Fight Time</div>
-                                            </div>
-                                            <div className={`${expandedSection === 'healing-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'}`}>
-                                                {rows.length === 0 ? (
-                                                    <div className="px-4 py-6 text-sm text-gray-500 italic">No healing data for this view</div>
-                                                ) : (
-                                                    rows.map((row: any, idx: number) => (
-                                                        <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                            <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                                <span className="truncate">{row.account}</span>
+                                        return (
+                                            <StatsTableShell
+                                                expanded={expandedSection === 'healing-stats'}
+                                                header={
+                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                        <div className="text-sm font-semibold text-gray-200">{metric.label}</div>
+                                                        <div className="text-xs uppercase tracking-widest text-gray-500">Healing</div>
+                                                    </div>
+                                                }
+                                                columns={
+                                                    <>
+                                                        {isResUtilityMetric && (
+                                                            <div className="flex items-center justify-end px-4 py-2 bg-white/5 flex-wrap">
+                                                                <PillToggleGroup
+                                                                    value={activeResUtilitySkill}
+                                                                    onChange={setActiveResUtilitySkill}
+                                                                    options={[
+                                                                        { value: 'all', label: 'All' },
+                                                                        ...(skillUsageData.resUtilitySkills || []).map((skill) => ({
+                                                                            value: skill.id,
+                                                                            label: skill.name
+                                                                        }))
+                                                                    ]}
+                                                                    className="flex-wrap"
+                                                                    activeClassName="bg-lime-500/20 text-lime-200 border border-lime-500/40"
+                                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                                />
                                                             </div>
-                                                            <div className="text-right font-mono text-gray-300">
-                                                                {formatWithCommas(row.value, metric.decimals)}
+                                                        )}
+                                                        {!isResUtilityMetric && (
+                                                            <div className="flex items-center justify-end px-4 py-2 bg-white/5">
+                                                                <PillToggleGroup
+                                                                    value={healingCategory}
+                                                                    onChange={setHealingCategory}
+                                                                    options={[
+                                                                        { value: 'total', label: 'Total' },
+                                                                        { value: 'squad', label: 'Squad' },
+                                                                        { value: 'group', label: 'Group' },
+                                                                        { value: 'self', label: 'Self' },
+                                                                        { value: 'offSquad', label: 'OffSquad' }
+                                                                    ]}
+                                                                    className="flex-wrap"
+                                                                    activeClassName="bg-lime-500/20 text-lime-200 border border-lime-500/40"
+                                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                                />
                                                             </div>
-                                                            <div className="text-right font-mono text-gray-400">
-                                                                {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
-                                                            </div>
+                                                        )}
+                                                        <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                            <div className="text-center">#</div>
+                                                            <div>Player</div>
+                                                            <div className="text-right">{metric.label}</div>
+                                                            <div className="text-right">Fight Time</div>
                                                         </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        </div>
+                                                    </>
+                                                }
+                                                rows={
+                                                    <>
+                                                        {rows.length === 0 ? (
+                                                            <div className="px-4 py-6 text-sm text-gray-500 italic">No healing data for this view</div>
+                                                        ) : (
+                                                            rows.map((row: any, idx: number) => (
+                                                                <div key={`${metric.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                    <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                        <span className="truncate">{row.account}</span>
+                                                                    </div>
+                                                                    <div className="text-right font-mono text-gray-300">
+                                                                        {formatWithCommas(row.value, metric.decimals)}
+                                                                    </div>
+                                                                    <div className="text-right font-mono text-gray-400">
+                                                                        {row.activeMs ? `${(row.activeMs / 1000).toFixed(1)}s` : '-'}
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </>
+                                                }
+                                            />
+                                        );
+                                    })()}
+                                </>
+                            }
+                        />
                     )}
                 </div>
 
@@ -5332,74 +5425,89 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                         <div className="text-center text-gray-500 italic py-8">No special buff data available</div>
                     ) : (
                         <>
-                            <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'special-buffs' ? 'flex-1 min-h-0 h-full' : ''}`}>
-                                <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'special-buffs' ? 'h-full flex-1' : 'self-start'}`}>
-                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Special Buffs</div>
-                                    <input
-                                        value={specialSearch}
-                                        onChange={(e) => setSpecialSearch(e.target.value)}
-                                        placeholder="Search..."
-                                        className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
-                                    />
-                                    <div className={`${sidebarListClass} ${expandedSection === 'special-buffs' ? 'max-h-none flex-1 min-h-0' : ''}`}>
-                                        {filteredSpecialTables.length === 0 ? (
-                                            <div className="text-center text-gray-500 italic py-6 text-xs">No special buffs match this filter</div>
-                                        ) : (
-                                            filteredSpecialTables.map((buff: any) => (
-                                                <button
-                                                    key={buff.id}
-                                                    onClick={() => setActiveSpecialTab(buff.id)}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSpecialTab === buff.id
-                                                        ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
-                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                        }`}
-                                                >
-                                                    {buff.name}
-                                                </button>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'special-buffs' ? 'flex flex-col min-h-0' : ''}`}>
-                                    {!activeSpecialTable ? (
-                                        <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a special buff to view details</div>
-                                    ) : (
-                                        <div>
-                                            <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                                <div className="text-sm font-semibold text-gray-200">{activeSpecialTable.name}</div>
-                                                <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
-                                            </div>
-                                            <div className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                <div className="text-center">#</div>
-                                                <div>Player</div>
-                                                <div className="text-right">Total</div>
-                                                <div className="text-right">Per Sec</div>
-                                                <div className="text-right">Fight Time</div>
-                                            </div>
-                                            <div className={`${expandedSection === 'special-buffs' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-64 overflow-y-auto'}`}>
-                                                {activeSpecialTable.rows.map((row: any, idx: number) => (
-                                                    <div key={`${activeSpecialTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
-                                                        <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                            <span className="truncate">{row.account}</span>
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-300">
-                                                            {Math.round(row.total).toLocaleString()}
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-300">
-                                                            {formatWithCommas(row.perSecond, 1)}
-                                                        </div>
-                                                        <div className="text-right font-mono text-gray-400">
-                                                            {row.duration ? `${row.duration.toFixed(1)}s` : '-'}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                            <StatsTableLayout
+                                expanded={expandedSection === 'special-buffs'}
+                                sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'special-buffs' ? 'h-full flex-1' : 'self-start'}`}
+                                contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'special-buffs' ? 'flex flex-col min-h-0' : ''}`}
+                                sidebar={
+                                    <>
+                                        <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Special Buffs</div>
+                                        <input
+                                            value={specialSearch}
+                                            onChange={(e) => setSpecialSearch(e.target.value)}
+                                            placeholder="Search..."
+                                            className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none mb-2"
+                                        />
+                                        <div className={`${sidebarListClass} ${expandedSection === 'special-buffs' ? 'max-h-none flex-1 min-h-0' : ''}`}>
+                                            {filteredSpecialTables.length === 0 ? (
+                                                <div className="text-center text-gray-500 italic py-6 text-xs">No special buffs match this filter</div>
+                                            ) : (
+                                                filteredSpecialTables.map((buff: any) => (
+                                                    <button
+                                                        key={buff.id}
+                                                        onClick={() => setActiveSpecialTab(buff.id)}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSpecialTab === buff.id
+                                                            ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                                                            : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                            }`}
+                                                    >
+                                                        {buff.name}
+                                                    </button>
+                                                ))
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            </div>
+                                    </>
+                                }
+                                content={
+                                    <>
+                                        {!activeSpecialTable ? (
+                                            <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a special buff to view details</div>
+                                        ) : (
+                                            <StatsTableShell
+                                                expanded={expandedSection === 'special-buffs'}
+                                                maxHeightClass="max-h-64"
+                                                header={
+                                                    <div className="flex items-center justify-between px-4 py-3 bg-white/5">
+                                                        <div className="text-sm font-semibold text-gray-200">{activeSpecialTable.name}</div>
+                                                        <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
+                                                    </div>
+                                                }
+                                                columns={
+                                                    <div className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                        <div className="text-center">#</div>
+                                                        <div>Player</div>
+                                                        <div className="text-right">Total</div>
+                                                        <div className="text-right">Per Sec</div>
+                                                        <div className="text-right">Fight Time</div>
+                                                    </div>
+                                                }
+                                                rows={
+                                                    <>
+                                                        {activeSpecialTable.rows.map((row: any, idx: number) => (
+                                                            <div key={`${activeSpecialTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
+                                                                <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                    <span className="truncate">{row.account}</span>
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {Math.round(row.total).toLocaleString()}
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-300">
+                                                                    {formatWithCommas(row.perSecond, 1)}
+                                                                </div>
+                                                                <div className="text-right font-mono text-gray-400">
+                                                                    {row.duration ? `${row.duration.toFixed(1)}s` : '-'}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                }
+                                            />
+                                        )}
+                                    </>
+                                }
+                            />
                         </>
                     )}
                 </div>

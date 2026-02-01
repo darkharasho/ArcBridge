@@ -71,6 +71,57 @@ const buildClassColumns = (counts: Record<string, number>, maxRows = 5) => {
     return columns;
 };
 
+const useFixedTooltipPosition = (
+    open: boolean,
+    deps: any[],
+    wrapperRef: RefObject<HTMLElement>,
+    tooltipRef: RefObject<HTMLElement>,
+    padding = 8
+) => {
+    const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({
+        position: 'fixed',
+        top: -9999,
+        left: -9999,
+        transform: 'translateX(-50%)'
+    });
+
+    useEffect(() => {
+        if (!open) return;
+        const updatePosition = () => {
+            const wrapper = wrapperRef.current;
+            const tooltip = tooltipRef.current;
+            if (!wrapper || !tooltip) return;
+            const wrapRect = wrapper.getBoundingClientRect();
+            const tipRect = tooltip.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - wrapRect.bottom;
+            const spaceAbove = wrapRect.top;
+            const top = spaceBelow < tipRect.height + padding && spaceAbove > spaceBelow
+                ? Math.max(padding, wrapRect.top - tipRect.height - padding)
+                : Math.min(window.innerHeight - tipRect.height - padding, wrapRect.bottom + padding);
+            const center = wrapRect.left + wrapRect.width / 2;
+            const minLeft = padding + tipRect.width / 2;
+            const maxLeft = window.innerWidth - padding - tipRect.width / 2;
+            const left = Math.min(Math.max(center, minLeft), maxLeft);
+            setTooltipStyle({
+                position: 'fixed',
+                top,
+                left,
+                transform: 'translateX(-50%)'
+            });
+        };
+        const raf = requestAnimationFrame(updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        };
+    }, [open, padding, ...deps]);
+
+    return tooltipStyle;
+};
+
 const ProfessionIcon = ({
     profession,
     professionList,
@@ -153,49 +204,14 @@ export const CountClassTooltip = ({
     const columns = buildClassColumns(classCounts || {});
     const hasTooltip = count > 0;
     const [open, setOpen] = useState(false);
-    const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({
-        position: 'fixed',
-        top: -9999,
-        left: -9999,
-        transform: 'translateX(-50%)'
-    });
     const wrapperRef = useRef<HTMLSpanElement | null>(null);
     const tooltipRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        if (!open) return;
-        const updatePosition = () => {
-            const wrapper = wrapperRef.current;
-            const tooltip = tooltipRef.current;
-            if (!wrapper || !tooltip) return;
-            const rect = wrapper.getBoundingClientRect();
-            const tipRect = tooltip.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const spaceAbove = rect.top;
-            const placeOnTop = spaceBelow < tipRect.height + 8 && spaceAbove > spaceBelow;
-            const top = placeOnTop
-                ? Math.max(8, rect.top - tipRect.height - 8)
-                : Math.min(window.innerHeight - tipRect.height - 8, rect.bottom + 8);
-            const desiredCenter = rect.left + rect.width / 2;
-            const minCenter = 8 + tipRect.width / 2;
-            const maxCenter = window.innerWidth - 8 - tipRect.width / 2;
-            const clampedCenter = Math.min(Math.max(desiredCenter, minCenter), maxCenter);
-            setTooltipStyle({
-                position: 'fixed',
-                top,
-                left: clampedCenter,
-                transform: 'translateX(-50%)'
-            });
-        };
-        const raf = requestAnimationFrame(updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-        window.addEventListener('resize', updatePosition);
-        return () => {
-            cancelAnimationFrame(raf);
-            window.removeEventListener('scroll', updatePosition, true);
-            window.removeEventListener('resize', updatePosition);
-        };
-    }, [open, columns.length, count]);
+    const tooltipStyle = useFixedTooltipPosition(
+        open,
+        [columns.length, count],
+        wrapperRef,
+        tooltipRef
+    );
 
     return (
         <span
@@ -256,49 +272,14 @@ export const SkillBreakdownTooltip = ({
 }) => {
     const hasTooltip = items.length > 0;
     const [open, setOpen] = useState(false);
-    const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({
-        position: 'fixed',
-        top: -9999,
-        left: -9999,
-        transform: 'translateX(-50%)'
-    });
     const wrapperRef = useRef<HTMLSpanElement | null>(null);
     const tooltipRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        if (!open) return;
-        const updatePosition = () => {
-            const wrapper = wrapperRef.current;
-            const tooltip = tooltipRef.current;
-            if (!wrapper || !tooltip) return;
-            const wrapRect = wrapper.getBoundingClientRect();
-            const tipRect = tooltip.getBoundingClientRect();
-            const padding = 8;
-            const spaceBelow = window.innerHeight - wrapRect.bottom;
-            const spaceAbove = wrapRect.top;
-            const top = spaceBelow < tipRect.height + padding && spaceAbove > spaceBelow
-                ? Math.max(padding, wrapRect.top - tipRect.height - padding)
-                : Math.min(window.innerHeight - tipRect.height - padding, wrapRect.bottom + padding);
-            const center = wrapRect.left + wrapRect.width / 2;
-            const minLeft = padding + tipRect.width / 2;
-            const maxLeft = window.innerWidth - padding - tipRect.width / 2;
-            const left = Math.min(Math.max(center, minLeft), maxLeft);
-            setTooltipStyle({
-                position: 'fixed',
-                top,
-                left,
-                transform: 'translateX(-50%)'
-            });
-        };
-        const raf = requestAnimationFrame(updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-        window.addEventListener('resize', updatePosition);
-        return () => {
-            cancelAnimationFrame(raf);
-            window.removeEventListener('scroll', updatePosition, true);
-            window.removeEventListener('resize', updatePosition);
-        };
-    }, [open, items.length]);
+    const tooltipStyle = useFixedTooltipPosition(
+        open,
+        [items.length],
+        wrapperRef,
+        tooltipRef
+    );
 
     return (
         <span
