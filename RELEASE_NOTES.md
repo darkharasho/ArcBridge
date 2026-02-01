@@ -1,18 +1,16 @@
 # Release Notes
 
-Version v1.15.1 — January 31, 2026
+Version v1.15.2 — January 31, 2026
 
 ## 🌟 Highlights
-- Updated the web distribution assets (dist-web) for ArcBridge.
-- Removed damage column from non damaging conditions.
-- Added processing / completed stat to main uploader window.
+- Feature: Show the count of player logs in StatsView.
+- Small UI polishing
 
 ## 🛠️ Improvements
 - None.
 
 ## 🧯 Fixes
-- Fixed errors that could occur during usage.
-- Resolved issues related to loading or rendering in the web version.
+- Small fixes to improve stability and reliability.
 
 ## ⚠️ Breaking Changes
 - None.
