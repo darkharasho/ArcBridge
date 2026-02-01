@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, X, ChevronDown, ChevronRight, HeartPulse } from 'lucide-react';
+import { Trophy, Swords, Shield, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlayerSquadHealing, getPlayerSquadBarrier, getPlayerOutgoingCrowdControl, getTargetStatTotal } from '../shared/dashboardMetrics';
 import { Player, Target } from '../shared/dpsReportTypes';
@@ -24,6 +24,10 @@ import { TopSkillsSection } from './stats/sections/TopSkillsSection';
 import { SquadCompositionSection } from './stats/sections/SquadCompositionSection';
 import { TimelineSection } from './stats/sections/TimelineSection';
 import { MapDistributionSection } from './stats/sections/MapDistributionSection';
+import { StatsHeader } from './stats/ui/StatsHeader';
+import { WebUploadBanner } from './stats/ui/WebUploadBanner';
+import { DevMockBanner } from './stats/ui/DevMockBanner';
+import { StatsMobileNav } from './stats/ui/StatsMobileNav';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -3305,149 +3309,34 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     onClick={closeExpandedSection}
                 />
             )}
-            {/* Header */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 shrink-0">
-                <div className="flex items-start gap-3 sm:items-center sm:gap-4">
-                    {!embedded && (
-                        <button
-                            onClick={onBack}
-                            className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-                        >
-                            <ArrowLeft className="w-6 h-6" />
-                        </button>
-                    )}
-                    <div className="space-y-0">
-                        <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-                            <Trophy className="w-6 h-6 text-yellow-500" />
-                            {dashboardTitle || 'Statistics Dashboard'}
-                        </h1>
-                        <p className="text-gray-400 text-[11px] sm:text-xs">
-                            Performance across {stats.total} uploaded logs
-                        </p>
-                    </div>
-                </div>
-                {!embedded && (
-                    <div className="flex items-center gap-3">
-                        {devMockAvailable && (
-                            <button
-                                onClick={handleDevMockUpload}
-                                disabled={devMockUploadState.uploading}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25"
-                            >
-                                <Sparkles className="w-4 h-4" />
-                                {devMockUploadState.uploading ? 'Building...' : 'Dev Mock Upload'}
-                            </button>
-                        )}
-                        <button
-                            onClick={handleWebUpload}
-                            disabled={uploadingWeb}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                        >
-                            <UploadCloud className="w-4 h-4" />
-                            {uploadingWeb ? 'Uploading...' : 'Upload to Web'}
-                        </button>
-                        <button
-                            onClick={handleShare}
-                            disabled={sharing}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                        >
-                            <Share2 className="w-4 h-4" />
-                            {sharing ? 'Sharing...' : 'Share to Discord'}
-                        </button>
-                    </div>
-                )}
-            </div>
+            <StatsHeader
+                embedded={embedded}
+                dashboardTitle={dashboardTitle}
+                totalLogs={stats.total}
+                onBack={onBack}
+                devMockAvailable={devMockAvailable}
+                devMockUploadState={devMockUploadState}
+                onDevMockUpload={handleDevMockUpload}
+                uploadingWeb={uploadingWeb}
+                onWebUpload={handleWebUpload}
+                sharing={sharing}
+                onShare={handleShare}
+            />
 
-            {!embedded && webUploadMessage && (
-                <div className="mb-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center justify-between gap-3">
-                    <div className="text-xs text-gray-300 flex items-center gap-2">
-                        <span className="uppercase tracking-widest text-[10px] text-cyan-300/70">Uploaded</span>
-                        <button
-                            onClick={() => {
-                                const url = webUploadUrl || webUploadMessage.replace(/^Uploaded:\s*/i, '').trim();
-                                if (url && window.electronAPI?.openExternal) {
-                                    window.electronAPI.openExternal(url);
-                                }
-                            }}
-                            className="text-cyan-200 hover:text-cyan-100 underline underline-offset-2"
-                        >
-                            {webUploadUrl || webUploadMessage.replace(/^Uploaded:\s*/i, '')}
-                        </button>
-                        {webUploadBuildStatus !== 'idle' && (
-                            <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${webUploadBuildStatus === 'built'
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                : webUploadBuildStatus === 'errored'
-                                    ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                                    : webUploadBuildStatus === 'unknown'
-                                        ? 'bg-white/5 text-gray-400 border-white/10'
-                                        : 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
-                                }`}>
-                                {(webUploadBuildStatus === 'checking' || webUploadBuildStatus === 'building') && (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                )}
-                                {webUploadBuildStatus === 'built' && <CheckCircle2 className="w-3 h-3" />}
-                                {webUploadBuildStatus === 'errored' && <XCircle className="w-3 h-3" />}
-                                {webUploadBuildStatus === 'built'
-                                    ? 'Build ready'
-                                    : webUploadBuildStatus === 'errored'
-                                        ? 'Build failed'
-                                        : webUploadBuildStatus === 'unknown'
-                                            ? 'Build status unknown'
-                                            : 'Building…'}
-                            </span>
-                        )}
-                    </div>
-                    <button
-                        onClick={() => {
-                            const url = webUploadUrl || webUploadMessage.replace(/^Uploaded:\s*/i, '').trim();
-                            if (url) {
-                                navigator.clipboard.writeText(url);
-                                setWebCopyStatus('copied');
-                                setTimeout(() => setWebCopyStatus('idle'), 1200);
-                            }
-                        }}
-                        className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
-                    >
-                        {webCopyStatus === 'copied' ? 'Copied' : 'Copy URL'}
-                    </button>
-                </div>
-            )}
+            <WebUploadBanner
+                embedded={embedded}
+                webUploadMessage={webUploadMessage}
+                webUploadUrl={webUploadUrl}
+                webUploadBuildStatus={webUploadBuildStatus}
+                webCopyStatus={webCopyStatus}
+                setWebCopyStatus={setWebCopyStatus}
+            />
 
-            {!embedded && devMockAvailable && devMockUploadState.message && (
-                <div className="mb-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center justify-between gap-3">
-                    <div className="text-xs text-gray-300 flex items-center gap-2">
-                        <span className="uppercase tracking-widest text-[10px] text-amber-300/70">Dev Mock</span>
-                        {devMockUploadState.url ? (
-                            <button
-                                onClick={() => {
-                                    const url = devMockUploadState.url;
-                                    if (url && window.electronAPI?.openExternal) {
-                                        window.electronAPI.openExternal(url);
-                                    }
-                                }}
-                                className="text-amber-200 hover:text-amber-100 underline underline-offset-2"
-                            >
-                                {devMockUploadState.url}
-                            </button>
-                        ) : (
-                            <span className="text-gray-300">{devMockUploadState.message}</span>
-                        )}
-                    </div>
-                    {devMockUploadState.url && (
-                        <button
-                            onClick={() => {
-                                const url = devMockUploadState.url;
-                                if (url && window.electronAPI?.openExternal) {
-                                    window.electronAPI.openExternal(url);
-                                }
-                            }}
-                            className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
-                        >
-                            Open in Browser
-                        </button>
-                    )}
-                </div>
-            )}
+            <DevMockBanner
+                embedded={embedded}
+                devMockAvailable={devMockAvailable}
+                devMockUploadState={devMockUploadState}
+            />
 
             <div
                 id="stats-dashboard-container"
@@ -3760,85 +3649,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 {!embedded && <div className="h-24" aria-hidden="true" />}
             </div>
 
-            {!embedded && (
-                <>
-                    <div
-                        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-md transition-opacity ${mobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                        onClick={() => setMobileNavOpen(false)}
-                    />
-                    <div className="fixed bottom-4 left-4 right-4 z-50">
-                        <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/25 bg-white/5 backdrop-blur-2xl px-3 py-1.5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
-                            <button
-                                onClick={() => stepSection(-1)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
-                            >
-                                <ChevronDown className="w-4 h-4 rotate-90 text-[color:var(--accent)]" />
-                                Prev
-                            </button>
-                            <button
-                                onClick={() => setMobileNavOpen((open) => !open)}
-                                className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
-                            >
-                                <span className="truncate max-w-[160px]">
-                                    {tocItems.find((item) => item.id === activeNavId)?.label || 'Sections'}
-                                </span>
-                                <ChevronDown className={`w-4 h-4 text-[color:var(--accent)] transition-transform ${mobileNavOpen ? 'rotate-180' : ''}`} />
-                            </button>
-                            <button
-                                onClick={() => stepSection(1)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
-                            >
-                                Next
-                                <ChevronDown className="w-4 h-4 -rotate-90 text-[color:var(--accent)]" />
-                            </button>
-                        </div>
-                    </div>
-                    {mobileNavOpen && (
-                        <div
-                            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-                            onClick={(event) => {
-                                if (event.target === event.currentTarget) {
-                                    setMobileNavOpen(false);
-                                }
-                            }}
-                        >
-                            <div className="w-full max-w-sm max-h-[80vh] rounded-2xl p-4 border border-white/20 bg-white/5 shadow-[0_22px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl flex flex-col">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="text-[11px] uppercase tracking-[0.3em] text-gray-400">Jump to</div>
-                                    <button
-                                        onClick={() => setMobileNavOpen(false)}
-                                        className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
-                                        aria-label="Close navigation"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1 pb-2">
-                                    {tocItems.map((item) => {
-                                        const Icon = item.icon;
-                                        const isActive = item.id === activeNavId;
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => scrollToSection(item.id)}
-                                                className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-gray-200 border transition-colors ${isActive
-                                                    ? 'bg-white/10 border-white/20'
-                                                    : 'border-transparent hover:border-white/10 hover:bg-white/10'
-                                                    }`}
-                                            >
-                                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10">
-                                                    <Icon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
-                                                </span>
-                                                <span className="text-[13px] font-medium">{item.label}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
+            <StatsMobileNav
+                embedded={embedded}
+                mobileNavOpen={mobileNavOpen}
+                setMobileNavOpen={setMobileNavOpen}
+                tocItems={tocItems}
+                activeNavId={activeNavId}
+                scrollToSection={scrollToSection}
+                stepSection={stepSection}
+            />
         </div>
     );
 }
