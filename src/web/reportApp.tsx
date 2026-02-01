@@ -718,7 +718,7 @@ export function ReportApp() {
                                 Contents
                             </button>
                             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:overflow-visible pr-1 sm:pr-2">
-                                <div className="col-span-2 sm:col-span-1 w-full px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300 flex items-center gap-2 min-w-0 justify-center sm:justify-start">
+                                <div className="col-span-2 sm:col-span-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300 inline-flex items-center gap-2 min-w-0 justify-start">
                                     <CalendarDays className="w-4 h-4 text-[color:var(--accent)]" />
                                     {report.meta.dateLabel || 'Log Range'}
                                 </div>

@@ -189,13 +189,17 @@ export function getProfessionEmoji(profession: string): string {
 
 export function getProfessionIconPath(profession: string): string | null {
     if (!profession) return null;
+    const useDevRoot = typeof window !== 'undefined'
+        && import.meta.env.DEV
+        && window.location.pathname.startsWith('/web/');
+    const basePath = useDevRoot ? '/img/class-icons' : './img/class-icons';
     const direct = PROFESSION_COLORS[profession] ? profession : null;
     if (direct && direct !== 'Unknown') {
-        return `./img/class-icons/${direct}.png`;
+        return `${basePath}/${direct}.png`;
     }
     const base = getProfessionBase(profession);
     if (base && base !== 'Unknown') {
-        return `./img/class-icons/${base}.png`;
+        return `${basePath}/${base}.png`;
     }
     return null;
 }
