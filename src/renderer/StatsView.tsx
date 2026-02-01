@@ -5605,6 +5605,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                 return (
                                     <span key={player.key} className="flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 shrink-0">
                                         <span className="truncate max-w-[140px]">{player.displayName}</span>
+                                        <span className="text-[10px] text-cyan-200/70">{player.logs} {player.logs === 1 ? 'log' : 'logs'}</span>
                                         <button type="button" onClick={() => removeSelectedPlayer(player.key)} className="rounded-full p-1 text-cyan-200 hover:bg-white/20">
                                             <XCircle className="w-3 h-3" />
                                         </button>
