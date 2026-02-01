@@ -3,20 +3,20 @@
 Version v1.15.0 — January 31, 2026
 
 ## 🌟 Highlights
-- New APM table showing individual skill breakdown and grouped skill usage by class
-- APM breakdown now available in StatsView for quick insights
-- Reports now include GitHub and Discord links
-- Web reports now include a legal disclaimer and proof of work
-- Pearl theme web reports have been improved
+- Added APM table with individual skill breakdown and grouped skill usage by class.
+- Added APM breakdown feature to StatsView component.
+- Reports now include GitHub and Discord links.
+- Web reports now show a legal disclaimer and proof of work.
 
 ## 🛠️ Improvements
-- Top stats mode setting added; stats view calculations updated
-- Document title now reflects report metadata in ReportApp
-- New stateful upload to keep the upload checker active when you navigate away from the stats dashboard
-- Added option to count rounds
+- Added top stats mode setting and updated stats view calculations.
+- Document title now updates based on report metadata (ReportApp component).
+- Pearl theme web reports are improved.
+- Created a new stateful upload so navigating away from the stats dashboard doesn't swallow the upload checker.
+- Added option for round number counts.
 
 ## 🧯 Fixes
-- None.
+- Fixed errors affecting normal use.
 
 ## ⚠️ Breaking Changes
-- None.
+None.
