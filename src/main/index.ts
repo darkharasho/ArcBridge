@@ -2435,6 +2435,97 @@ if (!gotTheLock) {
             }
         });
 
+        ipcMain.handle('mock-web-report', async (_event, payload: { meta: any; stats: any }) => {
+            if (app.isPackaged) {
+                return { success: false, error: 'Mock web reports are only available in dev builds.' };
+            }
+            try {
+                const appRoot = getWebRoot();
+                const webRoot = path.join(appRoot, 'web');
+                if (!fs.existsSync(webRoot)) {
+                    return { success: false, error: `Web source root not found at ${webRoot}` };
+                }
+                const reportMeta = {
+                    ...payload.meta,
+                    appVersion: app.getVersion()
+                };
+                const reportPayload = { meta: reportMeta, stats: payload.stats };
+                const reportsRoot = path.join(webRoot, 'reports');
+                const reportDir = path.join(reportsRoot, reportMeta.id);
+                fs.mkdirSync(reportDir, { recursive: true });
+                fs.writeFileSync(path.join(webRoot, 'report.json'), JSON.stringify(reportPayload, null, 2));
+                fs.writeFileSync(path.join(reportDir, 'report.json'), JSON.stringify(reportPayload, null, 2));
+
+                const redirectHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=../../index.html?report=${reportMeta.id}" />
+    <title>Redirecting...</title>
+  </head>
+  <body>
+    <script>
+      window.location.replace('../../index.html?report=${reportMeta.id}');
+    </script>
+    <p>Redirecting to report...</p>
+  </body>
+</html>
+`;
+                fs.writeFileSync(path.join(reportDir, 'index.html'), redirectHtml);
+
+                const indexEntry = {
+                    id: reportMeta.id,
+                    title: reportMeta.title,
+                    commanders: reportMeta.commanders || [],
+                    dateStart: reportMeta.dateStart,
+                    dateEnd: reportMeta.dateEnd,
+                    dateLabel: reportMeta.dateLabel,
+                    url: `./?report=${reportMeta.id}`,
+                    summary: (() => {
+                        const stats = payload?.stats || {};
+                        const mapData = Array.isArray(stats.mapData) ? stats.mapData : [];
+                        const totalMaps = mapData.reduce((sum: number, entry: any) => sum + (entry?.value || 0), 0);
+                        const borderlandsCount = mapData.reduce((sum: number, entry: any) => {
+                            const name = String(entry?.name || '').toLowerCase();
+                            return name.includes('borderlands') ? sum + (entry?.value || 0) : sum;
+                        }, 0);
+                        const borderlandsPct = totalMaps > 0 ? borderlandsCount / totalMaps : null;
+                        const mapSlices = mapData.map((entry: any) => ({
+                            name: entry?.name || 'Unknown',
+                            value: entry?.value || 0,
+                            color: entry?.color || '#94a3b8'
+                        }));
+                        const avgSquadSize = typeof stats.avgSquadSize === 'number' ? stats.avgSquadSize : null;
+                        const avgEnemySize = typeof stats.avgEnemies === 'number' ? stats.avgEnemies : null;
+                        return {
+                            borderlandsPct,
+                            mapSlices,
+                            avgSquadSize,
+                            avgEnemySize
+                        };
+                    })()
+                };
+
+                const indexPath = path.join(reportsRoot, 'index.json');
+                let existingIndex: any[] = [];
+                try {
+                    if (fs.existsSync(indexPath)) {
+                        const decoded = fs.readFileSync(indexPath, 'utf8');
+                        existingIndex = JSON.parse(decoded);
+                    }
+                } catch {
+                    existingIndex = [];
+                }
+                const mergedIndex = [indexEntry, ...(Array.isArray(existingIndex) ? existingIndex.filter((entry) => entry?.id !== reportMeta.id) : [])];
+                fs.writeFileSync(indexPath, JSON.stringify(mergedIndex, null, 2));
+
+                const baseUrl = VITE_DEV_SERVER_URL.replace(/\/$/, '');
+                return { success: true, url: `${baseUrl}/web/index.html?report=${reportMeta.id}` };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to create local web report.' };
+            }
+        });
+
         ipcMain.on('send-screenshot', async (_event, logId: string, buffer: Uint8Array) => {
             const data = pendingDiscordLogs.get(logId);
             if (data && discord) {

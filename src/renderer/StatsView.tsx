@@ -569,6 +569,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const webUploadMessage = activeWebUploadState.message;
     const webUploadUrl = activeWebUploadState.url;
     const webUploadBuildStatus = activeWebUploadState.buildStatus;
+    const devMockAvailable = !embedded && import.meta.env.DEV && !!window.electronAPI?.mockWebReport;
     const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
         'Down Contribution': 'downContribution',
         'Healing': 'healing',
@@ -589,6 +590,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         return activeMvpWeights[key] > 0;
     };
     const [sharing, setSharing] = useState(false);
+    const [devMockUploadState, setDevMockUploadState] = useState<{
+        uploading: boolean;
+        message: string | null;
+        url: string | null;
+    }>({ uploading: false, message: null, url: null });
     const [expandedLeader, setExpandedLeader] = useState<string | null>(null);
     const [activeBoonTab, setActiveBoonTab] = useState<string | null>(null);
     const [activeBoonCategory, setActiveBoonCategory] = useState<BoonCategory>('totalBuffs');
@@ -3304,6 +3310,42 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         }
     };
 
+    const handleDevMockUpload = async () => {
+        if (embedded || !window.electronAPI?.mockWebReport) return;
+        setDevMockUploadState({ uploading: true, message: 'Preparing local report...', url: null });
+        try {
+            const meta = buildReportMeta();
+            const result = await window.electronAPI.mockWebReport({
+                meta,
+                stats: {
+                    ...stats,
+                    skillUsageData,
+                    statsViewSettings: activeStatsViewSettings,
+                    uiTheme: uiTheme || 'classic'
+                }
+            });
+            if (result?.success) {
+                setDevMockUploadState({
+                    uploading: false,
+                    message: 'Local report ready.',
+                    url: result.url || null
+                });
+            } else {
+                setDevMockUploadState({
+                    uploading: false,
+                    message: result?.error || 'Local report failed.',
+                    url: null
+                });
+            }
+        } catch (err: any) {
+            setDevMockUploadState({
+                uploading: false,
+                message: err?.message || 'Local report failed.',
+                url: null
+            });
+        }
+    };
+
     const handleShare = async () => {
         if (embedded || !window.electronAPI?.sendStatsScreenshot) return;
         setSharing(true);
@@ -3519,6 +3561,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 </div>
                 {!embedded && (
                     <div className="flex items-center gap-3">
+                        {devMockAvailable && (
+                            <button
+                                onClick={handleDevMockUpload}
+                                disabled={devMockUploadState.uploading}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                {devMockUploadState.uploading ? 'Building...' : 'Dev Mock Upload'}
+                            </button>
+                        )}
                         <button
                             onClick={handleWebUpload}
                             disabled={uploadingWeb}
@@ -3591,6 +3643,42 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     >
                         {webCopyStatus === 'copied' ? 'Copied' : 'Copy URL'}
                     </button>
+                </div>
+            )}
+
+            {!embedded && devMockAvailable && devMockUploadState.message && (
+                <div className="mb-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2 flex items-center justify-between gap-3">
+                    <div className="text-xs text-gray-300 flex items-center gap-2">
+                        <span className="uppercase tracking-widest text-[10px] text-amber-300/70">Dev Mock</span>
+                        {devMockUploadState.url ? (
+                            <button
+                                onClick={() => {
+                                    const url = devMockUploadState.url;
+                                    if (url && window.electronAPI?.openExternal) {
+                                        window.electronAPI.openExternal(url);
+                                    }
+                                }}
+                                className="text-amber-200 hover:text-amber-100 underline underline-offset-2"
+                            >
+                                {devMockUploadState.url}
+                            </button>
+                        ) : (
+                            <span className="text-gray-300">{devMockUploadState.message}</span>
+                        )}
+                    </div>
+                    {devMockUploadState.url && (
+                        <button
+                            onClick={() => {
+                                const url = devMockUploadState.url;
+                                if (url && window.electronAPI?.openExternal) {
+                                    window.electronAPI.openExternal(url);
+                                }
+                            }}
+                            className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                        >
+                            Open in Browser
+                        </button>
+                    )}
                 </div>
             )}
 
