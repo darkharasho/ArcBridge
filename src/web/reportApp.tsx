@@ -170,6 +170,11 @@ export function ReportApp() {
         }
         return pathName;
     }, []);
+    const isDevLocalWeb = useMemo(() => {
+        const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host);
+        return isLocalhost && window.location.pathname.startsWith('/web/');
+    }, []);
+    const assetBasePath = isDevLocalWeb ? '/' : basePath;
     const resolvedTheme = theme ?? DEFAULT_WEB_THEME;
     const accentRgb = resolvedTheme.rgb;
     const accentVars = {
@@ -273,7 +278,7 @@ export function ReportApp() {
 
     useEffect(() => {
         let isMounted = true;
-        fetch(`${basePath}theme.json`, { cache: 'no-store' })
+        fetch(`${assetBasePath}theme.json`, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
@@ -286,11 +291,11 @@ export function ReportApp() {
         return () => {
             isMounted = false;
         };
-    }, [basePath]);
+    }, [assetBasePath]);
 
     useEffect(() => {
         let isMounted = true;
-        fetch(`${basePath}ui-theme.json`, { cache: 'no-store' })
+        fetch(`${assetBasePath}ui-theme.json`, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
@@ -306,18 +311,18 @@ export function ReportApp() {
         return () => {
             isMounted = false;
         };
-    }, [basePath]);
+    }, [assetBasePath]);
 
     useEffect(() => {
         let isMounted = true;
-        fetch(`${basePath}logo.json`, { cache: 'no-store' })
+        fetch(`${assetBasePath}logo.json`, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
                 const defaultPath = 'img/ArcBridge.svg';
                 const path = data?.path ? String(data.path) : defaultPath;
                 const version = data?.updatedAt ? String(data.updatedAt) : '';
-                const urlBase = `${basePath}${path}`.replace(/\/{2,}/g, '/');
+                const urlBase = `${assetBasePath}${path}`.replace(/\/{2,}/g, '/');
                 const url = version ? `${urlBase}?v=${encodeURIComponent(version)}` : urlBase;
                 setLogoUrl(url);
                 setLogoIsDefault(!data?.path || path === defaultPath);
@@ -330,7 +335,7 @@ export function ReportApp() {
         return () => {
             isMounted = false;
         };
-    }, [basePath]);
+    }, [assetBasePath]);
 
     const sortedIndex = useMemo(() => {
         if (!index) return [];
@@ -519,7 +524,7 @@ export function ReportApp() {
     );
 
     if (report) {
-        const arcbridgeLogoUrl = `${basePath}img/ArcBridge.svg`.replace(/\/{2,}/g, '/');
+        const arcbridgeLogoUrl = `${assetBasePath}img/ArcBridge.svg`.replace(/\/{2,}/g, '/');
         const tocItems = [
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'top-players', label: 'Top Players', icon: Trophy },
@@ -585,6 +590,20 @@ export function ReportApp() {
                                 ×
                             </button>
                         </div>
+                        <div className="px-5 pb-4">
+                            <a
+                                href="./"
+                                className="w-full inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
+                            >
+                                <span className="h-8 w-8 rounded-full border border-[color:var(--accent-border)] inline-flex items-center justify-center text-[color:var(--accent-strong)]">
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M19 12H6.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                                        <path d="M12 6L6 12L12 18" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </span>
+                                Back to Reports
+                            </a>
+                        </div>
                         <nav className="px-3 pb-6 space-y-1.5 text-sm overflow-y-auto">
                             {tocItems.map((item) => {
                                 const Icon = item.icon;
@@ -603,20 +622,6 @@ export function ReportApp() {
                                 );
                             })}
                         </nav>
-                        <div className="mt-auto border-t border-white/10">
-                            <a
-                                href="./"
-                                className="w-full inline-flex items-center gap-3 px-5 py-3 bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
-                            >
-                                <span className="h-8 w-8 rounded-full border border-[color:var(--accent-border)] inline-flex items-center justify-center text-[color:var(--accent-strong)]">
-                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                        <path d="M19 12H6.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-                                        <path d="M12 6L6 12L12 18" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </span>
-                                Back to Reports
-                            </a>
-                        </div>
                     </div>
                 </aside>
                 <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">

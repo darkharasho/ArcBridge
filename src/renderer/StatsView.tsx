@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X, ChevronDown, ChevronRight, HeartPulse } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
 import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlayerSquadHealing, getPlayerSquadBarrier, getPlayerOutgoingCrowdControl, getTargetStatTotal } from '../shared/dashboardMetrics';
@@ -648,6 +648,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const [expandedApmSpec, setExpandedApmSpec] = useState<string | null>(null);
     const [activeApmSkillId, setActiveApmSkillId] = useState<string | null>(null);
     const [apmSkillSearch, setApmSkillSearch] = useState('');
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [activeNavId, setActiveNavId] = useState('overview');
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -676,6 +679,80 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         }
         return `${minutes}:${String(seconds).padStart(2, '0')}`;
     };
+
+    const tocItems = useMemo(() => ([
+        { id: 'overview', label: 'Overview', icon: Trophy },
+        { id: 'fight-breakdown', label: 'Fight Breakdown', icon: Swords },
+        { id: 'top-players', label: 'Top Players', icon: Users },
+        { id: 'top-skills-outgoing', label: 'Top Skills', icon: Zap },
+        { id: 'timeline', label: 'Squad vs Enemy', icon: Activity },
+        { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon },
+        { id: 'boon-output', label: 'Boon Output', icon: Sparkles },
+        { id: 'offense-detailed', label: 'Offense Detailed', icon: Crosshair },
+        { id: 'conditions-outgoing', label: 'Conditions', icon: Skull },
+        { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
+        { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
+        { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
+        { id: 'special-buffs', label: 'Special Buffs', icon: Star },
+        { id: 'skill-usage', label: 'Skill Usage', icon: Hammer },
+        { id: 'apm-stats', label: 'APM Breakdown', icon: Wind }
+    ]), []);
+
+    const scrollToSection = (id: string) => {
+        const container = scrollContainerRef.current;
+        const node = document.getElementById(id);
+        if (container && node) {
+            const containerRect = container.getBoundingClientRect();
+            const nodeRect = node.getBoundingClientRect();
+            const rawTop = nodeRect.top - containerRect.top + container.scrollTop;
+            const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+            const nextTop = Math.min(Math.max(rawTop - 16, 0), maxTop);
+            container.scrollTo({ top: nextTop, behavior: 'smooth' });
+            setActiveNavId(id);
+        } else if (node) {
+            node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setActiveNavId(id);
+        }
+        setMobileNavOpen(false);
+    };
+
+    const stepSection = (direction: -1 | 1) => {
+        const currentIndex = Math.max(0, tocItems.findIndex((item) => item.id === activeNavId));
+        const nextIndex = Math.min(Math.max(currentIndex + direction, 0), tocItems.length - 1);
+        const nextId = tocItems[nextIndex]?.id;
+        if (nextId) scrollToSection(nextId);
+    };
+
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        let raf = 0;
+        const updateActiveSection = () => {
+            const containerTop = container.getBoundingClientRect().top;
+            let currentId = tocItems[0]?.id || 'overview';
+            tocItems.forEach((item) => {
+                const el = document.getElementById(item.id);
+                if (!el) return;
+                const offset = el.getBoundingClientRect().top - containerTop;
+                if (offset <= 24) {
+                    currentId = item.id;
+                }
+            });
+            setActiveNavId((prev) => (prev === currentId ? prev : currentId));
+        };
+        const onScroll = () => {
+            if (raf) cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(updateActiveSection);
+        };
+        updateActiveSection();
+        container.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+        return () => {
+            if (raf) cancelAnimationFrame(raf);
+            container.removeEventListener('scroll', onScroll);
+            window.removeEventListener('resize', onScroll);
+        };
+    }, [tocItems]);
 
     const getFightDurationLabel = (details: any, log: any) => {
         const candidates = [details?.encounterDuration, details?.duration, log?.encounterDuration];
@@ -3682,7 +3759,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 </div>
             )}
 
-            <div id="stats-dashboard-container" className={scrollContainerClass} style={scrollContainerStyle}>
+            <div
+                id="stats-dashboard-container"
+                ref={scrollContainerRef}
+                className={scrollContainerClass}
+                style={scrollContainerStyle}
+            >
 
                 {/* Wins/Losses Big Cards with embedded Averages and KDR */}
                 <div id="overview" className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-24">
@@ -6263,6 +6345,86 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     </div>
                 </div>
             </div>
+
+            {!embedded && (
+                <>
+                    <div
+                        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-md transition-opacity ${mobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        onClick={() => setMobileNavOpen(false)}
+                    />
+                    <div className="fixed bottom-4 left-4 right-4 z-50">
+                        <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/25 bg-white/5 backdrop-blur-2xl px-3 py-1.5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
+                            <button
+                                onClick={() => stepSection(-1)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                            >
+                                <ChevronDown className="w-4 h-4 rotate-90 text-[color:var(--accent)]" />
+                                Prev
+                            </button>
+                            <button
+                                onClick={() => setMobileNavOpen((open) => !open)}
+                                className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                            >
+                                <span className="truncate max-w-[160px]">
+                                    {tocItems.find((item) => item.id === activeNavId)?.label || 'Sections'}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-[color:var(--accent)] transition-transform ${mobileNavOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            <button
+                                onClick={() => stepSection(1)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                            >
+                                Next
+                                <ChevronDown className="w-4 h-4 -rotate-90 text-[color:var(--accent)]" />
+                            </button>
+                        </div>
+                    </div>
+                    {mobileNavOpen && (
+                        <div
+                            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                            onClick={(event) => {
+                                if (event.target === event.currentTarget) {
+                                    setMobileNavOpen(false);
+                                }
+                            }}
+                        >
+                            <div className="w-full max-w-sm rounded-2xl p-4 border border-white/20 bg-white/5 shadow-[0_22px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="text-[11px] uppercase tracking-[0.3em] text-gray-400">Jump to</div>
+                                    <button
+                                        onClick={() => setMobileNavOpen(false)}
+                                        className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+                                        aria-label="Close navigation"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="max-h-[60vh] overflow-y-auto pr-1 space-y-1.5">
+                                    {tocItems.map((item) => {
+                                        const Icon = item.icon;
+                                        const isActive = item.id === activeNavId;
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => scrollToSection(item.id)}
+                                                className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl text-gray-200 border transition-colors ${isActive
+                                                    ? 'bg-white/10 border-white/20'
+                                                    : 'border-transparent hover:border-white/10 hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/5 border border-white/10">
+                                                    <Icon className="w-4 h-4 text-[color:var(--accent)]" />
+                                                </span>
+                                                <span className="text-sm font-medium">{item.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }

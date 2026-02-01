@@ -190,7 +190,7 @@ export function getProfessionEmoji(profession: string): string {
 export function getProfessionIconPath(profession: string): string | null {
     if (!profession) return null;
     const useDevRoot = typeof window !== 'undefined'
-        && import.meta.env.DEV
+        && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host)
         && window.location.pathname.startsWith('/web/');
     const basePath = useDevRoot ? '/img/class-icons' : './img/class-icons';
     const direct = PROFESSION_COLORS[profession] ? profession : null;
