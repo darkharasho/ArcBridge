@@ -12,6 +12,7 @@ const CONDITION_NAME_MAP = new Map<string, string>([
     ['chill', 'Chill'],
     ['chilled', 'Chill'],
     ['immob', 'Immobilize'],
+    ['immobile', 'Immobilize'],
     ['immobilized', 'Immobilize'],
     ['slow', 'Slow'],
     ['fear', 'Fear'],

@@ -30,7 +30,6 @@ const NON_DAMAGING_CONDITIONS = new Set([
     'Cripple',
     'Chill',
     'Immobilize',
-    'Immobile',
     'Slow',
     'Fear',
     'Taunt'
@@ -649,6 +648,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals
         });
+    const formatTopStatValue = (value: number) => {
+        if (!Number.isFinite(value)) return '--';
+        const absValue = Math.abs(value);
+        if (absValue >= 1_000_000) {
+            const compact = (value / 1_000_000);
+            const formatted = compact.toFixed(2).replace(/\.?0+$/, '');
+            return `${formatted}m`;
+        }
+        return Math.round(value).toLocaleString();
+    };
 
     const formatDurationMs = (durationMs?: number) => {
         if (!durationMs || !Number.isFinite(durationMs)) return '--:--';
@@ -3664,9 +3673,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                             <th className="text-right py-2 px-2 w-8">#</th>
                                             <th className="text-left py-2 px-3 w-[240px]">Report</th>
                                             <th className="text-left py-2 px-3 w-20">Duration</th>
-                                            {fightBreakdownTab === 'outcomes' && (
-                                                <th className="text-left py-2 px-3 w-20">Outcome</th>
-                                            )}
+                                            <th className="text-left py-2 px-3 w-20">Outcome</th>
                                             {fightBreakdownTab === 'sizes' && (
                                                 <>
                                                     <th className="text-right py-2 px-3">Squad</th>
@@ -3735,11 +3742,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                                     )}
                                                 </td>
                                                 <td className="py-2 px-3 text-gray-200 w-20">{fight.duration || '--:--'}</td>
-                                                {fightBreakdownTab === 'outcomes' && (
-                                                    <td className={`py-2 px-3 font-semibold ${fight.isWin ? 'text-emerald-300' : 'text-red-300'}`}>
-                                                        {fight.isWin ? 'Win' : 'Loss'}
-                                                    </td>
-                                                )}
+                                                <td className={`py-2 px-3 font-semibold ${fight.isWin ? 'text-emerald-300' : 'text-red-300'}`}>
+                                                    {fight.isWin ? 'Win' : 'Loss'}
+                                                </td>
                                                 {fightBreakdownTab === 'sizes' && (
                                                     <>
                                                         <td className="py-2 px-3 text-right font-mono">
@@ -3977,7 +3982,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                         ];
                         const formatValue = (value: number) => {
                             if (!isPerSecond || !Number.isFinite(value)) {
-                                return Math.round(value).toLocaleString();
+                                return formatTopStatValue(value);
                             }
                             return formatWithCommas(value, 2);
                         };
@@ -3985,14 +3990,14 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                             <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {leaderCards.map((card) => {
-                                        const isActive = expandedLeader === card.statKey;
+                                        const isActive = expandedLeader === 'all';
                                         const rows = topStatsLeaderboards?.[card.statKey] || [];
                                         return (
                                         <LeaderCard
                                             key={card.statKey}
                                             {...card}
                                             active={isActive}
-                                            onClick={() => setExpandedLeader((prev) => (prev === card.statKey ? null : card.statKey))}
+                                            onClick={() => setExpandedLeader((prev) => (prev === 'all' ? null : 'all'))}
                                             rows={rows}
                                             formatValue={formatValue}
                                         />
