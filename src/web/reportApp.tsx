@@ -249,7 +249,8 @@ export function ReportApp() {
         return new Set(ids);
     }, [activeGroupDef]);
     const scrollToSection = (id: string) => {
-        const el = document.getElementById(id);
+        const targetId = id === 'kdr' ? 'overview' : id;
+        const el = document.getElementById(targetId);
         if (!el) return false;
         const isVisible = el.getAttribute('data-section-visible') !== 'false';
         if (!isVisible) return false;
@@ -259,7 +260,7 @@ export function ReportApp() {
         const targetTop = rect.top + window.scrollY - 12;
         window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
         if (history.replaceState) {
-            history.replaceState(null, '', `#${id}`);
+            history.replaceState(null, '', `#${targetId}`);
         }
         return true;
     };
@@ -640,6 +641,11 @@ export function ReportApp() {
     if (report) {
         const arcbridgeLogoUrl = `${assetBasePath}img/ArcBridge.svg`.replace(/\/{2,}/g, '/');
         const handleGroupSelect = (groupId: string) => {
+            const groupDef = navGroups.find((group) => group.id === groupId);
+            const firstId = groupDef?.sectionIds?.[0] || groupDef?.items?.[0]?.id;
+            if (firstId) {
+                pendingScrollIdRef.current = firstId;
+            }
             setActiveGroup(groupId);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };

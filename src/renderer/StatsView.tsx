@@ -1,6 +1,5 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X, ChevronDown, ChevronRight, HeartPulse } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, X, ChevronDown, ChevronRight, HeartPulse } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlayerSquadHealing, getPlayerSquadBarrier, getPlayerOutgoingCrowdControl, getTargetStatTotal } from '../shared/dashboardMetrics';
 import { Player, Target } from '../shared/dpsReportTypes';
@@ -8,8 +7,7 @@ import { getProfessionColor, getProfessionIconPath } from '../shared/professionU
 import { BoonCategory, BoonMetric, buildBoonTables, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import { computeOutgoingConditions, normalizeConditionLabel, resolveConditionNameFromEntry, type OutgoingConditionsResult } from '../shared/conditionsMetrics';
-import { PillToggleGroup } from './stats/ui/PillToggleGroup';
-import { CountClassTooltip, SkillBreakdownTooltip, renderProfessionIcon } from './stats/ui/StatsViewShared';
+import { renderProfessionIcon } from './stats/ui/StatsViewShared';
 import { SkillUsageSection } from './stats/sections/SkillUsageSection';
 import { ApmSection } from './stats/sections/ApmSection';
 import { OffenseSection } from './stats/sections/OffenseSection';
@@ -19,6 +17,13 @@ import { DefenseSection } from './stats/sections/DefenseSection';
 import { SupportSection } from './stats/sections/SupportSection';
 import { HealingSection } from './stats/sections/HealingSection';
 import { SpecialBuffsSection } from './stats/sections/SpecialBuffsSection';
+import { OverviewSection } from './stats/sections/OverviewSection';
+import { FightBreakdownSection } from './stats/sections/FightBreakdownSection';
+import { TopPlayersSection } from './stats/sections/TopPlayersSection';
+import { TopSkillsSection } from './stats/sections/TopSkillsSection';
+import { SquadCompositionSection } from './stats/sections/SquadCompositionSection';
+import { TimelineSection } from './stats/sections/TimelineSection';
+import { MapDistributionSection } from './stats/sections/MapDistributionSection';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -413,8 +418,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     ]), []);
 
     const scrollToSection = (id: string) => {
+        const targetId = id === 'kdr' ? 'overview' : id;
         const container = scrollContainerRef.current;
-        const node = document.getElementById(id);
+        const node = document.getElementById(targetId);
         if (container && node) {
             const containerRect = container.getBoundingClientRect();
             const nodeRect = node.getBoundingClientRect();
@@ -422,10 +428,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
             const nextTop = Math.min(Math.max(rawTop - 16, 0), maxTop);
             container.scrollTo({ top: nextTop, behavior: 'smooth' });
-            setActiveNavId(id);
+            setActiveNavId(targetId);
         } else if (node) {
             node.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setActiveNavId(id);
+            setActiveNavId(targetId);
         }
         setMobileNavOpen(false);
     };
@@ -3264,74 +3270,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         };
     }, [expandedSection]);
 
-    const colorClasses: Record<string, { bg: string; text: string }> = {
-        red: { bg: 'bg-red-500/20', text: 'text-red-400' },
-        yellow: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
-        green: { bg: 'bg-green-500/20', text: 'text-green-400' },
-        purple: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
-        blue: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
-        pink: { bg: 'bg-pink-500/20', text: 'text-pink-400' },
-        cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400' },
-        indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
-    };
-
-    const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active, rows, formatValue }: any) => {
-        const classes = colorClasses[color] || colorClasses.blue;
-        const displayValue = formatValue ? formatValue(data.value) : Math.round(data.value).toLocaleString();
-        return (
-            <div
-                role="button"
-                tabIndex={0}
-                onClick={onClick}
-                onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        onClick?.();
-                    }
-                }}
-                className={`bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-3 group hover:bg-white/10 transition-colors cursor-pointer ${active ? 'ring-1 ring-white/20' : ''}`}
-            >
-                <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-lg ${classes.bg} ${classes.text} shrink-0`}>
-                        <Icon className="w-6 h-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <div className="text-gray-400 text-xs font-bold uppercase tracking-wider truncate">{title}</div>
-                        <div className="text-2xl font-bold text-white mt-0.5 break-words">
-                            {displayValue} <span className="text-sm font-normal text-gray-500">{unit}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex flex-col border-t border-white/5 pt-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                        {renderProfessionIcon(data.profession || 'Unknown', data.professionList, 'w-4 h-4')}
-                        <div className="text-sm font-medium text-blue-300 truncate">{data.player || '-'}</div>
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">{data.count ? `${data.count} logs` : '-'}</div>
-                </div>
-                {active && (
-                    <div className="mt-3 stats-share-exclude">
-                        <div className="text-xs font-semibold text-gray-200 mb-2">{title}</div>
-                        {rows?.length ? (
-                            <div className="max-h-56 overflow-y-auto pr-1 space-y-1">
-                                {rows.map((row: any) => (
-                                    <div key={`${title}-${row.rank}-${row.account}`} className="flex items-center gap-2 text-xs text-gray-300">
-                                        <div className="w-6 text-right text-gray-500">{row.rank}</div>
-                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                        <div className="flex-1 truncate">{row.account}</div>
-                                        <div className="text-gray-400 font-mono">{formatValue ? formatValue(row.value) : row.value}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-xs text-gray-500 italic">No data available</div>
-                        )}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     const sortByCountDesc = (a: any, b: any) => {
         const diff = (b?.value || 0) - (a?.value || 0);
         if (diff !== 0) return diff;
@@ -3518,771 +3456,73 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 style={scrollContainerStyle}
             >
 
-                {/* Wins/Losses Big Cards with embedded Averages and KDR */}
-                <div id="kdr" className="scroll-mt-24" />
-                <div id="overview" data-section-visible={isSectionVisible('overview')} data-section-first={isFirstVisibleSection('overview')} className={sectionClass('overview', 'grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-24')}>
-                    <div className="bg-gradient-to-br from-green-500/20 to-emerald-900/20 border border-green-500/30 rounded-2xl px-5 py-4">
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                            <div className="text-left">
-                                <div className="text-lg font-semibold text-green-100">{stats.avgSquadSize}</div>
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-green-200/60">Avg Squad</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-3xl font-black text-green-300 leading-none">{stats.wins}</div>
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-green-200/50 mt-1">Victories</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-lg font-semibold text-green-100">{stats.squadKDR}</div>
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-green-200/60">Squad KDR</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-red-500/20 to-rose-900/20 border border-red-500/30 rounded-2xl px-5 py-4">
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                            <div className="text-left">
-                                <div className="text-lg font-semibold text-red-100">{stats.avgEnemies}</div>
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-red-200/60">Avg Enemies</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-3xl font-black text-red-300 leading-none">{stats.losses}</div>
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-red-200/50 mt-1">Defeats</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-lg font-semibold text-red-100">{stats.enemyKDR}</div>
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-red-200/60">Enemy KDR</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <OverviewSection
+                    stats={stats}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
-                {/* Fight Breakdown (excluded from share screenshots) */}
-                <div id="fight-breakdown" data-section-visible={isSectionVisible('fight-breakdown')} data-section-first={isFirstVisibleSection('fight-breakdown')} className={sectionClass('fight-breakdown', 'mt-6 stats-share-exclude')}>
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-200">Fight Breakdown</h3>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <PillToggleGroup
-                                    value={fightBreakdownTab}
-                                    onChange={setFightBreakdownTab}
-                                    options={[
-                                        { value: 'sizes', label: 'Sizes' },
-                                        { value: 'outcomes', label: 'Outcome' },
-                                        { value: 'damage', label: 'Damage' },
-                                        { value: 'barrier', label: 'Barrier' }
-                                    ]}
-                                    activeClassName="bg-cyan-500/20 text-cyan-200 border border-cyan-500/40"
-                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                />
-                                <span className="text-[10px] uppercase tracking-widest text-gray-500 sm:ml-1 w-full sm:w-auto">
-                                    {stats.fightBreakdown?.length || 0} Fights
-                                </span>
-                            </div>
-                        </div>
-                        {(stats.fightBreakdown || []).length === 0 ? (
-                            <div className="text-center text-gray-500 italic py-6">No fight data available</div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <div className="max-h-[360px] overflow-y-auto">
-                                    <table className="w-full text-xs table-auto min-w-[720px]">
-                                    <thead>
-                                        <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
-                                            <th className="text-right py-2 px-2 w-8">#</th>
-                                            <th className="text-left py-2 px-3 w-[240px]">Report</th>
-                                            <th className="text-left py-2 px-3 w-20">Duration</th>
-                                            <th className="text-left py-2 px-3 w-20">Outcome</th>
-                                            {fightBreakdownTab === 'sizes' && (
-                                                <>
-                                                    <th className="text-right py-2 px-3">Squad</th>
-                                                    <th className="text-right py-2 px-3">Allies</th>
-                                                    <th className="text-right py-2 px-3">Enemies</th>
-                                                    <th className="text-right py-2 px-3">Red</th>
-                                                    <th className="text-right py-2 px-3">Green</th>
-                                                    <th className="text-right py-2 px-3">Blue</th>
-                                                </>
-                                            )}
-                                            {fightBreakdownTab === 'outcomes' && (
-                                                <>
-                                                    <th className="text-right py-2 px-3">Allies Down</th>
-                                                    <th className="text-right py-2 px-3">Allies Dead</th>
-                                                    <th className="text-right py-2 px-3">Allies Revived</th>
-                                                    <th className="text-right py-2 px-3">Rallies</th>
-                                                    <th className="text-right py-2 px-3">Enemy Deaths</th>
-                                                </>
-                                            )}
-                                            {fightBreakdownTab === 'damage' && (
-                                                <>
-                                                    <th className="text-right py-2 px-3">Outgoing Dmg</th>
-                                                    <th className="text-right py-2 px-3">Incoming Dmg</th>
-                                                    <th className="text-right py-2 px-3">Delta</th>
-                                                </>
-                                            )}
-                                            {fightBreakdownTab === 'barrier' && (
-                                                <>
-                                                    <th
-                                                        className="text-right py-2 px-3"
-                                                        title="Incoming damage mitigated by your squad's barrier"
-                                                    >
-                                                        Barrier Absorption
-                                                    </th>
-                                                    <th
-                                                        className="text-right py-2 px-3"
-                                                        title="Outgoing damage mitigated by enemy barrier"
-                                                    >
-                                                        Enemy Barrier Absorption
-                                                    </th>
-                                                    <th className="text-right py-2 px-3">Delta</th>
-                                                </>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(stats.fightBreakdown || []).map((fight: any, idx: number) => (
-                                            <tr key={fight.id || `${fight.label}-${idx}`} className="border-b border-white/5 hover:bg-white/5">
-                                                <td className="py-2 px-2 text-right font-mono text-gray-500 w-8">{idx + 1}</td>
-                                                <td className="py-2 px-3 w-[240px]">
-                                                    {fight.permalink ? (
-                                                        <button
-                                                            onClick={() => {
-                                                                if (fight.permalink && window.electronAPI?.openExternal) {
-                                                                    window.electronAPI.openExternal(fight.permalink);
-                                                                } else if (fight.permalink) {
-                                                                    window.open(fight.permalink, '_blank');
-                                                                }
-                                                            }}
-                                                            className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2 block truncate"
-                                                        >
-                                                            {fight.label || 'dps.report'}
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-gray-500">Pending</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-2 px-3 text-gray-200 w-20">{fight.duration || '--:--'}</td>
-                                                <td className={`py-2 px-3 font-semibold ${fight.isWin ? 'text-emerald-300' : 'text-red-300'}`}>
-                                                    {fight.isWin ? 'Win' : 'Loss'}
-                                                </td>
-                                                {fightBreakdownTab === 'sizes' && (
-                                                    <>
-                                                        <td className="py-2 px-3 text-right font-mono">
-                                                            <CountClassTooltip
-                                                                count={fight.squadCount ?? 0}
-                                                                classCounts={fight.squadClassCountsFight}
-                                                                label="Squad Classes"
-                                                                className="text-gray-200"
-                                                            />
-                                                        </td>
-                                                        <td className="py-2 px-3 text-right font-mono">
-                                                            <CountClassTooltip
-                                                                count={fight.allyCount ?? 0}
-                                                                classCounts={fight.allyClassCountsFight}
-                                                                label="Ally Classes"
-                                                                className="text-gray-200"
-                                                            />
-                                                        </td>
-                                                        <td className="py-2 px-3 text-right font-mono">
-                                                            <CountClassTooltip
-                                                                count={fight.enemyCount ?? 0}
-                                                                classCounts={fight.enemyClassCounts}
-                                                                label="Enemy Classes"
-                                                                className="text-gray-200"
-                                                            />
-                                                        </td>
-                                                        <td className="py-2 px-3 text-right font-mono text-red-300">{fight.teamCounts?.red ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono text-green-300">{fight.teamCounts?.green ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono text-blue-300">{fight.teamCounts?.blue ?? 0}</td>
-                                                    </>
-                                                )}
-                                                {fightBreakdownTab === 'outcomes' && (
-                                                    <>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.alliesDown ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.alliesDead ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.alliesRevived ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.rallies ?? 0}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{fight.enemyDeaths ?? 0}</td>
-                                                    </>
-                                                )}
-                                                {fightBreakdownTab === 'damage' && (
-                                                    <>
-                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.totalOutgoingDamage || 0).toLocaleString()}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.totalIncomingDamage || 0).toLocaleString()}</td>
-                                                        {(() => {
-                                                            const delta = Number((fight.totalOutgoingDamage || 0) - (fight.totalIncomingDamage || 0));
-                                                            return (
-                                                                <td className={`py-2 px-3 text-right font-mono ${delta < 0 ? 'text-red-300' : 'text-emerald-300'}`}>
-                                                                    {delta.toLocaleString()}
-                                                                </td>
-                                                            );
-                                                        })()}
-                                                    </>
-                                                )}
-                                                {fightBreakdownTab === 'barrier' && (
-                                                    <>
-                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.incomingBarrierAbsorbed || 0).toLocaleString()}</td>
-                                                        <td className="py-2 px-3 text-right font-mono">{Number(fight.outgoingBarrierAbsorbed || 0).toLocaleString()}</td>
-                                                        {(() => {
-                                                            const delta = Number((fight.outgoingBarrierAbsorbed || 0) - (fight.incomingBarrierAbsorbed || 0));
-                                                            return (
-                                                                <td className={`py-2 px-3 text-right font-mono ${delta < 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                                                                    {delta.toLocaleString()}
-                                                                </td>
-                                                            );
-                                                        })()}
-                                                    </>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <FightBreakdownSection
+                    stats={stats}
+                    fightBreakdownTab={fightBreakdownTab}
+                    setFightBreakdownTab={setFightBreakdownTab}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
-                {/* Records Grid */}
-                {showTopStats && (
-                <div id="top-players" data-section-visible={isSectionVisible('top-players')} data-section-first={isFirstVisibleSection('top-players')} className={sectionClass('top-players', 'scroll-mt-24')}>
-                    <h3 className="text-lg font-bold text-gray-200 mb-4 flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-yellow-400" />
-                        Top Players (Total Accumulated Stats)
-                    </h3>
-                    {showMvp && (
-                    <>
-                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)] gap-3 mb-6">
-                        <div className="mvp-card mvp-card--gold border border-yellow-500/30 rounded-2xl p-3 relative overflow-hidden group flex items-center">
-                            {/* Glow Effect */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-yellow-500/20 transition-all" />
+                <TopPlayersSection
+                    stats={stats}
+                    showTopStats={showTopStats}
+                    showMvp={showMvp}
+                    topStatsMode={topStatsMode}
+                    expandedLeader={expandedLeader}
+                    setExpandedLeader={setExpandedLeader}
+                    formatTopStatValue={formatTopStatValue}
+                    formatWithCommas={formatWithCommas}
+                    isMvpStatEnabled={isMvpStatEnabled}
+                    renderProfessionIcon={renderProfessionIcon}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
-                            <div className="flex items-center gap-5 relative z-10 w-full">
-                                <div className="hidden sm:flex items-center justify-center w-20 h-20 rounded-full bg-yellow-500/20 border border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
-                                    <Crown className="w-10 h-10 text-yellow-400" />
-                                </div>
+                <TopSkillsSection
+                    stats={stats}
+                    expandedSection={expandedSection}
+                    expandedSectionClosing={expandedSectionClosing}
+                    openExpandedSection={openExpandedSection}
+                    closeExpandedSection={closeExpandedSection}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
-                                <div className="flex-1 flex flex-col h-full">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
-                                        <span className="text-yellow-400 font-bold uppercase tracking-widest text-xs">Squad MVP</span>
-                                    </div>
-                                    <div className="text-2xl sm:text-3xl font-black text-white mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
-                                        <span className="min-w-0 max-w-full truncate">{stats.mvp.account}</span>
-                                        {renderProfessionIcon(stats.mvp.profession, stats.mvp.professionList, 'w-6 h-6')}
-                                        <span className="text-sm sm:text-lg font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 rounded border border-yellow-500/20 max-w-full truncate">
-                                            {stats.mvp.profession}
-                                        </span>
-                                    </div>
-                                    <p className="text-yellow-200/80 italic flex items-center gap-2 mb-2">
-                                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-500/40" />
-                                        "{stats.mvp.reason}"
-                                    </p>
+                <SquadCompositionSection
+                    sortedSquadClassData={sortedSquadClassData}
+                    sortedEnemyClassData={sortedEnemyClassData}
+                    getProfessionIconPath={getProfessionIconPath}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
-                                    {/* Top Stats Breakdown */}
-                                    <div className="mt-auto flex flex-wrap gap-2">
-                                        {stats.mvp.topStats && stats.mvp.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, i: number) => {
-                                            const rank = Math.max(1, Math.round(stat.ratio));
-                                            const mod100 = rank % 100;
-                                            const mod10 = rank % 10;
-                                            const suffix = mod100 >= 11 && mod100 <= 13
-                                                ? 'th'
-                                                : mod10 === 1
-                                                    ? 'st'
-                                                    : mod10 === 2
-                                                        ? 'nd'
-                                                        : mod10 === 3
-                                                            ? 'rd'
-                                                            : 'th';
-                                            return (
-                                                <div key={i} className="inline-flex items-baseline gap-2 px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full text-[11px] leading-none">
-                                                    <span className="text-yellow-200 font-bold">{stat.name}</span>
-                                                    <span className="text-yellow-50 font-mono tabular-nums">{stat.val}</span>
-                                                    <span className="text-yellow-400/60">({rank}{suffix})</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                <TimelineSection
+                    timelineData={stats.timelineData}
+                    timelineFriendlyScope={timelineFriendlyScope}
+                    setTimelineFriendlyScope={setTimelineFriendlyScope}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
-                                <div className="hidden lg:block text-right">
-                                    <div className="text-yellow-500/40 font-mono text-sm uppercase tracking-wider font-bold">Contribution Score</div>
-                                    <div className="text-4xl font-black text-yellow-500/80">{stats.mvp.score > 0 ? stats.mvp.score.toFixed(1) : '-'}</div>
-                                    <div className="text-xs text-yellow-500/30 font-mono mt-1">Avg: {stats.avgMvpScore.toFixed(1)}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 xl:grid-cols-1 gap-3">
-                            {[
-                                { label: 'Silver', data: stats.silver },
-                                { label: 'Bronze', data: stats.bronze }
-                            ].map((entry) => (
-                                <div
-                                    key={entry.label}
-                                    className={`mvp-card mvp-card--${entry.label.toLowerCase()} border border-white/10 rounded-2xl p-3 relative overflow-hidden group flex flex-col`}
-                                >
-                                    <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[70px] pointer-events-none transition-all ${entry.label === 'Silver'
-                                        ? 'bg-slate-300/15 group-hover:bg-slate-300/25'
-                                        : 'bg-orange-400/15 group-hover:bg-orange-400/25'
-                                        }`} />
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className={`text-xs uppercase tracking-widest font-semibold ${entry.label === 'Silver' ? 'text-slate-200' : 'text-orange-200'}`}>
-                                            {entry.label} MVP
-                                        </div>
-                                        <div className="text-xs text-gray-500 font-mono">
-                                            {entry.data?.score ? entry.data.score.toFixed(1) : '-'}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        {entry.data && renderProfessionIcon(entry.data.profession, entry.data.professionList, 'w-6 h-6')}
-                                        <div className="min-w-0 flex-1">
-                                            <div className={`text-base font-semibold ${entry.label === 'Silver' ? 'text-slate-100' : 'text-orange-100'} truncate`}>
-                                                {entry.data?.account || '—'}
-                                            </div>
-                                            <div className={`text-xs ${entry.label === 'Silver' ? 'text-slate-300/70' : 'text-orange-200/70'} truncate`}>
-                                                {entry.data?.profession || 'Unknown'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {entry.data?.topStats?.some((stat: any) => isMvpStatEnabled(stat.name)) ? (
-                                        <div className={`mt-auto flex flex-wrap items-center gap-2 text-[10px] ${entry.label === 'Silver' ? 'text-slate-200' : 'text-orange-200'}`}>
-                                            {entry.data.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).map((stat: any, idx: number) => {
-                                                const rank = Math.max(1, Math.round(stat.ratio));
-                                                const mod100 = rank % 100;
-                                                const mod10 = rank % 10;
-                                                const suffix = mod100 >= 11 && mod100 <= 13
-                                                    ? 'th'
-                                                    : mod10 === 1
-                                                        ? 'st'
-                                                        : mod10 === 2
-                                                            ? 'nd'
-                                                            : mod10 === 3
-                                                                ? 'rd'
-                                                                : 'th';
-                                                return (
-                                                <span
-                                                    key={idx}
-                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border leading-none ${entry.label === 'Silver'
-                                                        ? 'bg-slate-400/10 border-slate-300/30'
-                                                        : 'bg-orange-500/10 border-orange-400/30'
-                                                        }`}
-                                                >
-                                                    <span className="leading-none">{stat.name}</span>
-                                                    <span className="tabular-nums leading-none">{rank}{suffix}</span>
-                                                </span>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : null}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    </>
-                    )}
-
-                    {(() => {
-                        const isPerSecond = topStatsMode === 'perSecond';
-                        const topStatsData = isPerSecond && stats.topStatsPerSecond ? stats.topStatsPerSecond : stats;
-                        const topStatsLeaderboards = isPerSecond && stats.topStatsLeaderboardsPerSecond
-                            ? stats.topStatsLeaderboardsPerSecond
-                            : stats.leaderboards;
-                        const titlePrefix = isPerSecond ? '' : 'Total ';
-                        const titleSuffix = isPerSecond ? ' /s' : '';
-                        const leaderCards = [
-                            { icon: HelpingHand, title: `Down Contribution${titleSuffix}`, data: topStatsData.maxDownContrib, color: 'red', statKey: 'downContrib' },
-                            { icon: Shield, title: `${titlePrefix}Barrier${titleSuffix}`, data: topStatsData.maxBarrier, color: 'yellow', statKey: 'barrier' },
-                            { icon: Activity, title: `${titlePrefix}Healing${titleSuffix}`, data: topStatsData.maxHealing, color: 'green', statKey: 'healing' },
-                            { icon: Wind, title: `${titlePrefix}Dodges${titleSuffix}`, data: topStatsData.maxDodges, color: 'cyan', statKey: 'dodges' },
-                            { icon: Zap, title: `${titlePrefix}Strips${titleSuffix}`, data: topStatsData.maxStrips, color: 'purple', statKey: 'strips' },
-                            { icon: Flame, title: `${titlePrefix}Cleanses${titleSuffix}`, data: topStatsData.maxCleanses, color: 'blue', statKey: 'cleanses' },
-                            { icon: Hammer, title: `${titlePrefix}CC${titleSuffix}`, data: topStatsData.maxCC, color: 'pink', statKey: 'cc' },
-                            { icon: ShieldCheck, title: `${titlePrefix}Stab Gen${titleSuffix}`, data: topStatsData.maxStab, color: 'cyan', statKey: 'stability' },
-                            { icon: Crosshair, title: 'Closest to Tag', data: topStatsData.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag' }
-                        ];
-                        const formatValue = (value: number) => {
-                            if (!isPerSecond || !Number.isFinite(value)) {
-                                return formatTopStatValue(value);
-                            }
-                            return formatWithCommas(value, 2);
-                        };
-                        return (
-                            <>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {leaderCards.map((card) => {
-                                        const isActive = expandedLeader === 'all';
-                                        const rows = topStatsLeaderboards?.[card.statKey] || [];
-                                        return (
-                                        <LeaderCard
-                                            key={card.statKey}
-                                            {...card}
-                                            active={isActive}
-                                            onClick={() => setExpandedLeader((prev) => (prev === 'all' ? null : 'all'))}
-                                            rows={rows}
-                                            formatValue={formatValue}
-                                        />
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        );
-                    })()}
-                </div>
-                )}
-
-                {/* Top Skills Row */}
-                <div
-                    data-section-visible={isSectionVisible('top-skills-outgoing')}
-                    data-section-first={isFirstVisibleSection('top-skills-outgoing')}
-                    className={sectionClass('top-skills-outgoing', 'grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8')}
-                >
-                    {/* Outgoing Skills */}
-                    <div
-                        id="top-skills-outgoing"
-                        data-section-visible={isSectionVisible('top-skills-outgoing')}
-                        className={sectionClass('top-skills-outgoing', `bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24 ${
-                            expandedSection === 'top-skills-outgoing'
-                                ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
-                                    expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
-                                }`
-                                : ''
-                        }`)}
-                    >
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                                <Swords className="w-5 h-5 text-orange-400" />
-                                Top Outgoing Damage Skills
-                            </h3>
-                            <button
-                                type="button"
-                                onClick={() => (expandedSection === 'top-skills-outgoing' ? closeExpandedSection() : openExpandedSection('top-skills-outgoing'))}
-                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
-                                aria-label={expandedSection === 'top-skills-outgoing' ? 'Close Top Outgoing Damage Skills' : 'Expand Top Outgoing Damage Skills'}
-                                title={expandedSection === 'top-skills-outgoing' ? 'Close' : 'Expand'}
-                            >
-                                {expandedSection === 'top-skills-outgoing' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                            </button>
-                        </div>
-                        <div className={`${expandedSection === 'top-skills-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                            {stats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
-                                <div key={i} className="flex items-center gap-4">
-                                    <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span className="text-white font-bold">{skill.name}</span>
-                                            <div className="text-right">
-                                                <span className="text-orange-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
-                                                <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-orange-500 rounded-full"
-                                                style={{ width: `${(skill.damage / (stats.topSkills[0]?.damage || 1)) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {stats.topSkills.length === 0 && (
-                                <div className="text-center text-gray-500 italic py-4">No damage data available</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Incoming Skills */}
-                    <div
-                        id="top-skills-incoming"
-                        data-section-visible={isSectionVisible('top-skills-incoming')}
-                        className={sectionClass('top-skills-incoming', `bg-white/5 border border-white/10 rounded-2xl p-6 scroll-mt-24 ${
-                            expandedSection === 'top-skills-incoming'
-                                ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${
-                                    expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
-                                }`
-                                : ''
-                        }`)}
-                    >
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                                <Shield className="w-5 h-5 text-red-500" />
-                                Top Incoming Damage Skills
-                            </h3>
-                            <button
-                                type="button"
-                                onClick={() => (expandedSection === 'top-skills-incoming' ? closeExpandedSection() : openExpandedSection('top-skills-incoming'))}
-                                className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
-                                aria-label={expandedSection === 'top-skills-incoming' ? 'Close Top Incoming Damage Skills' : 'Expand Top Incoming Damage Skills'}
-                                title={expandedSection === 'top-skills-incoming' ? 'Close' : 'Expand'}
-                            >
-                                {expandedSection === 'top-skills-incoming' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                            </button>
-                        </div>
-                        <div className={`${expandedSection === 'top-skills-incoming' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                            {stats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
-                                <div key={i} className="flex items-center gap-4">
-                                    <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span className="text-white font-bold">{skill.name}</span>
-                                            <div className="text-right">
-                                                <span className="text-red-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
-                                                <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-red-500 rounded-full"
-                                                style={{ width: `${(skill.damage / (stats.topIncomingSkills[0]?.damage || 1)) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {stats.topIncomingSkills.length === 0 && (
-                                <div className="text-center text-gray-500 italic py-4">No incoming damage data available</div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Class Distribution Row */}
-                <div id="squad-composition" data-section-visible={isSectionVisible('squad-composition')} data-section-first={isFirstVisibleSection('squad-composition')} className={sectionClass('squad-composition', 'grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 page-break-avoid')}>
-                    {/* Squad Composition */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                            <Users className="w-5 h-5 text-green-400" />
-                            Squad Composition
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] sm:h-[300px] gap-4">
-                            <div className="h-[240px] sm:h-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={sortedSquadClassData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius="45%"
-                                            outerRadius="70%"
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                        >
-                                            {sortedSquadClassData.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
-                                            itemStyle={{ color: '#fff' }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
-                                <div className="space-y-1.5 text-[11px] mx-auto pb-2">
-                                    {sortedSquadClassData.map((entry: any) => (
-                                        <div key={entry.name} className="flex items-center gap-2 text-gray-300">
-                                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-                                            {getProfessionIconPath(entry.name) ? (
-                                                <img
-                                                    src={getProfessionIconPath(entry.name) as string}
-                                                    alt={entry.name}
-                                                    className="w-4 h-4 shrink-0"
-                                                />
-                                            ) : (
-                                                <span className="inline-block w-4 h-4 rounded-sm border border-white/10" />
-                                            )}
-                                            <span className="truncate">{entry.name}</span>
-                                            <span className="text-gray-500">({entry.value})</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Enemy Composition */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                            <Skull className="w-5 h-5 text-red-400" />
-                            Enemy Composition (Top 10)
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px] sm:h-[300px] gap-4">
-                            <div className="h-[240px] sm:h-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={sortedEnemyClassData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius="45%"
-                                            outerRadius="70%"
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                        >
-                                            {sortedEnemyClassData.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
-                                            itemStyle={{ color: '#fff' }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
-                                <div className="space-y-1.5 text-[11px] mx-auto pb-2">
-                                    {sortedEnemyClassData.map((entry: any) => (
-                                        <div key={entry.name} className="flex items-center gap-2 text-gray-300">
-                                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-                                            {getProfessionIconPath(entry.name) ? (
-                                                <img
-                                                    src={getProfessionIconPath(entry.name) as string}
-                                                    alt={entry.name}
-                                                    className="w-4 h-4 shrink-0"
-                                                />
-                                            ) : (
-                                                <span className="inline-block w-4 h-4 rounded-sm border border-white/10" />
-                                            )}
-                                            <span className="truncate">{entry.name}</span>
-                                            <span className="text-gray-500">({entry.value})</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Squad vs Enemy Size Timeline */}
-                <div id="timeline" data-section-visible={isSectionVisible('timeline')} data-section-first={isFirstVisibleSection('timeline')} className={sectionClass('timeline', 'bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24')}>
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                        <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                            <Users className="w-5 h-5 text-green-400" />
-                            Squad vs Enemy Size
-                        </h3>
-                        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-gray-500">
-                            <span className="text-gray-400">Friendly Count</span>
-                            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-                                {([
-                                    { value: 'squad', label: 'Squad' },
-                                    { value: 'squadAllies', label: 'Squad + Allies' }
-                                ] as const).map((option) => (
-                                    <button
-                                        key={option.value}
-                                        type="button"
-                                        onClick={() => setTimelineFriendlyScope(option.value)}
-                                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-                                            timelineFriendlyScope === option.value
-                                                ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'
-                                                : 'border border-transparent text-gray-400 hover:text-gray-200'
-                                        }`}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    {stats.timelineData.length === 0 ? (
-                        <div className="text-center text-gray-500 italic py-10">No timeline data available</div>
-                    ) : (
-                        <div className="h-[260px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={stats.timelineData} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
-                                    <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
-                                    <XAxis
-                                        dataKey="index"
-                                        tick={{ fill: '#94a3b8', fontSize: 11 }}
-                                        tickLine={false}
-                                        axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                                    />
-                                    <YAxis
-                                        tick={{ fill: '#94a3b8', fontSize: 11 }}
-                                        tickLine={false}
-                                        axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                                        width={36}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
-                                        labelFormatter={(_value, payload) => {
-                                            const point = payload?.[0]?.payload;
-                                            return point?.label ? `Log ${point.index} • ${point.label}` : `Log ${_value}`;
-                                        }}
-                                        formatter={(value: any, name?: string) => [
-                                            value,
-                                            name === 'friendly'
-                                                ? (timelineFriendlyScope === 'squad' ? 'Squad' : 'Squad + Allies')
-                                                : 'Enemies'
-                                        ]}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey={timelineFriendlyScope === 'squad' ? 'squadCount' : 'friendlyCount'}
-                                        name="friendly"
-                                        stroke="#22c55e"
-                                        strokeWidth={2}
-                                        dot={{ r: 3, fill: '#22c55e' }}
-                                        activeDot={{ r: 5 }}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="enemies"
-                                        stroke="#ef4444"
-                                        strokeWidth={2}
-                                        dot={{ r: 3, fill: '#ef4444' }}
-                                        activeDot={{ r: 5 }}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    )}
-                </div>
-
-                {/* Map Distribution Pie Chart */}
-                <div id="map-distribution" data-section-visible={isSectionVisible('map-distribution')} data-section-first={isFirstVisibleSection('map-distribution')} className={sectionClass('map-distribution', 'bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24')}>
-                    <h3 className="text-lg font-bold text-gray-200 mb-6 flex items-center gap-2">
-                        <MapIcon className="w-5 h-5 text-blue-400" />
-                        Map Distribution
-                    </h3>
-                    <div className="h-[260px] sm:h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={stats.mapData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius="45%"
-                                    outerRadius="70%"
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {stats.mapData.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem', color: '#fff' }}
-                                    itemStyle={{ color: '#fff' }}
-                                />
-                                <ChartLegend
-                                    verticalAlign="bottom"
-                                    height={36}
-                                    // @ts-ignore
-                                    payload={stats.mapData.map(item => ({
-                                        id: item.name,
-                                        type: 'square',
-                                        value: item.name,
-                                        color: item.color,
-                                        payload: item
-                                    }))}
-                                    formatter={(value: any, entry: any) => (
-                                        <span className="text-gray-300 font-medium ml-1">
-                                            {value} <span className="text-gray-500">({entry.payload.value})</span>
-                                        </span>
-                                    )}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+                <MapDistributionSection
+                    mapData={stats.mapData}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                />
 
                 <OffenseSection
                     stats={stats}
