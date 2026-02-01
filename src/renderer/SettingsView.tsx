@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap } from 'lucide-react';
+import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
@@ -92,6 +92,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
     const [githubWebTheme, setGithubWebTheme] = useState(DEFAULT_WEB_THEME_ID);
+    const [githubFavoriteRepos, setGithubFavoriteRepos] = useState<string[]>([]);
     const [githubAuthStatus, setGithubAuthStatus] = useState<'idle' | 'pending' | 'connected' | 'error'>('idle');
     const [githubAuthMessage, setGithubAuthMessage] = useState<string | null>(null);
     const [githubUserCode, setGithubUserCode] = useState<string | null>(null);
@@ -136,6 +137,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const lastSavedPagesUrlRef = useRef<string | null>(null);
     const logoSyncInFlightRef = useRef(false);
     const queuedLogoPathRef = useRef<string | null>(null);
+    const favoriteRepoSet = useMemo(() => new Set(githubFavoriteRepos), [githubFavoriteRepos]);
     const orderedThemes = useMemo(() => {
         const active = WEB_THEMES.find((theme) => theme.id === githubWebTheme);
         if (!active) return WEB_THEMES;
@@ -163,6 +165,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setGithubToken(settings.githubToken || '');
             setGithubWebTheme(settings.githubWebTheme || DEFAULT_WEB_THEME_ID);
             setGithubLogoPath(settings.githubLogoPath || null);
+            setGithubFavoriteRepos(Array.isArray(settings.githubFavoriteRepos) ? settings.githubFavoriteRepos : []);
             if (settings.githubToken) {
                 setGithubAuthStatus('connected');
             }
@@ -186,7 +189,8 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             githubRepoOwner: githubRepoOwner || null,
             githubToken: githubToken || null,
             githubWebTheme: githubWebTheme || DEFAULT_WEB_THEME_ID,
-            githubLogoPath: githubLogoPath || null
+            githubLogoPath: githubLogoPath || null,
+            githubFavoriteRepos
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
@@ -220,6 +224,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         githubToken,
         githubWebTheme,
         githubLogoPath,
+        githubFavoriteRepos,
         hasLoaded
     ]);
 
@@ -251,6 +256,14 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setGithubRepos(result.repos);
         }
         setLoadingRepos(false);
+    };
+
+    const toggleFavoriteRepo = (fullName: string) => {
+        setGithubFavoriteRepos((prev) => (
+            prev.includes(fullName)
+                ? prev.filter((name) => name !== fullName)
+                : [...prev, fullName]
+        ));
     };
 
     const loadGithubReports = async () => {
@@ -886,25 +899,53 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                         {(githubRepos.length ? githubRepos : [{ full_name: '', name: '', owner: '' }])
                                             .filter((repo) => repo.full_name.toLowerCase().includes(githubRepoSearch.trim().toLowerCase()))
                                             .sort((a, b) => {
+                                                const aFav = favoriteRepoSet.has(a.full_name);
+                                                const bFav = favoriteRepoSet.has(b.full_name);
+                                                if (aFav !== bFav) return aFav ? -1 : 1;
                                                 if (a.name === githubRepoName) return -1;
                                                 if (b.name === githubRepoName) return 1;
                                                 return a.full_name.localeCompare(b.full_name);
                                             })
-                                            .map((repo, idx) => (
-                                                <button
-                                                    key={`${repo.full_name}-${idx}`}
-                                                    onClick={() => {
-                                                        setGithubRepoName(repo.name);
-                                                        setGithubRepoOwner(repo.owner || '');
-                                                    }}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${githubRepoName === repo.name
-                                                        ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
-                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                                        }`}
-                                                >
-                                                    {repo.full_name || 'No repos loaded'}
-                                                </button>
-                                            ))}
+                                            .map((repo, idx) => {
+                                                const isFavorite = favoriteRepoSet.has(repo.full_name);
+                                                return (
+                                                    <div
+                                                        key={`${repo.full_name}-${idx}`}
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        onClick={() => {
+                                                            setGithubRepoName(repo.name);
+                                                            setGithubRepoOwner(repo.owner || '');
+                                                        }}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                                event.preventDefault();
+                                                                setGithubRepoName(repo.name);
+                                                                setGithubRepoOwner(repo.owner || '');
+                                                            }
+                                                        }}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex items-center justify-between gap-2 cursor-pointer ${githubRepoName === repo.name
+                                                            ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                                            : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                            }`}
+                                                    >
+                                                        <span className="truncate">{repo.full_name || 'No repos loaded'}</span>
+                                                        {repo.full_name ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    toggleFavoriteRepo(repo.full_name);
+                                                                }}
+                                                                className={`p-1 rounded-md transition-colors ${isFavorite ? 'text-amber-300' : 'text-gray-500 hover:text-gray-200'}`}
+                                                                title={isFavorite ? 'Remove favorite' : 'Favorite repo'}
+                                                            >
+                                                                <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-amber-300' : 'fill-transparent'}`} />
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
                                 </>
                             ) : (

@@ -166,6 +166,7 @@ export interface IElectronAPI {
         githubToken?: string | null;
         githubWebTheme?: string | null;
         githubLogoPath?: string | null;
+        githubFavoriteRepos?: string[] | null;
     }>;
     clearDpsReportCache: () => Promise<{ success: boolean; clearedEntries?: number; error?: string }>;
     manualUpload: (path: string) => void;
@@ -190,6 +191,7 @@ export interface IElectronAPI {
         githubToken?: string | null;
         githubWebTheme?: string | null;
         githubLogoPath?: string | null;
+        githubFavoriteRepos?: string[] | null;
     }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;

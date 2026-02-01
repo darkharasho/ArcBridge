@@ -1478,7 +1478,8 @@ if (!gotTheLock) {
                 githubPagesBaseUrl: store.get('githubPagesBaseUrl', null),
                 githubToken: store.get('githubToken', null),
                 githubWebTheme: store.get('githubWebTheme', DEFAULT_WEB_THEME_ID),
-                githubLogoPath: store.get('githubLogoPath', null)
+                githubLogoPath: store.get('githubLogoPath', null),
+                githubFavoriteRepos: store.get('githubFavoriteRepos', [])
             };
         });
 
@@ -1494,7 +1495,7 @@ if (!gotTheLock) {
 
         // Removed get-logs and save-logs handlers
 
-        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, uiTheme?: 'classic' | 'modern', githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null }) => {
+        ipcMain.on('save-settings', (_event, settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'image' | 'image-beta' | 'embed', webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, uiTheme?: 'classic' | 'modern', githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubWebTheme?: string | null, githubLogoPath?: string | null, githubFavoriteRepos?: string[] }) => {
             if (settings.logDirectory !== undefined) {
                 store.set('logDirectory', settings.logDirectory);
                 if (settings.logDirectory) watcher?.start(settings.logDirectory);
@@ -1566,6 +1567,9 @@ if (!gotTheLock) {
             }
             if (settings.githubLogoPath !== undefined) {
                 store.set('githubLogoPath', settings.githubLogoPath);
+            }
+            if (settings.githubFavoriteRepos !== undefined) {
+                store.set('githubFavoriteRepos', settings.githubFavoriteRepos);
             }
         });
 
