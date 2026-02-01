@@ -533,7 +533,8 @@ export function ReportApp() {
             { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
             { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
             { id: 'special-buffs', label: 'Special Buffs', icon: Star },
-            { id: 'skill-usage', label: 'Skill Usage', icon: Zap }
+            { id: 'skill-usage', label: 'Skill Usage', icon: Zap },
+            { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
         ];
         const handleTocClick = (id: string) => {
             const el = document.getElementById(id);

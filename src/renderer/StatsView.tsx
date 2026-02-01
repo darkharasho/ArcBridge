@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X } from 'lucide-react';
+import { ArrowLeft, Trophy, Share2, Swords, Shield, Zap, Activity, Flame, HelpingHand, Hammer, ShieldCheck, Crosshair, Map as MapIcon, Users, Skull, Wind, Crown, Sparkles, Star, UploadCloud, Loader2, CheckCircle2, XCircle, Maximize2, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as ChartLegend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toPng } from 'html-to-image';
 import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayerDownContribution, getPlayerSquadHealing, getPlayerSquadBarrier, getPlayerOutgoingCrowdControl, getTargetStatTotal } from '../shared/dashboardMetrics';
@@ -584,8 +584,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const expandedCloseTimerRef = useRef<number | null>(null);
     const [fightBreakdownTab, setFightBreakdownTab] = useState<'sizes' | 'outcomes' | 'damage' | 'barrier'>('sizes');
     const [skillUsageView, setSkillUsageView] = useState<'total' | 'perSecond'>('total');
+    const [expandedSkillUsageClass, setExpandedSkillUsageClass] = useState<string | null>(null);
     const [apmView, setApmView] = useState<'total' | 'perSecond'>('total');
     const [activeApmSpec, setActiveApmSpec] = useState<string | null>(null);
+    const [expandedApmSpec, setExpandedApmSpec] = useState<string | null>(null);
+    const [activeApmSkillId, setActiveApmSkillId] = useState<string | null>(null);
+    const [apmSkillSearch, setApmSkillSearch] = useState('');
 
     const formatWithCommas = (value: number, decimals = 2) =>
         value.toLocaleString(undefined, {
@@ -2651,6 +2655,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         return Math.round(value).toLocaleString();
     };
     const formatApmValue = (value: number) => value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const formatCastRateValue = (value: number) => value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatCastCountValue = (value: number) => Math.round(value).toLocaleString();
 
     const getPlayerActiveSeconds = (playerKey: string) => {
         const player = playerMapByKey.get(playerKey);
@@ -2721,6 +2727,28 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             );
         });
     }, [skillUsageData.players, skillUsagePlayerFilter]);
+
+    const groupedSkillUsagePlayers = useMemo(() => {
+        const groups = new Map<string, SkillUsagePlayer[]>();
+        filteredPlayerOptions.forEach((player) => {
+            const profession = player.profession || 'Unknown';
+            const list = groups.get(profession) || [];
+            list.push(player);
+            groups.set(profession, list);
+        });
+        return Array.from(groups.entries())
+            .map(([profession, players]) => ({
+                profession,
+                players: [...players].sort((a, b) => b.logs - a.logs || a.displayName.localeCompare(b.displayName))
+            }))
+            .sort((a, b) => b.players.length - a.players.length || a.profession.localeCompare(b.profession));
+    }, [filteredPlayerOptions]);
+
+    useEffect(() => {
+        if (expandedSkillUsageClass && !groupedSkillUsagePlayers.some((group) => group.profession === expandedSkillUsageClass)) {
+            setExpandedSkillUsageClass(null);
+        }
+    }, [groupedSkillUsagePlayers, expandedSkillUsageClass]);
 
     const playerTotalsForSkill = useMemo(() => {
         if (!selectedSkillId) return {};
@@ -2825,6 +2853,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const selectedSkillName = skillUsageData.skillOptions.find((option) => option.id === selectedSkillId)?.name || '';
     const skillUsageReady = skillUsageAvailable && Boolean(selectedSkillId) && selectedPlayers.length > 0;
 
+    const ALL_SKILLS_KEY = '__all__';
     const apmSpecTables = useMemo(() => {
         const specMap = new Map<string, {
             profession: string;
@@ -2847,7 +2876,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             totalActiveSeconds: number;
             totalCasts: number;
             totalAutoCasts: number;
+            skillMap: Map<string, {
+                id: string;
+                name: string;
+                totalCasts: number;
+                playerCounts: Map<string, number>;
+            }>;
         }>();
+        const playerLookup = new Map(skillUsageData.players.map((player) => [player.key, player]));
+        const normalizeSkillKey = (name: string) => name.trim().toLowerCase();
 
         skillUsageData.players.forEach((player) => {
             const profession = player.profession || 'Unknown';
@@ -2857,7 +2894,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 playerRows: [],
                 totalActiveSeconds: 0,
                 totalCasts: 0,
-                totalAutoCasts: 0
+                totalAutoCasts: 0,
+                skillMap: new Map()
             };
             const activeSeconds = player.totalActiveSeconds || 0;
             let totalCasts = 0;
@@ -2868,6 +2906,18 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 if (skillAutoAttackLookup.get(skillId)) {
                     totalAutoCasts += count;
                 }
+                const rawName = skillNameLookup.get(skillId) || `Skill ${skillId}`;
+                const cleanedName = rawName.trim() || `Skill ${skillId}`;
+                const skillKey = normalizeSkillKey(cleanedName);
+                const skillEntry = entry.skillMap.get(skillKey) || {
+                    id: skillKey,
+                    name: cleanedName,
+                    totalCasts: 0,
+                    playerCounts: new Map<string, number>()
+                };
+                skillEntry.totalCasts += count;
+                skillEntry.playerCounts.set(player.key, (skillEntry.playerCounts.get(player.key) || 0) + count);
+                entry.skillMap.set(skillKey, skillEntry);
             });
             const nonAutoCasts = Math.max(0, totalCasts - totalAutoCasts);
             const activeMinutes = activeSeconds > 0 ? activeSeconds / 60 : 0;
@@ -2912,22 +2962,67 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     if (diff !== 0) return diff;
                     return a.displayName.localeCompare(b.displayName);
                 });
+                const skills = Array.from(spec.skillMap.values())
+                    .map((skill) => {
+                        const name = skill.name || `Skill ${skill.id}`;
+                        const playerRows = Array.from(skill.playerCounts.entries())
+                            .map(([playerKey, count]) => {
+                                const player = playerLookup.get(playerKey);
+                                const activeSeconds = player?.totalActiveSeconds || 0;
+                                const activeMinutes = activeSeconds > 0 ? activeSeconds / 60 : 0;
+                                return {
+                                    key: playerKey,
+                                    displayName: player?.displayName || playerKey,
+                                    profession: player?.profession || 'Unknown',
+                                    professionList: player?.professionList || [],
+                                    count,
+                                    apm: activeMinutes > 0 ? count / activeMinutes : 0,
+                                    aps: activeSeconds > 0 ? count / activeSeconds : 0
+                                };
+                            })
+                            .sort((a, b) => {
+                                const diff = b[sortKey] - a[sortKey];
+                                if (diff !== 0) return diff;
+                                return a.displayName.localeCompare(b.displayName);
+                            });
+                        const skillActiveSeconds = playerRows.reduce((sum, row) => sum + (playerLookup.get(row.key)?.totalActiveSeconds || 0), 0);
+                        const skillActiveMinutes = skillActiveSeconds > 0 ? skillActiveSeconds / 60 : 0;
+                        const totalApm = skillActiveMinutes > 0 ? skill.totalCasts / skillActiveMinutes : 0;
+                        const totalAps = skillActiveSeconds > 0 ? skill.totalCasts / skillActiveSeconds : 0;
+                        const totalCastsPerSecond = skillActiveSeconds > 0 ? skill.totalCasts / skillActiveSeconds : 0;
+                        return {
+                            id: skill.id,
+                            name,
+                            totalCasts: skill.totalCasts,
+                            totalApm,
+                            totalAps,
+                            totalCastsPerSecond,
+                            playerRows
+                        };
+                    })
+                    .sort((a, b) => b.totalCasts - a.totalCasts || a.name.localeCompare(b.name));
                 return {
                     ...spec,
                     totalApm,
                     totalApmNoAuto,
                     totalAps,
                     totalApsNoAuto,
-                    playerRows
+                    playerRows,
+                    skills
                 };
             })
             .sort((a, b) => b.totalCasts - a.totalCasts || a.profession.localeCompare(b.profession));
-    }, [skillUsageData.players, skillAutoAttackLookup, apmView]);
+    }, [skillUsageData.players, skillAutoAttackLookup, skillNameLookup, apmView]);
 
     const apmSpecAvailable = skillUsageAvailable && apmSpecTables.length > 0;
     const activeApmSpecTable = useMemo(
         () => apmSpecTables.find((spec) => spec.profession === activeApmSpec) ?? null,
         [apmSpecTables, activeApmSpec]
+    );
+    const isAllApmSkills = activeApmSkillId === ALL_SKILLS_KEY;
+    const activeApmSkill = useMemo(
+        () => activeApmSpecTable?.skills?.find((skill) => skill.id === activeApmSkillId) ?? null,
+        [activeApmSpecTable, activeApmSkillId]
     );
 
     useEffect(() => {
@@ -2935,12 +3030,30 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (activeApmSpec !== null) {
                 setActiveApmSpec(null);
             }
+            if (expandedApmSpec !== null) {
+                setExpandedApmSpec(null);
+            }
             return;
         }
         if (!activeApmSpec || !apmSpecTables.some((spec) => spec.profession === activeApmSpec)) {
-            setActiveApmSpec(apmSpecTables[0].profession);
+            const nextSpec = apmSpecTables[0].profession;
+            setActiveApmSpec(nextSpec);
+            setExpandedApmSpec(null);
         }
-    }, [apmSpecTables, activeApmSpec]);
+    }, [apmSpecTables, activeApmSpec, expandedApmSpec]);
+
+    useEffect(() => {
+        if (!activeApmSpecTable || activeApmSpecTable.skills.length === 0) {
+            if (activeApmSkillId !== null) {
+                setActiveApmSkillId(null);
+            }
+            return;
+        }
+        const hasSkill = activeApmSpecTable.skills.some((skill) => skill.id === activeApmSkillId);
+        if (!activeApmSkillId || (!hasSkill && activeApmSkillId !== ALL_SKILLS_KEY)) {
+            setActiveApmSkillId(ALL_SKILLS_KEY);
+        }
+    }, [activeApmSpecTable, activeApmSkillId]);
 
     const togglePlayerSelection = (playerKey: string) => {
         setSelectedPlayers((prev) => {
@@ -5369,7 +5482,14 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                         </div>
                     </div>
                     {selectedPlayers.length > 0 && (
-                        <div className="flex gap-2 pb-2 overflow-x-auto pr-1 -mx-1 px-1">
+                        <div className="flex items-center gap-2 pb-2 overflow-x-auto pr-1 -mx-1 px-1">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedPlayers([])}
+                                className="shrink-0 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white"
+                            >
+                                Clear All
+                            </button>
                             {selectedPlayers.map((playerKey) => {
                                 const player = playerMapByKey.get(playerKey);
                                 if (!player) return null;
@@ -5397,30 +5517,88 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                                 className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-cyan-400 focus:outline-none"
                             />
                             <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
-                                {filteredPlayerOptions.length === 0 ? (
+                                {groupedSkillUsagePlayers.length === 0 ? (
                                     <div className="px-3 py-4 text-xs text-gray-500 italic">
                                         No squad players match the filter
                                     </div>
                                 ) : (
-                                    filteredPlayerOptions.map((player) => {
-                                        const isSelected = selectedPlayers.includes(player.key);
+                                    groupedSkillUsagePlayers.map((group) => {
+                                        const isExpanded = expandedSkillUsageClass === group.profession;
+                                        const groupKeys = group.players.map((player) => player.key);
+                                        const allSelected = groupKeys.length > 0 && groupKeys.every((key) => selectedPlayers.includes(key));
                                         return (
-                                            <button
-                                                type="button"
-                                                key={player.key}
-                                                onClick={() => togglePlayerSelection(player.key)}
-                                                className={`w-full border-b border-white/5 px-3 py-2 text-left transition-colors last:border-b-0 ${isSelected ? 'border-cyan-400 bg-cyan-500/10 text-white' : 'border-transparent hover:border-white/10 hover:bg-white/5'}`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <div className="text-sm font-semibold truncate text-white">{player.displayName}</div>
-                                                        <div className="text-[11px] text-gray-400">
-                                                            {player.account} · {player.profession} · {player.logs} {player.logs === 1 ? 'log' : 'logs'}
+                                            <div key={group.profession} className="border-b border-white/5 last:border-b-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (isExpanded) {
+                                                            setExpandedSkillUsageClass(null);
+                                                            return;
+                                                        }
+                                                        setExpandedSkillUsageClass(group.profession);
+                                                    }}
+                                                    className={`w-full px-3 py-2 text-left transition-colors ${isExpanded ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            {renderProfessionIcon(group.profession, undefined, 'w-4 h-4')}
+                                                            <div className="text-sm font-semibold truncate text-white">{group.profession}</div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-gray-400">
+                                                            <span className="text-[10px]">{group.players.length}p</span>
+                                                            {isExpanded ? (
+                                                                <ChevronDown className="w-3.5 h-3.5" />
+                                                            ) : (
+                                                                <ChevronRight className="w-3.5 h-3.5" />
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    {isSelected && <CheckCircle2 className="w-4 h-4 text-cyan-300" />}
-                                                </div>
-                                            </button>
+                                                </button>
+                                                {isExpanded && (
+                                                    <div className="pb-2">
+                                                        <div className="px-6 pt-1 pb-2 flex items-center justify-between text-[11px] text-gray-400">
+                                                            <span>{group.players.length} {group.players.length === 1 ? 'player' : 'players'}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedPlayers((prev) => {
+                                                                        if (allSelected) {
+                                                                            return prev.filter((key) => !groupKeys.includes(key));
+                                                                        }
+                                                                        const next = new Set(prev);
+                                                                        groupKeys.forEach((key) => next.add(key));
+                                                                        return Array.from(next);
+                                                                    });
+                                                                }}
+                                                                className="px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white"
+                                                            >
+                                                                {allSelected ? 'Clear All' : 'Select All'}
+                                                            </button>
+                                                        </div>
+                                                        {group.players.map((player) => {
+                                                            const isSelected = selectedPlayers.includes(player.key);
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    key={player.key}
+                                                                    onClick={() => togglePlayerSelection(player.key)}
+                                                                    className={`w-full border-b border-white/5 px-6 py-2 text-left transition-colors last:border-b-0 ${isSelected ? 'border-cyan-400 bg-cyan-500/10 text-white' : 'border-transparent hover:border-white/10 hover:bg-white/5'}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div>
+                                                                            <div className="text-sm font-semibold truncate text-white">{player.displayName}</div>
+                                                                            <div className="text-[11px] text-gray-400">
+                                                                                {player.account} · {player.profession} · {player.logs} {player.logs === 1 ? 'log' : 'logs'}
+                                                                            </div>
+                                                                        </div>
+                                                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-cyan-300" />}
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
                                         );
                                     })
                                 )}
@@ -5649,14 +5827,20 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 {/* APM Breakdown */}
                 <div
                     id="apm-stats"
-                    className="bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24"
+                    className={`bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid scroll-mt-24 flex flex-col ${
+                        expandedSection === 'apm-stats'
+                            ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane pb-10 ${
+                                expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                            }`
+                            : 'overflow-hidden'
+                    }`}
                 >
                     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
                             <Activity className="w-5 h-5 text-emerald-300" />
                             APM Breakdown
                         </h3>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 relative">
                             <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 text-[10px] uppercase tracking-[0.25em] text-gray-400">
                                 {[
                                     { id: 'total', label: 'Total' },
@@ -5679,90 +5863,207 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                             <div className="text-xs uppercase tracking-[0.3em] text-gray-500">
                                 {apmSpecTables.length} {apmSpecTables.length === 1 ? 'spec' : 'specs'}
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => (expandedSection === 'apm-stats' ? closeExpandedSection() : openExpandedSection('apm-stats'))}
+                                className={`p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors ${
+                                    expandedSection === 'apm-stats' ? 'absolute -top-1 -right-1 md:static' : ''
+                                }`}
+                                aria-label={expandedSection === 'apm-stats' ? 'Close APM Breakdown' : 'Expand APM Breakdown'}
+                                title={expandedSection === 'apm-stats' ? 'Close' : 'Expand'}
+                            >
+                                {expandedSection === 'apm-stats' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                            </button>
                         </div>
                     </div>
-                    {!apmSpecAvailable ? (
-                        <div className="rounded-2xl border border-dashed border-white/20 px-4 py-6 text-center text-xs text-gray-400">
-                            {skillUsageAvailable
-                                ? 'No APM data available for the current selection.'
-                                : 'Upload or highlight logs with rotation data to enable the APM table.'}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
-                            <div className="bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0">
-                                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Elite Specs</div>
-                                <div className={sidebarListClass}>
+                    <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 flex flex-col' : ''}>
+                        {!apmSpecAvailable ? (
+                            <div className="rounded-2xl border border-dashed border-white/20 px-4 py-6 text-center text-xs text-gray-400">
+                                {skillUsageAvailable
+                                    ? 'No APM data available for the current selection.'
+                                    : 'Upload or highlight logs with rotation data to enable the APM table.'}
+                            </div>
+                        ) : (
+                            <div className={`grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 ${expandedSection === 'apm-stats' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                                <div className={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'apm-stats' ? 'h-full' : ''}`}>
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Elite Specs</div>
+                                    <div className={`${sidebarListClass} ${expandedSection === 'apm-stats' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                                     {apmSpecTables.map((spec) => (
-                                        <button
-                                            key={spec.profession}
-                                            onClick={() => setActiveApmSpec(spec.profession)}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                                                activeApmSpec === spec.profession
-                                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
-                                                    : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    {renderProfessionIcon(spec.profession, undefined, 'w-4 h-4')}
-                                                    <span className="truncate">{spec.profession}</span>
+                                        <div key={spec.profession} className="space-y-1">
+                                            <button
+                                                onClick={() => {
+                                                    if (activeApmSpec === spec.profession && expandedApmSpec === spec.profession) {
+                                                        setExpandedApmSpec(null);
+                                                        return;
+                                                    }
+                                                    setActiveApmSpec(spec.profession);
+                                                    setExpandedApmSpec(spec.profession);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                                                    activeApmSpec === spec.profession
+                                                        ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        {renderProfessionIcon(spec.profession, undefined, 'w-4 h-4')}
+                                                        <span className="truncate">{spec.profession}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-gray-400">
+                                                        <span className="text-[10px]">{spec.players.length}p</span>
+                                                        {expandedApmSpec === spec.profession ? (
+                                                            <ChevronDown className="w-3.5 h-3.5" />
+                                                        ) : (
+                                                            <ChevronRight className="w-3.5 h-3.5" />
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <span className="text-[10px] text-gray-400">{spec.players.length}p</span>
-                                            </div>
-                                        </button>
+                                            </button>
+                                            {expandedApmSpec === spec.profession && spec.skills.length > 0 && (
+                                                <div className="ml-4 space-y-2">
+                                                    <input
+                                                        type="search"
+                                                        value={apmSkillSearch}
+                                                        onChange={(event) => setApmSkillSearch(event.target.value)}
+                                                        placeholder="Search skills..."
+                                                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-gray-200 focus:outline-none focus:border-emerald-400"
+                                                    />
+                                                    <button
+                                                        onClick={() => setActiveApmSkillId(ALL_SKILLS_KEY)}
+                                                        className={`w-full text-left px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
+                                                            activeApmSkillId === ALL_SKILLS_KEY
+                                                                ? 'bg-emerald-500/20 text-emerald-100 border-emerald-400/40'
+                                                                : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        <span className="truncate block">All Skills</span>
+                                                    </button>
+                                                    {(() => {
+                                                        const term = apmSkillSearch.trim().toLowerCase();
+                                                        const filteredSkills = term
+                                                            ? spec.skills.filter((skill) => skill.name.toLowerCase().includes(term))
+                                                            : spec.skills;
+                                                        if (filteredSkills.length === 0) {
+                                                            return (
+                                                                <div className="px-3 py-2 text-[11px] text-gray-500 italic">
+                                                                    No skills match this search.
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return filteredSkills.map((skill) => (
+                                                            <button
+                                                                key={skill.id}
+                                                                onClick={() => setActiveApmSkillId(skill.id)}
+                                                                className={`w-full text-left px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+                                                                    activeApmSkillId === skill.id
+                                                                        ? 'bg-emerald-500/10 text-emerald-100 border-emerald-400/40'
+                                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                                }`}
+                                                            >
+                                                                <span className="truncate block">{skill.name}</span>
+                                                            </button>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
-                                {!activeApmSpecTable ? (
+                            <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'apm-stats' ? 'flex flex-col min-h-0' : ''}`}>
+                                {!activeApmSpecTable || (!isAllApmSkills && !activeApmSkill) ? (
                                     <div className="px-4 py-10 text-center text-gray-500 italic text-sm">
-                                        Select an elite spec to view APM details
+                                        Select an elite spec and skill to view APM details
                                     </div>
                                 ) : (
-                                    <div>
+                                    <div className={expandedSection === 'apm-stats' ? 'flex flex-col min-h-0' : ''}>
                                         <div className="flex items-center justify-between px-4 py-3 bg-white/5">
                                             <div className="flex items-center gap-2">
                                                 {renderProfessionIcon(activeApmSpecTable.profession, undefined, 'w-4 h-4')}
                                                 <div className="text-sm font-semibold text-gray-200">{activeApmSpecTable.profession}</div>
+                                                <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
+                                                <div className="text-sm font-semibold text-gray-200 truncate">
+                                                    {isAllApmSkills ? 'All Skills' : activeApmSkill?.name}
+                                                </div>
                                             </div>
                                             <div className="text-[11px] text-gray-400">
-                                                {activeApmSpecTable.players.length} {activeApmSpecTable.players.length === 1 ? 'player' : 'players'}
-                                                {' '}| {formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalAps : activeApmSpecTable.totalApm)} {apmView === 'perSecond' ? 'APS' : 'APM'}
-                                                {' '}| {formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalApsNoAuto : activeApmSpecTable.totalApmNoAuto)} {apmView === 'perSecond' ? 'APS' : 'APM'} (no auto)
+                                                {isAllApmSkills
+                                                    ? `${activeApmSpecTable.players.length} ${activeApmSpecTable.players.length === 1 ? 'player' : 'players'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalAps : activeApmSpecTable.totalApm)} ${apmView === 'perSecond' ? 'APS' : 'APM'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalApsNoAuto : activeApmSpecTable.totalApmNoAuto)} ${apmView === 'perSecond' ? 'APS' : 'APM'} (no auto)`
+                                                    : `${activeApmSkill?.playerRows.length ?? 0} ${activeApmSkill?.playerRows.length === 1 ? 'player' : 'players'} | ${formatApmValue(activeApmSkill?.totalApm ?? 0)} APM | ${apmView === 'perSecond'
+                                                        ? `${formatCastRateValue(activeApmSkill?.totalCastsPerSecond ?? 0)} casts/sec`
+                                                        : `${formatCastCountValue(activeApmSkill?.totalCasts ?? 0)} casts`}`}
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                            <div>Player</div>
-                                            <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'}</div>
-                                            <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto)</div>
-                                        </div>
-                                        <div className="max-h-72 overflow-y-auto">
-                                            {activeApmSpecTable.playerRows.map((row, index) => (
-                                                <div
-                                                    key={`${activeApmSpecTable.profession}-${row.key}`}
-                                                    className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"
-                                                >
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">{`#${index + 1}`}</span>
-                                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                        <div className="min-w-0">
-                                                            <div className="font-semibold text-white truncate">{row.displayName}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {formatApmValue(apmView === 'perSecond' ? row.aps : row.apm)}
-                                                    </div>
-                                                    <div className="text-right font-mono text-gray-300">
-                                                        {formatApmValue(apmView === 'perSecond' ? row.apsNoAuto : row.apmNoAuto)}
-                                                    </div>
+                                        {isAllApmSkills ? (
+                                            <>
+                                                <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                    <div>Player</div>
+                                                    <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'}</div>
+                                                    <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto)</div>
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
+                                                    {activeApmSpecTable.playerRows.map((row, index) => (
+                                                        <div
+                                                            key={`${activeApmSpecTable.profession}-all-${row.key}`}
+                                                            className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">{`#${index + 1}`}</span>
+                                                                {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                <div className="min-w-0">
+                                                                    <div className="font-semibold text-white truncate">{row.displayName}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {formatApmValue(apmView === 'perSecond' ? row.aps : row.apm)}
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {formatApmValue(apmView === 'perSecond' ? row.apsNoAuto : row.apmNoAuto)}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                    <div>Player</div>
+                                                    <div className="text-right">APM</div>
+                                                    <div className="text-right">{apmView === 'perSecond' ? 'Casts/Sec' : 'Casts'}</div>
+                                                </div>
+                                                <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
+                                                    {activeApmSkill?.playerRows.map((row, index) => (
+                                                        <div
+                                                            key={`${activeApmSpecTable.profession}-${activeApmSkill?.id}-${row.key}`}
+                                                            className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"
+                                                        >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">{`#${index + 1}`}</span>
+                                                                {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                                                <div className="min-w-0">
+                                                                    <div className="font-semibold text-white truncate">{row.displayName}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {formatApmValue(row.apm)}
+                                                            </div>
+                                                            <div className="text-right font-mono text-gray-300">
+                                                                {apmView === 'perSecond'
+                                                                    ? formatCastRateValue(row.aps)
+                                                                    : formatCastCountValue(row.count)}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
+                    </div>
                 </div>
             </div>
         </div>
