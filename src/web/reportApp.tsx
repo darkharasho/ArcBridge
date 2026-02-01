@@ -219,9 +219,10 @@ export function ReportApp() {
             id: 'defense',
             label: 'Defensive Stats',
             icon: Shield,
-            sectionIds: ['defense-detailed', 'support-detailed', 'healing-stats'],
+            sectionIds: ['defense-detailed', 'boon-output', 'support-detailed', 'healing-stats'],
             items: [
                 { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
+                { id: 'boon-output', label: 'Boon Output', icon: ShieldCheck },
                 { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
                 { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse }
             ]

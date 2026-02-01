@@ -4282,32 +4282,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     </div>
                 </div>
 
-                <BoonOutputSection
-                    stats={stats}
-                    activeBoonCategory={activeBoonCategory}
-                    setActiveBoonCategory={setActiveBoonCategory}
-                    activeBoonMetric={activeBoonMetric}
-                    setActiveBoonMetric={setActiveBoonMetric}
-                    activeBoonTab={activeBoonTab}
-                    setActiveBoonTab={setActiveBoonTab}
-                    activeBoonTable={activeBoonTable}
-                    filteredBoonTables={filteredBoonTables}
-                    boonSearch={boonSearch}
-                    setBoonSearch={setBoonSearch}
-                    formatBoonMetricDisplay={formatBoonMetricDisplay}
-                    getBoonMetricValue={getBoonMetricValue}
-                    renderProfessionIcon={renderProfessionIcon}
-                    roundCountStats={roundCountStats}
-                    expandedSection={expandedSection}
-                    expandedSectionClosing={expandedSectionClosing}
-                    openExpandedSection={openExpandedSection}
-                    closeExpandedSection={closeExpandedSection}
-                    isSectionVisible={isSectionVisible}
-                    isFirstVisibleSection={isFirstVisibleSection}
-                    sectionClass={sectionClass}
-                    sidebarListClass={sidebarListClass}
-                />
-
                 <OffenseSection
                     stats={stats}
                     OFFENSE_METRICS={OFFENSE_METRICS}
@@ -4509,6 +4483,32 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                         />
                     )}
                 </div>
+
+                <BoonOutputSection
+                    stats={stats}
+                    activeBoonCategory={activeBoonCategory}
+                    setActiveBoonCategory={setActiveBoonCategory}
+                    activeBoonMetric={activeBoonMetric}
+                    setActiveBoonMetric={setActiveBoonMetric}
+                    activeBoonTab={activeBoonTab}
+                    setActiveBoonTab={setActiveBoonTab}
+                    activeBoonTable={activeBoonTable}
+                    filteredBoonTables={filteredBoonTables}
+                    boonSearch={boonSearch}
+                    setBoonSearch={setBoonSearch}
+                    formatBoonMetricDisplay={formatBoonMetricDisplay}
+                    getBoonMetricValue={getBoonMetricValue}
+                    renderProfessionIcon={renderProfessionIcon}
+                    roundCountStats={roundCountStats}
+                    expandedSection={expandedSection}
+                    expandedSectionClosing={expandedSectionClosing}
+                    openExpandedSection={openExpandedSection}
+                    closeExpandedSection={closeExpandedSection}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                    sidebarListClass={sidebarListClass}
+                />
 
                 {/* Support - Detailed Table */}
                 <div
