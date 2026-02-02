@@ -719,7 +719,30 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         // Map Data
         const normalizeMapLabel = (value: any) => {
             if (!value) return 'Unknown';
-            return String(value).replace(/^Detailed\s*WvW\s*-\s*/i, '').trim() || 'Unknown';
+            const raw = String(value).trim();
+            if (!raw) return 'Unknown';
+            const cleaned = raw
+                .replace(/^Detailed\s*WvW\s*-\s*/i, '')
+                .replace(/^World\s*vs\s*World\s*-\s*/i, '')
+                .replace(/^WvW\s*-\s*/i, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const normalized = cleaned.toLowerCase();
+            if (normalized === 'ebg' || normalized === 'eternal battlegrounds') return 'Eternal Battlegrounds';
+            if (/^green.*alpine.*borderlands$/.test(normalized) || normalized === 'green alpine borderlands' || normalized === 'green borderlands') {
+                return 'Green Alpine Borderlands';
+            }
+            if (/^blue.*alpine.*borderlands$/.test(normalized) || normalized === 'blue alpine borderlands' || normalized === 'blue borderlands') {
+                return 'Blue Alpine Borderlands';
+            }
+            if (/^red.*alpine.*borderlands$/.test(normalized) || normalized === 'red alpine borderlands' || normalized === 'red borderlands') {
+                return 'Red Alpine Borderlands';
+            }
+            if (/^green.*desert.*borderlands$/.test(normalized)) return 'Green Desert Borderlands';
+            if (/^blue.*desert.*borderlands$/.test(normalized)) return 'Blue Desert Borderlands';
+            if (/^red.*desert.*borderlands$/.test(normalized)) return 'Red Desert Borderlands';
+            if (normalized === 'obsidian sanctum') return 'Obsidian Sanctum';
+            return cleaned || 'Unknown';
         };
         const resolveMapName = (details: any, log: any) => {
             return normalizeMapLabel(
@@ -741,8 +764,22 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         });
         const mapData = Object.entries(mapCounts)
             .map(([name, value]) => {
-                const isEbg = /eternal battlegrounds|^ebg$/i.test(String(name).trim());
-                return { name, value, color: isEbg ? '#ffffff' : '#64748b' };
+                const normalizedName = String(name).trim();
+                const lower = normalizedName.toLowerCase();
+                const isEbg = lower === 'eternal battlegrounds' || lower === 'ebg';
+                const isGreen = lower.includes('green');
+                const isRed = lower.includes('red');
+                const isBlue = lower.includes('blue');
+                const color = isEbg
+                    ? '#ffffff'
+                    : isGreen
+                        ? '#22c55e'
+                        : isRed
+                            ? '#ef4444'
+                            : isBlue
+                                ? '#3b82f6'
+                                : '#64748b';
+                return { name: normalizedName, value, color };
             })
             .sort((a, b) => b.value - a.value);
 
