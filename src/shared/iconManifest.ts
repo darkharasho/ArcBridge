@@ -28,6 +28,7 @@ export const normalizeIconKey = (name: string): string => {
     return name
         .normalize('NFKD')
         .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’'`´"]/g, '')
         .toLowerCase()
         .replace(/&/g, ' and ')
         .replace(/[^a-z0-9]+/g, '_')
@@ -178,8 +179,15 @@ export const guessIconUrl = (kind: IconKind, name: string): string | null => {
         .replace(/[^A-Za-z0-9]+/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '');
+    const deapostrophed = trimmed
+        .replace(/[’'`´"]/g, '')
+        .replace(/&/g, ' and ')
+        .replace(/[^A-Za-z0-9]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
     const normalized = normalizeIconKey(trimmed);
     if (preserved) return getIconAssetPath(kind, `${preserved}.webp`);
+    if (deapostrophed) return getIconAssetPath(kind, `${deapostrophed}.webp`);
     if (normalized) return getIconAssetPath(kind, `${normalized}.webp`);
     return null;
 };

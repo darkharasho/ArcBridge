@@ -622,6 +622,14 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const resolveAliasName = useCallback(
         (name: string) => {
             if (!name) return null;
+            if (/primal rage/i.test(name)) return null;
+            const lower = name.toLowerCase();
+            if (lower.includes('arrow') && lower.includes('fire') && lower.includes('arrows')) {
+                if (/(crippling|reaping|staggering|suffering)/i.test(name)) return 'Fire Crippling Arrows';
+                if (/(barbed|merciless|penetrating|exsanguinating)/i.test(name)) return 'Fire Barbed Arrows';
+                return 'Fire Arrow Cart';
+            }
+            if (/toxic.*volley/i.test(name)) return 'Toxic Unveiling Volley';
             const arrowCartAliasMap: Record<string, string> = {
                 fire: 'Fire Arrow Cart',
                 fire_improved_arrows: 'Fire Arrow Cart',
@@ -654,11 +662,27 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     return `Sigil of ${sigilName}`;
                 }
             }
+            return null;
+        },
+        [iconAliases]
+    );
+
+    const resolveTraitAliasName = useCallback(
+        (name: string) => {
+            if (!name || /primal rage/i.test(name)) return null;
             if (!iconAliases?.traitAliases) return null;
             const key = normalizeIconKey(name);
             return iconAliases.traitAliases[key] || null;
         },
         [iconAliases]
+    );
+
+
+    const resolveIcon = useCallback(
+        (manifest: IconManifest | null, kind: 'skill' | 'buff' | 'sigil' | 'relic' | 'trait', name: string) => {
+            return resolveIconUrl(manifest, kind, name) || (!manifest ? guessIconUrl(kind, name) : null);
+        },
+        []
     );
 
     const isArrowCartAlias = useCallback((name: string | null) => {
@@ -681,48 +705,51 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (!name) return null;
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
+            const directResolved = (
+                resolveIcon(skillIconManifest, 'skill', resolvedName)
+                || resolveIcon(skillIconManifest, 'skill', stripped)
+            );
+            if (directResolved) return directResolved;
+
             const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
             const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';
             const preferSkill = isArrowCartAlias(aliasName);
-            const resolved = (
+            const nonTraitResolved = (
                 (aliasName
                     ? (
                         (preferSkill
                             ? (
-                                resolveIconUrl(skillIconManifest, 'skill', aliasName)
-                                || resolveIconUrl(skillIconManifest, 'skill', aliasStripped)
-                                || guessIconUrl('skill', aliasName)
-                                || guessIconUrl('skill', aliasStripped)
+                                resolveIcon(skillIconManifest, 'skill', aliasName)
+                                || resolveIcon(skillIconManifest, 'skill', aliasStripped)
                             )
                             : null)
-                        || resolveIconUrl(sigilIconManifest, 'sigil', aliasName)
-                        || resolveIconUrl(sigilIconManifest, 'sigil', aliasStripped)
-                        || guessIconUrl('sigil', aliasName)
-                        || guessIconUrl('sigil', aliasStripped)
-                        || resolveIconUrl(relicIconManifest, 'relic', aliasName)
-                        || resolveIconUrl(relicIconManifest, 'relic', aliasStripped)
-                        || guessIconUrl('relic', aliasName)
-                        || guessIconUrl('relic', aliasStripped)
-                        || resolveIconUrl(traitIconManifest, 'trait', aliasName)
-                        || resolveIconUrl(traitIconManifest, 'trait', aliasStripped)
-                        || guessIconUrl('trait', aliasName)
-                        || guessIconUrl('trait', aliasStripped)
-                        || resolveIconUrl(buffIconManifest, 'buff', aliasName)
-                        || resolveIconUrl(buffIconManifest, 'buff', aliasStripped)
-                        || guessIconUrl('buff', aliasName)
-                        || guessIconUrl('buff', aliasStripped)
-                        || resolveIconUrl(skillIconManifest, 'skill', aliasName)
-                        || resolveIconUrl(skillIconManifest, 'skill', aliasStripped)
-                        || guessIconUrl('skill', aliasName)
-                        || guessIconUrl('skill', aliasStripped)
+                        || resolveIcon(sigilIconManifest, 'sigil', aliasName)
+                        || resolveIcon(sigilIconManifest, 'sigil', aliasStripped)
+                        || resolveIcon(relicIconManifest, 'relic', aliasName)
+                        || resolveIcon(relicIconManifest, 'relic', aliasStripped)
+                        || resolveIcon(traitIconManifest, 'trait', aliasName)
+                        || resolveIcon(traitIconManifest, 'trait', aliasStripped)
+                        || resolveIcon(buffIconManifest, 'buff', aliasName)
+                        || resolveIcon(buffIconManifest, 'buff', aliasStripped)
+                        || resolveIcon(skillIconManifest, 'skill', aliasName)
+                        || resolveIcon(skillIconManifest, 'skill', aliasStripped)
                     )
                     : null)
-                || resolveIconUrl(skillIconManifest, 'skill', resolvedName)
-                || resolveIconUrl(skillIconManifest, 'skill', stripped)
-                || guessIconUrl('skill', resolvedName)
-                || guessIconUrl('skill', stripped)
             );
-            if (resolved) return resolved;
+            if (nonTraitResolved) return nonTraitResolved;
+
+            const traitAliasName = resolveTraitAliasName(resolvedName) || resolveTraitAliasName(stripped);
+            const traitAliasStripped = traitAliasName ? stripParenthetical(traitAliasName) : '';
+            const traitResolved = (
+                (traitAliasName
+                    ? (
+                        resolveIcon(traitIconManifest, 'trait', traitAliasName)
+                        || resolveIcon(traitIconManifest, 'trait', traitAliasStripped)
+                    )
+                    : null)
+            );
+            if (traitResolved) return traitResolved;
+
             if (/^Skill\\s+\\d+$/i.test(resolvedName)) return getUnknownSkillIconUrl();
             return null;
         },
@@ -734,7 +761,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             traitIconManifest,
             isArrowCartAlias,
             resolveAliasName,
+            resolveTraitAliasName,
             resolveSkillName,
+            resolveIcon,
             stripParenthetical
         ]
     );
@@ -744,62 +773,52 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (!name) return null;
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
+            const directResolved = (
+                resolveIcon(buffIconManifest, 'buff', resolvedName)
+                || resolveIcon(buffIconManifest, 'buff', stripped)
+                || resolveIcon(skillIconManifest, 'skill', resolvedName)
+                || resolveIcon(skillIconManifest, 'skill', stripped)
+                || resolveIcon(sigilIconManifest, 'sigil', resolvedName)
+                || resolveIcon(sigilIconManifest, 'sigil', stripped)
+                || resolveIcon(relicIconManifest, 'relic', resolvedName)
+                || resolveIcon(relicIconManifest, 'relic', stripped)
+            );
+            if (directResolved) return directResolved;
+
             const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
             const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';
             const preferSkill = isArrowCartAlias(aliasName);
-            return (
+            const nonTraitResolved = (
                 (aliasName
                     ? (
-                        resolveIconUrl(traitIconManifest, 'trait', aliasName)
-                        || resolveIconUrl(traitIconManifest, 'trait', aliasStripped)
-                        || guessIconUrl('trait', aliasName)
-                        || guessIconUrl('trait', aliasStripped)
-                        || resolveIconUrl(buffIconManifest, 'buff', aliasName)
-                        || resolveIconUrl(buffIconManifest, 'buff', aliasStripped)
-                        || guessIconUrl('buff', aliasName)
-                        || guessIconUrl('buff', aliasStripped)
+                        resolveIcon(buffIconManifest, 'buff', aliasName)
+                        || resolveIcon(buffIconManifest, 'buff', aliasStripped)
                         || (preferSkill
                             ? (
-                                resolveIconUrl(skillIconManifest, 'skill', aliasName)
-                                || resolveIconUrl(skillIconManifest, 'skill', aliasStripped)
-                                || guessIconUrl('skill', aliasName)
-                                || guessIconUrl('skill', aliasStripped)
+                                resolveIcon(skillIconManifest, 'skill', aliasName)
+                                || resolveIcon(skillIconManifest, 'skill', aliasStripped)
                             )
                             : null)
-                        || resolveIconUrl(skillIconManifest, 'skill', aliasName)
-                        || resolveIconUrl(skillIconManifest, 'skill', aliasStripped)
-                        || guessIconUrl('skill', aliasName)
-                        || guessIconUrl('skill', aliasStripped)
-                        || resolveIconUrl(sigilIconManifest, 'sigil', aliasName)
-                        || resolveIconUrl(sigilIconManifest, 'sigil', aliasStripped)
-                        || guessIconUrl('sigil', aliasName)
-                        || guessIconUrl('sigil', aliasStripped)
-                        || resolveIconUrl(relicIconManifest, 'relic', aliasName)
-                        || resolveIconUrl(relicIconManifest, 'relic', aliasStripped)
-                        || guessIconUrl('relic', aliasName)
-                        || guessIconUrl('relic', aliasStripped)
+                        || resolveIcon(skillIconManifest, 'skill', aliasName)
+                        || resolveIcon(skillIconManifest, 'skill', aliasStripped)
+                        || resolveIcon(sigilIconManifest, 'sigil', aliasName)
+                        || resolveIcon(sigilIconManifest, 'sigil', aliasStripped)
+                        || resolveIcon(relicIconManifest, 'relic', aliasName)
+                        || resolveIcon(relicIconManifest, 'relic', aliasStripped)
                     )
                     : null)
-                || resolveIconUrl(buffIconManifest, 'buff', resolvedName)
-                || resolveIconUrl(buffIconManifest, 'buff', stripped)
-                || guessIconUrl('buff', resolvedName)
-                || guessIconUrl('buff', stripped)
-                || resolveIconUrl(skillIconManifest, 'skill', resolvedName)
-                || resolveIconUrl(skillIconManifest, 'skill', stripped)
-                || guessIconUrl('skill', resolvedName)
-                || guessIconUrl('skill', stripped)
-                || resolveIconUrl(sigilIconManifest, 'sigil', resolvedName)
-                || resolveIconUrl(sigilIconManifest, 'sigil', stripped)
-                || guessIconUrl('sigil', resolvedName)
-                || guessIconUrl('sigil', stripped)
-                || resolveIconUrl(relicIconManifest, 'relic', resolvedName)
-                || resolveIconUrl(relicIconManifest, 'relic', stripped)
-                || guessIconUrl('relic', resolvedName)
-                || guessIconUrl('relic', stripped)
-                || resolveIconUrl(traitIconManifest, 'trait', resolvedName)
-                || resolveIconUrl(traitIconManifest, 'trait', stripped)
-                || guessIconUrl('trait', resolvedName)
-                || guessIconUrl('trait', stripped)
+            );
+            if (nonTraitResolved) return nonTraitResolved;
+
+            const traitAliasName = resolveTraitAliasName(resolvedName) || resolveTraitAliasName(stripped);
+            const traitAliasStripped = traitAliasName ? stripParenthetical(traitAliasName) : '';
+            return (
+                (traitAliasName
+                    ? (
+                        resolveIcon(traitIconManifest, 'trait', traitAliasName)
+                        || resolveIcon(traitIconManifest, 'trait', traitAliasStripped)
+                    )
+                    : null)
             );
         },
         [
@@ -810,7 +829,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             traitIconManifest,
             isArrowCartAlias,
             resolveAliasName,
+            resolveTraitAliasName,
             resolveSkillName,
+            resolveIcon,
             stripParenthetical
         ]
     );

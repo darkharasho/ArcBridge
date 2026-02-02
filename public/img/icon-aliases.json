@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-02-02T07:55:56.026Z",
+  "generatedAt": "2026-02-02T08:24:18.731Z",
   "traitAliases": {
     "flame_burst": "Evasive Arcana",
     "cleansing_wave": "Evasive Arcana",
@@ -104,7 +104,7 @@
     "wings_of_resolve": "Virtuous Action",
     "shield_of_courage": "Virtuous Action",
     "celestial_avatar": "Celestial Being",
-    "reaper_s_shroud": "Shroud Knight",
+    "reapers_shroud": "Shroud Knight",
     "invisible_analysis": "Lock On",
     "controlled_analysis": "Lock On",
     "function_gyro": "Function Gyro",
@@ -151,7 +151,7 @@
     "worldly_impact": "Elevated Bond",
     "overheat": "Photon Projector",
     "lesser_stone_resonance": "Bolstered Elements",
-    "deadeye_s_mark": "Deadeye's Gaze",
+    "deadeyes_mark": "Deadeye's Gaze",
     "burst_of_shadows": "Collateral Damage",
     "full_counter": "Spellbreaker's Conviction",
     "reformed_mirage_mirror": "Desert Distortion",
@@ -176,7 +176,7 @@
     "air_sphere": "Depth of Elements",
     "earth_sphere": "Depth of Elements",
     "imperial_impact": "Vassals of the Empire",
-    "saint_s_shield": "Saint of zu Heltzer",
+    "saints_shield": "Saint of zu Heltzer",
     "death_drop": "Forerunner of Death",
     "rocket_punch": "Mech Fighter",
     "sundering_volley": "Unleashed Power",
@@ -187,7 +187,7 @@
     "rampant_growth": "Unleashed Power",
     "multishot": "Unleashed Power",
     "toxic_shot": "Unleashed Power",
-    "ravager_s_abandon": "Unleashed Power",
+    "ravagers_abandon": "Unleashed Power",
     "vicious_pike": "Unleashed Power",
     "solar_brilliance": "Unleashed Power",
     "deft_strike": "Unleashed Power",
@@ -233,7 +233,7 @@
     "deafening_drum": "Wandering Minstrel",
     "harmonious_harp": "Wandering Minstrel",
     "crescendo": "Wandering Minstrel",
-    "luminary_s_blessing": "Light's Gift",
+    "luminarys_blessing": "Light's Gift",
     "innervate_anguish": "Charged Souls",
     "innervate_wanderlust": "Charged Souls",
     "innervate_preservation": "Charged Souls",
@@ -312,6 +312,7 @@
     "iron_will": "Iron Will",
     "force_ball": "Force Ball",
     "force_wall": "Force Wall",
-    "force_dome": "Force Dome"
+    "force_dome": "Force Dome",
+    "mystic_rebuke": "Shattered Aegis"
   }
 }
