@@ -73,7 +73,8 @@ describe('useSkillCharts', () => {
         });
 
         assertResult(result);
-        const point = result.skillChartData[0] as any;
+        const { skillChartData } = result;
+        const point = skillChartData[0] as any;
         expect(point.p1).toBe(3);
         expect(point.p2).toBe(0);
     });
