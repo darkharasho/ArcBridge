@@ -67,7 +67,10 @@ describe('useSkillCharts', () => {
             expect((result as UseSkillChartsResult | null)?.skillChartData.length).toBe(1);
         });
 
-        const point = (result as UseSkillChartsResult).skillChartData[0] as any;
+        if (!result) {
+            throw new Error('Expected skill chart data to be available.');
+        }
+        const point = result.skillChartData[0] as any;
         expect(point.p1).toBe(3);
         expect(point.p2).toBe(0);
     });
