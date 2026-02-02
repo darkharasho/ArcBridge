@@ -21,14 +21,7 @@ interface UseStatsAggregationProps {
 export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }: UseStatsAggregationProps) => {
 
     const validLogs = useMemo(() => {
-        const filtered = logs.filter(l => l.details && l.details.players && l.details.players.length > 0);
-        console.log('[useStatsAggregation] Filtering logs:', {
-            total: logs.length,
-            passed: filtered.length,
-            statuses: logs.map(l => l.status),
-            hasDetails: logs.map(l => !!l.details)
-        });
-        return filtered;
+        return logs.filter(l => l.details && l.details.players && l.details.players.length > 0);
     }, [logs]);
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
@@ -90,8 +83,8 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
         const playerStats = new Map<string, PlayerStats>();
         const supportTimeSanityFields = new Set(['boonStripsTime', 'condiCleanseTime', 'condiCleanseTimeSelf']);
-        const skillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
-        const incomingSkillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
+        const skillDamageMap: Record<number, { id: number; name: string; damage: number; hits: number }> = {};
+        const incomingSkillDamageMap: Record<number, { id: number; name: string; damage: number; hits: number }> = {};
         const outgoingCondiTotals: Record<string, any> = {};
         const incomingCondiTotals: Record<string, any> = {};
         const enemyProfessionCounts: Record<string, number> = {};
@@ -129,17 +122,10 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
             return meta.classification === 'Boon';
         };
 
-        console.log('[useStatsAggregation] Starting aggregation loop', { validLogsCount: validLogs.length });
-
         validLogs.forEach((log, logIndex) => {
             const details = log.details;
             if (!details) return;
             const players = details.players as unknown as Player[];
-            console.log(`[useStatsAggregation] Processing log ${logIndex}:`, {
-                playerCount: players?.length,
-                hasTargets: !!details.targets,
-                firstPlayer: players?.[0] ? { account: players[0].account, notInSquad: players[0].notInSquad } : 'none'
-            });
             const targets = details.targets || [];
 
             // Basic Setup (Commander Tag, Distance Util)
@@ -407,10 +393,15 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                             let name = `Skill ${entry.id}`;
                             const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
                             if (mapped?.name) name = mapped.name;
-                            if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, damage: 0, hits: 0 };
+                            if (/^Skill\s+\d+$/i.test(name)) {
+                                const conditionName = resolveConditionNameFromEntry(name, entry.id, details.buffMap);
+                                if (conditionName) name = conditionName;
+                            }
+                            if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { id: entry.id, name, damage: 0, hits: 0 };
                             if (!skillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
                             skillDamageMap[entry.id].damage += entry.totalDamage;
                             skillDamageMap[entry.id].hits += entry.connectedHits;
+
                         });
                     });
                 }
@@ -421,10 +412,15 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                             let name = `Skill ${entry.id}`;
                             const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
                             if (mapped?.name) name = mapped.name;
-                            if (!incomingSkillDamageMap[entry.id]) incomingSkillDamageMap[entry.id] = { name, damage: 0, hits: 0 };
+                            if (/^Skill\s+\d+$/i.test(name)) {
+                                const conditionName = resolveConditionNameFromEntry(name, entry.id, details.buffMap);
+                                if (conditionName) name = conditionName;
+                            }
+                            if (!incomingSkillDamageMap[entry.id]) incomingSkillDamageMap[entry.id] = { id: entry.id, name, damage: 0, hits: 0 };
                             if (!incomingSkillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) incomingSkillDamageMap[entry.id].name = name;
                             incomingSkillDamageMap[entry.id].damage += entry.totalDamage;
                             incomingSkillDamageMap[entry.id].hits += entry.hits;
+
                         });
                     });
                 }
@@ -1013,6 +1009,12 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         const playerMap = new Map<string, SkillUsagePlayer>();
         const logRecords: SkillUsageLogRecord[] = [];
         const skillNameMap = new Map<string, string>();
+        const unknownSkillDebug = new Map<string, {
+            name: string;
+            total: number;
+            players: Map<string, { account: string; profession: string; count: number }>;
+            logs: Set<string>;
+        }>();
 
         validLogs.forEach((log) => {
             const details = log.details;
@@ -1055,6 +1057,28 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
                     if (!record.skillEntries[sId]) record.skillEntries[sId] = { name: sName, players: {} };
                     record.skillEntries[sId].players[key] = (record.skillEntries[sId].players[key] || 0) + count;
+
+                    if (/^Skill\s+\d+$/i.test(sName)) {
+                        let debug = unknownSkillDebug.get(sId);
+                        if (!debug) {
+                            debug = {
+                                name: sName,
+                                total: 0,
+                                players: new Map(),
+                                logs: new Set()
+                            };
+                            unknownSkillDebug.set(sId, debug);
+                        }
+                        debug.total += count;
+                        debug.logs.add(record.id);
+                        const playerKey = `${account}|${profession}`;
+                        const existing = debug.players.get(playerKey);
+                        if (existing) {
+                            existing.count += count;
+                        } else {
+                            debug.players.set(playerKey, { account, profession, count });
+                        }
+                    }
                 });
             });
             logRecords.push(record);
@@ -1063,6 +1087,39 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         const skillOptions = Array.from(skillTotals.entries()).map(([id, total]) => ({
             id, name: skillNameMap.get(id) || id, total
         })).sort((a, b) => b.total - a.total);
+
+        if (unknownSkillDebug.size > 0) {
+            const payload = Array.from(unknownSkillDebug.entries()).map(([skillId, info]) => ({
+                skillId,
+                name: info.name,
+                total: info.total,
+                logs: Array.from(info.logs),
+                players: Array.from(info.players.values())
+                    .sort((a, b) => b.count - a.count)
+            }));
+            // eslint-disable-next-line no-console
+            console.groupCollapsed('[ArcBridge] Unknown skill ids detected');
+            // eslint-disable-next-line no-console
+            console.info(payload);
+            // eslint-disable-next-line no-console
+            console.groupEnd();
+
+            Array.from(unknownSkillDebug.entries()).forEach(([skillId, info]) => {
+                const players = Array.from(info.players.values())
+                    .sort((a, b) => b.count - a.count);
+                const professionCounts = players.reduce<Record<string, number>>((acc, player) => {
+                    acc[player.profession] = (acc[player.profession] || 0) + player.count;
+                    return acc;
+                }, {});
+                // eslint-disable-next-line no-console
+                console.warn(`[ArcBridge] Unknown skill ${skillId} (${info.name})`, {
+                    total: info.total,
+                    professions: professionCounts,
+                    players,
+                    logs: Array.from(info.logs)
+                });
+            });
+        }
 
         return {
             logRecords,

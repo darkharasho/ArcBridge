@@ -56,7 +56,7 @@ export const TopSkillsSection = ({
                 </button>
             </div>
             <div className={`${expandedSection === 'top-skills-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                {stats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
+                {stats.topSkills.map((skill: { id?: number; name: string; damage: number; hits: number }, i: number) => (
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
@@ -115,7 +115,7 @@ export const TopSkillsSection = ({
                 </button>
             </div>
             <div className={`${expandedSection === 'top-skills-incoming' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                {stats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
+                {stats.topIncomingSkills.map((skill: { id?: number; name: string; damage: number; hits: number }, i: number) => (
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">

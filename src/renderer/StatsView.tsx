@@ -78,15 +78,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
     const skillUsageData = (precomputedStats?.skillUsageData ?? computedSkillUsageData) as SkillUsageSummary;
 
-    useEffect(() => {
-        console.log('[StatsView] Stats Aggregation Result:', {
-            stats,
-            skillUsageData,
-            validLogsCount: stats.totalWinner + stats.totalLoser, // approximate
-            overview: stats.overview
-        });
-    }, [stats, skillUsageData]);
-
     const skillUsageAvailable = skillUsageData.players.length > 0;
 
     const {
@@ -607,6 +598,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         (name: string) => {
             if (!name) return null;
             if (/primal rage/i.test(name)) return null;
+            if (normalizeIconKey(name) === 'mystic_rebuke') return 'Shattered Aegis';
             const lower = name.toLowerCase();
             if (lower.includes('arrow') && lower.includes('fire') && lower.includes('arrows')) {
                 if (/(crippling|reaping|staggering|suffering)/i.test(name)) return 'Fire Crippling Arrows';
@@ -636,6 +628,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (arrowAlias) return arrowAlias;
             const direct = iconAliases?.iconAliases?.[normalizeIconKey(name)];
             if (direct) return direct;
+            const superiorSigilMatch = name.match(/superior\s+sigil of ([^)]+)/i);
+            if (superiorSigilMatch) {
+                const sigilName = superiorSigilMatch[1].trim();
+                if (sigilName) return `Superior Sigil of ${sigilName}`;
+            }
             const sigilMatch = name.match(/sigil of ([^)]+)/i);
             if (sigilMatch) {
                 const sigilName = sigilMatch[1].trim();
