@@ -1,6 +1,7 @@
 import { Maximize2, Sparkles, X } from 'lucide-react';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { GameIcon } from '../ui/StatsViewShared';
 
 type SpecialBuffsSectionProps = {
     stats: any;
@@ -100,9 +101,7 @@ export const SpecialBuffsSection = ({
                                         <span className="flex items-center gap-2 min-w-0">
                                             {(() => {
                                                 const iconUrl = getBuffIconUrl(buff.name);
-                                                return iconUrl ? (
-                                                    <img src={iconUrl} alt={buff.name} className="w-4 h-4 object-contain shrink-0" />
-                                                ) : null;
+                                                return <GameIcon src={iconUrl} alt={buff.name} className="w-4 h-4 object-contain shrink-0" />;
                                             })()}
                                             <span className="truncate min-w-0">{buff.name}</span>
                                         </span>
@@ -125,9 +124,7 @@ export const SpecialBuffsSection = ({
                                         <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                                             {(() => {
                                                 const iconUrl = getBuffIconUrl(activeSpecialTable.name);
-                                                return iconUrl ? (
-                                                    <img src={iconUrl} alt={activeSpecialTable.name} className="w-5 h-5 object-contain shrink-0" />
-                                                ) : null;
+                                                return <GameIcon src={iconUrl} alt={activeSpecialTable.name} className="w-5 h-5 object-contain shrink-0" />;
                                             })()}
                                             <span className="truncate min-w-0">{activeSpecialTable.name}</span>
                                         </div>

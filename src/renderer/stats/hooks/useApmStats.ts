@@ -99,7 +99,33 @@ export const useApmStats = (skillUsageData: SkillUsageSummary) => {
         // Sort player rows
         buckets.forEach((bucket) => {
             bucket.playerRows.sort((a, b) => b.apm - a.apm);
-            bucket.skills = Array.from(bucket.skillMap.values()).sort((a, b) => b.totalCasts - a.totalCasts);
+            bucket.skills = Array.from(bucket.skillMap.values()).map((skillEntry) => {
+                const rows = bucket.players
+                    .map((player) => {
+                        const count = skillEntry.playerCounts.get(player.key) || 0;
+                        if (count <= 0) return null;
+                        const activeSeconds = player.totalActiveSeconds || 0;
+                        const apm = activeSeconds > 0 ? count / (activeSeconds / 60) : 0;
+                        const aps = activeSeconds > 0 ? count / activeSeconds : 0;
+                        return {
+                            key: player.key,
+                            account: player.account,
+                            displayName: player.displayName,
+                            profession: player.profession,
+                            professionList: player.professionList,
+                            logs: player.logs,
+                            count,
+                            apm,
+                            aps
+                        };
+                    })
+                    .filter((row) => row !== null) as ApmSkillEntry['playerRows'];
+                if (rows) {
+                    rows.sort((a, b) => b.apm - a.apm || b.count - a.count);
+                    skillEntry.playerRows = rows;
+                }
+                return skillEntry;
+            }).sort((a, b) => b.totalCasts - a.totalCasts);
         });
 
         // Convert Map to array and sort by profession

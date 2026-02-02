@@ -54,6 +54,17 @@ export interface ApmSkillEntry {
     name: string;
     totalCasts: number;
     playerCounts: Map<string, number>;
+    playerRows?: Array<{
+        key: string;
+        account: string;
+        displayName: string;
+        profession: string;
+        professionList: string[];
+        logs: number;
+        count: number;
+        apm: number;
+        aps: number;
+    }>;
 }
 
 export interface ApmSpecBucket {

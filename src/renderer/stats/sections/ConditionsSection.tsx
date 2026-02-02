@@ -2,7 +2,7 @@ import { Maximize2, Skull, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
-import { SkillBreakdownTooltip } from '../ui/StatsViewShared';
+import { GameIcon, SkillBreakdownTooltip } from '../ui/StatsViewShared';
 
 type ConditionsSectionProps = {
     conditionSummary: any[];
@@ -128,9 +128,7 @@ export const ConditionsSection = ({
                                                 <span className="flex items-center gap-2 min-w-0">
                                                     {(() => {
                                                         const iconUrl = getBuffIconUrl(entry.name);
-                                                        return iconUrl ? (
-                                                            <img src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />
-                                                        ) : null;
+                                                        return <GameIcon src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />;
                                                     })()}
                                                     <span className="truncate min-w-0">{entry.name}</span>
                                                 </span>
@@ -151,9 +149,7 @@ export const ConditionsSection = ({
                                     <span className="flex items-center gap-2 min-w-0">
                                         {activeConditionName !== 'all' ? (() => {
                                             const iconUrl = getBuffIconUrl(activeConditionName);
-                                            return iconUrl ? (
-                                                <img src={iconUrl} alt={activeConditionName} className="w-5 h-5 object-contain shrink-0" />
-                                            ) : null;
+                                            return <GameIcon src={iconUrl} alt={activeConditionName} className="w-5 h-5 object-contain shrink-0" />;
                                         })() : null}
                                         <span className="truncate min-w-0">{activeConditionName === 'all' ? 'All Conditions' : activeConditionName}</span>
                                     </span>

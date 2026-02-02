@@ -2,6 +2,7 @@ import { Maximize2, ShieldCheck, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { GameIcon } from '../ui/StatsViewShared';
 
 type BoonOutputSectionProps = {
     stats: any;
@@ -113,9 +114,7 @@ export const BoonOutputSection = ({
                                         <span className="flex items-center gap-2 min-w-0">
                                             {(() => {
                                                 const iconUrl = getBuffIconUrl(boon.name);
-                                                return iconUrl ? (
-                                                    <img src={iconUrl} alt={boon.name} className="w-4 h-4 object-contain shrink-0" />
-                                                ) : null;
+                                                return <GameIcon src={iconUrl} alt={boon.name} className="w-4 h-4 object-contain shrink-0" />;
                                             })()}
                                             <span className="truncate min-w-0">{boon.name}</span>
                                         </span>
@@ -137,9 +136,7 @@ export const BoonOutputSection = ({
                                     <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                                         {(() => {
                                             const iconUrl = getBuffIconUrl(activeBoonTable.name);
-                                            return iconUrl ? (
-                                                <img src={iconUrl} alt={activeBoonTable.name} className="w-5 h-5 object-contain shrink-0" />
-                                            ) : null;
+                                            return <GameIcon src={iconUrl} alt={activeBoonTable.name} className="w-5 h-5 object-contain shrink-0" />;
                                         })()}
                                         <span className="truncate min-w-0">{activeBoonTable.name}</span>
                                     </div>

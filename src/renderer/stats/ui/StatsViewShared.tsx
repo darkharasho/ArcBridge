@@ -71,6 +71,40 @@ const buildClassColumns = (counts: Record<string, number>, maxRows = 5) => {
     return columns;
 };
 
+const getUnknownIconFallbackUrl = () => `${import.meta.env.BASE_URL || './'}img/game-icons/Unknown_Icon.svg`;
+
+export const GameIcon = ({
+    src,
+    alt,
+    className = 'w-4 h-4 object-contain shrink-0'
+}: {
+    src?: string | null;
+    alt?: string;
+    className?: string;
+}) => {
+    const fallbackUrl = getUnknownIconFallbackUrl();
+    const [currentSrc, setCurrentSrc] = useState(src);
+
+    useEffect(() => {
+        setCurrentSrc(src);
+    }, [src]);
+
+    if (!src) return null;
+
+    return (
+        <img
+            src={currentSrc}
+            alt={alt || 'Unknown icon'}
+            className={className}
+            onError={() => {
+                if (currentSrc !== fallbackUrl) {
+                    setCurrentSrc(fallbackUrl);
+                }
+            }}
+        />
+    );
+};
+
 const useFixedTooltipPosition = (
     open: boolean,
     deps: any[],

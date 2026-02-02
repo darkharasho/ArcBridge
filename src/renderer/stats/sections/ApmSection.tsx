@@ -1,5 +1,6 @@
 import { Activity, ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { GameIcon } from '../ui/StatsViewShared';
 import type { ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
 
 type ApmSectionProps = {
@@ -183,9 +184,7 @@ export const ApmSection = ({
                                                         <span className="flex items-center gap-2 min-w-0">
                                                             {(() => {
                                                                 const iconUrl = getSkillIconUrl(skill.name);
-                                                                return iconUrl ? (
-                                                                    <img src={iconUrl} alt={skill.name} className="w-4 h-4 object-contain shrink-0" />
-                                                                ) : null;
+                                                                return <GameIcon src={iconUrl} alt={skill.name} className="w-4 h-4 object-contain shrink-0" />;
                                                             })()}
                                                             <span className="truncate block min-w-0">{skill.name}</span>
                                                         </span>
@@ -214,9 +213,7 @@ export const ApmSection = ({
                                             <div className="text-sm font-semibold text-gray-200 truncate flex items-center gap-2 min-w-0">
                                                 {!isAllApmSkills && activeApmSkill?.name ? (() => {
                                                     const iconUrl = getSkillIconUrl(activeApmSkill.name);
-                                                    return iconUrl ? (
-                                                        <img src={iconUrl} alt={activeApmSkill.name} className="w-4 h-4 object-contain shrink-0" />
-                                                    ) : null;
+                                                    return <GameIcon src={iconUrl} alt={activeApmSkill.name} className="w-4 h-4 object-contain shrink-0" />;
                                                 })() : null}
                                                 <span className="truncate min-w-0">{isAllApmSkills ? 'All Skills' : activeApmSkill?.name}</span>
                                             </div>
@@ -226,7 +223,7 @@ export const ApmSection = ({
                                         <div className="text-[11px] text-gray-400">
                                             {isAllApmSkills
                                                 ? `${activeApmSpecTable.players.length} ${activeApmSpecTable.players.length === 1 ? 'player' : 'players'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalAps : activeApmSpecTable.totalApm)} ${apmView === 'perSecond' ? 'APS' : 'APM'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalApsNoAuto : activeApmSpecTable.totalApmNoAuto)} ${apmView === 'perSecond' ? 'APS' : 'APM'} (no auto)`
-                                                : `${activeApmSkill?.playerRows.length ?? 0} ${activeApmSkill?.playerRows.length === 1 ? 'player' : 'players'} | ${formatApmValue(activeApmSkill?.totalApm ?? 0)} APM | ${apmView === 'perSecond'
+                                                : `${activeApmSkill?.playerRows?.length ?? 0} ${activeApmSkill?.playerRows?.length === 1 ? 'player' : 'players'} | ${formatApmValue(activeApmSkill?.totalApm ?? 0)} APM | ${apmView === 'perSecond'
                                                     ? `${formatCastRateValue(activeApmSkill?.totalCastsPerSecond ?? 0)} casts/sec`
                                                     : `${formatCastCountValue(activeApmSkill?.totalCasts ?? 0)} casts`}`}
                                         </div>
@@ -280,7 +277,7 @@ export const ApmSection = ({
                                             <div className="text-right">{apmView === 'perSecond' ? 'Casts/Sec' : 'Casts'}</div>
                                         </div>
                                         <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
-                                            {activeApmSkill?.playerRows.map((row: any, index: number) => (
+                                            {(activeApmSkill?.playerRows ?? []).map((row: any, index: number) => (
                                                 <div
                                                     key={`${activeApmSpecTable.profession}-${activeApmSkill?.id}-${row.key}`}
                                                     className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"

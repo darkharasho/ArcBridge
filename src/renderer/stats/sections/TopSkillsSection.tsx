@@ -1,4 +1,5 @@
 import { Maximize2, Shield, Swords, X } from 'lucide-react';
+import { GameIcon } from '../ui/StatsViewShared';
 
 type TopSkillsSectionProps = {
     stats: any;
@@ -63,9 +64,7 @@ export const TopSkillsSection = ({
                                 <span className="text-white font-bold flex items-center gap-2 min-w-0">
                                     {(() => {
                                         const iconUrl = getSkillIconUrl(skill.name);
-                                        return iconUrl ? (
-                                            <img src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />
-                                        ) : null;
+                                        return <GameIcon src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />;
                                     })()}
                                     <span className="truncate min-w-0">{skill.name}</span>
                                 </span>
@@ -124,9 +123,7 @@ export const TopSkillsSection = ({
                                 <span className="text-white font-bold flex items-center gap-2 min-w-0">
                                     {(() => {
                                         const iconUrl = getSkillIconUrl(skill.name);
-                                        return iconUrl ? (
-                                            <img src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />
-                                        ) : null;
+                                        return <GameIcon src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />;
                                     })()}
                                     <span className="truncate min-w-0">{skill.name}</span>
                                 </span>

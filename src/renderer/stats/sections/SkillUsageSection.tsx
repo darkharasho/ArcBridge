@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CheckCircle2, ChevronDown, ChevronRight, Maximize2, X, XCircle, Zap } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { GameIcon } from '../ui/StatsViewShared';
 import type { SkillUsagePlayer } from '../statsTypes';
 
 type SkillUsageSectionProps = {
@@ -306,9 +307,7 @@ export const SkillUsageSection = ({
                                                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
                                                         {(() => {
                                                             const iconUrl = getSkillIconUrl(entry.name);
-                                                            return iconUrl ? (
-                                                                <img src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />
-                                                            ) : null;
+                                                            return <GameIcon src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />;
                                                         })()}
                                                         <span className="font-semibold truncate min-w-0 flex-1 block max-w-[58vw] sm:max-w-none sm:whitespace-normal sm:overflow-visible">{entry.name}</span>
                                                     </div>
@@ -338,9 +337,7 @@ export const SkillUsageSection = ({
                             <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                                 {selectedSkillName ? (() => {
                                     const iconUrl = getSkillIconUrl(selectedSkillName);
-                                    return iconUrl ? (
-                                        <img src={iconUrl} alt={selectedSkillName} className="w-5 h-5 object-contain shrink-0" />
-                                    ) : null;
+                                    return <GameIcon src={iconUrl} alt={selectedSkillName} className="w-5 h-5 object-contain shrink-0" />;
                                 })() : null}
                                 <span className="truncate min-w-0">{selectedSkillName || 'Selected Skill Usage'}</span>
                             </div>
