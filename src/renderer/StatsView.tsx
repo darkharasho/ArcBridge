@@ -664,8 +664,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
     const resolveIcon = useCallback(
         (name: string) => {
-            return resolveIconUrl(gameIconManifest, name) || (!gameIconManifest ? guessIconUrl(name) : null);
+            return resolveIconUrl(gameIconManifest, name) || guessIconUrl(name);
         },
+        [gameIconManifest]
+    );
+
+    const resolveIconStrict = useCallback(
+        (name: string) => resolveIconUrl(gameIconManifest, name),
         [gameIconManifest]
     );
 
@@ -689,53 +694,31 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (!name) return null;
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
-            const directResolved = (
-                resolveIcon(resolvedName)
-                || resolveIcon(stripped)
-            );
+
+            const directResolved = resolveIconStrict(resolvedName) || resolveIconStrict(stripped);
             if (directResolved) return directResolved;
 
             const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
             const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';
             const preferSkill = isArrowCartAlias(aliasName);
             const nonTraitResolved = (
-                (aliasName
+                aliasName
                     ? (
-                        (preferSkill
-                            ? (
-                                resolveIcon(aliasName)
-                                || resolveIcon(aliasStripped)
-                            )
-                            : null)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
+                        (preferSkill ? (resolveIcon(aliasName) || resolveIcon(aliasStripped)) : null)
                         || resolveIcon(aliasName)
                         || resolveIcon(aliasStripped)
                     )
-                    : null)
+                    : null
             );
             if (nonTraitResolved) return nonTraitResolved;
 
             const traitAliasName = resolveTraitAliasName(resolvedName) || resolveTraitAliasName(stripped);
             const traitAliasStripped = traitAliasName ? stripParenthetical(traitAliasName) : '';
-            const traitResolved = (
-                (traitAliasName
-                    ? (
-                        resolveIcon(traitAliasName)
-                        || resolveIcon(traitAliasStripped)
-                    )
-                    : null)
-            );
+            const traitResolved = traitAliasName ? (resolveIcon(traitAliasName) || resolveIcon(traitAliasStripped)) : null;
             if (traitResolved) return traitResolved;
 
             if (/^Skill\\s+\\d+$/i.test(resolvedName)) return getUnknownSkillIconUrl();
-            return null;
+            return resolveIcon(resolvedName) || resolveIcon(stripped) || null;
         },
         [
             gameIconManifest,
@@ -744,6 +727,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             resolveTraitAliasName,
             resolveSkillName,
             resolveIcon,
+            resolveIconStrict,
             stripParenthetical
         ]
     );
@@ -753,53 +737,30 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (!name) return null;
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
-            const directResolved = (
-                resolveIcon(resolvedName)
-                || resolveIcon(stripped)
-                || resolveIcon(resolvedName)
-                || resolveIcon(stripped)
-                || resolveIcon(resolvedName)
-                || resolveIcon(stripped)
-                || resolveIcon(resolvedName)
-                || resolveIcon(stripped)
-            );
+
+            const directResolved = resolveIconStrict(resolvedName) || resolveIconStrict(stripped);
             if (directResolved) return directResolved;
 
             const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
             const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';
             const preferSkill = isArrowCartAlias(aliasName);
             const nonTraitResolved = (
-                (aliasName
+                aliasName
                     ? (
                         resolveIcon(aliasName)
                         || resolveIcon(aliasStripped)
-                        || (preferSkill
-                            ? (
-                                resolveIcon(aliasName)
-                                || resolveIcon(aliasStripped)
-                            )
-                            : null)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
+                        || (preferSkill ? (resolveIcon(aliasName) || resolveIcon(aliasStripped)) : null)
                     )
-                    : null)
+                    : null
             );
             if (nonTraitResolved) return nonTraitResolved;
 
             const traitAliasName = resolveTraitAliasName(resolvedName) || resolveTraitAliasName(stripped);
             const traitAliasStripped = traitAliasName ? stripParenthetical(traitAliasName) : '';
-            return (
-                (traitAliasName
-                    ? (
-                        resolveIcon(traitAliasName)
-                        || resolveIcon(traitAliasStripped)
-                    )
-                    : null)
-            );
+            const traitResolved = traitAliasName ? (resolveIcon(traitAliasName) || resolveIcon(traitAliasStripped)) : null;
+            if (traitResolved) return traitResolved;
+
+            return resolveIcon(resolvedName) || resolveIcon(stripped) || null;
         },
         [
             gameIconManifest,
@@ -808,6 +769,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             resolveTraitAliasName,
             resolveSkillName,
             resolveIcon,
+            resolveIconStrict,
             stripParenthetical
         ]
     );

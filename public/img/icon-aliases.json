@@ -266,7 +266,7 @@
     "fire_exsanguinating_arrows": "Fire Barbed Arrows",
     "fire_merciless_arrows": "Fire Barbed Arrows",
     "toxic_unveiling_volley": "Toxic Unveiling Volley",
-    "fire_explosive_shells": "Explosive Shell",
+    "fire_explosive_shells": "Fire Exploding Shells",
     "fire_exploding_shells": "Explosive Shell",
     "explosive_shells": "Explosive Shell",
     "explosive_shell": "Explosive Shell",
@@ -313,6 +313,10 @@
     "force_ball": "Force Ball",
     "force_wall": "Force Wall",
     "force_dome": "Force Dome",
-    "mystic_rebuke": "Shattered Aegis"
+    "mystic_rebuke": "Shattered Aegis",
+    "flame_jet": "Flamethrower",
+    "drakes_breath": "Drakes Breath",
+    "arc_divider": "Arc Divider",
+    "boiling_oil": "Pour Oil"
   }
 }

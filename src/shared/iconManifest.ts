@@ -81,7 +81,7 @@ export const loadIconAliases = async (): Promise<IconAliasManifest | null> => {
         aliasPromise = (async () => {
             for (const url of urls) {
                 try {
-                    const resp = await fetch(url, { cache: 'force-cache' });
+                    const resp = await fetch(url, { cache: 'no-store' });
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     const manifest = data && typeof data === 'object' ? (data as IconAliasManifest) : null;
@@ -115,7 +115,7 @@ export const loadSkillIdNames = async (): Promise<SkillIdNameMap | null> => {
         skillIdNamePromise = (async () => {
             for (const url of urls) {
                 try {
-                    const resp = await fetch(url, { cache: 'force-cache' });
+                    const resp = await fetch(url, { cache: 'no-store' });
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     if (data && typeof data === 'object') {
@@ -140,7 +140,7 @@ export const loadIconManifest = async (): Promise<IconManifest | null> => {
         manifestPromise = (async () => {
             for (const url of urls) {
                 try {
-                    const resp = await fetch(url, { cache: 'force-cache' });
+                    const resp = await fetch(url, { cache: 'no-store' });
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     const manifest = data && typeof data === 'object' && data.entries ? (data as IconManifest) : null;
