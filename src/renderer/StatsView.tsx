@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
 
@@ -11,6 +11,7 @@ import { useStatsAggregation } from './stats/hooks/useStatsAggregation';
 import { useApmStats } from './stats/hooks/useApmStats';
 import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
+import { IconManifest, loadIconManifest, resolveIconUrl } from '../shared/iconManifest';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import type { SkillUsageSummary } from './stats/statsTypes';
@@ -569,6 +570,72 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         return '0.0';
     };
 
+    const [skillIconManifest, setSkillIconManifest] = useState<IconManifest | null>(null);
+    const [buffIconManifest, setBuffIconManifest] = useState<IconManifest | null>(null);
+    const [sigilIconManifest, setSigilIconManifest] = useState<IconManifest | null>(null);
+    const [relicIconManifest, setRelicIconManifest] = useState<IconManifest | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        Promise.all([
+            loadIconManifest('skill'),
+            loadIconManifest('buff'),
+            loadIconManifest('sigil'),
+            loadIconManifest('relic')
+        ])
+            .then(([skillManifest, buffManifest, sigilManifest, relicManifest]) => {
+                if (!isMounted) return;
+                setSkillIconManifest(skillManifest);
+                setBuffIconManifest(buffManifest);
+                setSigilIconManifest(sigilManifest);
+                setRelicIconManifest(relicManifest);
+            })
+            .catch(() => {
+                if (!isMounted) return;
+                setSkillIconManifest(null);
+                setBuffIconManifest(null);
+                setSigilIconManifest(null);
+                setRelicIconManifest(null);
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const stripParenthetical = useCallback((name: string) => {
+        if (!name) return '';
+        return name.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    }, []);
+
+    const getSkillIconUrl = useCallback(
+        (name: string) => {
+            if (!name) return null;
+            return (
+                resolveIconUrl(skillIconManifest, 'skill', name)
+                || resolveIconUrl(skillIconManifest, 'skill', stripParenthetical(name))
+            );
+        },
+        [skillIconManifest, stripParenthetical]
+    );
+
+    const getBuffIconUrl = useCallback(
+        (name: string) => {
+            if (!name) return null;
+            const stripped = stripParenthetical(name);
+            return (
+                resolveIconUrl(buffIconManifest, 'buff', name)
+                || resolveIconUrl(buffIconManifest, 'buff', stripped)
+                || resolveIconUrl(skillIconManifest, 'skill', name)
+                || resolveIconUrl(skillIconManifest, 'skill', stripped)
+                || resolveIconUrl(sigilIconManifest, 'sigil', name)
+                || resolveIconUrl(sigilIconManifest, 'sigil', stripped)
+                || resolveIconUrl(relicIconManifest, 'relic', name)
+                || resolveIconUrl(relicIconManifest, 'relic', stripped)
+            );
+        },
+        [buffIconManifest, skillIconManifest, sigilIconManifest, relicIconManifest, stripParenthetical]
+    );
+
     const renderProfessionIcon = (profession?: string, _professionList?: string[], className?: string) => {
         const iconPath = getProfessionIconPath(profession || '');
         if (!iconPath) return null;
@@ -656,6 +723,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
                 <TopSkillsSection
                     stats={stats}
+                    getSkillIconUrl={getSkillIconUrl}
                     expandedSection={expandedSection}
                     expandedSectionClosing={expandedSectionClosing}
                     openExpandedSection={openExpandedSection}
@@ -725,6 +793,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     effectiveConditionSort={effectiveConditionSort as any}
                     setConditionSort={setConditionSort as any}
                     showConditionDamage={showConditionDamage}
+                    getBuffIconUrl={getBuffIconUrl}
                     renderProfessionIcon={renderProfessionIcon}
                     expandedSection={expandedSection}
                     expandedSectionClosing={expandedSectionClosing}
@@ -772,6 +841,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     setBoonSearch={setBoonSearch}
                     formatBoonMetricDisplay={formatBoonMetricDisplay}
                     getBoonMetricValue={getBoonMetricValue}
+                    getBuffIconUrl={getBuffIconUrl}
                     renderProfessionIcon={renderProfessionIcon}
                     roundCountStats={roundCountStats}
                     expandedSection={expandedSection}
@@ -838,6 +908,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     setActiveSpecialTab={setActiveSpecialTab}
                     activeSpecialTable={activeSpecialTable}
                     formatWithCommas={formatWithCommas}
+                    getBuffIconUrl={getBuffIconUrl}
                     renderProfessionIcon={renderProfessionIcon}
                     expandedSection={expandedSection}
                     expandedSectionClosing={expandedSectionClosing}
@@ -887,6 +958,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     getLineStrokeColor={getLineStrokeColor}
                     getLineDashForPlayer={getLineDashForPlayer}
                     formatSkillUsageValue={formatSkillUsageValue}
+                    getSkillIconUrl={getSkillIconUrl}
 
                     renderProfessionIcon={renderProfessionIcon}
                 />
@@ -920,6 +992,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     formatApmValue={formatApmValue}
                     formatCastRateValue={formatCastRateValue}
                     formatCastCountValue={formatCastCountValue}
+                    getSkillIconUrl={getSkillIconUrl}
                     renderProfessionIcon={renderProfessionIcon}
                 />
                 {!embedded && <div className="h-24" aria-hidden="true" />}

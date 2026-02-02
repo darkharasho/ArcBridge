@@ -31,6 +31,7 @@ type ApmSectionProps = {
     formatApmValue: (value: number) => string;
     formatCastRateValue: (value: number) => string;
     formatCastCountValue: (value: number) => string;
+    getSkillIconUrl: (name: string) => string | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
@@ -63,6 +64,7 @@ export const ApmSection = ({
     formatApmValue,
     formatCastRateValue,
     formatCastCountValue,
+    getSkillIconUrl,
     renderProfessionIcon
 }: ApmSectionProps) => (
     <div
@@ -178,7 +180,15 @@ export const ApmSection = ({
                                                                 : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                             }`}
                                                     >
-                                                        <span className="truncate block">{skill.name}</span>
+                                                        <span className="flex items-center gap-2 min-w-0">
+                                                            {(() => {
+                                                                const iconUrl = getSkillIconUrl(skill.name);
+                                                                return iconUrl ? (
+                                                                    <img src={iconUrl} alt={skill.name} className="w-4 h-4 object-contain shrink-0" />
+                                                                ) : null;
+                                                            })()}
+                                                            <span className="truncate block">{skill.name}</span>
+                                                        </span>
                                                     </button>
                                                 ));
                                             })()}
@@ -201,8 +211,14 @@ export const ApmSection = ({
                                             {renderProfessionIcon(activeApmSpecTable.profession, undefined, 'w-4 h-4')}
                                             <div className="text-sm font-semibold text-gray-200">{activeApmSpecTable.profession}</div>
                                             <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
-                                            <div className="text-sm font-semibold text-gray-200 truncate">
-                                                {isAllApmSkills ? 'All Skills' : activeApmSkill?.name}
+                                            <div className="text-sm font-semibold text-gray-200 truncate flex items-center gap-2 min-w-0">
+                                                {!isAllApmSkills && activeApmSkill?.name ? (() => {
+                                                    const iconUrl = getSkillIconUrl(activeApmSkill.name);
+                                                    return iconUrl ? (
+                                                        <img src={iconUrl} alt={activeApmSkill.name} className="w-4 h-4 object-contain shrink-0" />
+                                                    ) : null;
+                                                })() : null}
+                                                <span className="truncate">{isAllApmSkills ? 'All Skills' : activeApmSkill?.name}</span>
                                             </div>
                                         </div>
                                     </div>

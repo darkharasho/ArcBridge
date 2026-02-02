@@ -11,6 +11,7 @@ type SpecialBuffsSectionProps = {
     setActiveSpecialTab: (value: string | null) => void;
     activeSpecialTable: any | null;
     formatWithCommas: (value: number, decimals: number) => string;
+    getBuffIconUrl: (name: string) => string | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
@@ -31,6 +32,7 @@ export const SpecialBuffsSection = ({
     setActiveSpecialTab,
     activeSpecialTable,
     formatWithCommas,
+    getBuffIconUrl,
     renderProfessionIcon,
     expandedSection,
     expandedSectionClosing,
@@ -95,7 +97,15 @@ export const SpecialBuffsSection = ({
                                             : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                             }`}
                                     >
-                                        {buff.name}
+                                        <span className="flex items-center gap-2 min-w-0">
+                                            {(() => {
+                                                const iconUrl = getBuffIconUrl(buff.name);
+                                                return iconUrl ? (
+                                                    <img src={iconUrl} alt={buff.name} className="w-4 h-4 object-contain shrink-0" />
+                                                ) : null;
+                                            })()}
+                                            <span className="truncate">{buff.name}</span>
+                                        </span>
                                     </button>
                                 ))
                             )}
@@ -112,7 +122,15 @@ export const SpecialBuffsSection = ({
                                 maxHeightClass="max-h-64"
                                 header={
                                     <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                        <div className="text-sm font-semibold text-gray-200">{activeSpecialTable.name}</div>
+                                        <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
+                                            {(() => {
+                                                const iconUrl = getBuffIconUrl(activeSpecialTable.name);
+                                                return iconUrl ? (
+                                                    <img src={iconUrl} alt={activeSpecialTable.name} className="w-5 h-5 object-contain shrink-0" />
+                                                ) : null;
+                                            })()}
+                                            <span className="truncate">{activeSpecialTable.name}</span>
+                                        </div>
                                         <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
                                     </div>
                                 }

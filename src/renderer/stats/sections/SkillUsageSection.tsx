@@ -42,6 +42,7 @@ type SkillUsageSectionProps = {
     getLineStrokeColor: (playerKey: string, isSelected: boolean, hasSelection: boolean) => string;
     getLineDashForPlayer: (playerKey: string) => string | undefined;
     formatSkillUsageValue: (value: number) => string;
+    getSkillIconUrl: (name: string) => string | null;
 
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
@@ -84,6 +85,7 @@ export const SkillUsageSection = ({
     getLineStrokeColor,
     getLineDashForPlayer,
     formatSkillUsageValue,
+    getSkillIconUrl,
 
     renderProfessionIcon
 }: SkillUsageSectionProps) => (
@@ -302,6 +304,12 @@ export const SkillUsageSection = ({
                                                 <div className="flex items-center justify-between text-sm text-white min-w-0">
                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
+                                                        {(() => {
+                                                            const iconUrl = getSkillIconUrl(entry.name);
+                                                            return iconUrl ? (
+                                                                <img src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />
+                                                            ) : null;
+                                                        })()}
                                                         <span className="font-semibold truncate min-w-0 flex-1 block max-w-[58vw] sm:max-w-none sm:whitespace-normal sm:overflow-visible">{entry.name}</span>
                                                     </div>
                                                     <span className="text-cyan-200 font-mono text-xs shrink-0">{formatSkillUsageValue(entry.total)}</span>
@@ -327,8 +335,14 @@ export const SkillUsageSection = ({
                 <div className="space-y-4">
                     <div className="space-y-4 rounded-2xl bg-black/50 p-4 mt-2">
                         <div className="flex items-center justify-between">
-                            <div className="text-sm font-semibold text-gray-200">
-                                {selectedSkillName || 'Selected Skill Usage'}
+                            <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
+                                {selectedSkillName ? (() => {
+                                    const iconUrl = getSkillIconUrl(selectedSkillName);
+                                    return iconUrl ? (
+                                        <img src={iconUrl} alt={selectedSkillName} className="w-5 h-5 object-contain shrink-0" />
+                                    ) : null;
+                                })() : null}
+                                <span className="truncate">{selectedSkillName || 'Selected Skill Usage'}</span>
                             </div>
                             <div className="text-[11px] text-gray-400">
                                 ({isSkillUsagePerSecond ? 'casts per second' : 'casts per log'})

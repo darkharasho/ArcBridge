@@ -17,6 +17,7 @@ type ConditionsSectionProps = {
     effectiveConditionSort: { key: 'applications' | 'damage'; dir: 'asc' | 'desc' };
     setConditionSort: (value: { key: 'applications' | 'damage'; dir: 'asc' | 'desc' }) => void;
     showConditionDamage: boolean;
+    getBuffIconUrl: (name: string) => string | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
@@ -41,6 +42,7 @@ export const ConditionsSection = ({
     effectiveConditionSort,
     setConditionSort,
     showConditionDamage,
+    getBuffIconUrl,
     renderProfessionIcon,
     expandedSection,
     expandedSectionClosing,
@@ -123,7 +125,15 @@ export const ConditionsSection = ({
                                                     : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                     }`}
                                             >
-                                                {entry.name}
+                                                <span className="flex items-center gap-2 min-w-0">
+                                                    {(() => {
+                                                        const iconUrl = getBuffIconUrl(entry.name);
+                                                        return iconUrl ? (
+                                                            <img src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />
+                                                        ) : null;
+                                                    })()}
+                                                    <span className="truncate">{entry.name}</span>
+                                                </span>
                                             </button>
                                         ))}
                                     </>
@@ -138,7 +148,15 @@ export const ConditionsSection = ({
                         header={
                             <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
                                 <div className="text-sm font-semibold text-gray-200">
-                                    {activeConditionName === 'all' ? 'All Conditions' : activeConditionName}
+                                    <span className="flex items-center gap-2 min-w-0">
+                                        {activeConditionName !== 'all' ? (() => {
+                                            const iconUrl = getBuffIconUrl(activeConditionName);
+                                            return iconUrl ? (
+                                                <img src={iconUrl} alt={activeConditionName} className="w-5 h-5 object-contain shrink-0" />
+                                            ) : null;
+                                        })() : null}
+                                        <span className="truncate">{activeConditionName === 'all' ? 'All Conditions' : activeConditionName}</span>
+                                    </span>
                                 </div>
                                 <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">
                                     <div className="text-xs uppercase tracking-widest text-gray-500">Squad Totals</div>

@@ -2,6 +2,7 @@ import { Maximize2, Shield, Swords, X } from 'lucide-react';
 
 type TopSkillsSectionProps = {
     stats: any;
+    getSkillIconUrl: (name: string) => string | null;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
     openExpandedSection: (id: string) => void;
@@ -13,6 +14,7 @@ type TopSkillsSectionProps = {
 
 export const TopSkillsSection = ({
     stats,
+    getSkillIconUrl,
     expandedSection,
     expandedSectionClosing,
     openExpandedSection,
@@ -58,7 +60,15 @@ export const TopSkillsSection = ({
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
                             <div className="flex justify-between text-sm mb-1">
-                                <span className="text-white font-bold">{skill.name}</span>
+                                <span className="text-white font-bold flex items-center gap-2 min-w-0">
+                                    {(() => {
+                                        const iconUrl = getSkillIconUrl(skill.name);
+                                        return iconUrl ? (
+                                            <img src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />
+                                        ) : null;
+                                    })()}
+                                    <span className="truncate">{skill.name}</span>
+                                </span>
                                 <div className="text-right">
                                     <span className="text-orange-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
                                     <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>
@@ -111,7 +121,15 @@ export const TopSkillsSection = ({
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
                             <div className="flex justify-between text-sm mb-1">
-                                <span className="text-white font-bold">{skill.name}</span>
+                                <span className="text-white font-bold flex items-center gap-2 min-w-0">
+                                    {(() => {
+                                        const iconUrl = getSkillIconUrl(skill.name);
+                                        return iconUrl ? (
+                                            <img src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />
+                                        ) : null;
+                                    })()}
+                                    <span className="truncate">{skill.name}</span>
+                                </span>
                                 <div className="text-right">
                                     <span className="text-red-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
                                     <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>

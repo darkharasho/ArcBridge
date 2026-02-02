@@ -17,6 +17,7 @@ type BoonOutputSectionProps = {
     setBoonSearch: (value: string) => void;
     formatBoonMetricDisplay: (...args: any[]) => string;
     getBoonMetricValue: (...args: any[]) => number;
+    getBuffIconUrl: (name: string) => string | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
     roundCountStats: boolean;
     expandedSection: string | null;
@@ -43,6 +44,7 @@ export const BoonOutputSection = ({
     setBoonSearch,
     formatBoonMetricDisplay,
     getBoonMetricValue,
+    getBuffIconUrl,
     renderProfessionIcon,
     roundCountStats,
     expandedSection,
@@ -108,7 +110,15 @@ export const BoonOutputSection = ({
                                             : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                             }`}
                                     >
-                                        {boon.name}
+                                        <span className="flex items-center gap-2 min-w-0">
+                                            {(() => {
+                                                const iconUrl = getBuffIconUrl(boon.name);
+                                                return iconUrl ? (
+                                                    <img src={iconUrl} alt={boon.name} className="w-4 h-4 object-contain shrink-0" />
+                                                ) : null;
+                                            })()}
+                                            <span className="truncate">{boon.name}</span>
+                                        </span>
                                     </button>
                                 ))
                             )}
@@ -124,7 +134,15 @@ export const BoonOutputSection = ({
                             maxHeightClass="max-h-64"
                             header={
                                 <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                    <div className="text-sm font-semibold text-gray-200">{activeBoonTable.name}</div>
+                                    <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
+                                        {(() => {
+                                            const iconUrl = getBuffIconUrl(activeBoonTable.name);
+                                            return iconUrl ? (
+                                                <img src={iconUrl} alt={activeBoonTable.name} className="w-5 h-5 object-contain shrink-0" />
+                                            ) : null;
+                                        })()}
+                                        <span className="truncate">{activeBoonTable.name}</span>
+                                    </div>
                                     <div className="text-xs uppercase tracking-widest text-gray-500">
                                         {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
                                     </div>
