@@ -11,7 +11,7 @@ import { useStatsAggregation } from './stats/hooks/useStatsAggregation';
 import { useApmStats } from './stats/hooks/useApmStats';
 import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
-import { IconManifest, loadIconManifest, resolveIconUrl } from '../shared/iconManifest';
+import { IconManifest, guessIconUrl, loadIconManifest, resolveIconUrl } from '../shared/iconManifest';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import type { SkillUsageSummary } from './stats/statsTypes';
@@ -574,6 +574,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const [buffIconManifest, setBuffIconManifest] = useState<IconManifest | null>(null);
     const [sigilIconManifest, setSigilIconManifest] = useState<IconManifest | null>(null);
     const [relicIconManifest, setRelicIconManifest] = useState<IconManifest | null>(null);
+    const [traitIconManifest, setTraitIconManifest] = useState<IconManifest | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -581,14 +582,16 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             loadIconManifest('skill'),
             loadIconManifest('buff'),
             loadIconManifest('sigil'),
-            loadIconManifest('relic')
+            loadIconManifest('relic'),
+            loadIconManifest('trait')
         ])
-            .then(([skillManifest, buffManifest, sigilManifest, relicManifest]) => {
+            .then(([skillManifest, buffManifest, sigilManifest, relicManifest, traitManifest]) => {
                 if (!isMounted) return;
                 setSkillIconManifest(skillManifest);
                 setBuffIconManifest(buffManifest);
                 setSigilIconManifest(sigilManifest);
                 setRelicIconManifest(relicManifest);
+                setTraitIconManifest(traitManifest);
             })
             .catch(() => {
                 if (!isMounted) return;
@@ -596,6 +599,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                 setBuffIconManifest(null);
                 setSigilIconManifest(null);
                 setRelicIconManifest(null);
+                setTraitIconManifest(null);
             });
         return () => {
             isMounted = false;
@@ -613,6 +617,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             return (
                 resolveIconUrl(skillIconManifest, 'skill', name)
                 || resolveIconUrl(skillIconManifest, 'skill', stripParenthetical(name))
+                || guessIconUrl('skill', name)
+                || guessIconUrl('skill', stripParenthetical(name))
             );
         },
         [skillIconManifest, stripParenthetical]
@@ -625,15 +631,27 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             return (
                 resolveIconUrl(buffIconManifest, 'buff', name)
                 || resolveIconUrl(buffIconManifest, 'buff', stripped)
+                || guessIconUrl('buff', name)
+                || guessIconUrl('buff', stripped)
                 || resolveIconUrl(skillIconManifest, 'skill', name)
                 || resolveIconUrl(skillIconManifest, 'skill', stripped)
+                || guessIconUrl('skill', name)
+                || guessIconUrl('skill', stripped)
                 || resolveIconUrl(sigilIconManifest, 'sigil', name)
                 || resolveIconUrl(sigilIconManifest, 'sigil', stripped)
+                || guessIconUrl('sigil', name)
+                || guessIconUrl('sigil', stripped)
                 || resolveIconUrl(relicIconManifest, 'relic', name)
                 || resolveIconUrl(relicIconManifest, 'relic', stripped)
+                || guessIconUrl('relic', name)
+                || guessIconUrl('relic', stripped)
+                || resolveIconUrl(traitIconManifest, 'trait', name)
+                || resolveIconUrl(traitIconManifest, 'trait', stripped)
+                || guessIconUrl('trait', name)
+                || guessIconUrl('trait', stripped)
             );
         },
-        [buffIconManifest, skillIconManifest, sigilIconManifest, relicIconManifest, stripParenthetical]
+        [buffIconManifest, skillIconManifest, sigilIconManifest, relicIconManifest, traitIconManifest, stripParenthetical]
     );
 
     const renderProfessionIcon = (profession?: string, _professionList?: string[], className?: string) => {

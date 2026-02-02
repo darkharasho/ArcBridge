@@ -7,7 +7,8 @@ const iconDirs = [
     'public/img/skill-icons',
     'public/img/buff-icons',
     'public/img/relic-icons',
-    'public/img/sigil-icons'
+    'public/img/sigil-icons',
+    'public/img/trait-icons'
 ];
 
 const dryRun = process.argv.includes('--dry-run');

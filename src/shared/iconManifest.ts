@@ -1,4 +1,4 @@
-export type IconKind = 'skill' | 'buff' | 'sigil' | 'relic';
+export type IconKind = 'skill' | 'buff' | 'sigil' | 'relic' | 'trait';
 
 export type IconManifest = {
     version: number;
@@ -26,10 +26,7 @@ const getImageBasePath = (): string => {
     if (typeof window === 'undefined') return './img';
     if (window.location.protocol === 'file:') return './img';
     const isHttp = window.location.protocol === 'http:' || window.location.protocol === 'https:';
-    const baseUrl = (import.meta as any)?.env?.BASE_URL || './';
-    if (isHttp && baseUrl && baseUrl !== './') {
-        return `${String(baseUrl).replace(/\/?$/, '/') }img`.replace(/\/{2,}/g, '/');
-    }
+    if (isHttp) return '/img';
     return './img';
 };
 
@@ -38,25 +35,38 @@ export const getIconAssetPath = (kind: IconKind, filename: string): string => {
     return `${basePath}/${kind}-icons/${filename}`.replace(/\/{2,}/g, '/');
 };
 
-const getManifestUrl = (kind: IconKind): string => {
+const getManifestUrls = (kind: IconKind): string[] => {
     const basePath = getImageBasePath();
-    return `${basePath}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    const relative = `${basePath}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    if (typeof window === 'undefined') return [relative];
+    const origin = window.location.origin.replace(/\/$/, '');
+    const absolute = `${origin}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    const absoluteImg = `${origin}/img/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    return [relative, absoluteImg, absolute];
 };
 
 export const loadIconManifest = async (kind: IconKind): Promise<IconManifest | null> => {
     if (manifestCache[kind] !== undefined) return manifestCache[kind] || null;
     if (!manifestPromiseCache[kind]) {
-        manifestPromiseCache[kind] = fetch(getManifestUrl(kind), { cache: 'force-cache' })
-            .then((resp) => (resp.ok ? resp.json() : null))
-            .then((data) => {
-                const manifest = data && typeof data === 'object' && data.entries ? (data as IconManifest) : null;
-                manifestCache[kind] = manifest;
-                return manifest;
-            })
-            .catch(() => {
-                manifestCache[kind] = null;
-                return null;
-            });
+        const urls = getManifestUrls(kind);
+        manifestPromiseCache[kind] = (async () => {
+            for (const url of urls) {
+                try {
+                    const resp = await fetch(url, { cache: 'force-cache' });
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    const manifest = data && typeof data === 'object' && data.entries ? (data as IconManifest) : null;
+                    if (manifest) {
+                        manifestCache[kind] = manifest;
+                        return manifest;
+                    }
+                } catch {
+                    continue;
+                }
+            }
+            manifestCache[kind] = null;
+            return null;
+        })();
     }
     return manifestPromiseCache[kind] || null;
 };
@@ -71,4 +81,18 @@ export const resolveIconUrl = (
     const filename = manifest.entries[key];
     if (!filename) return null;
     return getIconAssetPath(kind, filename);
+};
+
+export const guessIconUrl = (kind: IconKind, name: string): string | null => {
+    if (!name) return null;
+    const trimmed = name.trim();
+    const preserved = trimmed
+        .replace(/&/g, ' and ')
+        .replace(/[^A-Za-z0-9]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    const normalized = normalizeIconKey(trimmed);
+    if (preserved) return getIconAssetPath(kind, `${preserved}.webp`);
+    if (normalized) return getIconAssetPath(kind, `${normalized}.webp`);
+    return null;
 };
