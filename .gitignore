@@ -37,4 +37,4 @@ Thumbs.db
 testdata/
 
 # Dev web report testing
-web/
+web/reports/
