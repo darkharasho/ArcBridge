@@ -491,7 +491,9 @@ function App() {
                 ...prev,
                 stage: data.stage || 'Uploading',
                 progress: typeof data.progress === 'number' ? data.progress : prev.progress,
-                detail: data.message || prev.detail
+                detail: data.message || prev.detail,
+                fileCount: typeof data.fileCount === 'number' ? data.fileCount : prev.fileCount,
+                uploadedCount: typeof data.uploadedCount === 'number' ? data.uploadedCount : prev.uploadedCount
             }));
         });
         return () => {
@@ -943,8 +945,16 @@ function App() {
                                     style={{ width: `${webUploadState.progress ?? (webUploadState.uploading ? 35 : 100)}%` }}
                                 />
                             </div>
-                            <div className="text-xs text-gray-500 mt-2">
-                                {typeof webUploadState.progress === 'number' ? `${Math.round(webUploadState.progress)}%` : 'Preparing...'}
+                            <div className="text-xs text-gray-500 mt-2 flex items-center justify-between">
+                                <span>{typeof webUploadState.progress === 'number' ? `${Math.round(webUploadState.progress)}%` : 'Preparing...'}</span>
+                                {typeof webUploadState.fileCount === 'number' && (
+                                    <span>
+                                        {typeof webUploadState.uploadedCount === 'number' ? webUploadState.uploadedCount : 0}
+                                        {' / '}
+                                        {webUploadState.fileCount}
+                                        {' files'}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>

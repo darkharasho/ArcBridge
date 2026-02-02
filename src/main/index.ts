@@ -1069,9 +1069,9 @@ const ensureDevWebIndex = (webRoot: string) => {
     fs.writeFileSync(indexPath, html);
 };
 
-const sendWebUploadStatus = (stage: string, message?: string, progress?: number) => {
+const sendWebUploadStatus = (stage: string, message?: string, progress?: number, fileCount?: number, uploadedCount?: number) => {
     if (win && !win.isDestroyed()) {
-        win.webContents.send('web-upload-status', { stage, message, progress });
+        win.webContents.send('web-upload-status', { stage, message, progress, fileCount, uploadedCount });
     }
 };
 
@@ -2433,9 +2433,13 @@ if (!gotTheLock) {
                     return { success: true, url: reportUrl };
                 }
 
-                sendWebUploadStatus('Uploading', 'Uploading changes...', 75);
+                sendWebUploadStatus('Uploading', 'Uploading changes...', 75, pendingEntries.length, 0);
                 const blobEntries: Array<{ path: string; sha: string }> = [];
-                for (const entry of pendingEntries) {
+                for (let i = 0; i < pendingEntries.length; i += 1) {
+                    const entry = pendingEntries[i];
+                    const uploadedCount = i + 1;
+                    const progress = 75 + Math.round((uploadedCount / pendingEntries.length) * 15);
+                    sendWebUploadStatus('Uploading', 'Uploading changes...', progress, pendingEntries.length, uploadedCount);
                     const blob = await createGithubBlob(owner, repo, token, entry.contentBase64);
                     blobEntries.push({ path: entry.path, sha: blob.sha });
                 }

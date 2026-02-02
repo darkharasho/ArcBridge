@@ -65,6 +65,8 @@ export interface IWebUploadState {
     stage: string | null;
     progress: number | null;
     detail: string | null;
+    fileCount: number | null;
+    uploadedCount: number | null;
     url: string | null;
     buildStatus: WebUploadBuildStatus;
 }
@@ -130,6 +132,8 @@ export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {
     stage: null,
     progress: null,
     detail: null,
+    fileCount: null,
+    uploadedCount: null,
     url: null,
     buildStatus: 'idle'
 };
@@ -233,7 +237,7 @@ export interface IElectronAPI {
     uploadWebReport: (payload: { meta: any; stats: any }) => Promise<{ success: boolean; url?: string; error?: string }>;
     mockWebReport: (payload: { meta: any; stats: any }) => Promise<{ success: boolean; url?: string; error?: string }>;
     getGithubPagesBuildStatus: () => Promise<{ success: boolean; status?: string; updatedAt?: string; errorMessage?: string; error?: string }>;
-    onWebUploadStatus: (callback: (data: { stage: string; message?: string; progress?: number }) => void) => () => void;
+    onWebUploadStatus: (callback: (data: { stage: string; message?: string; progress?: number; fileCount?: number; uploadedCount?: number }) => void) => () => void;
     onGithubThemeStatus: (callback: (data: { stage?: string; message?: string; progress?: number }) => void) => () => void;
 }
 
