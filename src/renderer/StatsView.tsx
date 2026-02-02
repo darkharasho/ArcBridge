@@ -598,6 +598,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         (name: string) => {
             if (!name) return null;
             if (/primal rage/i.test(name)) return null;
+            if (/^presence of the keep\b/i.test(name)) return 'Presence of the Keep (effect)';
             if (normalizeIconKey(name) === 'mystic_rebuke') return 'Shattered Aegis';
             const lower = name.toLowerCase();
             if (lower.includes('arrow') && lower.includes('fire') && lower.includes('arrows')) {

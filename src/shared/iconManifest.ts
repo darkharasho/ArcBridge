@@ -20,6 +20,8 @@ let manifestCache: IconManifest | null | undefined = undefined;
 let manifestPromise: Promise<IconManifest | null> | null = null;
 let aliasCache: IconAliasManifest | null | undefined = undefined;
 let aliasPromise: Promise<IconAliasManifest | null> | null = null;
+let overrideCache: IconAliasManifest | null | undefined = undefined;
+let overridePromise: Promise<IconAliasManifest | null> | null = null;
 let skillIdNameCache: SkillIdNameMap | null | undefined = undefined;
 let skillIdNamePromise: Promise<SkillIdNameMap | null> | null = null;
 
@@ -74,6 +76,16 @@ const getAliasUrls = (): string[] => {
     return [relative, absoluteImg, absolute];
 };
 
+const getOverrideUrls = (): string[] => {
+    const basePath = getImageBasePath();
+    const relative = `${basePath}/icon-aliases.overrides.json`.replace(/\/{2,}/g, '/');
+    if (typeof window === 'undefined') return [relative];
+    const origin = window.location.origin.replace(/\/$/, '');
+    const absoluteImg = `${origin}/img/icon-aliases.overrides.json`.replace(/\/{2,}/g, '/');
+    const absolute = `${origin}/icon-aliases.overrides.json`.replace(/\/{2,}/g, '/');
+    return [relative, absoluteImg, absolute];
+};
+
 export const loadIconAliases = async (): Promise<IconAliasManifest | null> => {
     if (aliasCache !== undefined) return aliasCache || null;
     if (!aliasPromise) {
@@ -86,16 +98,64 @@ export const loadIconAliases = async (): Promise<IconAliasManifest | null> => {
                     const data = await resp.json();
                     const manifest = data && typeof data === 'object' ? (data as IconAliasManifest) : null;
                     aliasCache = manifest;
+                    break;
+                } catch {
+                    continue;
+                }
+            }
+            if (aliasCache === undefined) aliasCache = null;
+            return aliasCache;
+        })();
+    }
+    const base = await (aliasPromise || Promise.resolve(null));
+
+    if (overrideCache !== undefined) {
+        if (!overrideCache && !base) return base || null;
+        return {
+            ...(base || { version: 1, generatedAt: new Date().toISOString() }),
+            iconAliases: {
+                ...(base?.iconAliases || {}),
+                ...(overrideCache?.iconAliases || {})
+            },
+            traitAliases: {
+                ...(base?.traitAliases || {}),
+                ...(overrideCache?.traitAliases || {})
+            }
+        };
+    }
+
+    if (!overridePromise) {
+        const overrideUrls = getOverrideUrls();
+        overridePromise = (async () => {
+            for (const url of overrideUrls) {
+                try {
+                    const resp = await fetch(url, { cache: 'no-store' });
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    const manifest = data && typeof data === 'object' ? (data as IconAliasManifest) : null;
+                    overrideCache = manifest;
                     return manifest;
                 } catch {
                     continue;
                 }
             }
-            aliasCache = null;
+            overrideCache = null;
             return null;
         })();
     }
-    return aliasPromise || null;
+    const overrides = await overridePromise;
+    if (!overrides && !base) return null;
+    return {
+        ...(base || { version: 1, generatedAt: new Date().toISOString() }),
+        iconAliases: {
+            ...(base?.iconAliases || {}),
+            ...(overrides?.iconAliases || {})
+        },
+        traitAliases: {
+            ...(base?.traitAliases || {}),
+            ...(overrides?.traitAliases || {})
+        }
+    };
 };
 
 const getSkillIdNameUrls = (): string[] => {
