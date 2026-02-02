@@ -8,7 +8,24 @@ interface UseSkillChartsProps {
     skillUsageView: 'total' | 'perSecond';
 }
 
-export const useSkillCharts = ({ skillUsageData, selectedSkillId, selectedPlayers, skillUsageView }: UseSkillChartsProps) => {
+export type SkillChartPoint = Record<string, number | string> & {
+    index: number;
+    name: string;
+    shortLabel: string;
+    fullLabel: string;
+    timestamp: number;
+};
+
+export interface UseSkillChartsResult {
+    playerMapByKey: Map<string, SkillUsagePlayer>;
+    playerTotalsForSkill: Map<string, number>;
+    skillBarData: Array<{ key: string; name: string; profession: string; value: number }>;
+    skillChartData: SkillChartPoint[];
+    skillChartMaxY: number;
+    groupedSkillUsagePlayers: Array<{ profession: string; players: SkillUsagePlayer[] }>;
+}
+
+export const useSkillCharts = ({ skillUsageData, selectedSkillId, selectedPlayers, skillUsageView }: UseSkillChartsProps): UseSkillChartsResult => {
 
     const playerMapByKey = useMemo(() => {
         const map = new Map<string, SkillUsagePlayer>();
@@ -60,7 +77,7 @@ export const useSkillCharts = ({ skillUsageData, selectedSkillId, selectedPlayer
             const skillEntry = record.skillEntries[selectedSkillId];
             if (!skillEntry) return null;
 
-            const point: any = {
+            const point: SkillChartPoint = {
                 index: recordIndex,
                 name: record.label,
                 shortLabel: record.label,

@@ -1,5 +1,6 @@
 import { Activity, ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import type { ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
 
 type ApmSectionProps = {
     expandedSection: string | null;
@@ -159,7 +160,7 @@ export const ApmSection = ({
                                             {(() => {
                                                 const term = apmSkillSearch.trim().toLowerCase();
                                                 const filteredSkills = term
-                                                    ? spec.skills.filter((skill) => skill.name.toLowerCase().includes(term))
+                                                    ? spec.skills.filter((skill: ApmSkillEntry) => skill.name.toLowerCase().includes(term))
                                                     : spec.skills;
                                                 if (filteredSkills.length === 0) {
                                                     return (
@@ -168,7 +169,7 @@ export const ApmSection = ({
                                                         </div>
                                                     );
                                                 }
-                                                return filteredSkills.map((skill) => (
+                                                return filteredSkills.map((skill: ApmSkillEntry) => (
                                                     <button
                                                         key={skill.id}
                                                         onClick={() => setActiveApmSkillId(skill.id)}
@@ -233,7 +234,7 @@ export const ApmSection = ({
                                             <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto)</div>
                                         </div>
                                         <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
-                                            {activeApmSpecTable.playerRows.map((row, index) => (
+                                            {activeApmSpecTable.playerRows.map((row: ApmPlayerRow, index: number) => (
                                                 <div
                                                     key={`${activeApmSpecTable.profession}-all-${row.key}`}
                                                     className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"

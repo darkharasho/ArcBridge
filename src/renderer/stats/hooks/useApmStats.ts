@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ApmSpecBucket, SkillUsageSummary, ApmPlayerRow, ApmSkillEntry, SkillUsagePlayer } from '../statsTypes';
+import { ApmSpecBucket, SkillUsageSummary, ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
 import { isAutoAttackName } from '../utils/dashboardUtils';
 
 export const useApmStats = (skillUsageData: SkillUsageSummary) => {

@@ -13,6 +13,7 @@ import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
+import type { SkillUsageSummary } from './stats/statsTypes';
 
 
 import { SkillUsageSection } from './stats/sections/SkillUsageSection';
@@ -74,7 +75,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         skillUsageData: computedSkillUsageData
     } = useStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod });
 
-    const skillUsageData = precomputedStats?.skillUsageData ?? computedSkillUsageData;
+    const skillUsageData = (precomputedStats?.skillUsageData ?? computedSkillUsageData) as SkillUsageSummary;
 
     useEffect(() => {
         console.log('[StatsView] Stats Aggregation Result:', {

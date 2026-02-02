@@ -1,12 +1,12 @@
 import { render, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useEffect } from 'react';
-import { useSkillCharts } from '../stats/hooks/useSkillCharts';
+import { useSkillCharts, type UseSkillChartsResult } from '../stats/hooks/useSkillCharts';
 
 const SkillChartsProbe = ({
     onData
 }: {
-    onData: (data: ReturnType<typeof useSkillCharts>) => void;
+    onData: (data: UseSkillChartsResult) => void;
 }) => {
     const data = useSkillCharts({
         skillUsageData: {
@@ -59,15 +59,15 @@ const SkillChartsProbe = ({
 
 describe('useSkillCharts', () => {
     it('includes selected players with zero values in chart data', async () => {
-        let result: ReturnType<typeof useSkillCharts> | null = null;
+        let result: UseSkillChartsResult | null = null;
 
         render(<SkillChartsProbe onData={(data) => { result = data; }} />);
 
         await waitFor(() => {
-            expect(result?.skillChartData.length).toBe(1);
+            expect((result as UseSkillChartsResult | null)?.skillChartData.length).toBe(1);
         });
 
-        const point = result?.skillChartData[0] as any;
+        const point = (result as UseSkillChartsResult).skillChartData[0] as any;
         expect(point.p1).toBe(3);
         expect(point.p2).toBe(0);
     });
