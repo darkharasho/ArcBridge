@@ -24,7 +24,7 @@ if (magickCheck.status !== 0) {
 }
 
 const isImage = (file) => /\.(png|jpe?g)$/i.test(file);
-const isImageOrWebp = (file) => /\.(png|jpe?g|webp)$/i.test(file);
+const isImageOrWebp = (file) => /\.(png|jpe?g|webp|svg)$/i.test(file);
 
 const formatBytes = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;

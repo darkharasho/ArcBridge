@@ -646,6 +646,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     return `Sigil of ${sigilName}`;
                 }
             }
+            if (/flame blast/i.test(name) && /sigil/i.test(name)) {
+                return 'Superior Sigil of Fire';
+            }
             return null;
         },
         [iconAliases]
@@ -694,9 +697,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             if (!name) return null;
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
-
-            const directResolved = resolveIconStrict(resolvedName) || resolveIconStrict(stripped);
-            if (directResolved) return directResolved;
+            const hasSigil = /sigil/i.test(resolvedName);
+            if (!hasSigil) {
+                const directResolved = resolveIconStrict(resolvedName) || resolveIconStrict(stripped);
+                if (directResolved) return directResolved;
+            }
 
             const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
             const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';

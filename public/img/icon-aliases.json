@@ -305,7 +305,6 @@
     "fire_corrosive_shot": "Fire Trebuchet",
     "ram": "Impact Slam",
     "accelerated_ram": "Impact Slam",
-    "flame_blast": "Flame Blast",
     "weakening_flame_blast": "Flame Blast",
     "intense_flame_blast": "Flame Blast",
     "impact_slam": "Impact Slam",
@@ -317,6 +316,14 @@
     "flame_jet": "Flamethrower",
     "drakes_breath": "Drakes Breath",
     "arc_divider": "Arc Divider",
-    "boiling_oil": "Pour Oil"
+    "boiling_oil": "Pour Oil",
+    "poison": "Poisoned",
+    "chill": "Chilled",
+    "blind": "Blinded",
+    "immobilize": "Immobile",
+    "concussion_barrage": "Fire Incendiary Shells",
+    "dragons_breath": "Dragons Breath skill",
+    "fire_hallowed_boulder": "Fire Boulder",
+    "fire_hollowed_boulder": "Fire Boulder"
   }
 }

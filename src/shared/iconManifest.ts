@@ -181,9 +181,17 @@ export const guessIconUrl = (name: string): string | null => {
         .replace(/[^A-Za-z0-9]+/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '');
+    const mergedPossessive = preserved.replace(/_s_/, 's_');
+    const mergedPossessiveLower = mergedPossessive.toLowerCase();
+    const preservedLower = preserved.toLowerCase();
+    const deapostrophedLower = deapostrophed.toLowerCase();
     const normalized = normalizeIconKey(trimmed);
-    if (preserved) return getIconAssetPath('game', `${preserved}.webp`);
     if (deapostrophed) return getIconAssetPath('game', `${deapostrophed}.webp`);
+    if (mergedPossessive) return getIconAssetPath('game', `${mergedPossessive}.webp`);
+    if (preserved) return getIconAssetPath('game', `${preserved}.webp`);
+    if (deapostrophedLower) return getIconAssetPath('game', `${deapostrophedLower}.webp`);
+    if (mergedPossessiveLower) return getIconAssetPath('game', `${mergedPossessiveLower}.webp`);
+    if (preservedLower) return getIconAssetPath('game', `${preservedLower}.webp`);
     if (normalized) return getIconAssetPath('game', `${normalized}.webp`);
     return null;
 };
