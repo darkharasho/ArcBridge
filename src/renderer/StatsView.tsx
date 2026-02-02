@@ -570,42 +570,26 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         return '0.0';
     };
 
-    const [skillIconManifest, setSkillIconManifest] = useState<IconManifest | null>(null);
-    const [buffIconManifest, setBuffIconManifest] = useState<IconManifest | null>(null);
-    const [sigilIconManifest, setSigilIconManifest] = useState<IconManifest | null>(null);
-    const [relicIconManifest, setRelicIconManifest] = useState<IconManifest | null>(null);
-    const [traitIconManifest, setTraitIconManifest] = useState<IconManifest | null>(null);
+    const [gameIconManifest, setGameIconManifest] = useState<IconManifest | null>(null);
     const [iconAliases, setIconAliases] = useState<IconAliasManifest | null>(null);
     const [skillIdNames, setSkillIdNames] = useState<SkillIdNameMap | null>(null);
 
     useEffect(() => {
         let isMounted = true;
         Promise.all([
-            loadIconManifest('skill'),
-            loadIconManifest('buff'),
-            loadIconManifest('sigil'),
-            loadIconManifest('relic'),
-            loadIconManifest('trait'),
+            loadIconManifest(),
             loadIconAliases(),
             loadSkillIdNames()
         ])
-            .then(([skillManifest, buffManifest, sigilManifest, relicManifest, traitManifest, aliases, skillNames]) => {
+            .then(([gameManifest, aliases, skillNames]) => {
                 if (!isMounted) return;
-                setSkillIconManifest(skillManifest);
-                setBuffIconManifest(buffManifest);
-                setSigilIconManifest(sigilManifest);
-                setRelicIconManifest(relicManifest);
-                setTraitIconManifest(traitManifest);
+                setGameIconManifest(gameManifest);
                 setIconAliases(aliases);
                 setSkillIdNames(skillNames);
             })
             .catch(() => {
                 if (!isMounted) return;
-                setSkillIconManifest(null);
-                setBuffIconManifest(null);
-                setSigilIconManifest(null);
-                setRelicIconManifest(null);
-                setTraitIconManifest(null);
+                setGameIconManifest(null);
                 setIconAliases(null);
                 setSkillIdNames(null);
             });
@@ -679,10 +663,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
 
     const resolveIcon = useCallback(
-        (manifest: IconManifest | null, kind: 'skill' | 'buff' | 'sigil' | 'relic' | 'trait', name: string) => {
-            return resolveIconUrl(manifest, kind, name) || (!manifest ? guessIconUrl(kind, name) : null);
+        (name: string) => {
+            return resolveIconUrl(gameIconManifest, name) || (!gameIconManifest ? guessIconUrl(name) : null);
         },
-        []
+        [gameIconManifest]
     );
 
     const isArrowCartAlias = useCallback((name: string | null) => {
@@ -706,8 +690,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
             const directResolved = (
-                resolveIcon(skillIconManifest, 'skill', resolvedName)
-                || resolveIcon(skillIconManifest, 'skill', stripped)
+                resolveIcon(resolvedName)
+                || resolveIcon(stripped)
             );
             if (directResolved) return directResolved;
 
@@ -719,20 +703,20 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     ? (
                         (preferSkill
                             ? (
-                                resolveIcon(skillIconManifest, 'skill', aliasName)
-                                || resolveIcon(skillIconManifest, 'skill', aliasStripped)
+                                resolveIcon(aliasName)
+                                || resolveIcon(aliasStripped)
                             )
                             : null)
-                        || resolveIcon(sigilIconManifest, 'sigil', aliasName)
-                        || resolveIcon(sigilIconManifest, 'sigil', aliasStripped)
-                        || resolveIcon(relicIconManifest, 'relic', aliasName)
-                        || resolveIcon(relicIconManifest, 'relic', aliasStripped)
-                        || resolveIcon(traitIconManifest, 'trait', aliasName)
-                        || resolveIcon(traitIconManifest, 'trait', aliasStripped)
-                        || resolveIcon(buffIconManifest, 'buff', aliasName)
-                        || resolveIcon(buffIconManifest, 'buff', aliasStripped)
-                        || resolveIcon(skillIconManifest, 'skill', aliasName)
-                        || resolveIcon(skillIconManifest, 'skill', aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
                     )
                     : null)
             );
@@ -743,8 +727,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             const traitResolved = (
                 (traitAliasName
                     ? (
-                        resolveIcon(traitIconManifest, 'trait', traitAliasName)
-                        || resolveIcon(traitIconManifest, 'trait', traitAliasStripped)
+                        resolveIcon(traitAliasName)
+                        || resolveIcon(traitAliasStripped)
                     )
                     : null)
             );
@@ -754,11 +738,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             return null;
         },
         [
-            skillIconManifest,
-            buffIconManifest,
-            sigilIconManifest,
-            relicIconManifest,
-            traitIconManifest,
+            gameIconManifest,
             isArrowCartAlias,
             resolveAliasName,
             resolveTraitAliasName,
@@ -774,14 +754,14 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             const resolvedName = resolveSkillName(name);
             const stripped = stripParenthetical(resolvedName);
             const directResolved = (
-                resolveIcon(buffIconManifest, 'buff', resolvedName)
-                || resolveIcon(buffIconManifest, 'buff', stripped)
-                || resolveIcon(skillIconManifest, 'skill', resolvedName)
-                || resolveIcon(skillIconManifest, 'skill', stripped)
-                || resolveIcon(sigilIconManifest, 'sigil', resolvedName)
-                || resolveIcon(sigilIconManifest, 'sigil', stripped)
-                || resolveIcon(relicIconManifest, 'relic', resolvedName)
-                || resolveIcon(relicIconManifest, 'relic', stripped)
+                resolveIcon(resolvedName)
+                || resolveIcon(stripped)
+                || resolveIcon(resolvedName)
+                || resolveIcon(stripped)
+                || resolveIcon(resolvedName)
+                || resolveIcon(stripped)
+                || resolveIcon(resolvedName)
+                || resolveIcon(stripped)
             );
             if (directResolved) return directResolved;
 
@@ -791,20 +771,20 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             const nonTraitResolved = (
                 (aliasName
                     ? (
-                        resolveIcon(buffIconManifest, 'buff', aliasName)
-                        || resolveIcon(buffIconManifest, 'buff', aliasStripped)
+                        resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
                         || (preferSkill
                             ? (
-                                resolveIcon(skillIconManifest, 'skill', aliasName)
-                                || resolveIcon(skillIconManifest, 'skill', aliasStripped)
+                                resolveIcon(aliasName)
+                                || resolveIcon(aliasStripped)
                             )
                             : null)
-                        || resolveIcon(skillIconManifest, 'skill', aliasName)
-                        || resolveIcon(skillIconManifest, 'skill', aliasStripped)
-                        || resolveIcon(sigilIconManifest, 'sigil', aliasName)
-                        || resolveIcon(sigilIconManifest, 'sigil', aliasStripped)
-                        || resolveIcon(relicIconManifest, 'relic', aliasName)
-                        || resolveIcon(relicIconManifest, 'relic', aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
+                        || resolveIcon(aliasName)
+                        || resolveIcon(aliasStripped)
                     )
                     : null)
             );
@@ -815,18 +795,14 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             return (
                 (traitAliasName
                     ? (
-                        resolveIcon(traitIconManifest, 'trait', traitAliasName)
-                        || resolveIcon(traitIconManifest, 'trait', traitAliasStripped)
+                        resolveIcon(traitAliasName)
+                        || resolveIcon(traitAliasStripped)
                     )
                     : null)
             );
         },
         [
-            buffIconManifest,
-            skillIconManifest,
-            sigilIconManifest,
-            relicIconManifest,
-            traitIconManifest,
+            gameIconManifest,
             isArrowCartAlias,
             resolveAliasName,
             resolveTraitAliasName,

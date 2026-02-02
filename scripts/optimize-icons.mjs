@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, statSync, writeFileSync, unlinkSync } from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
 
 const iconDirs = [
+    'public/img/game-icons',
     'public/img/skill-icons',
     'public/img/buff-icons',
     'public/img/relic-icons',
@@ -107,6 +108,13 @@ for (const dir of iconDirs) {
             const targetStat = statSync(targetPath);
             totalWebpBytes += targetStat.size;
             if (targetStat.mtimeMs >= sourceStat.mtimeMs) {
+                if (!dryRun) {
+                    try {
+                        unlinkSync(sourcePath);
+                    } catch {
+                        // ignore delete failures
+                    }
+                }
                 skipped += 1;
                 continue;
             }
@@ -134,6 +142,13 @@ for (const dir of iconDirs) {
         converted += 1;
         if (existsSync(targetPath)) {
             totalWebpBytes += statSync(targetPath).size;
+        }
+        if (!dryRun) {
+            try {
+                unlinkSync(sourcePath);
+            } catch {
+                // ignore delete failures
+            }
         }
     }
 

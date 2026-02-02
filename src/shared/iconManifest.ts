@@ -1,4 +1,4 @@
-export type IconKind = 'skill' | 'buff' | 'sigil' | 'relic' | 'trait';
+export type IconKind = 'game';
 
 export type IconManifest = {
     version: number;
@@ -16,8 +16,8 @@ export type IconAliasManifest = {
 
 export type SkillIdNameMap = Record<string, string>;
 
-const manifestCache: Partial<Record<IconKind, IconManifest | null>> = {};
-const manifestPromiseCache: Partial<Record<IconKind, Promise<IconManifest | null>>> = {};
+let manifestCache: IconManifest | null | undefined = undefined;
+let manifestPromise: Promise<IconManifest | null> | null = null;
 let aliasCache: IconAliasManifest | null | undefined = undefined;
 let aliasPromise: Promise<IconAliasManifest | null> | null = null;
 let skillIdNameCache: SkillIdNameMap | null | undefined = undefined;
@@ -44,9 +44,9 @@ const getImageBasePath = (): string => {
     return './img';
 };
 
-export const getIconAssetPath = (kind: IconKind, filename: string): string => {
+export const getIconAssetPath = (_kind: IconKind, filename: string): string => {
     const basePath = getImageBasePath();
-    return `${basePath}/${kind}-icons/${filename}`.replace(/\/{2,}/g, '/');
+    return `${basePath}/game-icons/${filename}`.replace(/\/{2,}/g, '/');
 };
 
 export const getUnknownSkillIconUrl = (): string => {
@@ -54,13 +54,13 @@ export const getUnknownSkillIconUrl = (): string => {
     return `${basePath}/UnknownSkill.svg`.replace(/\/{2,}/g, '/');
 };
 
-const getManifestUrls = (kind: IconKind): string[] => {
+const getManifestUrls = (): string[] => {
     const basePath = getImageBasePath();
-    const relative = `${basePath}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    const relative = `${basePath}/game-icons/manifest.json`.replace(/\/{2,}/g, '/');
     if (typeof window === 'undefined') return [relative];
     const origin = window.location.origin.replace(/\/$/, '');
-    const absolute = `${origin}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
-    const absoluteImg = `${origin}/img/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    const absolute = `${origin}/game-icons/manifest.json`.replace(/\/{2,}/g, '/');
+    const absoluteImg = `${origin}/img/game-icons/manifest.json`.replace(/\/{2,}/g, '/');
     return [relative, absoluteImg, absolute];
 };
 
@@ -133,11 +133,11 @@ export const loadSkillIdNames = async (): Promise<SkillIdNameMap | null> => {
     return skillIdNamePromise || null;
 };
 
-export const loadIconManifest = async (kind: IconKind): Promise<IconManifest | null> => {
-    if (manifestCache[kind] !== undefined) return manifestCache[kind] || null;
-    if (!manifestPromiseCache[kind]) {
-        const urls = getManifestUrls(kind);
-        manifestPromiseCache[kind] = (async () => {
+export const loadIconManifest = async (): Promise<IconManifest | null> => {
+    if (manifestCache !== undefined) return manifestCache || null;
+    if (!manifestPromise) {
+        const urls = getManifestUrls();
+        manifestPromise = (async () => {
             for (const url of urls) {
                 try {
                     const resp = await fetch(url, { cache: 'force-cache' });
@@ -145,33 +145,29 @@ export const loadIconManifest = async (kind: IconKind): Promise<IconManifest | n
                     const data = await resp.json();
                     const manifest = data && typeof data === 'object' && data.entries ? (data as IconManifest) : null;
                     if (manifest) {
-                        manifestCache[kind] = manifest;
+                        manifestCache = manifest;
                         return manifest;
                     }
                 } catch {
                     continue;
                 }
             }
-            manifestCache[kind] = null;
+            manifestCache = null;
             return null;
         })();
     }
-    return manifestPromiseCache[kind] || null;
+    return manifestPromise || null;
 };
 
-export const resolveIconUrl = (
-    manifest: IconManifest | null,
-    kind: IconKind,
-    name: string
-): string | null => {
+export const resolveIconUrl = (manifest: IconManifest | null, name: string): string | null => {
     if (!manifest || !name) return null;
     const key = normalizeIconKey(name);
     const filename = manifest.entries[key];
     if (!filename) return null;
-    return getIconAssetPath(kind, filename);
+    return getIconAssetPath('game', filename);
 };
 
-export const guessIconUrl = (kind: IconKind, name: string): string | null => {
+export const guessIconUrl = (name: string): string | null => {
     if (!name) return null;
     const trimmed = name.trim();
     const preserved = trimmed
@@ -186,8 +182,8 @@ export const guessIconUrl = (kind: IconKind, name: string): string | null => {
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '');
     const normalized = normalizeIconKey(trimmed);
-    if (preserved) return getIconAssetPath(kind, `${preserved}.webp`);
-    if (deapostrophed) return getIconAssetPath(kind, `${deapostrophed}.webp`);
-    if (normalized) return getIconAssetPath(kind, `${normalized}.webp`);
+    if (preserved) return getIconAssetPath('game', `${preserved}.webp`);
+    if (deapostrophed) return getIconAssetPath('game', `${deapostrophed}.webp`);
+    if (normalized) return getIconAssetPath('game', `${normalized}.webp`);
     return null;
 };
