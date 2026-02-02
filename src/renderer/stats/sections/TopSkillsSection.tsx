@@ -59,7 +59,7 @@ export const TopSkillsSection = ({
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
-                            <div className="flex justify-between text-sm mb-1">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center text-sm mb-1 gap-3">
                                 <span className="text-white font-bold flex items-center gap-2 min-w-0">
                                     {(() => {
                                         const iconUrl = getSkillIconUrl(skill.name);
@@ -67,9 +67,9 @@ export const TopSkillsSection = ({
                                             <img src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />
                                         ) : null;
                                     })()}
-                                    <span className="truncate">{skill.name}</span>
+                                    <span className="truncate min-w-0">{skill.name}</span>
                                 </span>
-                                <div className="text-right">
+                                <div className="text-right whitespace-nowrap">
                                     <span className="text-orange-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
                                     <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>
                                 </div>
@@ -120,7 +120,7 @@ export const TopSkillsSection = ({
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
-                            <div className="flex justify-between text-sm mb-1">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center text-sm mb-1 gap-3">
                                 <span className="text-white font-bold flex items-center gap-2 min-w-0">
                                     {(() => {
                                         const iconUrl = getSkillIconUrl(skill.name);
@@ -128,9 +128,9 @@ export const TopSkillsSection = ({
                                             <img src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />
                                         ) : null;
                                     })()}
-                                    <span className="truncate">{skill.name}</span>
+                                    <span className="truncate min-w-0">{skill.name}</span>
                                 </span>
-                                <div className="text-right">
+                                <div className="text-right whitespace-nowrap">
                                     <span className="text-red-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
                                     <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>
                                 </div>

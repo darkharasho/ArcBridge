@@ -342,7 +342,7 @@ export const SkillUsageSection = ({
                                         <img src={iconUrl} alt={selectedSkillName} className="w-5 h-5 object-contain shrink-0" />
                                     ) : null;
                                 })() : null}
-                                <span className="truncate">{selectedSkillName || 'Selected Skill Usage'}</span>
+                                <span className="truncate min-w-0">{selectedSkillName || 'Selected Skill Usage'}</span>
                             </div>
                             <div className="text-[11px] text-gray-400">
                                 ({isSkillUsagePerSecond ? 'casts per second' : 'casts per log'})

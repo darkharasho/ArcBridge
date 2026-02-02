@@ -187,7 +187,7 @@ export const ApmSection = ({
                                                                     <img src={iconUrl} alt={skill.name} className="w-4 h-4 object-contain shrink-0" />
                                                                 ) : null;
                                                             })()}
-                                                            <span className="truncate block">{skill.name}</span>
+                                                            <span className="truncate block min-w-0">{skill.name}</span>
                                                         </span>
                                                     </button>
                                                 ));
@@ -218,7 +218,7 @@ export const ApmSection = ({
                                                         <img src={iconUrl} alt={activeApmSkill.name} className="w-4 h-4 object-contain shrink-0" />
                                                     ) : null;
                                                 })() : null}
-                                                <span className="truncate">{isAllApmSkills ? 'All Skills' : activeApmSkill?.name}</span>
+                                                <span className="truncate min-w-0">{isAllApmSkills ? 'All Skills' : activeApmSkill?.name}</span>
                                             </div>
                                         </div>
                                     </div>

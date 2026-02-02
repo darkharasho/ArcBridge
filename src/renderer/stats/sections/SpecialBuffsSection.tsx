@@ -104,7 +104,7 @@ export const SpecialBuffsSection = ({
                                                     <img src={iconUrl} alt={buff.name} className="w-4 h-4 object-contain shrink-0" />
                                                 ) : null;
                                             })()}
-                                            <span className="truncate">{buff.name}</span>
+                                            <span className="truncate min-w-0">{buff.name}</span>
                                         </span>
                                     </button>
                                 ))
@@ -129,7 +129,7 @@ export const SpecialBuffsSection = ({
                                                     <img src={iconUrl} alt={activeSpecialTable.name} className="w-5 h-5 object-contain shrink-0" />
                                                 ) : null;
                                             })()}
-                                            <span className="truncate">{activeSpecialTable.name}</span>
+                                            <span className="truncate min-w-0">{activeSpecialTable.name}</span>
                                         </div>
                                         <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
                                     </div>

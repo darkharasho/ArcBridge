@@ -117,7 +117,7 @@ export const BoonOutputSection = ({
                                                     <img src={iconUrl} alt={boon.name} className="w-4 h-4 object-contain shrink-0" />
                                                 ) : null;
                                             })()}
-                                            <span className="truncate">{boon.name}</span>
+                                            <span className="truncate min-w-0">{boon.name}</span>
                                         </span>
                                     </button>
                                 ))
@@ -141,7 +141,7 @@ export const BoonOutputSection = ({
                                                 <img src={iconUrl} alt={activeBoonTable.name} className="w-5 h-5 object-contain shrink-0" />
                                             ) : null;
                                         })()}
-                                        <span className="truncate">{activeBoonTable.name}</span>
+                                        <span className="truncate min-w-0">{activeBoonTable.name}</span>
                                     </div>
                                     <div className="text-xs uppercase tracking-widest text-gray-500">
                                         {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}

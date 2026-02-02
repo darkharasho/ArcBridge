@@ -132,7 +132,7 @@ export const ConditionsSection = ({
                                                             <img src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />
                                                         ) : null;
                                                     })()}
-                                                    <span className="truncate">{entry.name}</span>
+                                                    <span className="truncate min-w-0">{entry.name}</span>
                                                 </span>
                                             </button>
                                         ))}
@@ -155,7 +155,7 @@ export const ConditionsSection = ({
                                                 <img src={iconUrl} alt={activeConditionName} className="w-5 h-5 object-contain shrink-0" />
                                             ) : null;
                                         })() : null}
-                                        <span className="truncate">{activeConditionName === 'all' ? 'All Conditions' : activeConditionName}</span>
+                                        <span className="truncate min-w-0">{activeConditionName === 'all' ? 'All Conditions' : activeConditionName}</span>
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">

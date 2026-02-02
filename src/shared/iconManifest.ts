@@ -7,8 +7,21 @@ export type IconManifest = {
     collisions?: Record<string, string[]>;
 };
 
+export type IconAliasManifest = {
+    version: number;
+    generatedAt: string;
+    traitAliases?: Record<string, string>;
+    iconAliases?: Record<string, string>;
+};
+
+export type SkillIdNameMap = Record<string, string>;
+
 const manifestCache: Partial<Record<IconKind, IconManifest | null>> = {};
 const manifestPromiseCache: Partial<Record<IconKind, Promise<IconManifest | null>>> = {};
+let aliasCache: IconAliasManifest | null | undefined = undefined;
+let aliasPromise: Promise<IconAliasManifest | null> | null = null;
+let skillIdNameCache: SkillIdNameMap | null | undefined = undefined;
+let skillIdNamePromise: Promise<SkillIdNameMap | null> | null = null;
 
 export const normalizeIconKey = (name: string): string => {
     if (!name) return '';
@@ -35,6 +48,11 @@ export const getIconAssetPath = (kind: IconKind, filename: string): string => {
     return `${basePath}/${kind}-icons/${filename}`.replace(/\/{2,}/g, '/');
 };
 
+export const getUnknownSkillIconUrl = (): string => {
+    const basePath = getImageBasePath();
+    return `${basePath}/UnknownSkill.svg`.replace(/\/{2,}/g, '/');
+};
+
 const getManifestUrls = (kind: IconKind): string[] => {
     const basePath = getImageBasePath();
     const relative = `${basePath}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
@@ -43,6 +61,75 @@ const getManifestUrls = (kind: IconKind): string[] => {
     const absolute = `${origin}/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
     const absoluteImg = `${origin}/img/${kind}-icons/manifest.json`.replace(/\/{2,}/g, '/');
     return [relative, absoluteImg, absolute];
+};
+
+const getAliasUrls = (): string[] => {
+    const basePath = getImageBasePath();
+    const relative = `${basePath}/icon-aliases.json`.replace(/\/{2,}/g, '/');
+    if (typeof window === 'undefined') return [relative];
+    const origin = window.location.origin.replace(/\/$/, '');
+    const absoluteImg = `${origin}/img/icon-aliases.json`.replace(/\/{2,}/g, '/');
+    const absolute = `${origin}/icon-aliases.json`.replace(/\/{2,}/g, '/');
+    return [relative, absoluteImg, absolute];
+};
+
+export const loadIconAliases = async (): Promise<IconAliasManifest | null> => {
+    if (aliasCache !== undefined) return aliasCache || null;
+    if (!aliasPromise) {
+        const urls = getAliasUrls();
+        aliasPromise = (async () => {
+            for (const url of urls) {
+                try {
+                    const resp = await fetch(url, { cache: 'force-cache' });
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    const manifest = data && typeof data === 'object' ? (data as IconAliasManifest) : null;
+                    aliasCache = manifest;
+                    return manifest;
+                } catch {
+                    continue;
+                }
+            }
+            aliasCache = null;
+            return null;
+        })();
+    }
+    return aliasPromise || null;
+};
+
+const getSkillIdNameUrls = (): string[] => {
+    const basePath = getImageBasePath();
+    const relative = `${basePath}/skill-id-names.json`.replace(/\/{2,}/g, '/');
+    if (typeof window === 'undefined') return [relative];
+    const origin = window.location.origin.replace(/\/$/, '');
+    const absoluteImg = `${origin}/img/skill-id-names.json`.replace(/\/{2,}/g, '/');
+    const absolute = `${origin}/skill-id-names.json`.replace(/\/{2,}/g, '/');
+    return [relative, absoluteImg, absolute];
+};
+
+export const loadSkillIdNames = async (): Promise<SkillIdNameMap | null> => {
+    if (skillIdNameCache !== undefined) return skillIdNameCache || null;
+    if (!skillIdNamePromise) {
+        const urls = getSkillIdNameUrls();
+        skillIdNamePromise = (async () => {
+            for (const url of urls) {
+                try {
+                    const resp = await fetch(url, { cache: 'force-cache' });
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    if (data && typeof data === 'object') {
+                        skillIdNameCache = data as SkillIdNameMap;
+                        return skillIdNameCache;
+                    }
+                } catch {
+                    continue;
+                }
+            }
+            skillIdNameCache = null;
+            return null;
+        })();
+    }
+    return skillIdNamePromise || null;
 };
 
 export const loadIconManifest = async (kind: IconKind): Promise<IconManifest | null> => {
