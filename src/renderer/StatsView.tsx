@@ -65,7 +65,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const showMvp = activeStatsViewSettings.showMvp;
     const roundCountStats = activeStatsViewSettings.roundCountStats;
     const topStatsMode = activeStatsViewSettings.topStatsMode || 'total';
-    const topSkillsMetric = activeStatsViewSettings.topSkillsMetric || 'damage';
+    const [localTopSkillsMetric, setLocalTopSkillsMetric] = useState<IStatsViewSettings['topSkillsMetric']>(
+        activeStatsViewSettings.topSkillsMetric || 'damage'
+    );
+    const topSkillsMetric = (onStatsViewSettingsChange ? activeStatsViewSettings.topSkillsMetric : localTopSkillsMetric) || 'damage';
     const uploadingWeb = activeWebUploadState.uploading;
     const webUploadMessage = activeWebUploadState.message;
     const webUploadUrl = activeWebUploadState.url;
@@ -91,9 +94,17 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
 
     const skillUsageAvailable = skillUsageData.players.length > 0;
 
+    useEffect(() => {
+        if (onStatsViewSettingsChange) return;
+        setLocalTopSkillsMetric(activeStatsViewSettings.topSkillsMetric || 'damage');
+    }, [activeStatsViewSettings.topSkillsMetric, onStatsViewSettingsChange]);
+
     const updateTopSkillsMetric = (metric: IStatsViewSettings['topSkillsMetric']) => {
-        if (!onStatsViewSettingsChange) return;
-        onStatsViewSettingsChange({ ...activeStatsViewSettings, topSkillsMetric: metric });
+        if (onStatsViewSettingsChange) {
+            onStatsViewSettingsChange({ ...activeStatsViewSettings, topSkillsMetric: metric });
+            return;
+        }
+        setLocalTopSkillsMetric(metric);
     };
 
     const {
