@@ -116,6 +116,7 @@ try {
     if (!skipReleaseNotes) {
         run(npmCmd, ['run', 'generate:release-notes']);
     }
+    run(npmCmd, ['run', 'validate']);
     run(npmCmd, ['run', 'build']);
     run(process.execPath, ['scripts/commit-web-dist.mjs']);
     run(process.execPath, ['scripts/run-electron-builder.mjs']);
