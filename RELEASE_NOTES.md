@@ -3,7 +3,7 @@
 Version v1.19.2 — February 2, 2026
 
 ## 🌟 Highlights
-- Added a developer settings toggle to reveal hidden tools
+- Added a developer settings
 - Update checks can be run on demand from the UI
 - Stats view now handles top skills metric more robustly
 - Fight breakdown stats now include enemy downs tracking

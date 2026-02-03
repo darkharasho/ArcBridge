@@ -1087,6 +1087,19 @@ const ensureWebRootIndex = (templateDir: string) => {
     }
 };
 
+const getWebRootIndexBuffer = (templateDir: string) => {
+    try {
+        const webIndex = path.join(templateDir, 'web', 'index.html');
+        if (!fs.existsSync(webIndex)) return null;
+        let html = fs.readFileSync(webIndex, 'utf8');
+        html = html.replace(/\.\.\/assets\//g, './assets/');
+        html = html.replace(/\.\.\/img\//g, './img/');
+        return Buffer.from(html);
+    } catch {
+        return null;
+    }
+};
+
 const sendWebUploadStatus = (stage: string, message?: string, progress?: number) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('web-upload-status', { stage, message, progress });
@@ -2133,10 +2146,14 @@ if (!gotTheLock) {
                 };
 
                 ensureWebRootIndex(templateDir);
+                const rootIndexBuffer = getWebRootIndexBuffer(templateDir);
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
                     const content = fs.readFileSync(file.absPath);
                     queueFile(withPagesPath(pagesPath, file.relPath), content);
+                }
+                if (rootIndexBuffer) {
+                    queueFile(withPagesPath(pagesPath, 'index.html'), rootIndexBuffer);
                 }
 
                 if (pendingEntries.length === 0) {
@@ -2507,11 +2524,18 @@ if (!gotTheLock) {
                 const treeData = await getGithubTree(owner, repo, baseTreeSha, token);
                 const treeEntries = Array.isArray(treeData?.tree) ? treeData.tree : [];
                 const treeMap = new Map<string, string>();
+                let hasIndex = false;
+                let hasAssets = false;
+                let hasClassIcons = false;
                 treeEntries.forEach((entry: any) => {
                     if (entry?.path && entry?.sha && entry?.type === 'blob') {
                         treeMap.set(entry.path, entry.sha);
+                        if (entry.path === withPagesPath(pagesPath, 'index.html')) hasIndex = true;
+                        if (entry.path.startsWith(withPagesPath(pagesPath, 'assets/'))) hasAssets = true;
+                        if (entry.path.startsWith(withPagesPath(pagesPath, 'img/class-icons/'))) hasClassIcons = true;
                     }
                 });
+                const needsBaseTemplate = !hasIndex || !hasAssets || !hasClassIcons;
 
                 const pendingEntries: Array<{ path: string; contentBase64: string; blobSha: string }> = [];
                 const queueFile = (repoPath: string, content: Buffer) => {
@@ -2525,12 +2549,19 @@ if (!gotTheLock) {
                     });
                 };
 
+                if (needsBaseTemplate) {
+                    sendWebUploadStatus('Preparing', 'Restoring base web files...', 50);
+                }
                 ensureWebRootIndex(templateDir);
+                const rootIndexBuffer = getWebRootIndexBuffer(templateDir);
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
                     const repoPath = file.relPath;
                     const content = fs.readFileSync(file.absPath);
                     queueFile(withPagesPath(pagesPath, repoPath), content);
+                }
+                if (rootIndexBuffer) {
+                    queueFile(withPagesPath(pagesPath, 'index.html'), rootIndexBuffer);
                 }
 
                 const reportFiles = collectFiles(stagingRoot);

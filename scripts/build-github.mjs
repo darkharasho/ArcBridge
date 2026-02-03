@@ -91,6 +91,7 @@ const packageRaw = fs.readFileSync(packagePath, 'utf8');
 const packageJson = JSON.parse(packageRaw);
 
 try {
+    run(npmCmd, ['run', 'validate']);
     if (bumpType) {
         if (!allowedBumps.has(bumpType)) {
             console.error(`Invalid bump type: ${bumpType}. Use patch, minor, or major.`);
@@ -116,7 +117,6 @@ try {
     if (!skipReleaseNotes) {
         run(npmCmd, ['run', 'generate:release-notes']);
     }
-    run(npmCmd, ['run', 'validate']);
     run(npmCmd, ['run', 'build']);
     run(process.execPath, ['scripts/commit-web-dist.mjs']);
     run(process.execPath, ['scripts/run-electron-builder.mjs']);
