@@ -1069,6 +1069,21 @@ const ensureDevWebIndex = (webRoot: string) => {
     fs.writeFileSync(indexPath, html);
 };
 
+const ensureWebRootIndex = (templateDir: string) => {
+    try {
+        const rootIndex = path.join(templateDir, 'index.html');
+        if (fs.existsSync(rootIndex)) return;
+        const webIndex = path.join(templateDir, 'web', 'index.html');
+        if (!fs.existsSync(webIndex)) return;
+        let html = fs.readFileSync(webIndex, 'utf8');
+        html = html.replace(/\.\.\/assets\//g, './assets/');
+        html = html.replace(/\.\.\/img\//g, './img/');
+        fs.writeFileSync(rootIndex, html);
+    } catch {
+        // Ignore failures; upload will still include web/index.html.
+    }
+};
+
 const sendWebUploadStatus = (stage: string, message?: string, progress?: number) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('web-upload-status', { stage, message, progress });
@@ -2005,6 +2020,7 @@ if (!gotTheLock) {
                     });
                 };
 
+                ensureWebRootIndex(templateDir);
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
                     const content = fs.readFileSync(file.absPath);
@@ -2397,6 +2413,7 @@ if (!gotTheLock) {
                     });
                 };
 
+                ensureWebRootIndex(templateDir);
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
                     const repoPath = file.relPath;
