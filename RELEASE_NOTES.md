@@ -1,17 +1,19 @@
 # Release Notes
 
-Version v1.18.0 — February 2, 2026
+Version v1.19.0 — February 2, 2026
 
 ## 🌟 Highlights
-- New options for how damage is calculated, giving you more control over results.
-- Dist/web assets updated for a smoother, improved web experience.
+- Settings export and import are now available in the app for easy saving and restoring.
+- Timeline now shows more detailed activity with player count details.
+- A new toggle lets you view top stats by damage or by down contributions.
 
 ## 🛠️ Improvements
-- Settings now include controls for damage calculation to support the new options.
-- Behind-the-scenes tweaks to stats handling to align with the new damage options.
+- Settings export/import is integrated into the Settings view.
+- Timeline data aggregation now includes player count details for clearer insights.
+- Added targetDamageDist data for each player to enrich damage tracking.
 
 ## 🧯 Fixes
-- None.
+None.
 
 ## ⚠️ Breaking Changes
-- None.
+None.
