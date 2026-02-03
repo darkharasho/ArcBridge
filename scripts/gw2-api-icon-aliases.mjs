@@ -11,7 +11,7 @@ const getArg = (flag) => {
 };
 
 const outPath = getArg('--out') || 'public/img/icon-aliases.json';
-const manifestPath = getArg('--manifest') || 'public/img/game-icons/manifest.json';
+const manifestPath = getArg('--manifest') || 'public/img/game-icons-sprite/manifest.json';
 const includeSkills = args.includes('--skills') || args.includes('--all');
 const includeKits = args.includes('--kits') || args.includes('--all');
 const includeTraits = args.includes('--traits') || args.includes('--all');

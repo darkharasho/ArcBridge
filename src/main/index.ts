@@ -1013,6 +1013,34 @@ const collectFiles = (dir: string) => {
     return result;
 };
 
+const getGameIconSpriteWhitelist = (templateDir: string) => {
+    const manifestPath = path.join(templateDir, 'img/game-icons-sprite/manifest.json');
+    if (!fs.existsSync(manifestPath)) return null;
+    try {
+        const data = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const sprites = data?.sprites;
+        if (!sprites || typeof sprites !== 'object') return null;
+        const allowed = new Set<string>();
+        allowed.add('img/game-icons-sprite/manifest.json');
+        allowed.add('img/game-icons-sprite/Unknown_Icon.svg');
+        for (const sheet of Object.keys(sprites)) {
+            allowed.add(`img/game-icons-sprite/${sheet}`);
+        }
+        return allowed;
+    } catch {
+        return null;
+    }
+};
+
+const shouldSkipGameIconAsset = (relPath: string, whitelist: Set<string> | null) => {
+    if (!whitelist) return false;
+    if (relPath.startsWith('img/game-icons/')) return true;
+    if (relPath.startsWith('img/game-icons-sprite/')) {
+        return !whitelist.has(relPath);
+    }
+    return false;
+};
+
 const copyDir = (src: string, dest: string) => {
     fs.mkdirSync(dest, { recursive: true });
     const entries = fs.readdirSync(src, { withFileTypes: true });
@@ -2005,8 +2033,10 @@ if (!gotTheLock) {
                     });
                 };
 
+                const spriteWhitelist = getGameIconSpriteWhitelist(templateDir);
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
+                    if (shouldSkipGameIconAsset(file.relPath, spriteWhitelist)) continue;
                     const content = fs.readFileSync(file.absPath);
                     queueFile(withPagesPath(pagesPath, file.relPath), content);
                 }
@@ -2397,8 +2427,10 @@ if (!gotTheLock) {
                     });
                 };
 
+                const spriteWhitelist = getGameIconSpriteWhitelist(templateDir);
                 const rootFiles = collectFiles(templateDir);
                 for (const file of rootFiles) {
+                    if (shouldSkipGameIconAsset(file.relPath, spriteWhitelist)) continue;
                     const repoPath = file.relPath;
                     const content = fs.readFileSync(file.absPath);
                     queueFile(withPagesPath(pagesPath, repoPath), content);

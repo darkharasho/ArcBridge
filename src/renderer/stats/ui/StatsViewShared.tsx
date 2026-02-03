@@ -1,4 +1,5 @@
 import { CSSProperties, useEffect, useRef, useState, type RefObject } from 'react';
+import { IconAsset } from '../../../shared/iconManifest';
 import { getProfessionIconPath } from '../../../shared/professionUtils';
 
 const useSmartTooltipPlacement = (
@@ -71,14 +72,14 @@ const buildClassColumns = (counts: Record<string, number>, maxRows = 5) => {
     return columns;
 };
 
-const getUnknownIconFallbackUrl = () => `${import.meta.env.BASE_URL || './'}img/game-icons/Unknown_Icon.svg`;
+const getUnknownIconFallbackUrl = () => `${import.meta.env.BASE_URL || './'}img/game-icons-sprite/Unknown_Icon.svg`;
 
 export const GameIcon = ({
     src,
     alt,
     className = 'w-4 h-4 object-contain shrink-0'
 }: {
-    src?: string | null;
+    src?: IconAsset | null;
     alt?: string;
     className?: string;
 }) => {
@@ -91,9 +92,46 @@ export const GameIcon = ({
 
     if (!src) return null;
 
+    const isSprite = (value: IconAsset): value is { type: 'sprite'; sheetUrl: string; x: number; y: number; w: number; h: number; columns: number; rows: number } => {
+        return typeof value === 'object' && value !== null && 'type' in value && value.type === 'sprite';
+    };
+
+    useEffect(() => {
+        if (!currentSrc || !isSprite(currentSrc)) return;
+        const img = new Image();
+        img.onload = () => {
+            // noop
+        };
+        img.onerror = () => {
+            setCurrentSrc(fallbackUrl);
+        };
+        img.src = currentSrc.sheetUrl;
+    }, [currentSrc, fallbackUrl]);
+
+    if (currentSrc && isSprite(currentSrc)) {
+        const col = Math.round(currentSrc.x / currentSrc.w);
+        const row = Math.round(currentSrc.y / currentSrc.h);
+        const backgroundSize = `${currentSrc.columns * 100}% ${currentSrc.rows * 100}%`;
+        const backgroundPosition = `-${col * 100}% -${row * 100}%`;
+        return (
+            <span
+                role="img"
+                aria-label={alt || 'Unknown icon'}
+                className={className}
+                style={{
+                    backgroundImage: `url(${currentSrc.sheetUrl})`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize,
+                    backgroundPosition,
+                    display: 'inline-block'
+                }}
+            />
+        );
+    }
+
     return (
         <img
-            src={currentSrc}
+            src={currentSrc as string}
             alt={alt || 'Unknown icon'}
             className={className}
             onError={() => {

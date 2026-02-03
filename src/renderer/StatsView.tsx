@@ -11,7 +11,7 @@ import { useStatsAggregation } from './stats/hooks/useStatsAggregation';
 import { useApmStats } from './stats/hooks/useApmStats';
 import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
-import { IconAliasManifest, IconManifest, SkillIdNameMap, getUnknownSkillIconUrl, guessIconUrl, loadIconAliases, loadIconManifest, loadSkillIdNames, normalizeIconKey, resolveIconUrl } from '../shared/iconManifest';
+import { IconAliasManifest, IconAsset, IconManifest, SkillIdNameMap, getUnknownSkillIconUrl, guessIconUrl, loadIconAliases, loadIconManifest, loadSkillIdNames, normalizeIconKey, resolveIconUrl } from '../shared/iconManifest';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import type { SkillUsageSummary } from './stats/statsTypes';
@@ -664,8 +664,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
 
     const resolveIcon = useCallback(
-        (name: string) => {
-            return resolveIconUrl(gameIconManifest, name) || guessIconUrl(name);
+        (name: string): IconAsset | null => {
+            const resolved = resolveIconUrl(gameIconManifest, name);
+            if (resolved) return resolved;
+            if (gameIconManifest?.sprites) return null;
+            return guessIconUrl(name);
         },
         [gameIconManifest]
     );

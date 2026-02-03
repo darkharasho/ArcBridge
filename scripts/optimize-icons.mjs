@@ -153,8 +153,16 @@ for (const dir of iconDirs) {
     }
 
     if (!dryRun) {
-        const manifest = buildManifest(dir);
         const manifestPath = path.join(dir, 'manifest.json');
+        if (dir.endsWith('public/img/game-icons') && existsSync('public/img/game-icons-sprite/manifest.json')) {
+            try {
+                console.log('Skipping game-icons manifest write (sprite manifest detected).');
+                continue;
+            } catch {
+                // ignore parse errors
+            }
+        }
+        const manifest = buildManifest(dir);
         writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     }
 }

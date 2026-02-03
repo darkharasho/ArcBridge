@@ -1,10 +1,42 @@
 export type IconKind = 'game';
 
+export type IconSpriteEntry = {
+    sheet: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+};
+
+export type IconSpriteMeta = {
+    width: number;
+    height: number;
+    tile: number;
+    columns: number;
+    rows: number;
+};
+
+export type IconEntry = string | IconSpriteEntry;
+
+export type IconAsset = string | IconSpriteRef;
+
+export type IconSpriteRef = {
+    type: 'sprite';
+    sheetUrl: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    columns: number;
+    rows: number;
+};
+
 export type IconManifest = {
     version: number;
     generatedAt: string;
-    entries: Record<string, string>;
+    entries: Record<string, IconEntry>;
     collisions?: Record<string, string[]>;
+    sprites?: Record<string, IconSpriteMeta>;
 };
 
 export type IconAliasManifest = {
@@ -51,6 +83,11 @@ export const getIconAssetPath = (_kind: IconKind, filename: string): string => {
     return `${basePath}/game-icons/${filename}`.replace(/\/{2,}/g, '/');
 };
 
+export const getGameIconSpritePath = (filename: string): string => {
+    const basePath = getImageBasePath();
+    return `${basePath}/game-icons-sprite/${filename}`.replace(/\/{2,}/g, '/');
+};
+
 export const getUnknownSkillIconUrl = (): string => {
     const basePath = getImageBasePath();
     return `${basePath}/UnknownSkill.svg`.replace(/\/{2,}/g, '/');
@@ -58,12 +95,15 @@ export const getUnknownSkillIconUrl = (): string => {
 
 const getManifestUrls = (): string[] => {
     const basePath = getImageBasePath();
+    const spriteRelative = `${basePath}/game-icons-sprite/manifest.json`.replace(/\/{2,}/g, '/');
     const relative = `${basePath}/game-icons/manifest.json`.replace(/\/{2,}/g, '/');
-    if (typeof window === 'undefined') return [relative];
+    if (typeof window === 'undefined') return [spriteRelative, relative];
     const origin = window.location.origin.replace(/\/$/, '');
     const absolute = `${origin}/game-icons/manifest.json`.replace(/\/{2,}/g, '/');
     const absoluteImg = `${origin}/img/game-icons/manifest.json`.replace(/\/{2,}/g, '/');
-    return [relative, absoluteImg, absolute];
+    const spriteAbsolute = `${origin}/game-icons-sprite/manifest.json`.replace(/\/{2,}/g, '/');
+    const spriteAbsoluteImg = `${origin}/img/game-icons-sprite/manifest.json`.replace(/\/{2,}/g, '/');
+    return [spriteRelative, spriteAbsoluteImg, spriteAbsolute, relative, absoluteImg, absolute];
 };
 
 const getAliasUrls = (): string[] => {
@@ -219,12 +259,26 @@ export const loadIconManifest = async (): Promise<IconManifest | null> => {
     return manifestPromise || null;
 };
 
-export const resolveIconUrl = (manifest: IconManifest | null, name: string): string | null => {
+export const resolveIconUrl = (manifest: IconManifest | null, name: string): IconAsset | null => {
     if (!manifest || !name) return null;
     const key = normalizeIconKey(name);
     const filename = manifest.entries[key];
     if (!filename) return null;
-    return getIconAssetPath('game', filename);
+    if (typeof filename === 'string') {
+        return getIconAssetPath('game', filename);
+    }
+    const sheetUrl = getGameIconSpritePath(filename.sheet);
+    const sheetMeta = manifest.sprites?.[filename.sheet];
+    return {
+        type: 'sprite',
+        sheetUrl,
+        x: filename.x,
+        y: filename.y,
+        w: filename.w,
+        h: filename.h,
+        columns: sheetMeta?.columns || 1,
+        rows: sheetMeta?.rows || 1
+    };
 };
 
 export const guessIconUrl = (name: string): string | null => {
