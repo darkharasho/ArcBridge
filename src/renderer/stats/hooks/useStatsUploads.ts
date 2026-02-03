@@ -79,12 +79,18 @@ export const useStatsUploads = ({
     const buildIconMaps = () => {
         const mergedSkillMap: Record<string, { name?: string; icon?: string }> = {};
         const mergedBuffMap: Record<string, { name?: string; icon?: string }> = {};
-        logs.forEach((log) => {
-            const details = log.details;
-            if (!details) return;
-            const skillMap = details.skillMap || {};
-            const buffMap = details.buffMap || {};
-            Object.entries(skillMap).forEach(([id, entry]: any) => {
+        const seedSkillMap =
+            stats?.skillMap
+            || stats?.stats?.skillMap
+            || stats?.details?.skillMap
+            || {};
+        const seedBuffMap =
+            stats?.buffMap
+            || stats?.stats?.buffMap
+            || stats?.details?.buffMap
+            || {};
+        const mergeMaps = (skillMap: Record<string, any>, buffMap: Record<string, any>) => {
+            Object.entries(skillMap || {}).forEach(([id, entry]: any) => {
                 if (!entry || typeof entry !== 'object') return;
                 const existing = mergedSkillMap[id] || {};
                 mergedSkillMap[id] = {
@@ -92,7 +98,7 @@ export const useStatsUploads = ({
                     icon: existing.icon || entry.icon
                 };
             });
-            Object.entries(buffMap).forEach(([id, entry]: any) => {
+            Object.entries(buffMap || {}).forEach(([id, entry]: any) => {
                 if (!entry || typeof entry !== 'object') return;
                 const existing = mergedBuffMap[id] || {};
                 mergedBuffMap[id] = {
@@ -100,6 +106,12 @@ export const useStatsUploads = ({
                     icon: existing.icon || entry.icon
                 };
             });
+        };
+        mergeMaps(seedSkillMap, seedBuffMap);
+        logs.forEach((log) => {
+            const details = log.details;
+            if (!details) return;
+            mergeMaps(details.skillMap || {}, details.buffMap || {});
         });
         return { mergedSkillMap, mergedBuffMap };
     };

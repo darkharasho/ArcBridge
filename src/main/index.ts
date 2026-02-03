@@ -1097,6 +1097,27 @@ const ensureDevWebIndex = (webRoot: string) => {
     fs.writeFileSync(indexPath, html);
 };
 
+const patchWebTemplateWithTestBundle = (appRoot: string) => {
+    const sourceBundle = path.join(appRoot, 'test_index.js');
+    const templateRoot = path.join(appRoot, 'dist-web');
+    const indexPath = path.join(templateRoot, 'web', 'index.html');
+    const assetsDir = path.join(templateRoot, 'assets');
+    if (!fs.existsSync(sourceBundle) || !fs.existsSync(indexPath)) return;
+    try {
+        fs.mkdirSync(assetsDir, { recursive: true });
+        const destBundle = path.join(assetsDir, 'test_index.js');
+        fs.copyFileSync(sourceBundle, destBundle);
+        const html = fs.readFileSync(indexPath, 'utf8');
+        const updated = html.replace(
+            /<script\s+type="module"\s+crossorigin\s+src="..\/assets\/[^"]+"><\/script>/,
+            '<script type="module" crossorigin src="../assets/test_index.js"></script>'
+        );
+        fs.writeFileSync(indexPath, updated);
+    } catch {
+        // Ignore patch failures; fall back to the default build output.
+    }
+};
+
 const sendWebUploadStatus = (stage: string, message?: string, progress?: number, fileCount?: number, uploadedCount?: number) => {
     if (win && !win.isDestroyed()) {
         win.webContents.send('web-upload-status', { stage, message, progress, fileCount, uploadedCount });
@@ -1124,6 +1145,7 @@ const buildWebTemplate = async (appRoot: string) => {
         child.on('error', (err) => resolve({ ok: false, error: err.message }));
         child.on('close', (code) => {
             if (code === 0) {
+                patchWebTemplateWithTestBundle(appRoot);
                 resolve({ ok: true });
                 return;
             }

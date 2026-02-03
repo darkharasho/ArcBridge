@@ -624,7 +624,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             });
         };
 
-        mergeMaps(precomputedStats?.skillMap || {}, precomputedStats?.buffMap || {});
+        const preSkillMap = precomputedStats?.skillMap
+            || precomputedStats?.stats?.skillMap
+            || precomputedStats?.details?.skillMap
+            || {};
+        const preBuffMap = precomputedStats?.buffMap
+            || precomputedStats?.stats?.buffMap
+            || precomputedStats?.details?.buffMap
+            || {};
+        mergeMaps(preSkillMap, preBuffMap);
 
         logs.forEach((log) => {
             const details: any = log?.details;
@@ -638,7 +646,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             buffIconByName: buffNameMap,
             conditionIconByName: conditionNameMap
         };
-    }, [logs, precomputedStats?.skillMap, precomputedStats?.buffMap]);
+    }, [
+        logs,
+        precomputedStats?.skillMap,
+        precomputedStats?.buffMap,
+        precomputedStats?.stats?.skillMap,
+        precomputedStats?.stats?.buffMap,
+        precomputedStats?.details?.skillMap,
+        precomputedStats?.details?.buffMap
+    ]);
 
 
     const resolveSkillName = useCallback(

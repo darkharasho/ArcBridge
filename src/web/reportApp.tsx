@@ -158,6 +158,43 @@ export function ReportApp() {
     const [tocOpen, setTocOpen] = useState(false);
     const [uiTheme, setUiTheme] = useState<'classic' | 'modern'>('classic');
     const [proofOfWorkOpen, setProofOfWorkOpen] = useState(false);
+
+    const iconLogs = useMemo(() => {
+        const stats: any = report?.stats;
+        const skillMap =
+            stats?.skillMap
+            || stats?.stats?.skillMap
+            || stats?.details?.skillMap;
+        const buffMap =
+            stats?.buffMap
+            || stats?.stats?.buffMap
+            || stats?.details?.buffMap;
+        if (!skillMap && !buffMap) return [];
+        return [{
+            details: {
+                skillMap: skillMap || {},
+                buffMap: buffMap || {},
+                players: []
+            }
+        }];
+    }, [report?.stats]);
+    const iconMapStats = useMemo(() => {
+        const stats: any = report?.stats;
+        const skillMap =
+            stats?.skillMap
+            || stats?.stats?.skillMap
+            || stats?.details?.skillMap
+            || {};
+        const buffMap =
+            stats?.buffMap
+            || stats?.stats?.buffMap
+            || stats?.details?.buffMap
+            || {};
+        return {
+            skillCount: Object.keys(skillMap).length,
+            buffCount: Object.keys(buffMap).length
+        };
+    }, [report?.stats]);
     const [activeGroup, setActiveGroup] = useState('overview');
     const statsWrapperRef = useRef<HTMLDivElement | null>(null);
     const pendingScrollIdRef = useRef<string | null>(null);
@@ -949,11 +986,20 @@ export function ReportApp() {
                             })}
                         </div>
                     </div>
-                    <div ref={statsWrapperRef} onWheelCapture={handleStatsWheel} className="flex-1 min-w-0">
-                        <div id="stats-view-top">
-                            <StatsView
-                                logs={[]}
-                                onBack={() => {}}
+                        <div ref={statsWrapperRef} onWheelCapture={handleStatsWheel} className="flex-1 min-w-0">
+                            <div id="stats-view-top">
+                                <div className="mb-3 flex justify-end">
+                                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-widest text-amber-100">
+                                        <span>Icon Maps</span>
+                                        <span className="font-semibold text-amber-50">{iconMapStats.skillCount}</span>
+                                        <span className="text-amber-200/70">skills</span>
+                                        <span className="font-semibold text-amber-50">{iconMapStats.buffCount}</span>
+                                        <span className="text-amber-200/70">buffs</span>
+                                    </div>
+                                </div>
+                                <StatsView
+                                    logs={iconLogs}
+                                    onBack={() => {}}
                                 mvpWeights={undefined}
                                 precomputedStats={report.stats}
                                 statsViewSettings={report.stats?.statsViewSettings}

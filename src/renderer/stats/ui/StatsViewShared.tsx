@@ -98,7 +98,7 @@ export const GameIcon = ({
             // noop
         };
         img.onerror = () => {
-            setCurrentSrc(null);
+            // Keep the sprite ref; broken image will show if it fails.
         };
         img.src = currentSrc.sheetUrl;
     }, [currentSrc]);
@@ -131,9 +131,7 @@ export const GameIcon = ({
             src={currentSrc as string}
             alt={alt || 'Unknown icon'}
             className={className}
-            onError={() => {
-                setCurrentSrc(null);
-            }}
+            referrerPolicy="no-referrer"
         />
     );
 };
