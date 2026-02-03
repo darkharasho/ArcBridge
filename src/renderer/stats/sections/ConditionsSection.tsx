@@ -249,7 +249,7 @@ export const ConditionsSection = ({
                                     }
                                     return rows.map((entry: any, idx: number) => {
                                         const conditionTotals = entry.conditions || {};
-                                        let skillsMap: Record<string, { name: string; hits: number; damage: number }> = {};
+                                        let skillsMap: Record<string, { name: string; hits: number; damage: number; icon?: string }> = {};
                                         if (activeConditionName === 'all') {
                                             Object.values(conditionTotals).forEach((cond: any) => {
                                                 const skills = cond?.skills || {};

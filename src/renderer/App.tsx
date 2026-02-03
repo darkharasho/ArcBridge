@@ -206,7 +206,6 @@ function App() {
         (acc, log) => {
             const details: any = log.details;
             if (!details?.players) return acc;
-            const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
             const isWin = getFightOutcome(details);
             if (isWin) acc.wins += 1;
             else acc.losses += 1;

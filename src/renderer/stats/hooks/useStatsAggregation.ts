@@ -256,7 +256,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
             applyStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
 
-            const { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths } = getFightDownsDeaths(details);
+            const { squadDeaths, enemyDeaths } = getFightDownsDeaths(details);
             totalSquadDeaths += squadDeaths;
             totalSquadKills += enemyDeaths;
             totalEnemyKills += squadDeaths;
@@ -859,7 +859,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 const enemyTargets = targets.filter((t: any) => !t.isFake);
                 const totalOutgoing = squadPlayers.reduce((sum: number, p: any) => sum + (p.dpsAll?.[0]?.damage || 0), 0);
                 const totalIncoming = squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageTaken || 0), 0);
-                const { squadDownsDeaths, enemyDownsDeaths, enemyDeaths } = getFightDownsDeaths(details);
+                const { enemyDeaths } = getFightDownsDeaths(details);
                 const isWin = getFightOutcome(details);
                 const timestamp = details.uploadTime ?? log.uploadTime ?? 0;
                 const mapName = resolveMapName(details, log);

@@ -3,7 +3,6 @@
 Version v1.17.0 — February 2, 2026
 
 ## 🌟 Highlights
-- Implemented a new feature to enhance your experience.
 - Added icons to enrich the app’s visuals.
 - Strengthened safety around skill-related data for a smoother workflow.
 
