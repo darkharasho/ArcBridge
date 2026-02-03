@@ -775,10 +775,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                     stats={stats}
                     topSkillsMetric={topSkillsMetric}
                     onTopSkillsMetricChange={updateTopSkillsMetric}
-                    expandedSection={expandedSection}
-                    expandedSectionClosing={expandedSectionClosing}
-                    openExpandedSection={openExpandedSection}
-                    closeExpandedSection={closeExpandedSection}
                     isSectionVisible={isSectionVisible}
                     isFirstVisibleSection={isFirstVisibleSection}
                     sectionClass={sectionClass}
