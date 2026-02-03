@@ -3,15 +3,14 @@
 Version v1.19.2 — February 2, 2026
 
 ## 🌟 Highlights
-- Added a developer settings
-- Update checks can be run on demand from the UI
-- Stats view now handles top skills metric more robustly
-- Fight breakdown stats now include enemy downs tracking
+- Developer Settings toggle added and update checks improved
+- Enemy downs tracking added to fight breakdown stats
+- Top skills metrics handling enhanced in StatsView
+- Build process now includes a validation step and a new typecheck script
 
 ## 🛠️ Improvements
-- Developer Settings panel: new hidden-tools UI with an action to Ensure GitHub Template
-- StatsView: improved handling for top skills metric using local state for smoother control
-- Build workflow now includes a pre-build validation step and a new typecheck script
+- Removed unused versionClickCountRef state in App component
+- Added function to retrieve and format web root index buffer
 
 ## 🧯 Fixes
 None.
