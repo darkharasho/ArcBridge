@@ -43,6 +43,7 @@ interface StatsViewProps {
     onBack: () => void;
     mvpWeights?: IMvpWeights;
     statsViewSettings?: IStatsViewSettings;
+    onStatsViewSettingsChange?: (settings: IStatsViewSettings) => void;
     webUploadState?: IWebUploadState;
     onWebUpload?: (payload: { meta: any; stats: any }) => Promise<void> | void;
     disruptionMethod?: DisruptionMethod;
@@ -56,7 +57,7 @@ interface StatsViewProps {
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
 const NON_DAMAGING_CONDITIONS = new Set(['Vulnerability', 'Weakness', 'Blind', 'Chill', 'Cripple', 'Slow', 'Taunt', 'Fear', 'Immobilize']);
 
-export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme }: StatsViewProps) {
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const activeWebUploadState = webUploadState || DEFAULT_WEB_UPLOAD_STATE;
@@ -64,6 +65,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     const showMvp = activeStatsViewSettings.showMvp;
     const roundCountStats = activeStatsViewSettings.roundCountStats;
     const topStatsMode = activeStatsViewSettings.topStatsMode || 'total';
+    const topSkillsMetric = activeStatsViewSettings.topSkillsMetric || 'damage';
     const uploadingWeb = activeWebUploadState.uploading;
     const webUploadMessage = activeWebUploadState.message;
     const webUploadUrl = activeWebUploadState.url;
@@ -88,6 +90,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     }, [stats, skillUsageData]);
 
     const skillUsageAvailable = skillUsageData.players.length > 0;
+
+    const updateTopSkillsMetric = (metric: IStatsViewSettings['topSkillsMetric']) => {
+        if (!onStatsViewSettingsChange) return;
+        onStatsViewSettingsChange({ ...activeStatsViewSettings, topSkillsMetric: metric });
+    };
 
     const {
         mobileNavOpen,
@@ -766,6 +773,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
 
                 <TopSkillsSection
                     stats={stats}
+                    topSkillsMetric={topSkillsMetric}
+                    onTopSkillsMetricChange={updateTopSkillsMetric}
                     expandedSection={expandedSection}
                     expandedSectionClosing={expandedSectionClosing}
                     openExpandedSection={openExpandedSection}

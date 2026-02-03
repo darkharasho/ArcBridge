@@ -1359,30 +1359,28 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                             <div className="text-xs text-gray-500 mt-1">Applies to Top Stats cards and breakdown.</div>
                         </div>
                         <div className="py-3 border-t border-white/5">
-                            <div className="text-sm font-medium text-gray-200 mb-2">Top Skills Damage Source</div>
+                            <div className="text-sm font-medium text-gray-200 mb-2">Top Skills Source</div>
                             <div className="text-xs text-gray-500 mb-3">
-                                Choose whether top skills are calculated from all damage events or only damage assigned to enemies.
+                                Pick which damage bucket ranks skills.
                             </div>
                             <div className="grid gap-3">
                                 {([
                                     {
                                         id: 'target',
-                                        label: 'Target Damage (Recommended)',
-                                        summary: 'Uses targetDamageDist — damage attributed to enemies.',
+                                        label: 'Target Damage',
+                                        summary: 'Enemy-attributed damage (matches log combiner).',
                                         implications: [
-                                            'Matches Elite Insights enemy damage totals.',
-                                            'Excludes unassigned or non-target damage buckets.',
-                                            'Best for comparing against other tools.'
+                                            'Best for cross-tool comparisons.',
+                                            'Excludes unassigned damage.'
                                         ]
                                     },
                                     {
                                         id: 'total',
                                         label: 'All Damage',
-                                        summary: 'Uses totalDamageDist — everything recorded, including non-target damage.',
+                                        summary: 'All recorded damage events.',
                                         implications: [
-                                            'Counts damage not tied to targets.',
-                                            'Can be higher than enemy totals in other tools.',
-                                            'Useful for broad skill usage context.'
+                                            'Includes non-target damage.',
+                                            'Can exceed enemy totals.'
                                         ]
                                     }
                                 ] as const).map((option) => {
@@ -1392,6 +1390,60 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                             key={option.id}
                                             type="button"
                                             onClick={() => updateStatsViewSettingValue('topSkillDamageSource', option.id)}
+                                            className={`text-left rounded-xl border px-4 py-3 transition-colors ${isActive
+                                                ? 'bg-blue-500/15 border-blue-500/40 text-blue-100'
+                                                : 'bg-black/20 border-white/10 text-gray-300 hover:text-white hover:border-white/20'
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm font-semibold">{option.label}</div>
+                                                <div className={`text-xs font-semibold ${isActive ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                    {isActive ? 'Selected' : 'Select'}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-gray-400 mt-1">{option.summary}</div>
+                                            <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                                                {option.implications.map((item, idx) => (
+                                                    <li key={`${option.id}-${idx}`}>• {item}</li>
+                                                ))}
+                                            </ul>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="py-3 border-t border-white/5">
+                            <div className="text-sm font-medium text-gray-200 mb-2">Top Skills Metric</div>
+                            <div className="text-xs text-gray-500 mb-3">
+                                Choose how skills are ranked.
+                            </div>
+                            <div className="grid gap-3">
+                                {([
+                                    {
+                                        id: 'damage',
+                                        label: 'All Damage',
+                                        summary: 'Ranks by total damage dealt.',
+                                        implications: [
+                                            'Standard damage leaderboard.',
+                                            'Best for raw output.'
+                                        ]
+                                    },
+                                    {
+                                        id: 'downContribution',
+                                        label: 'Down Contribution',
+                                        summary: 'Ranks by down contribution damage.',
+                                        implications: [
+                                            'Highlights finishing pressure.',
+                                            'Matches down contribution totals.'
+                                        ]
+                                    }
+                                ] as const).map((option) => {
+                                    const isActive = statsViewSettings.topSkillsMetric === option.id;
+                                    return (
+                                        <button
+                                            key={option.id}
+                                            type="button"
+                                            onClick={() => updateStatsViewSettingValue('topSkillsMetric', option.id)}
                                             className={`text-left rounded-xl border px-4 py-3 transition-colors ${isActive
                                                 ? 'bg-blue-500/15 border-blue-500/40 text-blue-100'
                                                 : 'bg-black/20 border-white/10 text-gray-300 hover:text-white hover:border-white/20'

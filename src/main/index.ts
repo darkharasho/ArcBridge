@@ -1499,7 +1499,8 @@ if (!gotTheLock) {
             showMvp: true,
             roundCountStats: false,
             topStatsMode: 'total',
-            topSkillDamageSource: 'target'
+            topSkillDamageSource: 'target',
+            topSkillsMetric: 'damage'
         };
         ipcMain.handle('get-settings', () => {
             const updateConfigPath = path.join(process.resourcesPath, 'app-update.yml');

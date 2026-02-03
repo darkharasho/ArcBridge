@@ -957,7 +957,20 @@ function App() {
                 )}
 
                 {view === 'stats' ? (
-                    <StatsView logs={logs} onBack={() => setView('dashboard')} mvpWeights={mvpWeights} disruptionMethod={disruptionMethod} statsViewSettings={statsViewSettings} uiTheme={uiTheme} webUploadState={webUploadState} onWebUpload={handleWebUpload} />
+                    <StatsView
+                        logs={logs}
+                        onBack={() => setView('dashboard')}
+                        mvpWeights={mvpWeights}
+                        disruptionMethod={disruptionMethod}
+                        statsViewSettings={statsViewSettings}
+                        onStatsViewSettingsChange={(next) => {
+                            setStatsViewSettings(next);
+                            window.electronAPI?.saveSettings?.({ statsViewSettings: next });
+                        }}
+                        uiTheme={uiTheme}
+                        webUploadState={webUploadState}
+                        onWebUpload={handleWebUpload}
+                    />
                 ) : view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}

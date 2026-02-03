@@ -40,6 +40,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
         const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
         const skillDamageSource = activeStatsViewSettings.topSkillDamageSource || 'target';
+        const topSkillsMetric = activeStatsViewSettings.topSkillsMetric || 'damage';
         const total = validLogs.length;
 
         let wins = 0;
@@ -131,7 +132,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
         const playerStats = new Map<string, PlayerStats>();
         const supportTimeSanityFields = new Set(['boonStripsTime', 'condiCleanseTime', 'condiCleanseTimeSelf']);
-        const skillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number }> = {};
+        const skillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number, downContribution: number }> = {};
         const incomingSkillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number }> = {};
         const outgoingCondiTotals: Record<string, any> = {};
         const incomingCondiTotals: Record<string, any> = {};
@@ -433,11 +434,12 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                             icon = details.buffMap?.[`b${entry.id}`]?.icon || icon;
                         }
                     }
-                    if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0 };
+                    if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0, downContribution: 0 };
                     if (!skillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
                     if (!skillDamageMap[entry.id].icon && icon) skillDamageMap[entry.id].icon = icon;
                     skillDamageMap[entry.id].damage += entry.totalDamage;
                     skillDamageMap[entry.id].hits += entry.connectedHits;
+                    skillDamageMap[entry.id].downContribution += Number(entry.downContribution || 0);
                 };
                 if (skillDamageSource === 'total') {
                     p.totalDamageDist?.forEach((list: any) => {
@@ -775,7 +777,13 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 : 0;
         }
 
-        const topSkills = Object.values(skillDamageMap).sort((a, b) => b.damage - a.damage).slice(0, 25);
+        const topSkills = Object.values(skillDamageMap)
+            .sort((a, b) => {
+                const aVal = topSkillsMetric === 'downContribution' ? a.downContribution : a.damage;
+                const bVal = topSkillsMetric === 'downContribution' ? b.downContribution : b.damage;
+                return bVal - aVal;
+            })
+            .slice(0, 25);
         const topIncomingSkills = Object.values(incomingSkillDamageMap).sort((a, b) => b.damage - a.damage).slice(0, 25);
 
         // Map Data
@@ -1020,6 +1028,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 conditions: s.incomingConditions
             })),
             topSkills, topIncomingSkills,
+            topSkillsMetric,
             mapData, timelineData, boonTables,
             offensePlayers: Array.from(playerStats.values()).map(s => ({
                 account: s.account, profession: s.profession, professionList: s.professionList,
