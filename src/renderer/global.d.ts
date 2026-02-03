@@ -55,6 +55,7 @@ export interface IStatsViewSettings {
     showMvp: boolean;
     roundCountStats: boolean;
     topStatsMode: 'total' | 'perSecond';
+    topSkillDamageSource: 'total' | 'target';
 }
 
 export type WebUploadBuildStatus = 'idle' | 'checking' | 'building' | 'built' | 'errored' | 'unknown';
@@ -121,7 +122,8 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     showTopStats: true,
     showMvp: true,
     roundCountStats: false,
-    topStatsMode: 'total'
+    topStatsMode: 'total',
+    topSkillDamageSource: 'target'
 };
 
 export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {

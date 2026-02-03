@@ -573,6 +573,10 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         setStatsViewSettings(prev => ({ ...prev, [key]: value }));
     };
 
+    const updateStatsViewSettingValue = <K extends keyof IStatsViewSettings>(key: K, value: IStatsViewSettings[K]) => {
+        setStatsViewSettings(prev => ({ ...prev, [key]: value }));
+    };
+
     const updateTopStatsMode = (mode: IStatsViewSettings['topStatsMode']) => {
         setStatsViewSettings(prev => ({ ...prev, topStatsMode: mode }));
     };
@@ -1127,41 +1131,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                     </div>
                 </SettingsSection>
 
-                {/* CC/Strip Methodology */}
-                <SettingsSection title="CC/Strip Methodology" icon={Zap} delay={0.12}>
-                    <p className="text-sm text-gray-400 mb-4">
-                        Choose how crowd control and strip totals are calculated across the app.
-                    </p>
-                    <div className="grid gap-3">
-                        {Object.entries(METRICS_SPEC.methods).map(([key, method]) => {
-                            const isActive = disruptionMethod === key;
-                            return (
-                                <button
-                                    key={key}
-                                    onClick={() => setDisruptionMethod(key as DisruptionMethod)}
-                                    className={`text-left rounded-xl border px-4 py-3 transition-colors ${isActive
-                                        ? 'bg-blue-500/15 border-blue-500/40 text-blue-100'
-                                        : 'bg-black/20 border-white/10 text-gray-300 hover:text-white hover:border-white/20'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-sm font-semibold">{method.label}</div>
-                                        <div className={`text-xs font-semibold ${isActive ? 'text-blue-200' : 'text-gray-500'}`}>
-                                            {isActive ? 'Selected' : 'Select'}
-                                        </div>
-                                    </div>
-                                    <div className="text-xs text-gray-400 mt-1">{method.summary}</div>
-                                    <ul className="mt-2 space-y-1 text-xs text-gray-500">
-                                        {method.implications.map((item, idx) => (
-                                            <li key={`${key}-${idx}`}>• {item}</li>
-                                        ))}
-                                    </ul>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </SettingsSection>
-
                 {/* Discord Embed Stats - Top Lists */}
                 <SettingsSection title="Discord Embed - Top Stats Lists" icon={BarChart3} delay={0.15}>
                     <p className="text-sm text-gray-400 mb-2">
@@ -1388,6 +1357,99 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                 ))}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">Applies to Top Stats cards and breakdown.</div>
+                        </div>
+                        <div className="py-3 border-t border-white/5">
+                            <div className="text-sm font-medium text-gray-200 mb-2">Top Skills Damage Source</div>
+                            <div className="text-xs text-gray-500 mb-3">
+                                Choose whether top skills are calculated from all damage events or only damage assigned to enemies.
+                            </div>
+                            <div className="grid gap-3">
+                                {([
+                                    {
+                                        id: 'target',
+                                        label: 'Target Damage (Recommended)',
+                                        summary: 'Uses targetDamageDist — damage attributed to enemies.',
+                                        implications: [
+                                            'Matches Elite Insights enemy damage totals.',
+                                            'Excludes unassigned or non-target damage buckets.',
+                                            'Best for comparing against other tools.'
+                                        ]
+                                    },
+                                    {
+                                        id: 'total',
+                                        label: 'All Damage',
+                                        summary: 'Uses totalDamageDist — everything recorded, including non-target damage.',
+                                        implications: [
+                                            'Counts damage not tied to targets.',
+                                            'Can be higher than enemy totals in other tools.',
+                                            'Useful for broad skill usage context.'
+                                        ]
+                                    }
+                                ] as const).map((option) => {
+                                    const isActive = statsViewSettings.topSkillDamageSource === option.id;
+                                    return (
+                                        <button
+                                            key={option.id}
+                                            type="button"
+                                            onClick={() => updateStatsViewSettingValue('topSkillDamageSource', option.id)}
+                                            className={`text-left rounded-xl border px-4 py-3 transition-colors ${isActive
+                                                ? 'bg-blue-500/15 border-blue-500/40 text-blue-100'
+                                                : 'bg-black/20 border-white/10 text-gray-300 hover:text-white hover:border-white/20'
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm font-semibold">{option.label}</div>
+                                                <div className={`text-xs font-semibold ${isActive ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                    {isActive ? 'Selected' : 'Select'}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-gray-400 mt-1">{option.summary}</div>
+                                            <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                                                {option.implications.map((item, idx) => (
+                                                    <li key={`${option.id}-${idx}`}>• {item}</li>
+                                                ))}
+                                            </ul>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="py-4 border-t border-white/10">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-200 mb-2">
+                                <Zap className="w-4 h-4 text-blue-300" />
+                                CC/Strip Methodology
+                            </div>
+                            <div className="text-xs text-gray-500 mb-3">
+                                Choose how crowd control and strip totals are calculated across the app.
+                            </div>
+                            <div className="grid gap-3">
+                                {Object.entries(METRICS_SPEC.methods).map(([key, method]) => {
+                                    const isActive = disruptionMethod === key;
+                                    return (
+                                        <button
+                                            key={key}
+                                            onClick={() => setDisruptionMethod(key as DisruptionMethod)}
+                                            className={`text-left rounded-xl border px-4 py-3 transition-colors ${isActive
+                                                ? 'bg-blue-500/15 border-blue-500/40 text-blue-100'
+                                                : 'bg-black/20 border-white/10 text-gray-300 hover:text-white hover:border-white/20'
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm font-semibold">{method.label}</div>
+                                                <div className={`text-xs font-semibold ${isActive ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                    {isActive ? 'Selected' : 'Select'}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-gray-400 mt-1">{method.summary}</div>
+                                            <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                                                {method.implications.map((item, idx) => (
+                                                    <li key={`${key}-${idx}`}>• {item}</li>
+                                                ))}
+                                            </ul>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </SettingsSection>

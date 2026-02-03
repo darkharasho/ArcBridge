@@ -39,6 +39,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         }
 
         const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
+        const skillDamageSource = activeStatsViewSettings.topSkillDamageSource || 'target';
         const total = validLogs.length;
 
         let wins = 0;
@@ -419,26 +420,37 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 }
 
                 // Skill Damage (Global)
-                if (p.totalDamageDist) {
-                    p.totalDamageDist.forEach((list: any) => {
+                const pushSkillDamageEntry = (entry: any) => {
+                    if (!entry?.id) return;
+                    let name = `Skill ${entry.id}`;
+                    const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
+                    let icon = mapped?.icon;
+                    if (mapped?.name) name = mapped.name;
+                    if (name.startsWith('Skill ')) {
+                        const conditionName = resolveConditionNameFromEntry(name, entry.id, details.buffMap);
+                        if (conditionName) {
+                            name = conditionName;
+                            icon = details.buffMap?.[`b${entry.id}`]?.icon || icon;
+                        }
+                    }
+                    if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0 };
+                    if (!skillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
+                    if (!skillDamageMap[entry.id].icon && icon) skillDamageMap[entry.id].icon = icon;
+                    skillDamageMap[entry.id].damage += entry.totalDamage;
+                    skillDamageMap[entry.id].hits += entry.connectedHits;
+                };
+                if (skillDamageSource === 'total') {
+                    p.totalDamageDist?.forEach((list: any) => {
                         list?.forEach((entry: any) => {
-                            if (!entry?.id) return;
-                            let name = `Skill ${entry.id}`;
-                            const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
-                            let icon = mapped?.icon;
-                            if (mapped?.name) name = mapped.name;
-                            if (name.startsWith('Skill ')) {
-                                const conditionName = resolveConditionNameFromEntry(name, entry.id, details.buffMap);
-                                if (conditionName) {
-                                    name = conditionName;
-                                    icon = details.buffMap?.[`b${entry.id}`]?.icon || icon;
-                                }
-                            }
-                            if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0 };
-                            if (!skillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
-                            if (!skillDamageMap[entry.id].icon && icon) skillDamageMap[entry.id].icon = icon;
-                            skillDamageMap[entry.id].damage += entry.totalDamage;
-                            skillDamageMap[entry.id].hits += entry.connectedHits;
+                            pushSkillDamageEntry(entry);
+                        });
+                    });
+                } else {
+                    p.targetDamageDist?.forEach((targetGroup: any) => {
+                        targetGroup?.forEach((list: any) => {
+                            list?.forEach((entry: any) => {
+                                pushSkillDamageEntry(entry);
+                            });
                         });
                     });
                 }
