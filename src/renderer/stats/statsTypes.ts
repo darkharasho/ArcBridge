@@ -15,13 +15,14 @@ export interface SkillOption {
     name: string;
     total: number;
     autoAttack?: boolean;
+    icon?: string;
 }
 
 export interface SkillUsageLogRecord {
     id: string;
     label: string;
     timestamp: number;
-    skillEntries: Record<string, { name: string; players: Record<string, number> }>;
+    skillEntries: Record<string, { name: string; icon?: string; players: Record<string, number> }>;
     playerActiveSeconds?: Record<string, number>;
     durationSeconds?: number;
 }
@@ -30,7 +31,7 @@ export interface SkillUsageSummary {
     logRecords: SkillUsageLogRecord[];
     players: SkillUsagePlayer[];
     skillOptions: SkillOption[];
-    resUtilitySkills?: Array<{ id: string; name: string }>;
+    resUtilitySkills?: Array<{ id: string; name: string; icon?: string }>;
 }
 
 export interface ApmPlayerRow {
@@ -52,6 +53,7 @@ export interface ApmPlayerRow {
 export interface ApmSkillEntry {
     id: string;
     name: string;
+    icon?: string;
     totalCasts: number;
     playerCounts: Map<string, number>;
 }

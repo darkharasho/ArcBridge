@@ -1,4 +1,5 @@
 import { Maximize2, Shield, Swords, X } from 'lucide-react';
+import { InlineIconLabel } from '../ui/StatsViewShared';
 
 type TopSkillsSectionProps = {
     stats: any;
@@ -53,12 +54,20 @@ export const TopSkillsSection = ({
                 </button>
             </div>
             <div className={`${expandedSection === 'top-skills-outgoing' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                {stats.topSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
+                {stats.topSkills.map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
-                            <div className="flex justify-between text-sm mb-1">
-                                <span className="text-white font-bold">{skill.name}</span>
+                            <div className="flex justify-between items-center text-sm mb-1 leading-tight h-8">
+                                <span className="text-white font-bold">
+                                    <InlineIconLabel
+                                        name={skill.name}
+                                        iconUrl={skill.icon}
+                                        iconClassName="h-6 w-6"
+                                        className="min-w-0 max-w-[180px] sm:max-w-[240px]"
+                                        textClassName="truncate leading-none"
+                                    />
+                                </span>
                                 <div className="text-right">
                                     <span className="text-orange-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
                                     <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>
@@ -106,12 +115,20 @@ export const TopSkillsSection = ({
                 </button>
             </div>
             <div className={`${expandedSection === 'top-skills-incoming' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-80 overflow-y-auto'} space-y-4`}>
-                {stats.topIncomingSkills.map((skill: { name: string; damage: number; hits: number }, i: number) => (
+                {stats.topIncomingSkills.map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
-                            <div className="flex justify-between text-sm mb-1">
-                                <span className="text-white font-bold">{skill.name}</span>
+                            <div className="flex justify-between items-center text-sm mb-1 leading-tight h-8">
+                                <span className="text-white font-bold">
+                                    <InlineIconLabel
+                                        name={skill.name}
+                                        iconUrl={skill.icon}
+                                        iconClassName="h-6 w-6"
+                                        className="min-w-0 max-w-[180px] sm:max-w-[240px]"
+                                        textClassName="truncate leading-none"
+                                    />
+                                </span>
                                 <div className="text-right">
                                     <span className="text-red-400 font-mono font-bold">{Math.round(skill.damage).toLocaleString()}</span>
                                     <span className="text-gray-500 text-xs ml-2">({skill.hits.toLocaleString()} hits)</span>

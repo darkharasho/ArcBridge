@@ -162,62 +162,69 @@ function App() {
     const avgEnemies = logs.length > 0
         ? Math.round(logs.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logs.length)
         : 0;
+    const getFightDownsDeaths = (details: any) => {
+        const players = details?.players || [];
+        const squadPlayers = players.filter((p: any) => !p.notInSquad);
+        let squadDownsDeaths = 0;
+        let enemyDownsDeaths = 0;
+        let squadDeaths = 0;
+        let enemyDeaths = 0;
+
+        squadPlayers.forEach((p: any) => {
+            const defenses = p.defenses?.[0];
+            if (!defenses) return;
+            const downCount = Number(defenses.downCount || 0);
+            const deadCount = Number(defenses.deadCount || 0);
+            squadDownsDeaths += downCount + deadCount;
+            squadDeaths += deadCount;
+        });
+
+        squadPlayers.forEach((p: any) => {
+            if (!p.statsTargets || p.statsTargets.length === 0) return;
+            p.statsTargets.forEach((targetStats: any) => {
+                const st = targetStats?.[0];
+                if (!st) return;
+                const downed = Number(st.downed || 0);
+                const killed = Number(st.killed || 0);
+                enemyDownsDeaths += downed + killed;
+                enemyDeaths += killed;
+            });
+        });
+
+        return { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths };
+    };
+    const getFightOutcome = (details: any) => {
+        const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
+        if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
+            return enemyDownsDeaths > squadDownsDeaths;
+        }
+        if (typeof details?.success === 'boolean') return details.success;
+        return false;
+    };
+
     const winLoss = logs.reduce(
         (acc, log) => {
             const details: any = log.details;
-            if (!details?.players || !details?.targets) return acc;
-            const players = details.players as any[];
-            const squadPlayers = players.filter((p) => !p.notInSquad);
-            let squadDownsDeaths = 0;
-            let enemyDownsDeaths = 0;
-
-            squadPlayers.forEach((p) => {
-                if (p.defenses && p.defenses.length > 0) {
-                    squadDownsDeaths += Number(p.defenses[0].downCount || 0) + Number(p.defenses[0].deadCount || 0);
-                }
-            });
-
-            squadPlayers.forEach((p: any) => {
-                if (!p.statsTargets || p.statsTargets.length === 0) return;
-                p.statsTargets.forEach((targetStats: any) => {
-                    if (targetStats && targetStats.length > 0) {
-                        const st = targetStats[0];
-                        enemyDownsDeaths += Number(st.downed || 0) + Number(st.killed || 0);
-                    }
-                });
-            });
-
-            if (squadDownsDeaths < enemyDownsDeaths) {
-                acc.wins += 1;
-            } else {
-                acc.losses += 1;
-            }
+            if (!details?.players) return acc;
+            const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
+            const isWin = getFightOutcome(details);
+            if (isWin) acc.wins += 1;
+            else acc.losses += 1;
             return acc;
         },
         { wins: 0, losses: 0 }
     );
     const squadKdr = (() => {
         let totalSquadDeaths = 0;
-        let totalEnemyKills = 0;
+        let totalEnemyDeaths = 0;
         logs.forEach((log) => {
             const details: any = log.details;
-            const players = details?.players || [];
-            const squadPlayers = players.filter((p: any) => !p.notInSquad);
-            squadPlayers.forEach((p: any) => {
-                totalSquadDeaths += Number(p.defenses?.[0]?.deadCount || 0);
-            });
-            squadPlayers.forEach((p: any) => {
-                if (!p.statsTargets || p.statsTargets.length === 0) return;
-                p.statsTargets.forEach((targetStats: any) => {
-                    if (targetStats && targetStats.length > 0) {
-                        const st = targetStats[0];
-                        totalEnemyKills += Number(st.killed || 0);
-                    }
-                });
-            });
+            const { squadDeaths, enemyDeaths } = getFightDownsDeaths(details);
+            totalSquadDeaths += squadDeaths;
+            totalEnemyDeaths += enemyDeaths;
         });
         const denom = totalSquadDeaths === 0 ? 1 : totalSquadDeaths;
-        return Number((totalEnemyKills / denom).toFixed(2));
+        return Number((totalEnemyDeaths / denom).toFixed(2));
     })();
 
     useEffect(() => {

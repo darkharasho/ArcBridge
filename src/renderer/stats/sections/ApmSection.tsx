@@ -1,5 +1,6 @@
 import { Activity, ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { InlineIconLabel } from '../ui/StatsViewShared';
 import type { ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
 
 type ApmSectionProps = {
@@ -178,7 +179,7 @@ export const ApmSection = ({
                                                                 : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                             }`}
                                                     >
-                                                        <span className="truncate block">{skill.name}</span>
+                                                        <InlineIconLabel name={skill.name} iconUrl={skill.icon} iconClassName="h-4 w-4" />
                                                     </button>
                                                 ));
                                             })()}
@@ -202,15 +203,19 @@ export const ApmSection = ({
                                             <div className="text-sm font-semibold text-gray-200">{activeApmSpecTable.profession}</div>
                                             <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
                                             <div className="text-sm font-semibold text-gray-200 truncate">
-                                                {isAllApmSkills ? 'All Skills' : activeApmSkill?.name}
+                                                {isAllApmSkills
+                                                    ? 'All Skills'
+                                                    : (
+                                                        <InlineIconLabel name={activeApmSkill?.name || ''} iconUrl={activeApmSkill?.icon} iconClassName="h-6 w-6" />
+                                                    )}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">
                                         <div className="text-[11px] text-gray-400">
                                             {isAllApmSkills
-                                                ? `${activeApmSpecTable.players.length} ${activeApmSpecTable.players.length === 1 ? 'player' : 'players'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalAps : activeApmSpecTable.totalApm)} ${apmView === 'perSecond' ? 'APS' : 'APM'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalApsNoAuto : activeApmSpecTable.totalApmNoAuto)} ${apmView === 'perSecond' ? 'APS' : 'APM'} (no auto)`
-                                                : `${activeApmSkill?.playerRows.length ?? 0} ${activeApmSkill?.playerRows.length === 1 ? 'player' : 'players'} | ${formatApmValue(activeApmSkill?.totalApm ?? 0)} APM | ${apmView === 'perSecond'
+                                                ? `${activeApmSpecTable.players?.length ?? 0} ${activeApmSpecTable.players?.length === 1 ? 'player' : 'players'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalAps : activeApmSpecTable.totalApm)} ${apmView === 'perSecond' ? 'APS' : 'APM'} | ${formatApmValue(apmView === 'perSecond' ? activeApmSpecTable.totalApsNoAuto : activeApmSpecTable.totalApmNoAuto)} ${apmView === 'perSecond' ? 'APS' : 'APM'} (no auto)`
+                                                : `${activeApmSkill?.playerRows?.length ?? 0} ${activeApmSkill?.playerRows?.length === 1 ? 'player' : 'players'} | ${formatApmValue(activeApmSkill?.totalApm ?? 0)} APM | ${apmView === 'perSecond'
                                                     ? `${formatCastRateValue(activeApmSkill?.totalCastsPerSecond ?? 0)} casts/sec`
                                                     : `${formatCastCountValue(activeApmSkill?.totalCasts ?? 0)} casts`}`}
                                         </div>

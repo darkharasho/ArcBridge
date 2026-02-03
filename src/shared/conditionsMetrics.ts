@@ -6,7 +6,10 @@ const CONDITION_NAME_MAP = new Map<string, string>([
     ['torment', 'Torment'],
     ['vulnerability', 'Vulnerability'],
     ['weakness', 'Weakness'],
+    ['weakened', 'Weakness'],
     ['blind', 'Blind'],
+    ['blinded', 'Blind'],
+    ['blinding', 'Blind'],
     ['cripple', 'Cripple'],
     ['crippled', 'Cripple'],
     ['chill', 'Chill'],
@@ -15,9 +18,28 @@ const CONDITION_NAME_MAP = new Map<string, string>([
     ['immobile', 'Immobilize'],
     ['immobilized', 'Immobilize'],
     ['slow', 'Slow'],
+    ['slowed', 'Slow'],
     ['fear', 'Fear'],
+    ['feared', 'Fear'],
     ['taunt', 'Taunt'],
+    ['taunted', 'Taunt'],
 ]);
+const DEFAULT_CONDITION_ICONS: Record<string, string> = {
+    Blind: 'https://render.guildwars2.com/file/09770136BB76FD0DBE1CC4267DEED54774CB20F6/102837.png',
+    Chill: 'https://render.guildwars2.com/file/28C4EC547A3516AF0242E826772DA43A5EAC3DF3/102839.png',
+    Cripple: 'https://render.guildwars2.com/file/070325E519C178D502A8160523766070D30C0C19/102838.png',
+    Fear: 'https://render.guildwars2.com/file/30307A6E766D74B6EB09EDA12A4A2DE50E4D76F4/102869.png',
+    Immobilize: 'https://render.guildwars2.com/file/397A613651BFCA2832B6469CE34735580A2C120E/102844.png',
+    Slow: 'https://render.guildwars2.com/file/F60D1EF5271D7B9319610855676D320CD25F01C6/961397.png',
+    Taunt: 'https://render.guildwars2.com/file/02EED459AD65FAF7DF32A260E479C625070841B9/1228472.png',
+    Vulnerability: 'https://render.guildwars2.com/file/3A394C1A0A3257EB27A44842DDEEF0DF000E1241/102850.png',
+    Weakness: 'https://render.guildwars2.com/file/6CB0E64AF9AA292E332A38C1770CE577E2CDE0E8/102853.png'
+};
+
+export const getDefaultConditionIcon = (name?: string | null) => {
+    if (!name) return undefined;
+    return DEFAULT_CONDITION_ICONS[name];
+};
 
 const getConditionName = (name?: string | null) => {
     if (!name) return null;
@@ -34,6 +56,23 @@ const getConditionName = (name?: string | null) => {
 
 export const normalizeConditionLabel = (name?: string | null) => getConditionName(name);
 
+export const buildConditionIconMap = (
+    buffMap?: Record<string, { name?: string; classification?: string; icon?: string }>
+) => {
+    const map = new Map<string, string>();
+    if (!buffMap) return map;
+    Object.values(buffMap).forEach((meta) => {
+        if (!meta?.icon || !meta?.name) return;
+        const normalized = getConditionName(meta.name);
+        if (!normalized) return;
+        if (!map.has(normalized)) map.set(normalized, meta.icon);
+    });
+    Object.entries(DEFAULT_CONDITION_ICONS).forEach(([name, icon]) => {
+        if (!map.has(name)) map.set(name, icon);
+    });
+    return map;
+};
+
 export const resolveConditionNameFromEntry = (
     skillName: string,
     id?: number,
@@ -48,9 +87,10 @@ export const resolveConditionNameFromEntry = (
     return getConditionName(skillName);
 };
 
-export type ConditionSkillEntry = { name: string; hits: number; damage: number };
+export type ConditionSkillEntry = { name: string; hits: number; damage: number; icon?: string };
 
 export type PlayerConditionTotals = Record<string, {
+    icon?: string;
     applications: number;
     damage: number;
     skills: Record<string, ConditionSkillEntry>;
@@ -60,6 +100,7 @@ export type PlayerConditionTotals = Record<string, {
 
 export type OutgoingConditionSummaryEntry = {
     name: string;
+    icon?: string;
     applications: number;
     damage: number;
     applicationsFromBuffs?: number;
@@ -120,12 +161,13 @@ const countActiveStateEntries = (states: Array<[number, number]> | undefined) =>
 export const computeOutgoingConditions = (payload: {
     players: any[];
     targets: any[];
-    skillMap?: Record<string, { name?: string }>;
-    buffMap?: Record<string, { name?: string; classification?: string }>;
+    skillMap?: Record<string, { name?: string; icon?: string }>;
+    buffMap?: Record<string, { name?: string; classification?: string; icon?: string }>;
     getPlayerKey?: GetPlayerKey;
 }): OutgoingConditionsResult => {
     const { players, targets, skillMap, buffMap } = payload;
     const getPlayerKey = payload.getPlayerKey || defaultGetPlayerKey;
+    const conditionIconMap = buildConditionIconMap(buffMap);
 
     const playerConditions: Record<string, PlayerConditionTotals> = {};
     const summary: Record<string, OutgoingConditionSummaryEntry> = {};
@@ -143,17 +185,25 @@ export const computeOutgoingConditions = (payload: {
             distList.forEach((entry: any) => {
                 if (!entry.id) return;
                 let skillName = `Skill ${entry.id}`;
+                let skillIcon: string | undefined;
                 if (skillMap) {
                     if (skillMap[`s${entry.id}`]) {
                         skillName = skillMap[`s${entry.id}`].name || skillName;
+                        skillIcon = skillMap[`s${entry.id}`].icon || skillIcon;
                     } else if (skillMap[`${entry.id}`]) {
                         skillName = skillMap[`${entry.id}`].name || skillName;
+                        skillIcon = skillMap[`${entry.id}`].icon || skillIcon;
                     }
                 }
-    const conditionName = resolveConditionNameFromEntry(skillName, entry.id, buffMap);
+                const conditionName = resolveConditionNameFromEntry(skillName, entry.id, buffMap);
                 if (!conditionName) return;
-                const buffName = buffMap?.[`b${entry.id}`]?.name;
-                const skillLabel = skillName.startsWith('Skill ') && buffName ? buffName : skillName;
+                const buffMeta = buffMap?.[`b${entry.id}`];
+                const buffName = buffMeta?.name;
+                const conditionIcon = conditionIconMap.get(conditionName) || buffMeta?.icon;
+                const skillLabel = skillName.startsWith('Skill ')
+                    ? (buffName || conditionName)
+                    : skillName;
+                const skillLabelIcon = skillIcon || buffMeta?.icon;
                 const connectedHits = Number(entry.connectedHits ?? 0);
                 const rawHits = Number(entry.hits ?? 0);
                 const hits = connectedHits > 0 ? connectedHits : rawHits;
@@ -162,24 +212,29 @@ export const computeOutgoingConditions = (payload: {
 
                 const existing = summary[conditionName] || {
                     name: conditionName,
+                    icon: conditionIcon,
                     applications: 0,
                     damage: 0
                 };
                 existing.applications += Number.isFinite(hits) ? hits : 0;
                 existing.damage += Number.isFinite(damage) ? damage : 0;
+                if (!existing.icon && conditionIcon) existing.icon = conditionIcon;
                 summary[conditionName] = existing;
 
                 const playerConditionTotals = playerConditions[key][conditionName] || {
+                    icon: conditionIcon,
                     applications: 0,
                     damage: 0,
                     skills: {}
                 };
                 playerConditionTotals.applications += Number.isFinite(hits) ? hits : 0;
                 playerConditionTotals.damage += Number.isFinite(damage) ? damage : 0;
-                const skillEntry = playerConditionTotals.skills[skillLabel] || { name: skillLabel, hits: 0, damage: 0 };
+                const skillEntry = playerConditionTotals.skills[skillLabel] || { name: skillLabel, hits: 0, damage: 0, icon: skillLabelIcon };
                 skillEntry.hits += Number.isFinite(hits) ? hits : 0;
                 skillEntry.damage += Number.isFinite(damage) ? damage : 0;
+                if (!skillEntry.icon && skillLabelIcon) skillEntry.icon = skillLabelIcon;
                 playerConditionTotals.skills[skillLabel] = skillEntry;
+                if (!playerConditionTotals.icon && conditionIcon) playerConditionTotals.icon = conditionIcon;
                 playerConditions[key][conditionName] = playerConditionTotals;
             });
         });

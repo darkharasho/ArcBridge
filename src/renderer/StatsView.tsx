@@ -14,6 +14,7 @@ import { getProfessionColor, getProfessionIconPath } from '../shared/professionU
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import type { SkillUsageSummary } from './stats/statsTypes';
+import { getDefaultConditionIcon, normalizeConditionLabel } from '../shared/conditionsMetrics';
 
 
 import { SkillUsageSection } from './stats/sections/SkillUsageSection';
@@ -53,7 +54,7 @@ interface StatsViewProps {
 }
 
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
-const NON_DAMAGING_CONDITIONS = new Set(['Vulnerability', 'Weakness', 'Blinded', 'Chilled', 'Crippled', 'Slow', 'Taunt', 'Fear', 'Immobile']);
+const NON_DAMAGING_CONDITIONS = new Set(['Vulnerability', 'Weakness', 'Blind', 'Chill', 'Cripple', 'Slow', 'Taunt', 'Fear', 'Immobilize']);
 
 export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme }: StatsViewProps) {
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
@@ -210,8 +211,114 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         skillUsageView: skillUsageView === 'perSecond' ? 'perSecond' : 'total'
     });
 
-    const conditionSummary = conditionDirection === 'outgoing' ? stats.outgoingConditionSummary : stats.incomingConditionSummary;
-    const conditionPlayers = conditionDirection === 'outgoing' ? stats.outgoingConditionPlayers : stats.incomingConditionPlayers;
+    const normalizeConditionData = useMemo(() => {
+        const iconByName = new Map<string, string>();
+        const absorbIcons = (entries: any[]) => {
+            entries.forEach((entry) => {
+                const name = normalizeConditionLabel(entry?.name) || entry?.name;
+                if (!name) return;
+                if (entry?.icon && !iconByName.has(name)) iconByName.set(name, entry.icon);
+            });
+        };
+        const absorbPlayerIcons = (players: any[]) => {
+            players.forEach((player) => {
+                Object.entries(player?.conditions || {}).forEach(([rawName, cond]: any) => {
+                    const name = normalizeConditionLabel(rawName) || rawName;
+                    if (cond?.icon && !iconByName.has(name)) iconByName.set(name, cond.icon);
+                });
+            });
+        };
+
+        const normalizeSummary = (summary: any[]) => {
+            const merged = new Map<string, any>();
+            summary.forEach((entry) => {
+                const name = normalizeConditionLabel(entry?.name) || entry?.name;
+                if (!name) return;
+                const existing = merged.get(name) || {
+                    name,
+                    icon: entry?.icon || iconByName.get(name) || getDefaultConditionIcon(name),
+                    applications: 0,
+                    damage: 0,
+                    applicationsFromBuffs: 0,
+                    applicationsFromBuffsActive: 0
+                };
+                existing.applications += Number(entry?.applications || 0);
+                existing.damage += Number(entry?.damage || 0);
+                if (entry?.applicationsFromBuffs) {
+                    existing.applicationsFromBuffs += Number(entry.applicationsFromBuffs || 0);
+                }
+                if (entry?.applicationsFromBuffsActive) {
+                    existing.applicationsFromBuffsActive += Number(entry.applicationsFromBuffsActive || 0);
+                }
+                if (!existing.icon && entry?.icon) existing.icon = entry.icon;
+                if (!existing.icon) existing.icon = getDefaultConditionIcon(name);
+                merged.set(name, existing);
+            });
+            return Array.from(merged.values());
+        };
+
+        const normalizePlayers = (players: any[]) => players.map((player) => {
+            const mergedConditions: Record<string, any> = {};
+            Object.entries(player?.conditions || {}).forEach(([rawName, cond]: any) => {
+                const name = normalizeConditionLabel(rawName) || rawName;
+                if (!name) return;
+                const existing = mergedConditions[name] || {
+                    icon: cond?.icon || iconByName.get(name) || getDefaultConditionIcon(name),
+                    applications: 0,
+                    damage: 0,
+                    applicationsFromBuffs: 0,
+                    applicationsFromBuffsActive: 0,
+                    skills: {}
+                };
+                existing.applications += Number(cond?.applications || 0);
+                existing.damage += Number(cond?.damage || 0);
+                if (cond?.applicationsFromBuffs) {
+                    existing.applicationsFromBuffs += Number(cond.applicationsFromBuffs || 0);
+                }
+                if (cond?.applicationsFromBuffsActive) {
+                    existing.applicationsFromBuffsActive += Number(cond.applicationsFromBuffsActive || 0);
+                }
+                if (!existing.icon && cond?.icon) existing.icon = cond.icon;
+                if (!existing.icon) existing.icon = getDefaultConditionIcon(name);
+                Object.values(cond?.skills || {}).forEach((skill: any) => {
+                    const skillName = skill?.name || 'Unknown';
+                    const skillEntry = existing.skills[skillName] || { name: skillName, hits: 0, damage: 0, icon: skill?.icon };
+                    skillEntry.hits += Number(skill?.hits || 0);
+                    skillEntry.damage += Number(skill?.damage || 0);
+                    if (!skillEntry.icon && skill?.icon) skillEntry.icon = skill.icon;
+                    existing.skills[skillName] = skillEntry;
+                });
+                mergedConditions[name] = existing;
+            });
+            return { ...player, conditions: mergedConditions };
+        });
+
+        return (summary: any[], players: any[]) => {
+            absorbIcons(summary);
+            absorbPlayerIcons(players);
+            return {
+                summary: normalizeSummary(summary),
+                players: normalizePlayers(players)
+            };
+        };
+    }, []);
+
+    const conditionRawSummary = conditionDirection === 'outgoing' ? stats.outgoingConditionSummary : stats.incomingConditionSummary;
+    const conditionRawPlayers = conditionDirection === 'outgoing' ? stats.outgoingConditionPlayers : stats.incomingConditionPlayers;
+    const { summary: conditionSummary, players: conditionPlayers } = normalizeConditionData(
+        conditionRawSummary || [],
+        conditionRawPlayers || []
+    );
+    useEffect(() => {
+        if (activeConditionName === 'all') return;
+        if (conditionSummary.some((entry: any) => entry.name === activeConditionName)) return;
+        const normalized = normalizeConditionLabel(activeConditionName);
+        if (normalized && conditionSummary.some((entry: any) => entry.name === normalized)) {
+            setActiveConditionName(normalized);
+        } else {
+            setActiveConditionName('all');
+        }
+    }, [activeConditionName, conditionSummary, setActiveConditionName]);
 
     // Define classMaxTotals to fix undefined variable error
     const classMaxTotals = useMemo(() => {
@@ -319,10 +426,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         return `#${toHex(r * factor)}${toHex(g * factor)}${toHex(b * factor)}`;
     };
 
-    const skillNameById = useMemo(() => {
-        const map = new Map<string, string>();
+    const skillMetaById = useMemo(() => {
+        const map = new Map<string, { name: string; icon?: string }>();
         skillUsageData.skillOptions.forEach((option) => {
-            map.set(option.id, option.name);
+            map.set(option.id, { name: option.name, icon: option.icon });
         });
         return map;
     }, [skillUsageData.skillOptions]);
@@ -350,9 +457,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         const accentFallback = '#64748b';
         const entries = Array.from(totals.entries())
             .map(([skillId, total]) => {
-                const name = skillNameById.get(skillId) || skillId;
+                const meta = skillMetaById.get(skillId);
+                const name = meta?.name || skillId;
                 const value = isPerSecond && totalActiveSeconds > 0 ? total / totalActiveSeconds : total;
-                return { skillId, name, total: value };
+                return { skillId, name, icon: meta?.icon, total: value };
             })
             .filter((entry) => entry.total > 0 && (!term || entry.name.toLowerCase().includes(term)))
             .sort((a, b) => b.total - a.total);
@@ -360,7 +468,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
             ...entry,
             color: index === 0 ? dominantColor : adjustHexColor(dominantColor, 0.85 - Math.min(index * 0.06, 0.4)) || accentFallback
         }));
-    }, [selectedPlayers, playerMapByKey, skillUsageSkillFilter, skillUsageView, skillNameById]);
+    }, [selectedPlayers, playerMapByKey, skillUsageSkillFilter, skillUsageView, skillMetaById]);
 
     useEffect(() => {
         if (skillBarData.length === 0) {
@@ -372,7 +480,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         }
     }, [skillBarData, selectedSkillId, setSelectedSkillId]);
 
-    const selectedSkillName = skillUsageData.skillOptions.find((option) => option.id === selectedSkillId)?.name || '';
+    const selectedSkillMeta = skillUsageData.skillOptions.find((option) => option.id === selectedSkillId);
+    const selectedSkillName = selectedSkillMeta?.name || '';
+    const selectedSkillIcon = selectedSkillMeta?.icon || null;
     const skillUsageReady = skillUsageAvailable && Boolean(selectedSkillId) && selectedPlayers.length > 0;
 
     const ALL_SKILLS_KEY = '__all__';
@@ -876,6 +986,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
                     setSelectedSkillId={setSelectedSkillId}
                     skillBarData={skillBarData}
                     selectedSkillName={selectedSkillName}
+                    selectedSkillIcon={selectedSkillIcon}
                     skillUsageReady={skillUsageReady}
                     skillUsageAvailable={skillUsageAvailable}
                     isSkillUsagePerSecond={isSkillUsagePerSecond}

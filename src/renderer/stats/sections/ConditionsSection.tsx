@@ -2,7 +2,7 @@ import { Maximize2, Skull, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
-import { SkillBreakdownTooltip } from '../ui/StatsViewShared';
+import { InlineIconLabel, SkillBreakdownTooltip } from '../ui/StatsViewShared';
 
 type ConditionsSectionProps = {
     conditionSummary: any[];
@@ -123,7 +123,7 @@ export const ConditionsSection = ({
                                                     : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                     }`}
                                             >
-                                                {entry.name}
+                                                <InlineIconLabel name={entry.name} iconUrl={entry.icon} iconClassName="h-5 w-5" />
                                             </button>
                                         ))}
                                     </>
@@ -138,7 +138,15 @@ export const ConditionsSection = ({
                         header={
                             <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
                                 <div className="text-sm font-semibold text-gray-200">
-                                    {activeConditionName === 'all' ? 'All Conditions' : activeConditionName}
+                                    {activeConditionName === 'all'
+                                        ? 'All Conditions'
+                                        : (
+                                                <InlineIconLabel
+                                                    name={activeConditionName}
+                                                    iconUrl={conditionSummary.find((entry: any) => entry.name === activeConditionName)?.icon}
+                                                    iconClassName="h-5 w-5"
+                                                />
+                                        )}
                                 </div>
                                 <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">
                                     <div className="text-xs uppercase tracking-widest text-gray-500">Squad Totals</div>
@@ -252,9 +260,10 @@ export const ConditionsSection = ({
                                                     if ((!Number.isFinite(hits) || hits <= 0) && (!Number.isFinite(damage) || damage <= 0)) {
                                                         return;
                                                     }
-                                                    const existing = skillsMap[name] || { name, hits: 0, damage: 0 };
+                                                    const existing = skillsMap[name] || { name, hits: 0, damage: 0, icon: skill?.icon };
                                                     existing.hits += Number.isFinite(hits) ? hits : 0;
                                                     existing.damage += Number.isFinite(damage) ? damage : 0;
+                                                    if (!existing.icon && skill?.icon) existing.icon = skill.icon;
                                                     skillsMap[name] = existing;
                                                 });
                                             });
@@ -285,6 +294,7 @@ export const ConditionsSection = ({
                                                             label="Condition Sources"
                                                             items={skillsList.map((skill: any) => ({
                                                                 name: skill.name,
+                                                                iconUrl: skill.icon,
                                                                 value: Math.round(skill.hits).toLocaleString()
                                                             }))}
                                                             className="justify-end"
@@ -301,6 +311,7 @@ export const ConditionsSection = ({
                                                                 label="Condition Damage Sources"
                                                                 items={skillsDamageList.map((skill: any) => ({
                                                                     name: skill.name,
+                                                                    iconUrl: skill.icon,
                                                                     value: Math.round(skill.damage).toLocaleString()
                                                                 }))}
                                                                 className="justify-end"

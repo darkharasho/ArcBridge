@@ -48,7 +48,9 @@ export const useApmStats = (skillUsageData: SkillUsageSummary) => {
 
             // Iterate over all skills for this player
             Object.entries(player.skillTotals).forEach(([skillId, count]) => {
-                const skillName = skillUsageData.skillOptions.find(o => o.id === skillId)?.name || skillId;
+                const option = skillUsageData.skillOptions.find(o => o.id === skillId);
+                const skillName = option?.name || skillId;
+                const skillIcon = option?.icon;
                 const auto = isAuto(skillName, skillId);
 
                 pCasts += count;
@@ -60,11 +62,13 @@ export const useApmStats = (skillUsageData: SkillUsageSummary) => {
                     skillEntry = {
                         id: skillId,
                         name: skillName,
+                        icon: skillIcon,
                         totalCasts: 0,
                         playerCounts: new Map()
                     };
                     bucket!.skillMap.set(skillId, skillEntry);
                 }
+                if (!skillEntry.icon && skillIcon) skillEntry.icon = skillIcon;
                 skillEntry.totalCasts += count;
                 skillEntry.playerCounts.set(player.key, count);
             });

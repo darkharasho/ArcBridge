@@ -30,6 +30,7 @@ export interface BoonRow {
 export interface BoonTable {
     id: string;
     name: string;
+    icon?: string;
     stacking: boolean;
     rows: BoonRow[];
 }
@@ -337,6 +338,7 @@ export const buildBoonTables = (logs: Array<{ details?: any }>) => {
         return {
             id: boonId,
             name: meta.name || boonId,
+            icon: meta.icon,
             stacking: meta.stacking ?? false,
             rows,
         };

@@ -4,7 +4,7 @@ import { applyStabilityGeneration, getPlayerCleanses, getPlayerStrips, getPlayer
 import { Player } from '../../../shared/dpsReportTypes';
 import { buildBoonTables } from "../../../shared/boonGeneration";
 import { DisruptionMethod, IMvpWeights, IStatsViewSettings, DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS } from '../../global.d';
-import { computeOutgoingConditions, resolveConditionNameFromEntry } from '../../../shared/conditionsMetrics';
+import { buildConditionIconMap, computeOutgoingConditions, resolveConditionNameFromEntry } from '../../../shared/conditionsMetrics';
 import { OFFENSE_METRICS, DEFENSE_METRICS, SUPPORT_METRICS } from '../statsMetrics';
 import { isResUtilitySkill, formatDurationMs } from '../utils/dashboardUtils';
 import { SkillUsageSummary, SkillUsageLogRecord, SkillUsagePlayer } from '../statsTypes';
@@ -50,6 +50,46 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         let totalEnemyDeaths = 0;
         let totalEnemyKills = 0;
 
+        const getFightDownsDeaths = (details: any) => {
+            const players = details?.players || [];
+            const squadPlayers = players.filter((p: any) => !p.notInSquad);
+            let squadDownsDeaths = 0;
+            let enemyDownsDeaths = 0;
+            let squadDeaths = 0;
+            let enemyDeaths = 0;
+
+            squadPlayers.forEach((p: any) => {
+                const defenses = p.defenses?.[0];
+                if (!defenses) return;
+                const downCount = Number(defenses.downCount || 0);
+                const deadCount = Number(defenses.deadCount || 0);
+                squadDownsDeaths += downCount + deadCount;
+                squadDeaths += deadCount;
+            });
+
+            squadPlayers.forEach((p: any) => {
+                if (!p.statsTargets || p.statsTargets.length === 0) return;
+                p.statsTargets.forEach((targetStats: any) => {
+                    const st = targetStats?.[0];
+                    if (!st) return;
+                    const downed = Number(st.downed || 0);
+                    const killed = Number(st.killed || 0);
+                    enemyDownsDeaths += downed + killed;
+                    enemyDeaths += killed;
+                });
+            });
+
+            return { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths };
+        };
+        const getFightOutcome = (details: any) => {
+            const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
+            if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
+                return enemyDownsDeaths > squadDownsDeaths;
+            }
+            if (typeof details?.success === 'boolean') return details.success;
+            return false;
+        };
+
         // Player Aggregation
         interface PlayerStats {
             name: string;
@@ -90,12 +130,12 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
         const playerStats = new Map<string, PlayerStats>();
         const supportTimeSanityFields = new Set(['boonStripsTime', 'condiCleanseTime', 'condiCleanseTimeSelf']);
-        const skillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
-        const incomingSkillDamageMap: Record<number, { name: string, damage: number, hits: number }> = {};
+        const skillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number }> = {};
+        const incomingSkillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number }> = {};
         const outgoingCondiTotals: Record<string, any> = {};
         const incomingCondiTotals: Record<string, any> = {};
         const enemyProfessionCounts: Record<string, number> = {};
-        const specialBuffMeta = new Map<string, { name?: string; stacking?: boolean }>();
+        const specialBuffMeta = new Map<string, { name?: string; stacking?: boolean; icon?: string }>();
         const specialBuffAgg = new Map<string, Map<string, {
             account: string;
             profession: string;
@@ -216,35 +256,14 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
 
             applyStabilityGeneration(players, { durationMS: details.durationMS, buffMap: details.buffMap });
 
-            let squadDownsDeaths = 0;
-            let enemyDownsDeaths = 0;
-            let logSquadDeaths = 0;
-            let logEnemyKills = 0;
+            const { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths } = getFightDownsDeaths(details);
+            totalSquadDeaths += squadDeaths;
+            totalSquadKills += enemyDeaths;
+            totalEnemyKills += squadDeaths;
+            totalEnemyDeaths += enemyDeaths;
 
-            squadPlayers.forEach(p => {
-                if (p.defenses?.[0]) {
-                    squadDownsDeaths += (p.defenses[0].downCount || 0) + (p.defenses[0].deadCount || 0);
-                    logSquadDeaths += p.defenses[0].deadCount || 0;
-                }
-            });
-            totalSquadDeaths += logSquadDeaths;
-            totalEnemyKills += logSquadDeaths;
-
-            players.forEach((p: any) => {
-                if (p.notInSquad && p.statsTargets) {
-                    p.statsTargets.forEach((stList: any) => {
-                        const st = stList?.[0];
-                        if (st) {
-                            enemyDownsDeaths += (st.downed || 0) + (st.killed || 0);
-                            logEnemyKills += st.killed || 0;
-                        }
-                    });
-                }
-            });
-            totalSquadKills += logEnemyKills;
-            totalEnemyDeaths += logEnemyKills;
-
-            if (squadDownsDeaths < enemyDownsDeaths) wins++; else losses++;
+            const isWin = getFightOutcome(details);
+            if (isWin) wins++; else losses++;
 
             players.forEach(p => {
                 if (p.notInSquad) return;
@@ -308,7 +327,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                         if (!Number.isFinite(totalMs) || totalMs <= 0) return;
 
                         if (!specialBuffMeta.has(buffId)) {
-                            specialBuffMeta.set(buffId, { name: meta?.name, stacking });
+                            specialBuffMeta.set(buffId, { name: meta?.name, stacking, icon: meta?.icon });
                         }
 
                         if (!specialBuffAgg.has(buffId)) {
@@ -406,9 +425,18 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                             if (!entry?.id) return;
                             let name = `Skill ${entry.id}`;
                             const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
+                            let icon = mapped?.icon;
                             if (mapped?.name) name = mapped.name;
-                            if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, damage: 0, hits: 0 };
+                            if (name.startsWith('Skill ')) {
+                                const conditionName = resolveConditionNameFromEntry(name, entry.id, details.buffMap);
+                                if (conditionName) {
+                                    name = conditionName;
+                                    icon = details.buffMap?.[`b${entry.id}`]?.icon || icon;
+                                }
+                            }
+                            if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0 };
                             if (!skillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
+                            if (!skillDamageMap[entry.id].icon && icon) skillDamageMap[entry.id].icon = icon;
                             skillDamageMap[entry.id].damage += entry.totalDamage;
                             skillDamageMap[entry.id].hits += entry.connectedHits;
                         });
@@ -420,9 +448,18 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                             if (!entry?.id) return;
                             let name = `Skill ${entry.id}`;
                             const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
+                            let icon = mapped?.icon;
                             if (mapped?.name) name = mapped.name;
-                            if (!incomingSkillDamageMap[entry.id]) incomingSkillDamageMap[entry.id] = { name, damage: 0, hits: 0 };
+                            if (name.startsWith('Skill ')) {
+                                const conditionName = resolveConditionNameFromEntry(name, entry.id, details.buffMap);
+                                if (conditionName) {
+                                    name = conditionName;
+                                    icon = details.buffMap?.[`b${entry.id}`]?.icon || icon;
+                                }
+                            }
+                            if (!incomingSkillDamageMap[entry.id]) incomingSkillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0 };
                             if (!incomingSkillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) incomingSkillDamageMap[entry.id].name = name;
+                            if (!incomingSkillDamageMap[entry.id].icon && icon) incomingSkillDamageMap[entry.id].icon = icon;
                             incomingSkillDamageMap[entry.id].damage += entry.totalDamage;
                             incomingSkillDamageMap[entry.id].hits += entry.hits;
                         });
@@ -444,30 +481,34 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 buffMap: details.buffMap,
                 getPlayerKey: (pl: any) => (pl.account && pl.account !== 'Unknown') ? pl.account : (pl.name || null)
             });
+            const conditionIconMap = buildConditionIconMap(details.buffMap);
             Object.entries(conditionResult.playerConditions).forEach(([k, totals]) => {
                 const ps = playerStats.get(k);
                 if (!ps) return;
                 Object.entries(totals).forEach(([cName, v]) => {
-                    const ex = ps.outgoingConditions[cName] || { applications: 0, damage: 0, skills: {} };
+                    const ex = ps.outgoingConditions[cName] || { applications: 0, damage: 0, skills: {}, icon: v.icon };
                     ex.applications += Number(v.applications || 0);
                     ex.damage += Number(v.damage || 0);
                     if (v.applicationsFromBuffs) ex.applicationsFromBuffs = (ex.applicationsFromBuffs || 0) + v.applicationsFromBuffs;
                     if (v.applicationsFromBuffsActive) ex.applicationsFromBuffsActive = (ex.applicationsFromBuffsActive || 0) + v.applicationsFromBuffsActive;
                     Object.entries(v.skills || {}).forEach(([sn, sv]) => {
-                        const sk = ex.skills[sn] || { name: sv.name, hits: 0, damage: 0 };
+                        const sk = ex.skills[sn] || { name: sv.name, hits: 0, damage: 0, icon: sv.icon };
                         sk.hits += Number(sv.hits || 0);
                         sk.damage += Number(sv.damage || 0);
+                        if (!sk.icon && sv.icon) sk.icon = sv.icon;
                         ex.skills[sn] = sk;
                     });
+                    if (!ex.icon && v.icon) ex.icon = v.icon;
                     ps.outgoingConditions[cName] = ex;
                 });
             });
             Object.entries(conditionResult.summary).forEach(([cName, v]) => {
-                const ex = outgoingCondiTotals[cName] || { name: v.name || cName, applications: 0, damage: 0 };
+                const ex = outgoingCondiTotals[cName] || { name: v.name || cName, icon: v.icon, applications: 0, damage: 0 };
                 ex.applications += Number(v.applications || 0);
                 ex.damage += Number(v.damage || 0);
                 if (v.applicationsFromBuffs) ex.applicationsFromBuffs = (ex.applicationsFromBuffs || 0) + v.applicationsFromBuffs;
                 if (v.applicationsFromBuffsActive) ex.applicationsFromBuffsActive = (ex.applicationsFromBuffsActive || 0) + v.applicationsFromBuffsActive;
+                if (!ex.icon && v.icon) ex.icon = v.icon;
                 outgoingCondiTotals[cName] = ex;
             });
 
@@ -483,21 +524,30 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                     if (sm?.name) sName = sm.name;
                     const finalName = resolveConditionNameFromEntry(sName, entry.id, details.buffMap);
                     if (!finalName) return;
+                    const buffName = details.buffMap?.[`b${entry.id}`]?.name;
+                    const conditionIcon = conditionIconMap.get(finalName) || details.buffMap?.[`b${entry.id}`]?.icon;
+                    const skillIcon = sm?.icon || conditionIcon;
+                    if (sName.startsWith('Skill ') && (buffName || finalName)) {
+                        sName = buffName || finalName;
+                    }
                     const hits = Number(entry.hits ?? 0);
                     const dmg = Number(entry.totalDamage ?? 0);
 
-                    const summ = incomingCondiTotals[finalName] || { name: finalName, applications: 0, damage: 0 };
+                    const summ = incomingCondiTotals[finalName] || { name: finalName, icon: conditionIcon, applications: 0, damage: 0 };
                     summ.applications += Number.isFinite(hits) ? hits : 0;
                     summ.damage += Number.isFinite(dmg) ? dmg : 0;
+                    if (!summ.icon && conditionIcon) summ.icon = conditionIcon;
                     incomingCondiTotals[finalName] = summ;
 
-                    const pEntry = ps.incomingConditions[finalName] || { applications: 0, damage: 0, skills: {} };
+                    const pEntry = ps.incomingConditions[finalName] || { applications: 0, damage: 0, skills: {}, icon: conditionIcon };
                     pEntry.applications += Number.isFinite(hits) ? hits : 0;
                     pEntry.damage += Number.isFinite(dmg) ? dmg : 0;
-                    const skEntry = pEntry.skills[sName] || { name: sName, hits: 0, damage: 0 };
+                    const skEntry = pEntry.skills[sName] || { name: sName, hits: 0, damage: 0, icon: skillIcon };
                     skEntry.hits += Number.isFinite(hits) ? hits : 0;
                     skEntry.damage += Number.isFinite(dmg) ? dmg : 0;
+                    if (!skEntry.icon && skillIcon) skEntry.icon = skillIcon;
                     pEntry.skills[sName] = skEntry;
+                    if (!pEntry.icon && conditionIcon) pEntry.icon = conditionIcon;
                     ps.incomingConditions[finalName] = pEntry;
                 }));
             });
@@ -741,8 +791,19 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         });
         const mapData = Object.entries(mapCounts)
             .map(([name, value]) => {
-                const isEbg = /eternal battlegrounds|^ebg$/i.test(String(name).trim());
-                return { name, value, color: isEbg ? '#ffffff' : '#64748b' };
+                const label = String(name).trim();
+                const isEbg = /eternal battlegrounds|^ebg$/i.test(label);
+                let color = '#64748b';
+                if (isEbg) {
+                    color = '#ffffff';
+                } else if (/red/i.test(label)) {
+                    color = '#ef4444';
+                } else if (/blue/i.test(label)) {
+                    color = '#3b82f6';
+                } else if (/green/i.test(label)) {
+                    color = '#22c55e';
+                }
+                return { name, value, color };
             })
             .sort((a, b) => b.value - a.value);
 
@@ -795,8 +856,11 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 const squadPlayers = players.filter((p: any) => !p.notInSquad);
                 const allies = players.filter((p: any) => p.notInSquad);
                 const targets = details.targets || [];
-                const totalOutgoing = players.reduce((sum: number, p: any) => sum + (p.dpsAll?.[0]?.damage || 0), 0);
-                const totalIncoming = players.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageTaken || 0), 0);
+                const enemyTargets = targets.filter((t: any) => !t.isFake);
+                const totalOutgoing = squadPlayers.reduce((sum: number, p: any) => sum + (p.dpsAll?.[0]?.damage || 0), 0);
+                const totalIncoming = squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageTaken || 0), 0);
+                const { squadDownsDeaths, enemyDownsDeaths, enemyDeaths } = getFightDownsDeaths(details);
+                const isWin = getFightOutcome(details);
                 const timestamp = details.uploadTime ?? log.uploadTime ?? 0;
                 const mapName = resolveMapName(details, log);
                 const teamCounts = { red: 0, green: 0, blue: 0 };
@@ -874,20 +938,20 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                     timestamp,
                     mapName,
                     duration: formatDurationMs(details.durationMS),
-                    isWin: !!details.success,
+                    isWin,
                     squadCount: squadPlayers.length,
                     allyCount: allies.length,
-                    enemyCount: targets.length,
+                    enemyCount: enemyTargets.length,
                     teamCounts,
-                    alliesDown: players.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.downCount || 0), 0),
-                    alliesDead: players.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.deadCount || 0), 0),
-                    alliesRevived: players.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.saved || 0), 0),
+                    alliesDown: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.downCount || 0), 0),
+                    alliesDead: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.deadCount || 0), 0),
+                    alliesRevived: squadPlayers.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.saved || 0), 0),
                     rallies: 0,
-                    enemyDeaths: targets.reduce((sum: number, t: any) => sum + (t.isFake ? 0 : 1), 0),
+                    enemyDeaths,
                     totalOutgoingDamage: totalOutgoing,
                     totalIncomingDamage: totalIncoming,
-                    incomingBarrierAbsorbed: players.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageBarrier || 0), 0),
-                    outgoingBarrierAbsorbed: players.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.damageBarrier || 0), 0)
+                    incomingBarrierAbsorbed: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageBarrier || 0), 0),
+                    outgoingBarrierAbsorbed: squadPlayers.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.damageBarrier || 0), 0)
                 };
             })
             .filter(Boolean);
@@ -923,6 +987,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
             return {
                 id: buffId,
                 name: meta.name || buffId,
+                icon: meta.icon,
                 rows
             };
         }).filter((table) => table.rows.length > 0);
@@ -976,6 +1041,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         const playerMap = new Map<string, SkillUsagePlayer>();
         const logRecords: SkillUsageLogRecord[] = [];
         const skillNameMap = new Map<string, string>();
+        const skillIconMap = new Map<string, string>();
 
         validLogs.forEach((log) => {
             const details = log.details;
@@ -1012,11 +1078,14 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                     if (count <= 0) return;
                     const sId = `s${rot.id}`;
                     const sName = skillMap[sId]?.name || `Skill ${rot.id}`;
+                    const sIcon = skillMap[sId]?.icon;
                     pr!.skillTotals[sId] = (pr!.skillTotals[sId] || 0) + count;
                     skillTotals.set(sId, (skillTotals.get(sId) || 0) + count);
                     skillNameMap.set(sId, sName);
+                    if (sIcon && !skillIconMap.has(sId)) skillIconMap.set(sId, sIcon);
 
-                    if (!record.skillEntries[sId]) record.skillEntries[sId] = { name: sName, players: {} };
+                    if (!record.skillEntries[sId]) record.skillEntries[sId] = { name: sName, icon: sIcon, players: {} };
+                    if (!record.skillEntries[sId].icon && sIcon) record.skillEntries[sId].icon = sIcon;
                     record.skillEntries[sId].players[key] = (record.skillEntries[sId].players[key] || 0) + count;
                 });
             });
@@ -1024,7 +1093,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
         });
 
         const skillOptions = Array.from(skillTotals.entries()).map(([id, total]) => ({
-            id, name: skillNameMap.get(id) || id, total
+            id, name: skillNameMap.get(id) || id, total, icon: skillIconMap.get(id)
         })).sort((a, b) => b.total - a.total);
 
         return {

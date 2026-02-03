@@ -2,6 +2,7 @@ import { Maximize2, ShieldCheck, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { InlineIconLabel } from '../ui/StatsViewShared';
 
 type BoonOutputSectionProps = {
     stats: any;
@@ -108,7 +109,7 @@ export const BoonOutputSection = ({
                                             : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                             }`}
                                     >
-                                        {boon.name}
+                                        <InlineIconLabel name={boon.name} iconUrl={boon.icon} iconClassName="h-3.5 w-3.5" />
                                     </button>
                                 ))
                             )}
@@ -124,7 +125,9 @@ export const BoonOutputSection = ({
                             maxHeightClass="max-h-64"
                             header={
                                 <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                    <div className="text-sm font-semibold text-gray-200">{activeBoonTable.name}</div>
+                                    <div className="text-sm font-semibold text-gray-200">
+                                        <InlineIconLabel name={activeBoonTable.name} iconUrl={activeBoonTable.icon} iconClassName="h-4 w-4" />
+                                    </div>
                                     <div className="text-xs uppercase tracking-widest text-gray-500">
                                         {`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
                                     </div>

@@ -1,6 +1,7 @@
 import { Maximize2, Sparkles, X } from 'lucide-react';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { InlineIconLabel } from '../ui/StatsViewShared';
 
 type SpecialBuffsSectionProps = {
     stats: any;
@@ -95,7 +96,7 @@ export const SpecialBuffsSection = ({
                                             : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                             }`}
                                     >
-                                        {buff.name}
+                                        <InlineIconLabel name={buff.name} iconUrl={buff.icon} iconClassName="h-3.5 w-3.5" />
                                     </button>
                                 ))
                             )}
@@ -112,7 +113,9 @@ export const SpecialBuffsSection = ({
                                 maxHeightClass="max-h-64"
                                 header={
                                     <div className="flex items-center justify-between px-4 py-3 bg-white/5">
-                                        <div className="text-sm font-semibold text-gray-200">{activeSpecialTable.name}</div>
+                                        <div className="text-sm font-semibold text-gray-200">
+                                            <InlineIconLabel name={activeSpecialTable.name} iconUrl={activeSpecialTable.icon} iconClassName="h-4 w-4" />
+                                        </div>
                                         <div className="text-xs uppercase tracking-widest text-gray-500">Totals</div>
                                     </div>
                                 }

@@ -259,6 +259,27 @@ export const CountClassTooltip = ({
     );
 };
 
+export const InlineIconLabel = ({
+    name,
+    iconUrl,
+    className = '',
+    iconClassName = 'h-4 w-4',
+    textClassName = ''
+}: {
+    name: string;
+    iconUrl?: string | null;
+    className?: string;
+    iconClassName?: string;
+    textClassName?: string;
+}) => (
+    <span className={`inline-flex items-center gap-2 min-w-0 ${className}`}>
+        {iconUrl ? (
+            <img src={iconUrl} alt={name} className={`${iconClassName} shrink-0`} />
+        ) : null}
+        <span className={`truncate ${textClassName}`}>{name}</span>
+    </span>
+);
+
 export const SkillBreakdownTooltip = ({
     value,
     label,
@@ -267,7 +288,7 @@ export const SkillBreakdownTooltip = ({
 }: {
     value: string;
     label: string;
-    items: Array<{ name: string; value: string }>;
+    items: Array<{ name: string; value: string; iconUrl?: string }>;
     className?: string;
 }) => {
     const hasTooltip = items.length > 0;
@@ -299,7 +320,9 @@ export const SkillBreakdownTooltip = ({
                     <div className="max-h-40 overflow-y-auto space-y-1">
                         {items.map((item) => (
                             <div key={item.name} className="flex items-center justify-between gap-2">
-                                <span className="truncate text-gray-100">{item.name}</span>
+                                <span className="truncate text-gray-100">
+                                    <InlineIconLabel name={item.name} iconUrl={item.iconUrl} iconClassName="h-6 w-6" />
+                                </span>
                                 <span className="text-gray-300 font-mono">{item.value}</span>
                             </div>
                         ))}

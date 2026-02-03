@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CheckCircle2, ChevronDown, ChevronRight, Maximize2, X, XCircle, Zap } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { InlineIconLabel } from '../ui/StatsViewShared';
 import type { SkillUsagePlayer } from '../statsTypes';
 
 type SkillUsageSectionProps = {
@@ -31,6 +32,7 @@ type SkillUsageSectionProps = {
     setSelectedSkillId: (value: any) => void;
     skillBarData: any[];
     selectedSkillName: string;
+    selectedSkillIcon?: string | null;
     skillUsageReady: boolean;
     skillUsageAvailable: boolean;
     isSkillUsagePerSecond: boolean;
@@ -73,6 +75,7 @@ export const SkillUsageSection = ({
     setSelectedSkillId,
     skillBarData,
     selectedSkillName,
+    selectedSkillIcon,
     skillUsageReady,
     skillUsageAvailable,
     isSkillUsagePerSecond,
@@ -302,7 +305,13 @@ export const SkillUsageSection = ({
                                                 <div className="flex items-center justify-between text-sm text-white min-w-0">
                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
-                                                        <span className="font-semibold truncate min-w-0 flex-1 block max-w-[58vw] sm:max-w-none sm:whitespace-normal sm:overflow-visible">{entry.name}</span>
+                                                        <InlineIconLabel
+                                                            name={entry.name}
+                                                            iconUrl={entry.icon}
+                                                            iconClassName="h-6 w-6"
+                                                            className="min-w-0 flex-1 max-w-[58vw] sm:max-w-none"
+                                                            textClassName="font-semibold"
+                                                        />
                                                     </div>
                                                     <span className="text-cyan-200 font-mono text-xs shrink-0">{formatSkillUsageValue(entry.total)}</span>
                                                 </div>
@@ -328,7 +337,9 @@ export const SkillUsageSection = ({
                     <div className="space-y-4 rounded-2xl bg-black/50 p-4 mt-2">
                         <div className="flex items-center justify-between">
                             <div className="text-sm font-semibold text-gray-200">
-                                {selectedSkillName || 'Selected Skill Usage'}
+                                {selectedSkillName
+                                    ? <InlineIconLabel name={selectedSkillName} iconUrl={selectedSkillIcon} iconClassName="h-6 w-6" />
+                                    : 'Selected Skill Usage'}
                             </div>
                             <div className="text-[11px] text-gray-400">
                                 ({isSkillUsagePerSecond ? 'casts per second' : 'casts per log'})
