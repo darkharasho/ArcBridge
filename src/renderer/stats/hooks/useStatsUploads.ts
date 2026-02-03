@@ -76,15 +76,46 @@ export const useStatsUploads = ({
         };
     };
 
+    const buildIconMaps = () => {
+        const mergedSkillMap: Record<string, { name?: string; icon?: string }> = {};
+        const mergedBuffMap: Record<string, { name?: string; icon?: string }> = {};
+        logs.forEach((log) => {
+            const details = log.details;
+            if (!details) return;
+            const skillMap = details.skillMap || {};
+            const buffMap = details.buffMap || {};
+            Object.entries(skillMap).forEach(([id, entry]: any) => {
+                if (!entry || typeof entry !== 'object') return;
+                const existing = mergedSkillMap[id] || {};
+                mergedSkillMap[id] = {
+                    name: existing.name || entry.name,
+                    icon: existing.icon || entry.icon
+                };
+            });
+            Object.entries(buffMap).forEach(([id, entry]: any) => {
+                if (!entry || typeof entry !== 'object') return;
+                const existing = mergedBuffMap[id] || {};
+                mergedBuffMap[id] = {
+                    name: existing.name || entry.name,
+                    icon: existing.icon || entry.icon
+                };
+            });
+        });
+        return { mergedSkillMap, mergedBuffMap };
+    };
+
     const handleWebUpload = async () => {
         if (embedded) return;
         if (!onWebUpload) return;
         try {
+            const { mergedSkillMap, mergedBuffMap } = buildIconMaps();
             const meta = buildReportMeta();
             await onWebUpload({
                 meta,
                 stats: {
                     ...stats,
+                    skillMap: mergedSkillMap,
+                    buffMap: mergedBuffMap,
                     skillUsageData,
                     statsViewSettings: activeStatsViewSettings,
                     uiTheme: uiTheme || 'classic'
@@ -100,12 +131,15 @@ export const useStatsUploads = ({
         if (embedded || !window.electronAPI?.mockWebReport) return;
         setDevMockUploadState({ uploading: true, message: 'Preparing local report...', url: null });
         try {
+            const { mergedSkillMap, mergedBuffMap } = buildIconMaps();
             const meta = buildReportMeta();
             // @ts-ignore
             const result = await window.electronAPI.mockWebReport({
                 meta,
                 stats: {
                     ...stats,
+                    skillMap: mergedSkillMap,
+                    buffMap: mergedBuffMap,
                     skillUsageData,
                     statsViewSettings: activeStatsViewSettings,
                     uiTheme: uiTheme || 'classic'

@@ -11,7 +11,8 @@ import { useStatsAggregation } from './stats/hooks/useStatsAggregation';
 import { useApmStats } from './stats/hooks/useApmStats';
 import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
-import { IconAliasManifest, IconAsset, IconManifest, SkillIdNameMap, getUnknownSkillIconUrl, guessIconUrl, loadIconAliases, loadIconManifest, loadSkillIdNames, normalizeIconKey, resolveIconUrl } from '../shared/iconManifest';
+import { IconAsset, SkillIdNameMap, loadSkillIdNames, normalizeIconKey } from '../shared/iconManifest';
+import { normalizeConditionLabel } from '../shared/conditionsMetrics';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import type { SkillUsageSummary } from './stats/statsTypes';
@@ -561,27 +562,19 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         return '0.0';
     };
 
-    const [gameIconManifest, setGameIconManifest] = useState<IconManifest | null>(null);
-    const [iconAliases, setIconAliases] = useState<IconAliasManifest | null>(null);
     const [skillIdNames, setSkillIdNames] = useState<SkillIdNameMap | null>(null);
 
     useEffect(() => {
         let isMounted = true;
         Promise.all([
-            loadIconManifest(),
-            loadIconAliases(),
             loadSkillIdNames()
         ])
-            .then(([gameManifest, aliases, skillNames]) => {
+            .then(([skillNames]) => {
                 if (!isMounted) return;
-                setGameIconManifest(gameManifest);
-                setIconAliases(aliases);
                 setSkillIdNames(skillNames);
             })
             .catch(() => {
                 if (!isMounted) return;
-                setGameIconManifest(null);
-                setIconAliases(null);
                 setSkillIdNames(null);
             });
         return () => {
@@ -589,100 +582,64 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
         };
     }, []);
 
-    const stripParenthetical = useCallback((name: string) => {
-        if (!name) return '';
-        return name.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
-    }, []);
+    const { mergedSkillMap, mergedBuffMap, skillIconByName, buffIconByName, conditionIconByName } = useMemo(() => {
+        const skillMap: Record<string, { name?: string; icon?: string }> = {};
+        const buffMap: Record<string, { name?: string; icon?: string }> = {};
+        const skillNameMap: Record<string, string> = {};
+        const buffNameMap: Record<string, string> = {};
+        const conditionNameMap: Record<string, string> = {};
 
-    const resolveAliasName = useCallback(
-        (name: string) => {
-            if (!name) return null;
-            if (/primal rage/i.test(name)) return null;
-            if (/^presence of the keep\b/i.test(name)) return 'Presence of the Keep (effect)';
-            if (normalizeIconKey(name) === 'mystic_rebuke') return 'Shattered Aegis';
-            const lower = name.toLowerCase();
-            if (lower.includes('arrow') && lower.includes('fire') && lower.includes('arrows')) {
-                if (/(crippling|reaping|staggering|suffering)/i.test(name)) return 'Fire Crippling Arrows';
-                if (/(barbed|merciless|penetrating|exsanguinating)/i.test(name)) return 'Fire Barbed Arrows';
-                return 'Fire Arrow Cart';
-            }
-            if (/toxic.*volley/i.test(name)) return 'Toxic Unveiling Volley';
-            const arrowCartAliasMap: Record<string, string> = {
-                fire: 'Fire Arrow Cart',
-                fire_improved_arrows: 'Fire Arrow Cart',
-                fire_distant_volley: 'Fire Arrow Cart',
-                fire_devastating_arrows: 'Fire Arrow Cart',
-                fire_crippling_arrows: 'Fire Crippling Arrows',
-                fire_improved_crippling_arrows: 'Fire Crippling Arrows',
-                fire_reaping_arrows: 'Fire Crippling Arrows',
-                fire_staggering_arrows: 'Fire Crippling Arrows',
-                fire_suffering_arrows: 'Fire Crippling Arrows',
-                fire_barbed_arrows: 'Fire Barbed Arrows',
-                fire_improved_barbed_arrows: 'Fire Barbed Arrows',
-                fire_penetrating_sniper_arrows: 'Fire Barbed Arrows',
-                fire_exsanguinating_arrows: 'Fire Barbed Arrows',
-                fire_merciless_arrows: 'Fire Barbed Arrows',
-                toxic_unveiling_volley: 'Toxic Unveiling Volley'
-            };
-            const normalized = normalizeIconKey(name);
-            const arrowAlias = arrowCartAliasMap[normalized];
-            if (arrowAlias) return arrowAlias;
-            const direct = iconAliases?.iconAliases?.[normalizeIconKey(name)];
-            if (direct) return direct;
-            const superiorSigilMatch = name.match(/superior\s+sigil of ([^)]+)/i);
-            if (superiorSigilMatch) {
-                const sigilName = superiorSigilMatch[1].trim();
-                if (sigilName) return `Superior Sigil of ${sigilName}`;
-            }
-            const sigilMatch = name.match(/sigil of ([^)]+)/i);
-            if (sigilMatch) {
-                const sigilName = sigilMatch[1].trim();
-                if (sigilName) {
-                    if (/minor\s*\/\s*major\s*\/\s*superior/i.test(name)) {
-                        return `Superior Sigil of ${sigilName}`;
-                    }
-                    return `Sigil of ${sigilName}`;
+        const mergeMaps = (skills: Record<string, any>, buffs: Record<string, any>) => {
+            Object.entries(skills || {}).forEach(([id, entry]: any) => {
+                if (!entry || typeof entry !== 'object') return;
+                const existing = skillMap[id] || {};
+                skillMap[id] = {
+                    name: existing.name || entry.name,
+                    icon: existing.icon || entry.icon
+                };
+                const nameKey = normalizeIconKey(entry.name || '');
+                if (nameKey && entry.icon && !skillNameMap[nameKey]) {
+                    skillNameMap[nameKey] = entry.icon;
                 }
-            }
-            if (/flame blast/i.test(name) && /sigil/i.test(name)) {
-                return 'Superior Sigil of Fire';
-            }
-            return null;
-        },
-        [iconAliases]
-    );
+            });
 
-    const resolveTraitAliasName = useCallback(
-        (name: string) => {
-            if (!name || /primal rage/i.test(name)) return null;
-            if (!iconAliases?.traitAliases) return null;
-            const key = normalizeIconKey(name);
-            return iconAliases.traitAliases[key] || null;
-        },
-        [iconAliases]
-    );
+            Object.entries(buffs || {}).forEach(([id, entry]: any) => {
+                if (!entry || typeof entry !== 'object') return;
+                const existing = buffMap[id] || {};
+                buffMap[id] = {
+                    name: existing.name || entry.name,
+                    icon: existing.icon || entry.icon
+                };
+                const nameKey = normalizeIconKey(entry.name || '');
+                if (nameKey && entry.icon && !buffNameMap[nameKey]) {
+                    buffNameMap[nameKey] = entry.icon;
+                }
+                const conditionLabel = normalizeConditionLabel(entry.name || '');
+                if (conditionLabel) {
+                    const conditionKey = normalizeIconKey(conditionLabel);
+                    if (conditionKey && entry.icon && !conditionNameMap[conditionKey]) {
+                        conditionNameMap[conditionKey] = entry.icon;
+                    }
+                }
+            });
+        };
 
+        mergeMaps(precomputedStats?.skillMap || {}, precomputedStats?.buffMap || {});
 
-    const resolveIcon = useCallback(
-        (name: string): IconAsset | null => {
-            const resolved = resolveIconUrl(gameIconManifest, name);
-            if (resolved) return resolved;
-            if (gameIconManifest?.sprites) return null;
-            return guessIconUrl(name);
-        },
-        [gameIconManifest]
-    );
+        logs.forEach((log) => {
+            const details: any = log?.details;
+            mergeMaps(details?.skillMap || {}, details?.buffMap || {});
+        });
 
-    const resolveIconStrict = useCallback(
-        (name: string) => resolveIconUrl(gameIconManifest, name),
-        [gameIconManifest]
-    );
+        return {
+            mergedSkillMap: skillMap,
+            mergedBuffMap: buffMap,
+            skillIconByName: skillNameMap,
+            buffIconByName: buffNameMap,
+            conditionIconByName: conditionNameMap
+        };
+    }, [logs, precomputedStats?.skillMap, precomputedStats?.buffMap]);
 
-    const isArrowCartAlias = useCallback((name: string | null) => {
-        if (!name) return false;
-        const key = normalizeIconKey(name);
-        return key.startsWith('fire_') || key === 'toxic_unveiling_volley';
-    }, []);
 
     const resolveSkillName = useCallback(
         (name: string) => {
@@ -694,89 +651,59 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, webUplo
     );
 
     const getSkillIconUrl = useCallback(
-        (name: string) => {
-            if (!name) return null;
-            const resolvedName = resolveSkillName(name);
-            const stripped = stripParenthetical(resolvedName);
-            const hasSigil = /sigil/i.test(resolvedName);
-            if (!hasSigil) {
-                const directResolved = resolveIconStrict(resolvedName) || resolveIconStrict(stripped);
-                if (directResolved) return directResolved;
+        (name: string, id?: string | number) => {
+            if (!name && !id) return null;
+            const resolvedName = resolveSkillName(name || '');
+            const rawId = typeof id === 'number' || typeof id === 'string' ? String(id) : '';
+            const skillKey = rawId ? (rawId.startsWith('s') ? rawId : `s${rawId}`) : '';
+            const skillEntry = (skillKey && mergedSkillMap[skillKey]) || (rawId && mergedSkillMap[rawId]);
+            if (skillEntry?.icon) return skillEntry.icon;
+            const nameIcon = resolvedName ? skillIconByName[normalizeIconKey(resolvedName)] : null;
+            if (nameIcon) return nameIcon;
+            const buffKey = rawId ? (rawId.startsWith('b') ? rawId : `b${rawId}`) : '';
+            const buffEntry = (buffKey && mergedBuffMap[buffKey]) || (rawId && mergedBuffMap[rawId]);
+            if (buffEntry?.icon) return buffEntry.icon;
+            const buffNameIcon = resolvedName ? buffIconByName[normalizeIconKey(resolvedName)] : null;
+            if (buffNameIcon) return buffNameIcon;
+            const conditionLabel = normalizeConditionLabel(resolvedName);
+            if (conditionLabel) {
+                const conditionIcon = conditionIconByName[normalizeIconKey(conditionLabel)];
+                if (conditionIcon) return conditionIcon;
             }
-
-            const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
-            const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';
-            const preferSkill = isArrowCartAlias(aliasName);
-            const nonTraitResolved = (
-                aliasName
-                    ? (
-                        (preferSkill ? (resolveIcon(aliasName) || resolveIcon(aliasStripped)) : null)
-                        || resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                    )
-                    : null
-            );
-            if (nonTraitResolved) return nonTraitResolved;
-
-            const traitAliasName = resolveTraitAliasName(resolvedName) || resolveTraitAliasName(stripped);
-            const traitAliasStripped = traitAliasName ? stripParenthetical(traitAliasName) : '';
-            const traitResolved = traitAliasName ? (resolveIcon(traitAliasName) || resolveIcon(traitAliasStripped)) : null;
-            if (traitResolved) return traitResolved;
-
-            if (/^Skill\\s+\\d+$/i.test(resolvedName)) return getUnknownSkillIconUrl();
-            return resolveIcon(resolvedName) || resolveIcon(stripped) || null;
+            return null;
         },
         [
-            gameIconManifest,
-            isArrowCartAlias,
-            resolveAliasName,
-            resolveTraitAliasName,
             resolveSkillName,
-            resolveIcon,
-            resolveIconStrict,
-            stripParenthetical
+            mergedSkillMap,
+            skillIconByName,
+            mergedBuffMap,
+            buffIconByName,
+            conditionIconByName
         ]
     );
 
     const getBuffIconUrl = useCallback(
-        (name: string) => {
-            if (!name) return null;
-            const resolvedName = resolveSkillName(name);
-            const stripped = stripParenthetical(resolvedName);
-
-            const directResolved = resolveIconStrict(resolvedName) || resolveIconStrict(stripped);
-            if (directResolved) return directResolved;
-
-            const aliasName = resolveAliasName(resolvedName) || resolveAliasName(stripped);
-            const aliasStripped = aliasName ? stripParenthetical(aliasName) : '';
-            const preferSkill = isArrowCartAlias(aliasName);
-            const nonTraitResolved = (
-                aliasName
-                    ? (
-                        resolveIcon(aliasName)
-                        || resolveIcon(aliasStripped)
-                        || (preferSkill ? (resolveIcon(aliasName) || resolveIcon(aliasStripped)) : null)
-                    )
-                    : null
-            );
-            if (nonTraitResolved) return nonTraitResolved;
-
-            const traitAliasName = resolveTraitAliasName(resolvedName) || resolveTraitAliasName(stripped);
-            const traitAliasStripped = traitAliasName ? stripParenthetical(traitAliasName) : '';
-            const traitResolved = traitAliasName ? (resolveIcon(traitAliasName) || resolveIcon(traitAliasStripped)) : null;
-            if (traitResolved) return traitResolved;
-
-            return resolveIcon(resolvedName) || resolveIcon(stripped) || null;
+        (name: string, id?: string | number) => {
+            if (!name && !id) return null;
+            const resolvedName = resolveSkillName(name || '');
+            const rawId = typeof id === 'number' || typeof id === 'string' ? String(id) : '';
+            const buffKey = rawId ? (rawId.startsWith('b') ? rawId : `b${rawId}`) : '';
+            const buffEntry = (buffKey && mergedBuffMap[buffKey]) || (rawId && mergedBuffMap[rawId]);
+            if (buffEntry?.icon) return buffEntry.icon;
+            const nameIcon = resolvedName ? buffIconByName[normalizeIconKey(resolvedName)] : null;
+            if (nameIcon) return nameIcon;
+            const conditionLabel = normalizeConditionLabel(resolvedName);
+            if (conditionLabel) {
+                const conditionIcon = conditionIconByName[normalizeIconKey(conditionLabel)];
+                if (conditionIcon) return conditionIcon;
+            }
+            return null;
         },
         [
-            gameIconManifest,
-            isArrowCartAlias,
-            resolveAliasName,
-            resolveTraitAliasName,
             resolveSkillName,
-            resolveIcon,
-            resolveIconStrict,
-            stripParenthetical
+            mergedBuffMap,
+            buffIconByName,
+            conditionIconByName
         ]
     );
 

@@ -1,9 +1,10 @@
 import { Maximize2, Shield, Swords, X } from 'lucide-react';
 import { GameIcon } from '../ui/StatsViewShared';
+import type { IconAsset } from '../../../shared/iconManifest';
 
 type TopSkillsSectionProps = {
     stats: any;
-    getSkillIconUrl: (name: string) => string | null;
+    getSkillIconUrl: (name: string, id?: string | number) => IconAsset | null;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
     openExpandedSection: (id: string) => void;
@@ -63,7 +64,7 @@ export const TopSkillsSection = ({
                             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center text-sm mb-1 gap-3">
                                 <span className="text-white font-bold flex items-center gap-2 min-w-0">
                                     {(() => {
-                                        const iconUrl = getSkillIconUrl(skill.name);
+                                        const iconUrl = getSkillIconUrl(skill.name, skill.id);
                                         return <GameIcon src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />;
                                     })()}
                                     <span className="truncate min-w-0">{skill.name}</span>
@@ -122,7 +123,7 @@ export const TopSkillsSection = ({
                             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center text-sm mb-1 gap-3">
                                 <span className="text-white font-bold flex items-center gap-2 min-w-0">
                                     {(() => {
-                                        const iconUrl = getSkillIconUrl(skill.name);
+                                        const iconUrl = getSkillIconUrl(skill.name, skill.id);
                                         return <GameIcon src={iconUrl} alt={skill.name} className="w-5 h-5 object-contain shrink-0" />;
                                     })()}
                                     <span className="truncate min-w-0">{skill.name}</span>

@@ -3,6 +3,7 @@ import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { GameIcon } from '../ui/StatsViewShared';
+import type { IconAsset } from '../../../shared/iconManifest';
 
 type BoonOutputSectionProps = {
     stats: any;
@@ -18,7 +19,7 @@ type BoonOutputSectionProps = {
     setBoonSearch: (value: string) => void;
     formatBoonMetricDisplay: (...args: any[]) => string;
     getBoonMetricValue: (...args: any[]) => number;
-    getBuffIconUrl: (name: string) => string | null;
+    getBuffIconUrl: (name: string, id?: string | number) => IconAsset | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
     roundCountStats: boolean;
     expandedSection: string | null;
@@ -113,7 +114,7 @@ export const BoonOutputSection = ({
                                     >
                                         <span className="flex items-center gap-2 min-w-0">
                                             {(() => {
-                                                const iconUrl = getBuffIconUrl(boon.name);
+                                                const iconUrl = getBuffIconUrl(boon.name, boon.id);
                                                 return <GameIcon src={iconUrl} alt={boon.name} className="w-4 h-4 object-contain shrink-0" />;
                                             })()}
                                             <span className="truncate min-w-0">{boon.name}</span>
@@ -135,7 +136,7 @@ export const BoonOutputSection = ({
                                 <div className="flex items-center justify-between px-4 py-3 bg-white/5">
                                     <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                                         {(() => {
-                                            const iconUrl = getBuffIconUrl(activeBoonTable.name);
+                                            const iconUrl = getBuffIconUrl(activeBoonTable.name, activeBoonTable.id);
                                             return <GameIcon src={iconUrl} alt={activeBoonTable.name} className="w-5 h-5 object-contain shrink-0" />;
                                         })()}
                                         <span className="truncate min-w-0">{activeBoonTable.name}</span>

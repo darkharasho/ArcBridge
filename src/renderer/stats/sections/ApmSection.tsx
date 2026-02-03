@@ -1,6 +1,7 @@
 import { Activity, ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { GameIcon } from '../ui/StatsViewShared';
+import type { IconAsset } from '../../../shared/iconManifest';
 import type { ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
 
 type ApmSectionProps = {
@@ -32,7 +33,7 @@ type ApmSectionProps = {
     formatApmValue: (value: number) => string;
     formatCastRateValue: (value: number) => string;
     formatCastCountValue: (value: number) => string;
-    getSkillIconUrl: (name: string) => string | null;
+    getSkillIconUrl: (name: string, id?: string | number) => IconAsset | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
@@ -183,7 +184,7 @@ export const ApmSection = ({
                                                     >
                                                         <span className="flex items-center gap-2 min-w-0">
                                                             {(() => {
-                                                                const iconUrl = getSkillIconUrl(skill.name);
+                                                                const iconUrl = getSkillIconUrl(skill.name, skill.id);
                                                                 return <GameIcon src={iconUrl} alt={skill.name} className="w-4 h-4 object-contain shrink-0" />;
                                                             })()}
                                                             <span className="truncate block min-w-0">{skill.name}</span>
@@ -212,7 +213,7 @@ export const ApmSection = ({
                                             <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
                                             <div className="text-sm font-semibold text-gray-200 truncate flex items-center gap-2 min-w-0">
                                                 {!isAllApmSkills && activeApmSkill?.name ? (() => {
-                                                    const iconUrl = getSkillIconUrl(activeApmSkill.name);
+                                                    const iconUrl = getSkillIconUrl(activeApmSkill.name, activeApmSkill.id);
                                                     return <GameIcon src={iconUrl} alt={activeApmSkill.name} className="w-4 h-4 object-contain shrink-0" />;
                                                 })() : null}
                                                 <span className="truncate min-w-0">{isAllApmSkills ? 'All Skills' : activeApmSkill?.name}</span>

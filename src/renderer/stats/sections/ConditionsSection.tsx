@@ -3,6 +3,8 @@ import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { GameIcon, SkillBreakdownTooltip } from '../ui/StatsViewShared';
+import type { IconAsset } from '../../../shared/iconManifest';
+import { normalizeConditionLabel } from '../../../shared/conditionsMetrics';
 
 type ConditionsSectionProps = {
     conditionSummary: any[];
@@ -17,7 +19,7 @@ type ConditionsSectionProps = {
     effectiveConditionSort: { key: 'applications' | 'damage'; dir: 'asc' | 'desc' };
     setConditionSort: (value: { key: 'applications' | 'damage'; dir: 'asc' | 'desc' }) => void;
     showConditionDamage: boolean;
-    getBuffIconUrl: (name: string) => string | null;
+    getBuffIconUrl: (name: string, id?: string | number) => IconAsset | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
@@ -115,7 +117,9 @@ export const ConditionsSection = ({
                                         >
                                             All Conditions
                                         </button>
-                                        {filtered.map((entry: any) => (
+                                        {filtered.map((entry: any) => {
+                                            const displayName = normalizeConditionLabel(entry.name) || entry.name;
+                                            return (
                                             <button
                                                 key={entry.name}
                                                 type="button"
@@ -130,10 +134,10 @@ export const ConditionsSection = ({
                                                         const iconUrl = getBuffIconUrl(entry.name);
                                                         return <GameIcon src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />;
                                                     })()}
-                                                    <span className="truncate min-w-0">{entry.name}</span>
+                                                    <span className="truncate min-w-0">{displayName}</span>
                                                 </span>
                                             </button>
-                                        ))}
+                                        )})}
                                     </>
                                 );
                             })()}
@@ -151,7 +155,11 @@ export const ConditionsSection = ({
                                             const iconUrl = getBuffIconUrl(activeConditionName);
                                             return <GameIcon src={iconUrl} alt={activeConditionName} className="w-5 h-5 object-contain shrink-0" />;
                                         })() : null}
-                                        <span className="truncate min-w-0">{activeConditionName === 'all' ? 'All Conditions' : activeConditionName}</span>
+                                        <span className="truncate min-w-0">
+                                            {activeConditionName === 'all'
+                                                ? 'All Conditions'
+                                                : (normalizeConditionLabel(activeConditionName) || activeConditionName)}
+                                        </span>
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end gap-2 text-right ml-auto mt-2">

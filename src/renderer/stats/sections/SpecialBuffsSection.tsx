@@ -2,6 +2,7 @@ import { Maximize2, Sparkles, X } from 'lucide-react';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { GameIcon } from '../ui/StatsViewShared';
+import type { IconAsset } from '../../../shared/iconManifest';
 
 type SpecialBuffsSectionProps = {
     stats: any;
@@ -12,7 +13,7 @@ type SpecialBuffsSectionProps = {
     setActiveSpecialTab: (value: string | null) => void;
     activeSpecialTable: any | null;
     formatWithCommas: (value: number, decimals: number) => string;
-    getBuffIconUrl: (name: string) => string | null;
+    getBuffIconUrl: (name: string, id?: string | number) => IconAsset | null;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
@@ -100,7 +101,7 @@ export const SpecialBuffsSection = ({
                                     >
                                         <span className="flex items-center gap-2 min-w-0">
                                             {(() => {
-                                                const iconUrl = getBuffIconUrl(buff.name);
+                                                const iconUrl = getBuffIconUrl(buff.name, buff.id);
                                                 return <GameIcon src={iconUrl} alt={buff.name} className="w-4 h-4 object-contain shrink-0" />;
                                             })()}
                                             <span className="truncate min-w-0">{buff.name}</span>
@@ -123,7 +124,7 @@ export const SpecialBuffsSection = ({
                                     <div className="flex items-center justify-between px-4 py-3 bg-white/5">
                                         <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                                             {(() => {
-                                                const iconUrl = getBuffIconUrl(activeSpecialTable.name);
+                                                const iconUrl = getBuffIconUrl(activeSpecialTable.name, activeSpecialTable.id);
                                                 return <GameIcon src={iconUrl} alt={activeSpecialTable.name} className="w-5 h-5 object-contain shrink-0" />;
                                             })()}
                                             <span className="truncate min-w-0">{activeSpecialTable.name}</span>

@@ -3,6 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { CheckCircle2, ChevronDown, ChevronRight, Maximize2, X, XCircle, Zap } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { GameIcon } from '../ui/StatsViewShared';
+import type { IconAsset } from '../../../shared/iconManifest';
 import type { SkillUsagePlayer } from '../statsTypes';
 
 type SkillUsageSectionProps = {
@@ -43,7 +44,7 @@ type SkillUsageSectionProps = {
     getLineStrokeColor: (playerKey: string, isSelected: boolean, hasSelection: boolean) => string;
     getLineDashForPlayer: (playerKey: string) => string | undefined;
     formatSkillUsageValue: (value: number) => string;
-    getSkillIconUrl: (name: string) => string | null;
+    getSkillIconUrl: (name: string, id?: string | number) => IconAsset | null;
 
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
@@ -306,7 +307,7 @@ export const SkillUsageSection = ({
                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400">{`#${index + 1}`}</span>
                                                         {(() => {
-                                                            const iconUrl = getSkillIconUrl(entry.name);
+                                                            const iconUrl = getSkillIconUrl(entry.name, entry.skillId);
                                                             return <GameIcon src={iconUrl} alt={entry.name} className="w-4 h-4 object-contain shrink-0" />;
                                                         })()}
                                                         <span className="font-semibold truncate min-w-0 flex-1 block max-w-[58vw] sm:max-w-none sm:whitespace-normal sm:overflow-visible">{entry.name}</span>
@@ -336,7 +337,7 @@ export const SkillUsageSection = ({
                         <div className="flex items-center justify-between">
                             <div className="text-sm font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                                 {selectedSkillName ? (() => {
-                                    const iconUrl = getSkillIconUrl(selectedSkillName);
+                                    const iconUrl = getSkillIconUrl(selectedSkillName, selectedSkillId);
                                     return <GameIcon src={iconUrl} alt={selectedSkillName} className="w-5 h-5 object-contain shrink-0" />;
                                 })() : null}
                                 <span className="truncate min-w-0">{selectedSkillName || 'Selected Skill Usage'}</span>

@@ -72,8 +72,6 @@ const buildClassColumns = (counts: Record<string, number>, maxRows = 5) => {
     return columns;
 };
 
-const getUnknownIconFallbackUrl = () => `${import.meta.env.BASE_URL || './'}img/game-icons-sprite/Unknown_Icon.svg`;
-
 export const GameIcon = ({
     src,
     alt,
@@ -83,14 +81,11 @@ export const GameIcon = ({
     alt?: string;
     className?: string;
 }) => {
-    const fallbackUrl = getUnknownIconFallbackUrl();
     const [currentSrc, setCurrentSrc] = useState(src);
 
     useEffect(() => {
         setCurrentSrc(src);
     }, [src]);
-
-    if (!src) return null;
 
     const isSprite = (value: IconAsset): value is { type: 'sprite'; sheetUrl: string; x: number; y: number; w: number; h: number; columns: number; rows: number } => {
         return typeof value === 'object' && value !== null && 'type' in value && value.type === 'sprite';
@@ -103,12 +98,14 @@ export const GameIcon = ({
             // noop
         };
         img.onerror = () => {
-            setCurrentSrc(fallbackUrl);
+            setCurrentSrc(null);
         };
         img.src = currentSrc.sheetUrl;
-    }, [currentSrc, fallbackUrl]);
+    }, [currentSrc]);
 
-    if (currentSrc && isSprite(currentSrc)) {
+    if (!currentSrc) return null;
+
+    if (isSprite(currentSrc)) {
         const col = Math.round(currentSrc.x / currentSrc.w);
         const row = Math.round(currentSrc.y / currentSrc.h);
         const backgroundSize = `${currentSrc.columns * 100}% ${currentSrc.rows * 100}%`;
@@ -135,9 +132,7 @@ export const GameIcon = ({
             alt={alt || 'Unknown icon'}
             className={className}
             onError={() => {
-                if (currentSrc !== fallbackUrl) {
-                    setCurrentSrc(fallbackUrl);
-                }
+                setCurrentSrc(null);
             }}
         />
     );
