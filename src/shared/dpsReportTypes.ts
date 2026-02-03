@@ -57,6 +57,7 @@ export interface Player {
     squadBuffsActive?: BuffGeneration[];
     buffUptimes?: BuffUptimes[];
     totalDamageDist?: TotalDamageDist[][];
+    targetDamageDist?: TotalDamageDist[][][];
     totalDamageTaken?: TotalDamageTaken[][];
     statsTargets?: StatsTarget[][];
     combatReplayData?: {
