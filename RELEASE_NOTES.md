@@ -1,19 +1,17 @@
 # Release Notes
 
-Version v1.17.0 — February 2, 2026
+Version v1.18.0 — February 2, 2026
 
 ## 🌟 Highlights
-- Added icons to enrich the app’s visuals.
-- Strengthened safety around skill-related data for a smoother workflow.
+- New options for how damage is calculated, giving you more control over results.
+- Dist/web assets updated for a smoother, improved web experience.
 
 ## 🛠️ Improvements
-- Updated web assets for a smoother, more polished look.
-- Improved type safety for skill usage and chart data to prevent issues.
+- Settings now include controls for damage calculation to support the new options.
+- Behind-the-scenes tweaks to stats handling to align with the new damage options.
 
 ## 🧯 Fixes
-- Fixed layout changes not applying correctly.
-- Ensured skill chart data is available before use to avoid errors.
-- General stability improvements for chart handling.
+- None.
 
 ## ⚠️ Breaking Changes
 - None.
