@@ -1072,12 +1072,15 @@ const ensureDevWebIndex = (webRoot: string) => {
 const ensureWebRootIndex = (templateDir: string) => {
     try {
         const rootIndex = path.join(templateDir, 'index.html');
-        if (fs.existsSync(rootIndex)) return;
         const webIndex = path.join(templateDir, 'web', 'index.html');
         if (!fs.existsSync(webIndex)) return;
         let html = fs.readFileSync(webIndex, 'utf8');
         html = html.replace(/\.\.\/assets\//g, './assets/');
         html = html.replace(/\.\.\/img\//g, './img/');
+        if (fs.existsSync(rootIndex)) {
+            const current = fs.readFileSync(rootIndex, 'utf8');
+            if (current === html) return;
+        }
         fs.writeFileSync(rootIndex, html);
     } catch {
         // Ignore failures; upload will still include web/index.html.
