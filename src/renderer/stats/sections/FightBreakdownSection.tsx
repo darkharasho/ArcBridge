@@ -73,6 +73,7 @@ export const FightBreakdownSection = ({
                                             <th className="text-right py-2 px-3">Allies Dead</th>
                                             <th className="text-right py-2 px-3">Allies Revived</th>
                                             <th className="text-right py-2 px-3">Rallies</th>
+                                            <th className="text-right py-2 px-3">Enemy Downs</th>
                                             <th className="text-right py-2 px-3">Enemy Deaths</th>
                                         </>
                                     )}
@@ -180,6 +181,7 @@ export const FightBreakdownSection = ({
                                                 <td className="py-2 px-3 text-right font-mono">{fight.alliesDead ?? 0}</td>
                                                 <td className="py-2 px-3 text-right font-mono">{fight.alliesRevived ?? 0}</td>
                                                 <td className="py-2 px-3 text-right font-mono">{fight.rallies ?? 0}</td>
+                                                <td className="py-2 px-3 text-right font-mono">{fight.enemyDowns ?? 0}</td>
                                                 <td className="py-2 px-3 text-right font-mono">{fight.enemyDeaths ?? 0}</td>
                                             </>
                                         )}

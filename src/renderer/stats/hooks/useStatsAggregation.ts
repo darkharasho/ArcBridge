@@ -897,7 +897,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                 const enemyTargets = targets.filter((t: any) => !t.isFake);
                 const totalOutgoing = squadPlayers.reduce((sum: number, p: any) => sum + (p.dpsAll?.[0]?.damage || 0), 0);
                 const totalIncoming = squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageTaken || 0), 0);
-                const { enemyDeaths } = getFightDownsDeaths(details);
+                const { enemyDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
                 const isWin = getFightOutcome(details);
                 const timestamp = details.uploadTime ?? log.uploadTime ?? 0;
                 const mapName = resolveMapName(details, log);
@@ -986,6 +986,7 @@ export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsV
                     alliesRevived: squadPlayers.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.saved || 0), 0),
                     rallies: 0,
                     enemyDeaths,
+                    enemyDowns: Math.max(0, enemyDownsDeaths - enemyDeaths),
                     totalOutgoingDamage: totalOutgoing,
                     totalIncomingDamage: totalIncoming,
                     incomingBarrierAbsorbed: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageBarrier || 0), 0),
