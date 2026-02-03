@@ -1,16 +1,13 @@
 # Release Notes
 
-Version v1.19.0 — February 2, 2026
+Version v1.19.1 — February 2, 2026
 
 ## 🌟 Highlights
-- Settings export and import are now available in the app for easy saving and restoring.
-- Timeline now shows more detailed activity with player count details.
-- A new toggle lets you view top stats by damage or by down contributions.
+- Battle standard tracking added to offense metrics and stats aggregation.
+- Initial HTML structure laid out for the ArcBridge interface.
 
 ## 🛠️ Improvements
-- Settings export/import is integrated into the Settings view.
-- Timeline data aggregation now includes player count details for clearer insights.
-- Added targetDamageDist data for each player to enrich damage tracking.
+- StatsView and TopSkillsSection components cleaned up by removing unused props to streamline the UI.
 
 ## 🧯 Fixes
 None.
