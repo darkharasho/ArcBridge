@@ -92,6 +92,7 @@ const packageJson = JSON.parse(packageRaw);
 
 try {
     run(npmCmd, ['run', 'validate']);
+    run(npmCmd, ['run', 'ci:local']);
     if (bumpType) {
         if (!allowedBumps.has(bumpType)) {
             console.error(`Invalid bump type: ${bumpType}. Use patch, minor, or major.`);

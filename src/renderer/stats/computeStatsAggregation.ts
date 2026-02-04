@@ -6,7 +6,7 @@ import { DisruptionMethod, IMvpWeights, IStatsViewSettings, DEFAULT_DISRUPTION_M
 import { buildConditionIconMap, computeOutgoingConditions, resolveConditionNameFromEntry } from '../../shared/conditionsMetrics';
 import { OFFENSE_METRICS, DEFENSE_METRICS, SUPPORT_METRICS } from './statsMetrics';
 import { isResUtilitySkill, formatDurationMs } from './utils/dashboardUtils';
-import { SkillUsageSummary, SkillUsageLogRecord, SkillUsagePlayer, PlayerSkillDamageEntry } from './statsTypes';
+import { SkillUsageLogRecord, SkillUsagePlayer, PlayerSkillDamageEntry } from './statsTypes';
 import { PROFESSION_COLORS, getProfessionColor } from '../../shared/professionUtils';
 
 interface UseStatsAggregationProps {

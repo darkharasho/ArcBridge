@@ -732,7 +732,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                     onClick={(e) => {
                         e.stopPropagation();
                         if (isCancellable) {
-                            onCancel();
+                            onCancel?.();
                             return;
                         }
                         onToggle();

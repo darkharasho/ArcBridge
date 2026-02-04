@@ -2070,7 +2070,8 @@ function App() {
                                                                     canceledLogsRef.current.clear();
                                                                     setDevDatasetsOpen(false);
                                                                     if (typeof result.totalLogs === 'number') {
-                                                                        setDevDatasetLoadProgress((prev) => (prev && prev.id === dataset.id ? { ...prev, total: result.totalLogs } : prev));
+                                                                        const totalLogs = result.totalLogs;
+                                                                        setDevDatasetLoadProgress((prev) => (prev && prev.id === dataset.id ? { ...prev, total: totalLogs } : prev));
                                                                     }
                                                                 } else {
                                                                     const result = await window.electronAPI.loadDevDataset({ id: dataset.id });

@@ -275,6 +275,8 @@ declare global {
         uploadTime?: number;
         encounterDuration?: string;
         fightName?: string;
+        detailsLoading?: boolean;
+        detailsAvailable?: boolean;
         details?: {
             fightName: string;
             encounterDuration: string;
