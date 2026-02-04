@@ -50,7 +50,24 @@ export const ConditionsSection = ({
     isFirstVisibleSection,
     sectionClass,
     sidebarListClass
-}: ConditionsSectionProps) => (
+}: ConditionsSectionProps) => {
+    const resolveApplications = (condition: any) => {
+        if (!condition) return 0;
+        if (conditionDirection !== 'outgoing') {
+            return Number(condition.applications || 0);
+        }
+        const fromBuffsActive = Number(condition.applicationsFromBuffsActive);
+        if (Number.isFinite(fromBuffsActive) && fromBuffsActive > 0) {
+            return fromBuffsActive;
+        }
+        const fromBuffs = Number(condition.applicationsFromBuffs);
+        if (Number.isFinite(fromBuffs) && fromBuffs > 0) {
+            return fromBuffs;
+        }
+        return Number(condition.applications || 0);
+    };
+
+    return (
     <div
         id="conditions-outgoing"
         data-section-visible={isSectionVisible('conditions-outgoing')}
@@ -205,11 +222,7 @@ export const ConditionsSection = ({
                                             if (activeConditionName === 'all') {
                                                 const totals = Object.values(conditionTotals).reduce(
                                                     (acc: { applications: number; damage: number }, condition: any) => {
-                                                        const applications = (conditionDirection === 'outgoing'
-                                                            && condition?.applicationsFromBuffs
-                                                            && condition.applicationsFromBuffs > 0)
-                                                            ? condition.applicationsFromBuffs
-                                                            : condition?.applications;
+                                                        const applications = resolveApplications(condition);
                                                         acc.applications += Number(applications || 0);
                                                         acc.damage += Number(condition?.damage || 0);
                                                         return acc;
@@ -223,12 +236,9 @@ export const ConditionsSection = ({
                                                 };
                                             }
                                             const condition = conditionTotals[activeConditionName];
-                                            const applications = conditionDirection === 'outgoing' && condition?.applicationsFromBuffs && condition.applicationsFromBuffs > 0
-                                                ? condition.applicationsFromBuffs
-                                                : condition?.applications;
                                             return {
                                                 ...player,
-                                                applications: Number(applications || 0),
+                                                applications: resolveApplications(condition),
                                                 damage: Number(condition?.damage || 0)
                                             };
                                         })
@@ -334,4 +344,5 @@ export const ConditionsSection = ({
             <div className="text-center text-gray-500 italic py-8">No condition data available</div>
         )}
     </div>
-);
+    );
+};

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Activity, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
@@ -49,7 +50,15 @@ export const HealingSection = ({
     isSectionVisible,
     isFirstVisibleSection,
     sectionClass
-}: HealingSectionProps) => (
+}: HealingSectionProps) => {
+    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const updateSort = (key: 'value' | 'fightTime') => {
+        setSortState((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+    return (
     <div
         id="healing-stats"
         data-section-visible={isSectionVisible('healing-stats')}
@@ -131,7 +140,12 @@ export const HealingSection = ({
                                         value
                                     };
                                 })
-                                .sort((a, b) => b.value - a.value || a.account.localeCompare(b.account));
+                                .sort((a, b) => {
+                                    const aValue = sortState.key === 'fightTime' ? Number(a.activeMs || 0) : Number(a.value || 0);
+                                    const bValue = sortState.key === 'fightTime' ? Number(b.activeMs || 0) : Number(b.value || 0);
+                                    const diff = sortState.dir === 'desc' ? bValue - aValue : aValue - bValue;
+                                    return diff || a.account.localeCompare(b.account);
+                                });
 
                             return (
                                 <StatsTableShell
@@ -183,8 +197,20 @@ export const HealingSection = ({
                                             <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                 <div className="text-center">#</div>
                                                 <div>Player</div>
-                                                <div className="text-right">{metric.label}</div>
-                                                <div className="text-right">Fight Time</div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('value')}
+                                                    className={`text-right transition-colors ${sortState.key === 'value' ? 'text-lime-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    {metric.label}{sortState.key === 'value' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('fightTime')}
+                                                    className={`text-right transition-colors ${sortState.key === 'fightTime' ? 'text-lime-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    Fight Time{sortState.key === 'fightTime' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
                                             </div>
                                         </>
                                     }
@@ -219,4 +245,5 @@ export const HealingSection = ({
             />
         )}
     </div>
-);
+    );
+};

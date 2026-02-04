@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Maximize2, Shield, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
@@ -45,7 +46,15 @@ export const DefenseSection = ({
     isFirstVisibleSection,
     sectionClass,
     sidebarListClass
-}: DefenseSectionProps) => (
+}: DefenseSectionProps) => {
+    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const updateSort = (key: 'value' | 'fightTime') => {
+        setSortState((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+    return (
     <div
         id="defense-detailed"
         data-section-visible={isSectionVisible('defense-detailed')}
@@ -126,9 +135,14 @@ export const DefenseSection = ({
                                     per60s: ((row.defenseTotals?.[metric.id] || 0) * 60) / totalSeconds(row)
                                 }))
                                 .sort((a, b) => {
-                                    const aValue = defenseViewMode === 'total' ? a.total : defenseViewMode === 'per1s' ? a.per1s : a.per60s;
-                                    const bValue = defenseViewMode === 'total' ? b.total : defenseViewMode === 'per1s' ? b.per1s : b.per60s;
-                                    return bValue - aValue || a.account.localeCompare(b.account);
+                                    const aValue = sortState.key === 'fightTime'
+                                        ? Number(a.activeMs || 0)
+                                        : Number(defenseViewMode === 'total' ? a.total : defenseViewMode === 'per1s' ? a.per1s : a.per60s);
+                                    const bValue = sortState.key === 'fightTime'
+                                        ? Number(b.activeMs || 0)
+                                        : Number(defenseViewMode === 'total' ? b.total : defenseViewMode === 'per1s' ? b.per1s : b.per60s);
+                                    const diff = sortState.dir === 'desc' ? bValue - aValue : aValue - bValue;
+                                    return diff || a.account.localeCompare(b.account);
                                 });
 
                             return (
@@ -158,10 +172,21 @@ export const DefenseSection = ({
                                             <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                 <div className="text-center">#</div>
                                                 <div>Player</div>
-                                                <div className="text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('value')}
+                                                    className={`text-right transition-colors ${sortState.key === 'value' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
                                                     {defenseViewMode === 'total' ? 'Total' : defenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
-                                                </div>
-                                                <div className="text-right">Fight Time</div>
+                                                    {sortState.key === 'value' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('fightTime')}
+                                                    className={`text-right transition-colors ${sortState.key === 'fightTime' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    Fight Time{sortState.key === 'fightTime' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
                                             </div>
                                         </>
                                     }
@@ -200,4 +225,5 @@ export const DefenseSection = ({
             />
         )}
     </div>
-);
+    );
+};

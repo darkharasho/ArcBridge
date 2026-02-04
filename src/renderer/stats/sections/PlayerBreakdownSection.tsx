@@ -437,26 +437,26 @@ export const PlayerBreakdownSection = ({
                                             <button
                                                 type="button"
                                                 onClick={() => toggleClassSort('down')}
-                                                className="text-right flex items-center justify-end gap-1 hover:text-white transition-colors"
+                                                className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'down' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
                                             >
                                                 Down Contrib
-                                                <span className="text-[10px]">{classSort.key === 'down' ? (classSort.dir === 'desc' ? '▼' : '▲') : ''}</span>
+                                                <span className="text-[10px]">{classSort.key === 'down' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => toggleClassSort('damage')}
-                                                className="text-right flex items-center justify-end gap-1 hover:text-white transition-colors"
+                                                className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'damage' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
                                             >
                                                 Damage
-                                                <span className="text-[10px]">{classSort.key === 'damage' ? (classSort.dir === 'desc' ? '▼' : '▲') : ''}</span>
+                                                <span className="text-[10px]">{classSort.key === 'damage' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => toggleClassSort('dps')}
-                                                className="text-right flex items-center justify-end gap-1 hover:text-white transition-colors"
+                                                className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'dps' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
                                             >
                                                 DPS
-                                                <span className="text-[10px]">{classSort.key === 'dps' ? (classSort.dir === 'desc' ? '▼' : '▲') : ''}</span>
+                                                <span className="text-[10px]">{classSort.key === 'dps' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
                                             </button>
                                         </div>
                                         <div className={expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>

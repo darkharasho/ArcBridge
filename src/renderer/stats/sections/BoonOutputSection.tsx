@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Maximize2, ShieldCheck, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
@@ -54,7 +55,15 @@ export const BoonOutputSection = ({
     isFirstVisibleSection,
     sectionClass,
     sidebarListClass
-}: BoonOutputSectionProps) => (
+}: BoonOutputSectionProps) => {
+    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const updateSort = (key: 'value' | 'fightTime') => {
+        setSortState((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+    return (
     <div
         id="boon-output"
         data-section-visible={isSectionVisible('boon-output')}
@@ -145,7 +154,7 @@ export const BoonOutputSection = ({
                                                 { value: 'squadBuffs', label: 'Squad' },
                                                 { value: 'totalBuffs', label: 'Total' }
                                             ]}
-                                            activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
+                                            activeClassName="bg-blue-500/20 text-blue-200 border border-blue-500/40"
                                             inactiveClassName="border border-transparent text-gray-400 hover:text-white"
                                         />
                                         <PillToggleGroup
@@ -164,14 +173,25 @@ export const BoonOutputSection = ({
                                     <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                         <div className="text-center">#</div>
                                         <div>Player</div>
-                                        <div className="text-right">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSort('value')}
+                                            className={`text-right transition-colors ${sortState.key === 'value' ? 'text-blue-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                        >
                                             {activeBoonMetric === 'total'
                                                 ? 'Total'
                                                 : activeBoonMetric === 'average'
                                                     ? 'Gen/Sec'
                                                     : 'Uptime'}
-                                        </div>
-                                        <div className="text-right">Fight Time</div>
+                                            {sortState.key === 'value' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSort('fightTime')}
+                                            className={`text-right transition-colors ${sortState.key === 'fightTime' ? 'text-blue-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                        >
+                                            Fight Time{sortState.key === 'fightTime' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                        </button>
                                     </div>
                                 </>
                             }
@@ -179,8 +199,16 @@ export const BoonOutputSection = ({
                                 <>
                                     {[...activeBoonTable.rows]
                                         .sort((a: any, b: any) => (
-                                            getBoonMetricValue(b, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
-                                            - getBoonMetricValue(a, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric)
+                                            (() => {
+                                                const aVal = sortState.key === 'fightTime'
+                                                    ? Number(a.activeTimeMs || 0)
+                                                    : getBoonMetricValue(a, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric);
+                                                const bVal = sortState.key === 'fightTime'
+                                                    ? Number(b.activeTimeMs || 0)
+                                                    : getBoonMetricValue(b, activeBoonCategory, activeBoonTable.stacking, activeBoonMetric);
+                                                const diff = sortState.dir === 'desc' ? bVal - aVal : aVal - bVal;
+                                                return diff || String(a.account || '').localeCompare(String(b.account || ''));
+                                            })()
                                         ))
                                         .map((row: any, idx: number) => (
                                             <div key={`${activeBoonTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
@@ -205,4 +233,5 @@ export const BoonOutputSection = ({
             />
         )}
     </div>
-);
+    );
+};

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Maximize2, Swords, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
@@ -50,7 +51,15 @@ export const OffenseSection = ({
     isFirstVisibleSection,
     sectionClass,
     sidebarListClass
-}: OffenseSectionProps) => (
+}: OffenseSectionProps) => {
+    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const updateSort = (key: 'value' | 'fightTime') => {
+        setSortState((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+    return (
     <div
         id="offense-detailed"
         data-section-visible={isSectionVisible('offense-detailed')}
@@ -149,9 +158,14 @@ export const OffenseSection = ({
                                     per60s: metric.isPercent || metric.isRate ? totalValue(row) : (totalValue(row) * 60) / totalSeconds(row)
                                 }))
                                 .sort((a, b) => {
-                                    const aValue = offenseViewMode === 'total' ? a.total : offenseViewMode === 'per1s' ? a.per1s : a.per60s;
-                                    const bValue = offenseViewMode === 'total' ? b.total : offenseViewMode === 'per1s' ? b.per1s : b.per60s;
-                                    return bValue - aValue || a.account.localeCompare(b.account);
+                                    const aValue = sortState.key === 'fightTime'
+                                        ? Number(a.totalFightMs || 0)
+                                        : Number(offenseViewMode === 'total' ? a.total : offenseViewMode === 'per1s' ? a.per1s : a.per60s);
+                                    const bValue = sortState.key === 'fightTime'
+                                        ? Number(b.totalFightMs || 0)
+                                        : Number(offenseViewMode === 'total' ? b.total : offenseViewMode === 'per1s' ? b.per1s : b.per60s);
+                                    const diff = sortState.dir === 'desc' ? bValue - aValue : aValue - bValue;
+                                    return diff || a.account.localeCompare(b.account);
                                 });
 
                             return (
@@ -181,10 +195,21 @@ export const OffenseSection = ({
                                             <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                 <div className="text-center">#</div>
                                                 <div>Player</div>
-                                                <div className="text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('value')}
+                                                    className={`text-right transition-colors ${sortState.key === 'value' ? 'text-rose-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
                                                     {offenseViewMode === 'total' ? 'Total' : offenseViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
-                                                </div>
-                                                <div className="text-right">Fight Time</div>
+                                                    {sortState.key === 'value' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('fightTime')}
+                                                    className={`text-right transition-colors ${sortState.key === 'fightTime' ? 'text-rose-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    Fight Time{sortState.key === 'fightTime' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
                                             </div>
                                         </>
                                     }
@@ -222,4 +247,5 @@ export const OffenseSection = ({
             />
         )}
     </div>
-);
+    );
+};

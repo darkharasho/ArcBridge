@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HelpingHand, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
@@ -49,7 +50,15 @@ export const SupportSection = ({
     isFirstVisibleSection,
     sectionClass,
     sidebarListClass
-}: SupportSectionProps) => (
+}: SupportSectionProps) => {
+    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const updateSort = (key: 'value' | 'fightTime') => {
+        setSortState((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+    return (
     <div
         id="support-detailed"
         data-section-visible={isSectionVisible('support-detailed')}
@@ -138,9 +147,14 @@ export const SupportSection = ({
                                     per60s: (resolveSupportTotal(row) * 60) / totalSeconds(row)
                                 }))
                                 .sort((a, b) => {
-                                    const aValue = supportViewMode === 'total' ? a.total : supportViewMode === 'per1s' ? a.per1s : a.per60s;
-                                    const bValue = supportViewMode === 'total' ? b.total : supportViewMode === 'per1s' ? b.per1s : b.per60s;
-                                    return bValue - aValue || a.account.localeCompare(b.account);
+                                    const aValue = sortState.key === 'fightTime'
+                                        ? Number(a.activeMs || 0)
+                                        : Number(supportViewMode === 'total' ? a.total : supportViewMode === 'per1s' ? a.per1s : a.per60s);
+                                    const bValue = sortState.key === 'fightTime'
+                                        ? Number(b.activeMs || 0)
+                                        : Number(supportViewMode === 'total' ? b.total : supportViewMode === 'per1s' ? b.per1s : b.per60s);
+                                    const diff = sortState.dir === 'desc' ? bValue - aValue : aValue - bValue;
+                                    return diff || a.account.localeCompare(b.account);
                                 });
 
                             return (
@@ -197,10 +211,21 @@ export const SupportSection = ({
                                             <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                 <div className="text-center">#</div>
                                                 <div>Player</div>
-                                                <div className="text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('value')}
+                                                    className={`text-right transition-colors ${sortState.key === 'value' ? 'text-emerald-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
                                                     {supportViewMode === 'total' ? 'Total' : supportViewMode === 'per1s' ? 'Stat/1s' : 'Stat/60s'}
-                                                </div>
-                                                <div className="text-right">Fight Time</div>
+                                                    {sortState.key === 'value' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSort('fightTime')}
+                                                    className={`text-right transition-colors ${sortState.key === 'fightTime' ? 'text-emerald-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    Fight Time{sortState.key === 'fightTime' ? (sortState.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                                </button>
                                             </div>
                                         </>
                                     }
@@ -241,4 +266,5 @@ export const SupportSection = ({
             />
         )}
     </div>
-);
+    );
+};

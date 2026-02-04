@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Maximize2, Sparkles, X } from 'lucide-react';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
@@ -23,6 +24,12 @@ type SpecialBuffsSectionProps = {
     sidebarListClass: string;
 };
 
+type SpecialSortKey = 'total' | 'perSecond' | 'duration';
+const truncateSidebarLabel = (name: string, max = 30) => {
+    if (!name) return '';
+    return name.length > max ? `${name.slice(0, max - 1)}…` : name;
+};
+
 export const SpecialBuffsSection = ({
     stats,
     specialSearch,
@@ -41,17 +48,48 @@ export const SpecialBuffsSection = ({
     isFirstVisibleSection,
     sectionClass,
     sidebarListClass
-}: SpecialBuffsSectionProps) => (
-    <div
-        id="special-buffs"
-        data-section-visible={isSectionVisible('special-buffs')}
-        data-section-first={isFirstVisibleSection('special-buffs')}
-        className={sectionClass('special-buffs', `bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${expandedSection === 'special-buffs'
-                ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
-                }`
-                : ''
-            }`)}
-    >
+}: SpecialBuffsSectionProps) => {
+    const [sortKey, setSortKey] = useState<SpecialSortKey>('total');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+    const sortedRows = useMemo(() => {
+        if (!activeSpecialTable?.rows) return [];
+        const rows = [...activeSpecialTable.rows];
+        rows.sort((a: any, b: any) => {
+            const aVal = Number(a?.[sortKey] ?? 0);
+            const bVal = Number(b?.[sortKey] ?? 0);
+            const diff = sortDirection === 'desc' ? bVal - aVal : aVal - bVal;
+            if (diff !== 0) return diff;
+            return String(a?.account || '').localeCompare(String(b?.account || ''));
+        });
+        return rows;
+    }, [activeSpecialTable, sortKey, sortDirection]);
+
+    const updateSort = (nextKey: SpecialSortKey) => {
+        if (sortKey === nextKey) {
+            setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+            return;
+        }
+        setSortKey(nextKey);
+        setSortDirection('desc');
+    };
+
+    const sortIndicator = (key: SpecialSortKey) => {
+        if (sortKey !== key) return '';
+        return sortDirection === 'desc' ? ' ↓' : ' ↑';
+    };
+
+    return (
+        <div
+            id="special-buffs"
+            data-section-visible={isSectionVisible('special-buffs')}
+            data-section-first={isFirstVisibleSection('special-buffs')}
+            className={sectionClass('special-buffs', `bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${expandedSection === 'special-buffs'
+                    ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane flex flex-col pb-10 ${expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'
+                    }`
+                    : ''
+                }`)}
+        >
         <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-300" />
@@ -91,12 +129,19 @@ export const SpecialBuffsSection = ({
                                     <button
                                         key={buff.id}
                                         onClick={() => setActiveSpecialTab(buff.id)}
+                                        title={buff.name}
                                         className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${activeSpecialTab === buff.id
                                             ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
                                             : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                             }`}
                                     >
-                                        <InlineIconLabel name={buff.name} iconUrl={buff.icon} iconClassName="h-3.5 w-3.5" />
+                                        <InlineIconLabel
+                                            name={truncateSidebarLabel(buff.name)}
+                                            iconUrl={buff.icon}
+                                            className="w-full"
+                                            iconClassName="h-3.5 w-3.5"
+                                            textClassName="max-w-[170px]"
+                                        />
                                     </button>
                                 ))
                             )}
@@ -123,14 +168,32 @@ export const SpecialBuffsSection = ({
                                     <div className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                         <div className="text-center">#</div>
                                         <div>Player</div>
-                                        <div className="text-right">Total</div>
-                                        <div className="text-right">Per Sec</div>
-                                        <div className="text-right">Fight Time</div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSort('total')}
+                                            className={`text-right transition-colors ${sortKey === 'total' ? 'text-purple-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                        >
+                                            Total{sortIndicator('total')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSort('perSecond')}
+                                            className={`text-right transition-colors ${sortKey === 'perSecond' ? 'text-purple-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                        >
+                                            Per Sec{sortIndicator('perSecond')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSort('duration')}
+                                            className={`text-right transition-colors ${sortKey === 'duration' ? 'text-purple-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                        >
+                                            Fight Time{sortIndicator('duration')}
+                                        </button>
                                     </div>
                                 }
                                 rows={
                                     <>
-                                        {activeSpecialTable.rows.map((row: any, idx: number) => (
+                                        {sortedRows.map((row: any, idx: number) => (
                                             <div key={`${activeSpecialTable.id}-${row.account}-${idx}`} className="grid grid-cols-[0.4fr_1.5fr_0.8fr_0.8fr_0.8fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5">
                                                 <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
                                                 <div className="flex items-center gap-2 min-w-0">
@@ -157,4 +220,5 @@ export const SpecialBuffsSection = ({
             />
         )}
     </div>
-);
+    );
+};

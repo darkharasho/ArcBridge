@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Activity, ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { InlineIconLabel } from '../ui/StatsViewShared';
@@ -65,7 +66,54 @@ export const ApmSection = ({
     formatCastRateValue,
     formatCastCountValue,
     renderProfessionIcon
-}: ApmSectionProps) => (
+}: ApmSectionProps) => {
+    const [allSkillsSort, setAllSkillsSort] = useState<{ key: 'apm' | 'apmNoAuto'; dir: 'asc' | 'desc' }>({ key: 'apm', dir: 'desc' });
+    const [skillSort, setSkillSort] = useState<{ key: 'apm' | 'casts'; dir: 'asc' | 'desc' }>({ key: 'apm', dir: 'desc' });
+
+    const toggleAllSkillsSort = (key: 'apm' | 'apmNoAuto') => {
+        setAllSkillsSort((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+    const toggleSkillSort = (key: 'apm' | 'casts') => {
+        setSkillSort((prev) => ({
+            key,
+            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+        }));
+    };
+
+    const sortedAllSkillsRows = useMemo(() => {
+        const rows = [...(activeApmSpecTable?.playerRows || [])];
+        rows.sort((a: any, b: any) => {
+            const aVal = allSkillsSort.key === 'apm'
+                ? Number(apmView === 'perSecond' ? a.aps : a.apm)
+                : Number(apmView === 'perSecond' ? a.apsNoAuto : a.apmNoAuto);
+            const bVal = allSkillsSort.key === 'apm'
+                ? Number(apmView === 'perSecond' ? b.aps : b.apm)
+                : Number(apmView === 'perSecond' ? b.apsNoAuto : b.apmNoAuto);
+            const diff = allSkillsSort.dir === 'desc' ? bVal - aVal : aVal - bVal;
+            return diff || String(a.displayName || '').localeCompare(String(b.displayName || ''));
+        });
+        return rows;
+    }, [activeApmSpecTable, allSkillsSort, apmView]);
+
+    const sortedSkillRows = useMemo(() => {
+        const rows = [...(activeApmSkill?.playerRows || [])];
+        rows.sort((a: any, b: any) => {
+            const aVal = skillSort.key === 'apm'
+                ? Number(a.apm || 0)
+                : Number(apmView === 'perSecond' ? a.aps : a.count);
+            const bVal = skillSort.key === 'apm'
+                ? Number(b.apm || 0)
+                : Number(apmView === 'perSecond' ? b.aps : b.count);
+            const diff = skillSort.dir === 'desc' ? bVal - aVal : aVal - bVal;
+            return diff || String(a.displayName || '').localeCompare(String(b.displayName || ''));
+        });
+        return rows;
+    }, [activeApmSkill, skillSort, apmView]);
+
+    return (
     <div
         id="apm-stats"
         data-section-visible={isSectionVisible('apm-stats')}
@@ -243,11 +291,23 @@ export const ApmSection = ({
                                     <>
                                         <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                             <div>Player</div>
-                                            <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'}</div>
-                                            <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto)</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleAllSkillsSort('apm')}
+                                                className={`text-right transition-colors ${allSkillsSort.key === 'apm' ? 'text-emerald-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                            >
+                                                {apmView === 'perSecond' ? 'APS' : 'APM'}{allSkillsSort.key === 'apm' ? (allSkillsSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleAllSkillsSort('apmNoAuto')}
+                                                className={`text-right transition-colors ${allSkillsSort.key === 'apmNoAuto' ? 'text-emerald-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                            >
+                                                {apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto){allSkillsSort.key === 'apmNoAuto' ? (allSkillsSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                            </button>
                                         </div>
                                         <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
-                                            {activeApmSpecTable.playerRows.map((row: ApmPlayerRow, index: number) => (
+                                            {sortedAllSkillsRows.map((row: ApmPlayerRow, index: number) => (
                                                 <div
                                                     key={`${activeApmSpecTable.profession}-all-${row.key}`}
                                                     className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"
@@ -273,11 +333,23 @@ export const ApmSection = ({
                                     <>
                                         <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                             <div>Player</div>
-                                            <div className="text-right">APM</div>
-                                            <div className="text-right">{apmView === 'perSecond' ? 'Casts/Sec' : 'Casts'}</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleSkillSort('apm')}
+                                                className={`text-right transition-colors ${skillSort.key === 'apm' ? 'text-emerald-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                            >
+                                                APM{skillSort.key === 'apm' ? (skillSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleSkillSort('casts')}
+                                                className={`text-right transition-colors ${skillSort.key === 'casts' ? 'text-emerald-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                            >
+                                                {apmView === 'perSecond' ? 'Casts/Sec' : 'Casts'}{skillSort.key === 'casts' ? (skillSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
+                                            </button>
                                         </div>
                                         <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
-                                            {activeApmSkill?.playerRows.map((row: any, index: number) => (
+                                            {sortedSkillRows.map((row: any, index: number) => (
                                                 <div
                                                     key={`${activeApmSpecTable.profession}-${activeApmSkill?.id}-${row.key}`}
                                                     className="grid grid-cols-[1.6fr_0.7fr_0.9fr] px-4 py-2 text-sm text-gray-200 border-t border-white/5"
@@ -309,4 +381,5 @@ export const ApmSection = ({
             )}
         </div>
     </div>
-);
+    );
+};
