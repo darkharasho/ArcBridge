@@ -1912,7 +1912,7 @@ function App() {
                                         Bulk calculations are running. The app may feel less responsive until they finish.
                                     </div>
                                 )}
-                                {(uploadRetryQueue.failed > 0 || uploadRetryQueue.retrying > 0 || uploadRetryQueue.resolved > 0) && (
+                                {(uploadRetryQueue.failed > 0 || uploadRetryQueue.retrying > 0 || uploadRetryQueue.entries.length > 0) && (
                                     <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-100">
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="font-semibold">Upload Retry Queue</div>
