@@ -837,7 +837,7 @@ function App() {
                 ...prev,
                 stage: data.stage || 'Uploading',
                 progress: typeof data.progress === 'number' ? data.progress : prev.progress,
-                detail: data.message || prev.detail
+                detail: prev.stage === 'Upload failed' ? prev.detail : (data.message || prev.detail)
             }));
         });
         return () => {
@@ -1068,6 +1068,9 @@ function App() {
         if (webUploadClearTimerRef.current) {
             window.clearTimeout(webUploadClearTimerRef.current);
         }
+        if (webUploadState.stage === 'Upload failed') {
+            return;
+        }
         webUploadClearTimerRef.current = window.setTimeout(() => {
             setWebUploadState((prev) => ({
                 ...prev,
@@ -1101,9 +1104,11 @@ function App() {
             url: null,
             buildStatus: 'idle'
         }));
+        let uploadSucceeded = false;
         try {
             const result = await window.electronAPI.uploadWebReport(payload);
             if (result?.success) {
+                uploadSucceeded = true;
                 const url = result.url || '';
                 setWebUploadState((prev) => ({
                     ...prev,
@@ -1114,23 +1119,34 @@ function App() {
                     buildStatus: 'checking'
                 }));
             } else {
+                if (result?.errorDetail) {
+                    console.error('[Web Upload] Failed:', result.errorDetail);
+                } else if (result?.error) {
+                    console.error('[Web Upload] Failed:', result.error);
+                }
                 setWebUploadState((prev) => ({
                     ...prev,
                     message: result?.error || 'Upload failed.',
+                    detail: result?.errorDetail || null,
                     stage: 'Upload failed',
                     buildStatus: 'idle'
                 }));
             }
         } catch (err: any) {
+            const errorDetail = err?.stack || String(err);
+            console.error('[Web Upload] Failed:', errorDetail);
             setWebUploadState((prev) => ({
                 ...prev,
                 message: err?.message || 'Upload failed.',
+                detail: errorDetail,
                 stage: 'Upload failed',
                 buildStatus: 'idle'
             }));
         } finally {
             setWebUploadState((prev) => ({ ...prev, uploading: false }));
-            scheduleWebUploadClear();
+            if (uploadSucceeded) {
+                scheduleWebUploadClear();
+            }
         }
     };
 
@@ -1316,12 +1332,27 @@ function App() {
 
                 {(webUploadState.uploading || webUploadState.stage) && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg">
-                        <div className="w-full max-w-md bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl">
+                        <div className={`w-full bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl ${
+                            isDev && (webUploadState.stage === 'Upload failed' || webUploadState.buildStatus === 'errored')
+                                ? 'max-w-2xl'
+                                : 'max-w-md'
+                        }`}>
                             <div className="text-sm uppercase tracking-widest text-cyan-300/70">Web Upload</div>
                             <div className="text-2xl font-bold text-white mt-2">{webUploadState.stage || 'Uploading'}</div>
                             <div className="text-sm text-gray-400 mt-2">
-                                {webUploadState.detail || webUploadState.message || 'Working...'}
+                                {(webUploadState.stage === 'Upload failed' || webUploadState.buildStatus === 'errored')
+                                    ? 'Upload failed (WEB_UPLOAD_ERROR)'
+                                    : (webUploadState.detail || webUploadState.message || 'Working...')}
                             </div>
+                            {isDev && webUploadState.detail && (webUploadState.stage === 'Upload failed' || webUploadState.buildStatus === 'errored') && (
+                                <pre
+                                    className="mt-4 h-64 overflow-y-auto overflow-x-auto overscroll-contain rounded-xl border border-amber-500/20 bg-black/60 p-3 text-[11px] text-amber-100 whitespace-pre-wrap pointer-events-auto"
+                                    onWheel={(event) => event.stopPropagation()}
+                                    onTouchMove={(event) => event.stopPropagation()}
+                                >
+                                    {webUploadState.detail}
+                                </pre>
+                            )}
                             <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
@@ -1331,6 +1362,27 @@ function App() {
                             <div className="text-xs text-gray-500 mt-2">
                                 {typeof webUploadState.progress === 'number' ? `${Math.round(webUploadState.progress)}%` : 'Preparing...'}
                             </div>
+                            {isDev && (webUploadState.stage === 'Upload failed' || webUploadState.buildStatus === 'errored') && (
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setWebUploadState((prev) => ({
+                                                ...prev,
+                                                uploading: false,
+                                                stage: null,
+                                                progress: null,
+                                                detail: null,
+                                                message: null,
+                                                buildStatus: 'idle'
+                                            }));
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-500/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

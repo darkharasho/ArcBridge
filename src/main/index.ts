@@ -134,6 +134,7 @@ const ensureDevDatasetsDir = async () => {
 const sanitizeDevDatasetId = (id: string) => id.replace(/[^a-zA-Z0-9-_]/g, '');
 const sanitizeDevDatasetName = (name: string) => name.replace(/[^a-zA-Z0-9-_ ]/g, '').trim() || 'dataset';
 const devDatasetFolderCache = new Map<string, string>();
+const devDatasetManifestCache = new Map<string, { meta: { id: string; name: string; createdAt: string; folder: string }; logs: any[] }>();
 const MAX_DEV_DATASET_REPORT_BYTES = 50 * 1024 * 1024;
 
 const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Promise<T[]> => {
@@ -152,6 +153,94 @@ const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Prom
     const workers = Array.from({ length: Math.min(limit, paths.length) }, () => worker());
     await Promise.all(workers);
     return results;
+};
+
+const pruneDetailsForStats = (details: any) => {
+    if (!details || typeof details !== 'object') return details;
+    const pick = (obj: any, keys: string[]) => {
+        const out: any = {};
+        keys.forEach((key) => {
+            if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
+                out[key] = obj[key];
+            }
+        });
+        return out;
+    };
+    const pruned: any = pick(details, [
+        'players',
+        'targets',
+        'durationMS',
+        'uploadTime',
+        'fightName',
+        'success',
+        'teamCounts',
+        'combatReplayMetaData',
+        'skillMap',
+        'buffMap',
+        'encounterDuration'
+    ]);
+    if (Array.isArray(pruned.players)) {
+        pruned.players = pruned.players.map((player: any) => {
+            const base = pick(player, [
+                'name',
+                'display_name',
+                'character_name',
+                'profession',
+                'elite_spec',
+                'group',
+                'dpsAll',
+                'statsAll',
+                'dpsTargets',
+                'statsTargets',
+                'defenses',
+                'support',
+                'rotation',
+                'extHealingStats',
+                'extBarrierStats',
+                'squadBuffVolumes',
+                'selfBuffs',
+                'groupBuffs',
+                'squadBuffs',
+                'selfBuffsActive',
+                'groupBuffsActive',
+                'squadBuffsActive',
+                'buffUptimes',
+                'totalDamageDist',
+                'targetDamageDist',
+                'totalDamageTaken',
+                'combatReplayData',
+                'hasCommanderTag',
+                'notInSquad',
+                'account',
+                'activeTimes'
+            ]);
+            return base;
+        });
+    }
+    if (Array.isArray(pruned.targets)) {
+        pruned.targets = pruned.targets.map((target: any) =>
+            pick(target, ['id', 'name', 'isFake', 'dpsAll', 'statsAll', 'defenses', 'totalHealth', 'healthPercentBurned', 'enemyPlayer'])
+        );
+    }
+    return pruned;
+};
+
+const buildManifestEntry = (details: any, filePath: string, index: number) => {
+    const players = Array.isArray(details?.players) ? details.players : [];
+    const squadCount = players.filter((p: any) => !p?.notInSquad).length;
+    const nonSquadCount = players.filter((p: any) => p?.notInSquad).length;
+    return {
+        id: details?.id || `dev-log-${index + 1}`,
+        filePath,
+        fightName: details?.fightName,
+        encounterDuration: details?.encounterDuration,
+        uploadTime: details?.uploadTime,
+        durationMS: details?.durationMS,
+        success: details?.success,
+        playerCount: players.length,
+        squadCount,
+        nonSquadCount
+    };
 };
 
 const writeJsonFilesWithLimit = async (
@@ -331,6 +420,24 @@ let discord: DiscordNotifier | null = null
 const pendingDiscordLogs = new Map<string, { result: any, jsonDetails: any }>();
 let bulkUploadMode = false;
 const bulkLogDetailsCache = new Map<string, any>();
+const globalManifest: Array<any> = [];
+const globalManifestPath = () => path.join(process.cwd(), 'dev', 'manifest.json');
+
+const updateGlobalManifest = async (details: any, filePath: string) => {
+    try {
+        const entry = buildManifestEntry(details, filePath, globalManifest.length);
+        const existingIndex = globalManifest.findIndex((item) => item.filePath === filePath);
+        if (existingIndex >= 0) {
+            globalManifest[existingIndex] = { ...globalManifest[existingIndex], ...entry };
+        } else {
+            globalManifest.push(entry);
+        }
+        await fs.promises.mkdir(path.dirname(globalManifestPath()), { recursive: true });
+        await fs.promises.writeFile(globalManifestPath(), JSON.stringify({ updatedAt: new Date().toISOString(), logs: globalManifest }, null, 2), 'utf-8');
+    } catch (err: any) {
+        console.warn('[Main] Failed to update global manifest:', err?.message || err);
+    }
+};
 const GITHUB_PROTOCOL = 'arcbridge';
 const GITHUB_DEVICE_CLIENT_ID = process.env.GITHUB_DEVICE_CLIENT_ID || 'Ov23liFh1ih9LAcnLACw';
 
@@ -424,11 +531,20 @@ const processLogFile = async (filePath: string) => {
                 console.log('[Main] Discord notification skipped: no webhook selected.');
             }
 
+            const prunedDetails = pruneDetailsForStats(jsonDetails);
+            const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
+            const detailsSummary = {
+                fightName: prunedDetails?.fightName,
+                encounterDuration: prunedDetails?.encounterDuration,
+                uploadTime: prunedDetails?.uploadTime,
+                success: prunedDetails?.success
+            };
+            bulkLogDetailsCache.set(filePath, prunedDetails);
+            void updateGlobalManifest(prunedDetails, filePath);
             if (bulkUploadMode) {
-                bulkLogDetailsCache.set(filePath, jsonDetails);
-                const playerCount = Array.isArray(jsonDetails?.players) ? jsonDetails.players.length : undefined;
                 win?.webContents.send('upload-complete', {
                     ...result,
+                    ...detailsSummary,
                     filePath,
                     status: 'calculating',
                     detailsAvailable: true,
@@ -438,11 +554,13 @@ const processLogFile = async (filePath: string) => {
             } else {
                 win?.webContents.send('upload-complete', {
                     ...result,
+                    ...detailsSummary,
                     filePath,
-                    status: 'success',
-                    details: jsonDetails
+                    status: 'calculating',
+                    detailsAvailable: true,
+                    playerCount
                 });
-                console.log(`[Main] upload-complete: ${filePath} details=${Boolean(jsonDetails && !jsonDetails.error)}`);
+                console.log(`[Main] upload-complete: ${filePath} summary sent`);
             }
         } else {
             win?.webContents.send('upload-complete', { ...result, filePath, status: 'error' });
@@ -1187,7 +1305,7 @@ const sendGithubThemeStatus = (stage: string, message?: string, progress?: numbe
 };
 
 const buildWebTemplate = async (appRoot: string) => {
-    return new Promise<{ ok: boolean; error?: string }>((resolve) => {
+    return new Promise<{ ok: boolean; error?: string; errorDetail?: string }>((resolve) => {
         const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
         const child = spawn(npmCmd, ['run', 'build:web'], { cwd: appRoot });
         let stdout = '';
@@ -1198,14 +1316,19 @@ const buildWebTemplate = async (appRoot: string) => {
         child.stderr?.on('data', (chunk) => {
             stderr += chunk.toString();
         });
-        child.on('error', (err) => resolve({ ok: false, error: err.message }));
+        child.on('error', (err) => resolve({ ok: false, error: err.message, errorDetail: err.stack || err.message }));
         child.on('close', (code) => {
             if (code === 0) {
                 resolve({ ok: true });
                 return;
             }
+            const combined = [stdout, stderr].filter(Boolean).join('\n');
             const tail = (stderr || stdout).split('\n').slice(-6).join('\n').trim();
-            resolve({ ok: false, error: tail || `build:web exited with code ${code}` });
+            resolve({
+                ok: false,
+                error: tail || `build:web exited with code ${code}`,
+                errorDetail: combined || tail || `build:web exited with code ${code}`
+            });
         });
     });
 };
@@ -1872,15 +1995,29 @@ if (!gotTheLock) {
                 const meta = { id, name, createdAt, folder: folderName };
                 await fs.promises.writeFile(path.join(datasetDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
                 await fs.promises.writeFile(path.join(datasetDir, 'report.json'), JSON.stringify(payload.report || null), 'utf-8');
+                await fs.promises.writeFile(path.join(datasetDir, 'manifest.json'), JSON.stringify({ ...meta, logs: [] }, null, 2), 'utf-8');
                 const logs = Array.isArray(payload.logs) ? payload.logs : [];
-                const entries = logs.map((log, index) => ({
-                    path: path.join(logsDir, `log-${index + 1}.json`),
-                    data: log
-                }));
+                const manifestEntries: any[] = [];
+                const entries = logs.map((log, index) => {
+                    const details = log?.details ?? log;
+                    const pruned = pruneDetailsForStats(details);
+                    manifestEntries.push(buildManifestEntry(pruned, path.join(logsDir, `log-${index + 1}.json`), index));
+                    return {
+                        path: path.join(logsDir, `log-${index + 1}.json`),
+                        data: pruned
+                    };
+                });
                 if (entries.length > 0) {
                     await writeJsonFilesWithLimit(entries, 8, (written, total) => {
                         event.sender.send('dev-dataset-save-progress', { id, stage: 'logs', written, total });
                     });
+                }
+                if (manifestEntries.length > 0) {
+                    await fs.promises.writeFile(
+                        path.join(datasetDir, 'manifest.json'),
+                        JSON.stringify({ ...meta, logs: manifestEntries }, null, 2),
+                        'utf-8'
+                    );
                 }
                 event.sender.send('dev-dataset-save-progress', { id, stage: 'done', written: logs.length, total: logs.length });
                 return { success: true, dataset: { id, name, createdAt } };
@@ -1903,7 +2040,9 @@ if (!gotTheLock) {
                 const meta = { id, name, createdAt, folder: folderName };
                 await fs.promises.writeFile(path.join(datasetDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
                 await fs.promises.writeFile(path.join(datasetDir, 'report.json'), JSON.stringify(payload.report || null), 'utf-8');
+                await fs.promises.writeFile(path.join(datasetDir, 'manifest.json'), JSON.stringify({ ...meta, logs: [] }, null, 2), 'utf-8');
                 devDatasetFolderCache.set(id, datasetDir);
+                devDatasetManifestCache.set(id, { meta, logs: [] });
                 return { success: true, dataset: { id, name, createdAt } };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to start dataset save.' };
@@ -1925,10 +2064,18 @@ if (!gotTheLock) {
                 }
                 const logsDir = path.join(datasetDir, 'logs');
                 const logs = Array.isArray(payload.logs) ? payload.logs : [];
-                const entries = logs.map((log, index) => ({
-                    path: path.join(logsDir, `log-${payload.startIndex + index + 1}.json`),
-                    data: log
-                }));
+                const entries = logs.map((log, index) => {
+                    const details = log?.details ?? log;
+                    const pruned = pruneDetailsForStats(details);
+                    const manifest = devDatasetManifestCache.get(id);
+                    if (manifest) {
+                        manifest.logs.push(buildManifestEntry(pruned, path.join(logsDir, `log-${payload.startIndex + index + 1}.json`), payload.startIndex + index));
+                    }
+                    return {
+                        path: path.join(logsDir, `log-${payload.startIndex + index + 1}.json`),
+                        data: pruned
+                    };
+                });
                 if (entries.length > 0) {
                     await writeJsonFilesWithLimit(entries, 8);
                 }
@@ -1946,6 +2093,18 @@ if (!gotTheLock) {
             try {
                 const id = sanitizeDevDatasetId(payload.id);
                 if (!id) return { success: false, error: 'Invalid dataset id.' };
+                const manifest = devDatasetManifestCache.get(id);
+                if (manifest) {
+                    const datasetDir = devDatasetFolderCache.get(id);
+                    if (datasetDir) {
+                        await fs.promises.writeFile(
+                            path.join(datasetDir, 'manifest.json'),
+                            JSON.stringify({ ...manifest.meta, logs: manifest.logs }, null, 2),
+                            'utf-8'
+                        );
+                    }
+                    devDatasetManifestCache.delete(id);
+                }
                 return { success: true };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to finish dataset save.' };
@@ -1963,9 +2122,19 @@ if (!gotTheLock) {
                 const datasetDir = path.join(dir, folder.name);
                 const metaPath = path.join(datasetDir, 'meta.json');
                 const reportPath = path.join(datasetDir, 'report.json');
+                const manifestPath = path.join(datasetDir, 'manifest.json');
                 const logsDir = path.join(datasetDir, 'logs');
                 const metaRaw = await fs.promises.readFile(metaPath, 'utf-8');
                 const meta = JSON.parse(metaRaw);
+                let manifest: any = null;
+                try {
+                    if (fs.existsSync(manifestPath)) {
+                        const manifestRaw = await fs.promises.readFile(manifestPath, 'utf-8');
+                        manifest = JSON.parse(manifestRaw);
+                    }
+                } catch (manifestError: any) {
+                    console.warn('[Main] Failed to read dev dataset manifest.json:', manifestError?.message || manifestError);
+                }
                 let report: any = null;
                 try {
                     const reportStat = await fs.promises.stat(reportPath);
@@ -1996,7 +2165,7 @@ if (!gotTheLock) {
                         uploadTime: details?.uploadTime || entry?.uploadTime
                     };
                 });
-                return { success: true, dataset: { ...meta, logs: slimLogs, report } };
+                return { success: true, dataset: { ...meta, logs: slimLogs, report, manifest } };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to load dataset.' };
             }
@@ -2013,9 +2182,19 @@ if (!gotTheLock) {
                 const datasetDir = path.join(dir, folder.name);
                 const metaPath = path.join(datasetDir, 'meta.json');
                 const reportPath = path.join(datasetDir, 'report.json');
+                const manifestPath = path.join(datasetDir, 'manifest.json');
                 const logsDir = path.join(datasetDir, 'logs');
                 const metaRaw = await fs.promises.readFile(metaPath, 'utf-8');
                 const meta = JSON.parse(metaRaw);
+                let manifest: any = null;
+                try {
+                    if (fs.existsSync(manifestPath)) {
+                        const manifestRaw = await fs.promises.readFile(manifestPath, 'utf-8');
+                        manifest = JSON.parse(manifestRaw);
+                    }
+                } catch (manifestError: any) {
+                    console.warn('[Main] Failed to read dev dataset manifest.json:', manifestError?.message || manifestError);
+                }
                 let report: any = null;
                 try {
                     const reportStat = await fs.promises.stat(reportPath);
@@ -2061,7 +2240,7 @@ if (!gotTheLock) {
                     }
                 })();
 
-                return { success: true, dataset: { ...meta, report }, totalLogs: logPaths.length };
+                return { success: true, dataset: { ...meta, report, manifest }, totalLogs: logPaths.length };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to load dataset.' };
             }
@@ -2190,7 +2369,7 @@ if (!gotTheLock) {
                 if (filePath.startsWith(devDir) && filePath.endsWith('.json')) {
                     const raw = await fs.promises.readFile(filePath, 'utf-8');
                     const parsed = JSON.parse(raw);
-                    const resolved = parsed?.details ?? parsed;
+                    const resolved = pruneDetailsForStats(parsed?.details ?? parsed);
                     console.log(`[Main] get-log-details dev-dataset: ${filePath}`);
                     return { success: true, details: resolved };
                 }
@@ -2785,7 +2964,7 @@ if (!gotTheLock) {
                     const built = await buildWebTemplate(appRoot);
                     if (!built.ok || !fs.existsSync(templateDir)) {
                         sendWebUploadStatus('Build failed', built.error || 'Failed to generate web template.', 30);
-                        return { success: false, error: built.error || 'Failed to generate the web template automatically.' };
+                        return { success: false, error: built.error || 'Failed to generate the web template automatically.', errorDetail: built.errorDetail };
                     }
                 }
 
@@ -2990,7 +3169,10 @@ if (!gotTheLock) {
                 sendWebUploadStatus('Complete', 'Web report uploaded.', 100);
                 return { success: true, url: reportUrl };
             } catch (err: any) {
-                return { success: false, error: err?.message || 'Upload failed.' };
+                const error = err?.message || 'Upload failed.';
+                const errorDetail = err?.stack || String(err);
+                console.error('[Main] Web upload failed:', errorDetail);
+                return { success: false, error, errorDetail };
             }
         });
 
@@ -3001,6 +3183,7 @@ if (!gotTheLock) {
             try {
                 const appRoot = getWebRoot();
                 const webRoot = path.join(appRoot, 'web');
+                const devRoot = path.join(appRoot, 'dev');
                 const webRootExists = fs.existsSync(webRoot);
                 const webRootEmpty = webRootExists ? fs.readdirSync(webRoot).length === 0 : true;
                 if (!webRootExists) {
@@ -3010,7 +3193,7 @@ if (!gotTheLock) {
                     const templateDir = path.join(appRoot, 'dist-web');
                     const built = await buildWebTemplate(appRoot);
                     if (!built.ok || !fs.existsSync(templateDir)) {
-                        return { success: false, error: built.error || 'Failed to generate the web template automatically.' };
+                        return { success: false, error: built.error || 'Failed to generate the web template automatically.', errorDetail: built.errorDetail };
                     }
                     copyDir(templateDir, webRoot);
                 }
@@ -3024,7 +3207,8 @@ if (!gotTheLock) {
                 const reportsRoot = path.join(webRoot, 'reports');
                 const reportDir = path.join(reportsRoot, reportMeta.id);
                 fs.mkdirSync(reportDir, { recursive: true });
-                fs.writeFileSync(path.join(webRoot, 'report.json'), JSON.stringify(reportPayload, null, 2));
+                fs.mkdirSync(devRoot, { recursive: true });
+                fs.writeFileSync(path.join(devRoot, 'report.json'), JSON.stringify(reportPayload, null, 2));
                 fs.writeFileSync(path.join(reportDir, 'report.json'), JSON.stringify(reportPayload, null, 2));
 
                 const redirectHtml = `<!DOCTYPE html>

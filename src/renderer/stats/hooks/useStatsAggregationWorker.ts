@@ -33,7 +33,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         if (typeof Worker === 'undefined') return;
         if (workerFailed) return;
         if (!workerRef.current) {
-            workerRef.current = new Worker(new URL('../workers/statsWorker.ts', import.meta.url), { type: 'module' });
+            workerRef.current = new Worker(new URL('../../workers/statsWorker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (event) => {
                 if (event.data?.type === 'result') {
                     setResult(event.data.result);
@@ -133,8 +133,12 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         setLastComputedAt(Date.now());
     }, [fallback, workerFailed, logs.length]);
 
+    const resolvedResult = (workerFailed || typeof Worker === 'undefined')
+        ? (fallback ?? computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }))
+        : result;
+
     return {
-        result: (workerFailed || typeof Worker === 'undefined') ? fallback! : result,
+        result: resolvedResult,
         computeTick,
         lastComputedLogCount,
         lastComputedToken,
