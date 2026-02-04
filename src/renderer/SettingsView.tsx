@@ -16,7 +16,6 @@ interface SettingsViewProps {
     onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
     onUiThemeSaved?: (theme: UiTheme) => void;
-    showDeveloperSettings?: boolean;
     developerSettingsTrigger?: number;
 }
 
@@ -82,7 +81,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved, showDeveloperSettings, developerSettingsTrigger }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved, developerSettingsTrigger }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
@@ -871,16 +870,6 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         <ExternalLink className="w-4 h-4" />
                         Support Discord
                     </button>
-                    {showDeveloperSettings && (
-                        <button
-                            type="button"
-                            onClick={() => setDevSettingsOpen(true)}
-                            className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 transition-colors"
-                        >
-                            <Zap className="w-4 h-4" />
-                            Hidden Tools
-                        </button>
-                    )}
                 </div>
             </motion.div>
 

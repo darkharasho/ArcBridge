@@ -151,6 +151,9 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
         targets.forEach((t: any) => {
             if (!t.isFake) enemyCount++;
         });
+        if (enemyCount === 0) {
+            enemyCount = nonSquadPlayers.length;
+        }
 
         // Aggregate downed/killed from statsTargets
         players.forEach((p: any) => {
@@ -165,22 +168,46 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
 
         squadClassCounts = buildClassCounts(squadPlayers);
         enemyClassCounts = (() => {
-            const counts: Record<string, number> = {};
+            const fromPlayers: Record<string, number> = {};
+            nonSquadPlayers.forEach((p: any) => {
+                const prof = String(p?.profession || '').trim();
+                if (prof) fromPlayers[prof] = (fromPlayers[prof] || 0) + 1;
+            });
+
+            const fromTargets: Record<string, number> = {};
             const seenEnemyIdsInFight = new Set<string>();
             targets.forEach((t: any) => {
                 if (t?.isFake) return;
+                if (t?.enemyPlayer === false) return;
                 const rawName = t?.name || 'Unknown';
                 const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
-                const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
+                const nameText = String(rawName);
+                const nameInstanceMatch = nameText.match(/\bpl-(\d+)\b/i);
+                let idKey = '';
+                if (nameInstanceMatch?.[1]) {
+                    idKey = `pl-${nameInstanceMatch[1]}`;
+                } else if (rawId !== undefined && rawId !== null && rawId !== '' && Number(rawId) > 0) {
+                    // Include name with id because some logs reuse ids across multiple targets.
+                    idKey = `id-${String(rawId)}-${nameText}`;
+                } else {
+                    idKey = nameText;
+                }
                 if (seenEnemyIdsInFight.has(idKey)) return;
                 seenEnemyIdsInFight.add(idKey);
 
-                const cleanName = String(rawName)
+                const cleanName = nameText
                     .replace(/\s+pl-\d+$/i, '')
                     .replace(/\s*\([^)]*\)/, '')
                     .trim();
-                counts[cleanName] = (counts[cleanName] || 0) + 1;
+                fromTargets[cleanName] = (fromTargets[cleanName] || 0) + 1;
             });
+
+            const playerTotal = Object.values(fromPlayers).reduce((sum, count) => sum + count, 0);
+            const targetTotal = Object.values(fromTargets).reduce((sum, count) => sum + count, 0);
+            const minExpectedFromPlayers = Math.max(3, Math.floor(enemyCount * 0.6));
+            const usePlayerCounts = playerTotal > 0 && (enemyCount === 0 || playerTotal >= minExpectedFromPlayers || targetTotal === 0);
+            const counts = usePlayerCounts ? fromPlayers : fromTargets;
+
             return Object.entries(counts)
                 .filter(([, count]) => count > 0)
                 .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))

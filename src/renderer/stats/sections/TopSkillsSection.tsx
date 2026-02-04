@@ -21,9 +21,14 @@ export const TopSkillsSection = ({
     const isDownContrib = (topSkillsMetric || stats.topSkillsMetric) === 'downContribution';
     const metricLabel = isDownContrib ? 'Down Contrib' : 'Damage';
     const metricKey = isDownContrib ? 'downContribution' : 'damage';
+    const sortedTopSkills = [...(stats.topSkills || [])].sort((a: any, b: any) => {
+        const aVal = Number(a?.[metricKey] || 0);
+        const bVal = Number(b?.[metricKey] || 0);
+        return bVal - aVal || Number(b?.hits || 0) - Number(a?.hits || 0) || String(a?.name || '').localeCompare(String(b?.name || ''));
+    });
     const topSkillsPeak = Math.max(
         1,
-        ...(stats.topSkills || []).map((skill: any) => Number(skill?.[metricKey] || 0))
+        ...sortedTopSkills.map((skill: any) => Number(skill?.[metricKey] || 0))
     );
     const showMetricToggle = typeof onTopSkillsMetricChange === 'function';
 
@@ -72,7 +77,7 @@ export const TopSkillsSection = ({
                 )}
             </div>
             <div className="max-h-80 overflow-y-auto space-y-4">
-                {stats.topSkills.map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
+                {sortedTopSkills.map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
                     <div key={i} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
@@ -100,7 +105,7 @@ export const TopSkillsSection = ({
                         </div>
                     </div>
                 ))}
-                {stats.topSkills.length === 0 && (
+                {sortedTopSkills.length === 0 && (
                     <div className="text-center text-gray-500 italic py-4">No skill data available</div>
                 )}
             </div>

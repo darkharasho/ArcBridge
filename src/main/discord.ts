@@ -257,23 +257,42 @@ export class DiscordNotifier {
                     targets.forEach((t: any) => {
                         if (!t.isFake) enemyCount++;
                     });
+                    if (enemyCount === 0) {
+                        enemyCount = players.filter((p: any) => p.notInSquad).length;
+                    }
 
-                    const seenEnemyIdsInFight = new Set<string>();
-                    targets.forEach((t: any) => {
-                        if (t?.isFake) return;
-                        if (t?.enemyPlayer === false) return;
-                        const rawName = t?.name || 'Unknown';
-                        const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
-                        const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
-                        if (seenEnemyIdsInFight.has(idKey)) return;
-                        seenEnemyIdsInFight.add(idKey);
-
-                        const cleanName = String(rawName)
-                            .replace(/\s+pl-\d+$/i, '')
-                            .replace(/\s*\([^)]*\)/, '')
-                            .trim();
-                        enemyClassCounts[cleanName] = (enemyClassCounts[cleanName] || 0) + 1;
+                    const fromPlayers: Record<string, number> = {};
+                    const enemyPlayers = players.filter((p: any) => p.notInSquad);
+                    enemyPlayers.forEach((p: any) => {
+                        const prof = String(p?.profession || '').trim();
+                        if (!prof) return;
+                        fromPlayers[prof] = (fromPlayers[prof] || 0) + 1;
                     });
+
+                    const fromTargets: Record<string, number> = {};
+                    if (targets && Array.isArray(targets)) {
+                        const seenEnemyIdsInFight = new Set<string>();
+                        targets.forEach((t: any) => {
+                            if (t?.isFake) return;
+                            if (t?.enemyPlayer === false) return;
+                            const rawName = t?.name || 'Unknown';
+                            const rawId = t?.instanceID ?? t?.instid ?? t?.id ?? rawName;
+                            const idKey = rawId !== undefined && rawId !== null ? String(rawId) : rawName;
+                            if (seenEnemyIdsInFight.has(idKey)) return;
+                            seenEnemyIdsInFight.add(idKey);
+
+                            const cleanName = String(rawName)
+                                .replace(/\s+pl-\d+$/i, '')
+                                .replace(/\s*\([^)]*\)/, '')
+                                .trim();
+                            fromTargets[cleanName] = (fromTargets[cleanName] || 0) + 1;
+                        });
+                    }
+                    const playerTotal = Object.values(fromPlayers).reduce((sum, count) => sum + count, 0);
+                    const targetTotal = Object.values(fromTargets).reduce((sum, count) => sum + count, 0);
+                    const minExpectedFromPlayers = Math.max(3, Math.floor(enemyCount * 0.6));
+                    const usePlayerCounts = playerTotal > 0 && (enemyCount === 0 || playerTotal >= minExpectedFromPlayers || targetTotal === 0);
+                    Object.assign(enemyClassCounts, usePlayerCounts ? fromPlayers : fromTargets);
 
                     // Aggregate downed/killed from statsTargets
                     players.forEach((p: any) => {

@@ -793,7 +793,43 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         let avgMvpScore = 0;
 
         if (activeStatsViewSettings?.showMvp) {
+            const mvpWeightKeyByName: Record<string, keyof IMvpWeights> = {
+                'Down Contribution': 'downContribution',
+                'Healing': 'healing',
+                'Cleanses': 'cleanses',
+                'Strips': 'strips',
+                'Stability': 'stability',
+                'CC': 'cc',
+                'Revives': 'revives',
+                'Distance to Tag': 'distanceToTag',
+                'Participation': 'participation',
+                'Dodging': 'dodging',
+                'DPS': 'dps',
+                'Damage': 'damage'
+            };
+            const isMvpMetricEnabled = (name: string) => {
+                const key = mvpWeightKeyByName[name];
+                if (!key) return false;
+                return Number(activeMvpWeights[key] || 0) > 0;
+            };
             const scores: any[] = [];
+            const buildTopStats = (contribs: any[]) =>
+                [...(contribs || [])]
+                    .filter((entry) => isMvpMetricEnabled(entry?.name))
+                    .sort((a, b) => b.ratio - a.ratio || a.rank - b.rank || a.name.localeCompare(b.name))
+                    .slice(0, 3);
+
+            const enrichPlacement = (entry: any) => {
+                if (!entry) return undefined;
+                const topStats = buildTopStats(entry.contribs);
+                return {
+                    ...entry,
+                    player: entry.name,
+                    reason: topStats[0]?.name || 'Top Performance',
+                    topStats
+                };
+            };
+
             playerEntries.forEach(({ stat }) => {
                 let score = 0;
                 const contribs: any[] = [];
@@ -822,20 +858,14 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 check(stat.dodges, leaderboards.dodges, activeMvpWeights.dodging, 'Dodging');
                 check(stat.dps, leaderboards.dps, activeMvpWeights.dps, 'DPS');
                 check(stat.damage, leaderboards.damage, activeMvpWeights.damage, 'Damage');
-                scores.push({ ...stat, score, contribs });
+                scores.push({ ...stat, score, contribs: contribs.filter((entry) => isMvpMetricEnabled(entry.name)) });
             });
             scores.sort((a, b) => b.score - a.score);
-            if (scores[0]) {
-                const topContrib = [...scores[0].contribs].sort((a, b) => b.ratio - a.ratio)[0];
-                mvp = {
-                    ...scores[0],
-                    player: scores[0].name,
-                    reason: topContrib?.name || 'Top Performance',
-                    topStats: scores[0].contribs.slice(0, 3)
-                };
+            if (scores[0] && scores[0].score > 0) {
+                mvp = enrichPlacement(scores[0]) || mvp;
             }
-            silver = scores[1];
-            bronze = scores[2];
+            silver = enrichPlacement(scores[1]);
+            bronze = enrichPlacement(scores[2]);
 
             avgMvpScore = scores.length > 0
                 ? scores.reduce((sum, s) => sum + s.score, 0) / scores.length
@@ -876,6 +906,20 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 || log?.encounterName
                 || 'Unknown'
             );
+        };
+        const resolvePermalink = (details: any, log: any) => {
+            const direct = log?.permalink || details?.permalink;
+            if (typeof direct === 'string' && direct.trim().length > 0) return direct.trim();
+            const uploadLinks = details?.uploadLinks;
+            if (!Array.isArray(uploadLinks)) return '';
+            for (const entry of uploadLinks) {
+                if (typeof entry === 'string' && entry.trim().length > 0) return entry.trim();
+                if (entry && typeof entry === 'object') {
+                    const candidate = entry.permalink || entry.link || entry.url || entry.reportLink;
+                    if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate.trim();
+                }
+            }
+            return '';
         };
 
         const mapCounts: Record<string, number> = {};
@@ -962,6 +1006,17 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const timestamp = details.uploadTime ?? log.uploadTime ?? 0;
                 const mapName = resolveMapName(details, log);
                 const teamCounts = { red: 0, green: 0, blue: 0 };
+                const toFiniteNumber = (value: any) => {
+                    const n = Number(value);
+                    return Number.isFinite(n) ? n : 0;
+                };
+                const getTeamValue = (entity: any) => {
+                    if (!entity || typeof entity !== 'object') return undefined;
+                    const direct = entity.teamID ?? entity.teamId ?? entity.team ?? entity.teamColor ?? entity.team_color;
+                    if (direct !== undefined && direct !== null) return direct;
+                    const key = Object.keys(entity).find((k) => /^team/i.test(k));
+                    return key ? entity[key] : undefined;
+                };
                 const normalizeTeam = (value: any, mode: 'zeroBased' | 'oneBased'): 'red' | 'green' | 'blue' | null => {
                     if (value === undefined || value === null) return null;
                     if (typeof value === 'string') {
@@ -988,21 +1043,29 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     return null;
                 };
                 if (details.teamCounts && typeof details.teamCounts === 'object') {
-                    teamCounts.red = Number(details.teamCounts.red || details.teamCounts.r || 0);
-                    teamCounts.green = Number(details.teamCounts.green || details.teamCounts.g || 0);
-                    teamCounts.blue = Number(details.teamCounts.blue || details.teamCounts.b || 0);
+                    const src: any = details.teamCounts;
+                    teamCounts.red = toFiniteNumber(src.red ?? src.r ?? src[0] ?? src[1]);
+                    teamCounts.green = toFiniteNumber(src.green ?? src.g ?? src[1] ?? src[2]);
+                    teamCounts.blue = toFiniteNumber(src.blue ?? src.b ?? src[2] ?? src[3]);
                 } else {
                     const teamValues: any[] = [];
                     targets.forEach((t: any) => {
                         if (t?.isFake) return;
-                        const value = t.teamID ?? t.team ?? t.teamColor;
+                        const value = getTeamValue(t);
                         if (value !== undefined && value !== null) teamValues.push(value);
                     });
                     players.forEach((p: any) => {
                         if (!p?.notInSquad) return;
-                        const value = p.teamID ?? p.team ?? p.teamColor;
+                        const value = getTeamValue(p);
                         if (value !== undefined && value !== null) teamValues.push(value);
                     });
+                    // Fallback: some logs only expose team info on squad players.
+                    if (teamValues.length === 0) {
+                        players.forEach((p: any) => {
+                            const value = getTeamValue(p);
+                            if (value !== undefined && value !== null) teamValues.push(value);
+                        });
+                    }
                     const teamIdValues = new Set<number>();
                     teamValues.forEach((value) => {
                         if (typeof value === 'number') teamIdValues.add(value);
@@ -1027,12 +1090,19 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         teamCounts.green = ordered[1] || 0;
                         teamCounts.blue = ordered[2] || 0;
                     }
+                    if (teamCounts.red + teamCounts.green + teamCounts.blue === 0) {
+                        // Last resort: keep table non-empty when enemy-side team metadata is missing.
+                        teamCounts.red = Math.max(
+                            enemyTargets.length,
+                            players.filter((p: any) => p?.notInSquad).length
+                        );
+                    }
                 }
 
                 return {
                     id: log.filePath || `fight-${idx}`,
                     label: log.encounterName || `Fight ${idx + 1}`,
-                    permalink: log.permalink,
+                    permalink: resolvePermalink(details, log),
                     timestamp,
                     mapName,
                     duration: formatDurationMs(details.durationMS),
@@ -1043,14 +1113,31 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     teamCounts,
                     alliesDown: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.downCount || 0), 0),
                     alliesDead: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.deadCount || 0), 0),
-                    alliesRevived: squadPlayers.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.saved || 0), 0),
+                    // Number of distinct allied players who were revived at least once (not total revive events).
+                    alliesRevived: squadPlayers.reduce((sum: number, p: any) => (
+                        Number(p.statsAll?.[0]?.saved || 0) > 0 ? sum + 1 : sum
+                    ), 0),
                     rallies: 0,
                     enemyDeaths,
                     enemyDowns: Math.max(0, enemyDownsDeaths - enemyDeaths),
                     totalOutgoingDamage: totalOutgoing,
                     totalIncomingDamage: totalIncoming,
                     incomingBarrierAbsorbed: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageBarrier || 0), 0),
-                    outgoingBarrierAbsorbed: squadPlayers.reduce((sum: number, p: any) => sum + (p.statsAll?.[0]?.damageBarrier || 0), 0)
+                    outgoingBarrierAbsorbed: squadPlayers.reduce((sum: number, p: any) => {
+                        const outgoingBarrier = p.extBarrierStats?.outgoingBarrier;
+                        if (!Array.isArray(outgoingBarrier)) return sum;
+                        let playerTotal = 0;
+                        outgoingBarrier.forEach((phase: any) => {
+                            if (Array.isArray(phase)) {
+                                phase.forEach((entry: any) => {
+                                    playerTotal += Number(entry?.barrier || 0);
+                                });
+                                return;
+                            }
+                            playerTotal += Number(phase?.barrier || 0);
+                        });
+                        return sum + playerTotal;
+                    }, 0)
                 };
             })
             .filter(Boolean);

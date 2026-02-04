@@ -59,16 +59,10 @@ function App() {
 
     // Terminal State
     const [showTerminal, setShowTerminal] = useState(false);
-    const [showDeveloperSettings, setShowDeveloperSettings] = useState(false);
     const [developerSettingsTrigger, setDeveloperSettingsTrigger] = useState(0);
     const settingsUpdateCheckRef = useRef(false);
     const versionClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const versionClickTimesRef = useRef<number[]>([]);
-
-    useEffect(() => {
-        const saved = localStorage.getItem('arcbridge.devSettings');
-        if (saved === 'true') setShowDeveloperSettings(true);
-    }, []);
 
     // View State
     const [view, setView] = useState<'dashboard' | 'stats' | 'settings'>('dashboard');
@@ -1281,9 +1275,7 @@ function App() {
                                     versionClickTimesRef.current = [];
                                 }, 5200);
                                 if (versionClickTimesRef.current.length >= 5) {
-                                    setShowDeveloperSettings(true);
                                     setDeveloperSettingsTrigger((prev) => prev + 1);
-                                    localStorage.setItem('arcbridge.devSettings', 'true');
                                     versionClickTimesRef.current = [];
                                 }
                             }}
@@ -1416,7 +1408,6 @@ function App() {
                         onStatsViewSettingsSaved={setStatsViewSettings}
                         onDisruptionMethodSaved={setDisruptionMethod}
                         onUiThemeSaved={setUiTheme}
-                        showDeveloperSettings={showDeveloperSettings}
                         developerSettingsTrigger={developerSettingsTrigger}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />

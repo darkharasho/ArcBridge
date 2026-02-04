@@ -68,11 +68,13 @@ const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active
                     {rows?.length ? (
                         <div className="max-h-56 overflow-y-auto pr-1 space-y-1">
                             {rows.map((row: any) => (
-                                <div key={`${title}-${row.rank}-${row.account}`} className="flex items-center gap-2 text-xs text-gray-300">
-                                    <div className="w-6 text-right text-gray-500">{row.rank}</div>
-                                    {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                    <div className="flex-1 truncate">{row.account}</div>
-                                    <div className="text-gray-400 font-mono">{formatValue ? formatValue(row.value) : row.value}</div>
+                                <div key={`${title}-${row.rank}-${row.account}`} className="flex items-center gap-2 min-w-0 text-xs text-gray-300">
+                                    <div className="w-6 shrink-0 text-right text-gray-500">{row.rank}</div>
+                                    <div className="shrink-0">
+                                        {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
+                                    </div>
+                                    <div className="flex-1 min-w-0 truncate">{row.account}</div>
+                                    <div className="shrink-0 text-gray-400 font-mono">{formatValue ? formatValue(row.value) : row.value}</div>
                                 </div>
                             ))}
                         </div>
