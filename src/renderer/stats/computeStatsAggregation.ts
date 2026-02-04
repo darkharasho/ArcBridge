@@ -404,6 +404,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 // Offense
                 const statsAll = p.statsAll?.[0];
                 const dpsAll = p.dpsAll?.[0];
+                const support = p.support?.[0];
                 OFFENSE_METRICS.forEach(m => {
                     if (m.id === 'downContributionPercent') return;
                     if (!m.field) return;
@@ -413,6 +414,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     else if (m.source === 'statsAll' && statsAll) {
                         val = Number((statsAll as any)[m.field!] ?? 0);
                         denom = Number((statsAll as any)[m.denomField || m.weightField || 'connectedDamageCount'] ?? 0);
+                    } else if (m.source === 'support' && support) {
+                        val = Number((support as any)[m.field!] ?? 0);
                     } else if (p.statsTargets) {
                         p.statsTargets.forEach((t: any) => {
                             if (!t?.[0]) return;

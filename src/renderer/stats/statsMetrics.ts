@@ -18,7 +18,7 @@ export const OFFENSE_METRICS: Array<{
     isPercent?: boolean;
     weightField?: string;
     denomField?: string;
-    source?: 'statsTargets' | 'dpsTargets' | 'statsAll' | 'dpsAll';
+    source?: 'statsTargets' | 'dpsTargets' | 'statsAll' | 'dpsAll' | 'support';
 }> = [
         { id: 'damage', label: 'Damage', field: 'damage', source: 'dpsAll' },
         { id: 'directDmg', label: 'Direct Damage', field: 'directDmg', source: 'statsTargets' },
@@ -42,7 +42,8 @@ export const OFFENSE_METRICS: Array<{
         { id: 'appliedCrowdControl', label: 'Applied CC', field: 'appliedCrowdControl', source: 'statsTargets' },
         { id: 'appliedCrowdControlDuration', label: 'Applied CC Duration', field: 'appliedCrowdControlDuration', source: 'statsTargets' },
         { id: 'appliedCrowdControlDownContribution', label: 'Applied CC Down Contribution', field: 'appliedCrowdControlDownContribution', source: 'statsTargets' },
-        { id: 'appliedCrowdControlDurationDownContribution', label: 'Applied CC Duration Down Contribution', field: 'appliedCrowdControlDurationDownContribution', source: 'statsTargets' }
+        { id: 'appliedCrowdControlDurationDownContribution', label: 'Applied CC Duration Down Contribution', field: 'appliedCrowdControlDurationDownContribution', source: 'statsTargets' },
+        { id: 'boonStrips', label: 'Boon Strips', field: 'boonStrips', source: 'support' }
     ];
 
 export const DEFENSE_METRICS: Array<{
