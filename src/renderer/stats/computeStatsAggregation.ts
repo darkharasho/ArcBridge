@@ -17,6 +17,43 @@ interface UseStatsAggregationProps {
     disruptionMethod?: DisruptionMethod;
 }
 
+const parseTimestamp = (value: any): number => {
+    if (value === undefined || value === null || value === '') return 0;
+    if (typeof value === 'number') {
+        if (!Number.isFinite(value) || value <= 0) return 0;
+        return value > 1e12 ? value : value * 1000;
+    }
+    if (value instanceof Date) {
+        const ms = value.getTime();
+        return Number.isFinite(ms) && ms > 0 ? ms : 0;
+    }
+    const str = String(value).trim();
+    if (!str) return 0;
+    const numeric = Number(str);
+    if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric > 1e12 ? numeric : numeric * 1000;
+    }
+    const parsed = Date.parse(str);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    // Handles timezone format like "-05" by normalizing to "-05:00".
+    const normalized = str.replace(/([+-]\d{2})$/, '$1:00');
+    const reparsed = Date.parse(normalized);
+    return Number.isFinite(reparsed) && reparsed > 0 ? reparsed : 0;
+};
+
+const resolveFightTimestamp = (details: any, log: any): number => {
+    return parseTimestamp(
+        details?.uploadTime
+        ?? log?.uploadTime
+        ?? details?.timeStartStd
+        ?? details?.timeStart
+        ?? details?.timeEndStd
+        ?? details?.timeEnd
+        ?? details?.timeStartText
+        ?? details?.timeEndText
+    );
+};
+
 export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }: UseStatsAggregationProps) => {
 
     const validLogs = (() => {
@@ -31,10 +68,43 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
     })();
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+    const enrichPrecomputedStats = (input: any) => {
+        if (!input || typeof input !== 'object') return input;
+        const fights = Array.isArray(input.fightBreakdown) ? input.fightBreakdown : null;
+        if (!fights || fights.length === 0) return input;
+
+        const byId = new Map<string, any>();
+        const byPermalink = new Map<string, any>();
+        logs.forEach((log: any) => {
+            const id = log?.filePath || log?.id;
+            if (id) byId.set(String(id), log);
+            const link = log?.permalink || log?.details?.permalink;
+            if (typeof link === 'string' && link.trim()) {
+                byPermalink.set(link.trim(), log);
+            }
+        });
+
+        const normalizedFights = fights.map((fight: any) => {
+            if (!fight || typeof fight !== 'object') return fight;
+            const hasTimestamp = Number(fight.timestamp) > 0;
+            if (hasTimestamp) return fight;
+
+            const keyId = fight.id ? String(fight.id) : '';
+            const keyPermalink = typeof fight.permalink === 'string' ? fight.permalink.trim() : '';
+            const matchedLog = (keyId ? byId.get(keyId) : undefined) || (keyPermalink ? byPermalink.get(keyPermalink) : undefined);
+            if (!matchedLog) return fight;
+
+            const resolved = resolveFightTimestamp(matchedLog?.details, matchedLog);
+            if (!resolved) return fight;
+            return { ...fight, timestamp: resolved };
+        });
+
+        return { ...input, fightBreakdown: normalizedFights };
+    };
 
     const stats = (() => {
         if (precomputedStats) {
-            return precomputedStats;
+            return enrichPrecomputedStats(precomputedStats);
         }
 
         const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
@@ -921,7 +991,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             }
             return '';
         };
-
         const mapCounts: Record<string, number> = {};
         validLogs.forEach((log) => {
             const name = resolveMapName(log?.details, log);
@@ -952,7 +1021,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             return {
             index: i + 1,
             label: `Log ${i + 1}`,
-            timestamp: log.details?.uploadTime || 0,
+            timestamp: resolveFightTimestamp(log.details, log),
             squadCount: players.filter(p => !p.notInSquad).length,
             friendlyCount: players.length,
             enemies: (log.details?.targets as any[]).filter(t => !t.isFake).length
@@ -990,7 +1059,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         // 3. Fight Breakdown
         const fightBreakdown = validLogs
             .map((log, originalIndex) => { return { log, originalIndex }; })
-            .sort((a, b) => (a.log.details?.uploadTime || 0) - (b.log.details?.uploadTime || 0))
+            .sort((a, b) => resolveFightTimestamp(a.log.details, a.log) - resolveFightTimestamp(b.log.details, b.log))
             .map(({ log }, idx) => {
                 const details = log.details;
                 if (!details) return null;
@@ -1003,7 +1072,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const totalIncoming = squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.damageTaken || 0), 0);
                 const { enemyDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
                 const isWin = getFightOutcome(details);
-                const timestamp = details.uploadTime ?? log.uploadTime ?? 0;
+                const timestamp = resolveFightTimestamp(details, log);
                 const mapName = resolveMapName(details, log);
                 const teamCounts = { red: 0, green: 0, blue: 0 };
                 const toFiniteNumber = (value: any) => {
@@ -1257,7 +1326,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             if (!details) return;
             const skillMap = details.skillMap || {};
             const label = details.fightName || 'Log';
-            const timestamp = details.uploadTime ?? log.uploadTime ?? Date.now();
+            const timestamp = resolveFightTimestamp(details, log) || Date.now();
 
             const record: SkillUsageLogRecord = {
                 id: log.filePath || log.id || label,

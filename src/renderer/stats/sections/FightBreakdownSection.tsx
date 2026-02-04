@@ -17,8 +17,36 @@ export const FightBreakdownSection = ({
     isSectionVisible,
     isFirstVisibleSection,
     sectionClass
-}: FightBreakdownSectionProps) => (
-    <div
+}: FightBreakdownSectionProps) => {
+    const formatReportLabel = (fight: any) => {
+        const rawTs = fight?.timestamp;
+        let tsMs = 0;
+        if (typeof rawTs === 'number') {
+            tsMs = rawTs > 1e12 ? rawTs : rawTs * 1000;
+        } else if (typeof rawTs === 'string' && rawTs.trim()) {
+            const numeric = Number(rawTs);
+            if (Number.isFinite(numeric) && numeric > 0) {
+                tsMs = numeric > 1e12 ? numeric : numeric * 1000;
+            } else {
+                const parsed = Date.parse(rawTs);
+                if (Number.isFinite(parsed) && parsed > 0) tsMs = parsed;
+            }
+        }
+        const dateLabel = tsMs > 0
+            ? new Date(tsMs).toLocaleDateString(undefined, {
+                month: '2-digit',
+                day: '2-digit'
+            }) + ' ' + new Date(tsMs).toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+            : '--';
+        const rawMap = fight?.mapName || fight?.map || 'Unknown Map';
+        const mapLabel = String(rawMap).replace(/^Detailed\s*WvW\s*-\s*/i, '').trim();
+        return `${dateLabel} • ${mapLabel}`;
+    };
+
+    return <div
         id="fight-breakdown"
         data-section-visible={isSectionVisible('fight-breakdown')}
         data-section-first={isFirstVisibleSection('fight-breakdown')}
@@ -119,22 +147,7 @@ export const FightBreakdownSection = ({
                                                     }}
                                                     className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2 block truncate"
                                                 >
-                                                    {(() => {
-                                                        const ts = Number(fight.timestamp || 0);
-                                                        const tsMs = ts > 1e12 ? ts : ts * 1000;
-                                                        const dateLabel = tsMs
-                                                            ? new Date(tsMs).toLocaleDateString(undefined, {
-                                                                month: '2-digit',
-                                                                day: '2-digit'
-                                                            }) + ' ' + new Date(tsMs).toLocaleTimeString(undefined, {
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })
-                                                            : '--';
-                                                        const rawMap = fight.mapName || fight.map || 'Unknown Map';
-                                                        const mapLabel = String(rawMap).replace(/^Detailed\s*WvW\s*-\s*/i, '').trim();
-                                                        return `${dateLabel} • ${mapLabel}`;
-                                                    })()}
+                                                    {formatReportLabel(fight)}
                                                 </button>
                                             ) : (
                                                 <span className="text-gray-500">Pending</span>
@@ -221,5 +234,5 @@ export const FightBreakdownSection = ({
                 </div>
             )}
         </div>
-    </div>
-);
+    </div>;
+};

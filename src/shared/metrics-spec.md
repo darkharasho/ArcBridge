@@ -34,7 +34,8 @@ minimum fields consumed are:
 - `players[*].group`
 - `buffMap`, `skillMap`, and `durationMS` for stability generation, boon output, and skill labeling
 - `targets[*].buffs[*].statesPerSource` when available for condition application counts
-- `details.fightName`, `details.uploadTime`, `details.zone`/`mapName`/`map`/`location`, `details.success`,
+- `details.fightName`, `details.uploadTime` (or `details.timeStartStd` / `details.timeStart` fallback),
+  `details.zone`/`mapName`/`map`/`location`, `details.success`,
   `details.targets`, `details.durationMS`
 
 If any of these are missing, the metric falls back to `0` as defined below.
@@ -392,6 +393,8 @@ stored as `dev/datasets/<dataset>/manifest.json` and contains:
 - `fightName`
 - `encounterDuration`
 - `uploadTime`
+- `timeStart`
+- `timeStartStd`
 - `durationMS`
 - `success`
 - `playerCount`

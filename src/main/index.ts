@@ -184,6 +184,37 @@ const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Prom
     return results;
 };
 
+const resolveTimestampSeconds = (value: any): number | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'number') {
+        if (!Number.isFinite(value) || value <= 0) return undefined;
+        return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
+    }
+    const raw = String(value).trim();
+    if (!raw) return undefined;
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric > 1e12 ? Math.floor(numeric / 1000) : Math.floor(numeric);
+    }
+    const parsed = Date.parse(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed / 1000);
+    const normalized = raw.replace(/([+-]\d{2})$/, '$1:00');
+    const reparsed = Date.parse(normalized);
+    if (Number.isFinite(reparsed) && reparsed > 0) return Math.floor(reparsed / 1000);
+    return undefined;
+};
+
+const resolveDetailsUploadTime = (details: any, fallback?: any): number | undefined => {
+    return resolveTimestampSeconds(
+        details?.uploadTime
+        ?? fallback?.uploadTime
+        ?? details?.timeStartStd
+        ?? details?.timeStart
+        ?? details?.timeEndStd
+        ?? details?.timeEnd
+    );
+};
+
 const pruneDetailsForStats = (details: any) => {
     if (!details || typeof details !== 'object') return details;
     const pick = (obj: any, keys: string[]) => {
@@ -200,6 +231,10 @@ const pruneDetailsForStats = (details: any) => {
         'targets',
         'durationMS',
         'uploadTime',
+        'timeStart',
+        'timeStartStd',
+        'timeEnd',
+        'timeEndStd',
         'fightName',
         'success',
         'teamCounts',
@@ -263,7 +298,9 @@ const buildManifestEntry = (details: any, filePath: string, index: number) => {
         filePath,
         fightName: details?.fightName,
         encounterDuration: details?.encounterDuration,
-        uploadTime: details?.uploadTime,
+        uploadTime: resolveDetailsUploadTime(details),
+        timeStart: details?.timeStart,
+        timeStartStd: details?.timeStartStd,
         durationMS: details?.durationMS,
         success: details?.success,
         playerCount: players.length,
@@ -2193,7 +2230,7 @@ if (!gotTheLock) {
                         detailsAvailable: true,
                         fightName: details?.fightName || entry?.fightName,
                         encounterDuration: details?.encounterDuration || entry?.encounterDuration,
-                        uploadTime: details?.uploadTime || entry?.uploadTime
+                        uploadTime: resolveDetailsUploadTime(details, entry)
                     };
                 });
                 return { success: true, dataset: { ...meta, logs: slimLogs, report, manifest } };
@@ -2258,7 +2295,7 @@ if (!gotTheLock) {
                                 detailsAvailable: true,
                                 fightName: details?.fightName || entry?.fightName,
                                 encounterDuration: details?.encounterDuration || entry?.encounterDuration,
-                                uploadTime: details?.uploadTime || entry?.uploadTime
+                                uploadTime: resolveDetailsUploadTime(details, entry)
                             };
                         });
                         event.sender.send('dev-dataset-logs-chunk', {
