@@ -1345,12 +1345,12 @@ function App() {
             <div className="legacy-orb absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[100px] pointer-events-none" />
             <div className="legacy-orb absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[100px] pointer-events-none" />
 
-            <div className={`app-content relative z-10 max-w-5xl mx-auto flex-1 w-full flex flex-col min-h-0 ${view === 'stats' ? 'pt-8 px-8 pb-2' : 'p-8'}`}>
-                <header className="app-header flex justify-between items-center mb-10 shrink-0">
+            <div className={`app-content relative z-10 max-w-5xl mx-auto flex-1 w-full min-w-0 flex flex-col min-h-0 ${view === 'stats' ? 'pt-8 px-8 pb-2' : 'p-8'}`}>
+                <header className="app-header flex flex-wrap justify-between items-center gap-3 mb-10 shrink-0">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center gap-3"
+                        className="flex items-center gap-3 min-w-0"
                     >
                         <div className="flex items-center gap-3">
                             <img src={appIconPath} alt="ArcBridge" className="h-8 w-auto rounded-md" />
@@ -1359,7 +1359,7 @@ function App() {
                             </h1>
                         </div>
                     </motion.div>
-                    <div className="flex items-center gap-3">
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
                         <AnimatePresence mode="wait">
                             {(updateAvailable || updateDownloaded) ? (
                                 <motion.div
