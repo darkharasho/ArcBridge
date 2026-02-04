@@ -9,7 +9,7 @@ export const useStatsScreenshot = (embedded: boolean) => {
             return fn();
         }
         const originalFetch = window.fetch.bind(window);
-        const originalGlobalFetch = globalThis.fetch?.bind(globalThis);
+        const originalGlobalFetch = globalThis.fetch.bind(globalThis);
         const proxyFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = typeof input === 'string'
                 ? input
@@ -26,18 +26,14 @@ export const useStatsScreenshot = (embedded: boolean) => {
         };
         // @ts-ignore
         window.fetch = proxyFetch;
-        if (originalGlobalFetch) {
-            // @ts-ignore
-            globalThis.fetch = proxyFetch;
-        }
+        // @ts-ignore
+        globalThis.fetch = proxyFetch;
         try {
             return await fn();
         } finally {
             window.fetch = originalFetch;
-            if (originalGlobalFetch) {
-                // @ts-ignore
-                globalThis.fetch = originalGlobalFetch;
-            }
+            // @ts-ignore
+            globalThis.fetch = originalGlobalFetch;
         }
     };
 
