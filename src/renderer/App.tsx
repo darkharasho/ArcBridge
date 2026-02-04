@@ -1560,6 +1560,7 @@ function App() {
                             uiTheme={uiTheme}
                             webUploadState={webUploadState}
                             onWebUpload={handleWebUpload}
+                            canShareDiscord={!!selectedWebhookId}
                         />
                     </div>
                 )}

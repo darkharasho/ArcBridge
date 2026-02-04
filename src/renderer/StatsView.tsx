@@ -54,12 +54,13 @@ interface StatsViewProps {
     sectionVisibility?: (id: string) => boolean;
     dashboardTitle?: string;
     uiTheme?: 'classic' | 'modern';
+    canShareDiscord?: boolean;
 }
 
 const sidebarListClass = 'max-h-80 overflow-y-auto space-y-1 pr-1';
 const NON_DAMAGING_CONDITIONS = new Set(['Vulnerability', 'Weakness', 'Blind', 'Chill', 'Cripple', 'Slow', 'Taunt', 'Fear', 'Immobilize']);
 
-export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme, canShareDiscord = true }: StatsViewProps) {
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const activeWebUploadState = webUploadState || DEFAULT_WEB_UPLOAD_STATE;
@@ -872,6 +873,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                 uploadingWeb={uploadingWeb}
                 onWebUpload={handleWebUpload}
                 sharing={sharing}
+                canShareDiscord={canShareDiscord}
                 onShare={handleShare}
             />
 
