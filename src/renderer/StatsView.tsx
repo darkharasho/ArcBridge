@@ -81,14 +81,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
 
     const skillUsageData = (precomputedStats?.skillUsageData ?? computedSkillUsageData) as SkillUsageSummary;
 
-    useEffect(() => {
-        console.log('[StatsView] Stats Aggregation Result:', {
-            stats,
-            skillUsageData,
-            validLogsCount: stats.totalWinner + stats.totalLoser, // approximate
-            overview: stats.overview
-        });
-    }, [stats, skillUsageData]);
+    // console logging removed to avoid blocking view transitions
 
     const skillUsageAvailable = skillUsageData.players.length > 0;
 

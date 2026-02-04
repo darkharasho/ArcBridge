@@ -119,9 +119,11 @@ function App() {
     const devDatasetSavingIdRef = useRef<string | null>(null);
     const logsListRef = useRef<HTMLDivElement | null>(null);
     const [bulkCalculatingActive, setBulkCalculatingActive] = useState(false);
+    const [devDatasetLoadProgress, setDevDatasetLoadProgress] = useState<{ id: string; name: string; loaded: number; total: number | null; done: boolean } | null>(null);
     const [logsForStats, setLogsForStats] = useState<ILogData[]>(logs);
     const statsBatchTimerRef = useRef<number | null>(null);
     const logsRef = useRef<ILogData[]>(logs);
+    const [statsViewMounted, setStatsViewMounted] = useState(false);
 
     const loadDevDatasets = useCallback(async () => {
         if (!window.electronAPI?.listDevDatasets) return;
@@ -169,15 +171,32 @@ function App() {
     }, [logs]);
 
     useEffect(() => {
+        if (view === 'stats') {
+            setStatsViewMounted(true);
+        }
+    }, [view]);
+
+    useEffect(() => {
         if (!devDatasetsEnabled || !window.electronAPI?.onDevDatasetLogsChunk) return;
         const unsubscribe = window.electronAPI.onDevDatasetLogsChunk((payload: { id: string; logs: ILogData[]; done?: boolean }) => {
             if (!payload?.id || payload.id !== devDatasetStreamingIdRef.current) return;
             if (Array.isArray(payload.logs) && payload.logs.length > 0) {
                 setLogs((prev) => [...prev, ...payload.logs]);
+                setDevDatasetLoadProgress((prev) => {
+                    if (!prev || prev.id !== payload.id) return prev;
+                    return { ...prev, loaded: prev.loaded + payload.logs.length };
+                });
             }
             if (payload.done) {
                 devDatasetStreamingIdRef.current = null;
                 setDevDatasetLoadingId(null);
+                setDevDatasetLoadProgress((prev) => {
+                    if (!prev || prev.id !== payload.id) return prev;
+                    return { ...prev, done: true, loaded: prev.total ?? prev.loaded };
+                });
+                window.setTimeout(() => {
+                    setDevDatasetLoadProgress((prev) => (prev?.id === payload.id ? null : prev));
+                }, 1500);
             }
         });
         return () => {
@@ -1316,23 +1335,26 @@ function App() {
                     </div>
                 )}
 
-                {view === 'stats' ? (
-                    <StatsView
-                        logs={logsForStats}
-                        onBack={() => setView('dashboard')}
-                        mvpWeights={mvpWeights}
-                        disruptionMethod={disruptionMethod}
-                        statsViewSettings={statsViewSettings}
-                        precomputedStats={precomputedStats || undefined}
-                        onStatsViewSettingsChange={(next) => {
-                            setStatsViewSettings(next);
-                            window.electronAPI?.saveSettings?.({ statsViewSettings: next });
-                        }}
-                        uiTheme={uiTheme}
-                        webUploadState={webUploadState}
-                        onWebUpload={handleWebUpload}
-                    />
-                ) : view === 'settings' ? (
+                {statsViewMounted && (
+                    <div className="flex-1 min-h-0" style={{ display: view === 'stats' ? 'flex' : 'none' }}>
+                        <StatsView
+                            logs={logsForStats}
+                            onBack={() => setView('dashboard')}
+                            mvpWeights={mvpWeights}
+                            disruptionMethod={disruptionMethod}
+                            statsViewSettings={statsViewSettings}
+                            precomputedStats={precomputedStats || undefined}
+                            onStatsViewSettingsChange={(next) => {
+                                setStatsViewSettings(next);
+                                window.electronAPI?.saveSettings?.({ statsViewSettings: next });
+                            }}
+                            uiTheme={uiTheme}
+                            webUploadState={webUploadState}
+                            onWebUpload={handleWebUpload}
+                        />
+                    </div>
+                )}
+                {view === 'settings' ? (
                     <SettingsView
                         onBack={() => setView('dashboard')}
                         onEmbedStatSettingsSaved={setEmbedStatSettings}
@@ -1343,7 +1365,7 @@ function App() {
                         showDeveloperSettings={showDeveloperSettings}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
-                ) : (
+                ) : view === 'stats' ? null : (
                     <div className="dashboard-view grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
                         <div className="space-y-6 overflow-y-auto pr-2">
                             <motion.div
@@ -1633,6 +1655,21 @@ function App() {
                                 {bulkCalculatingActive && calculatingCount > 0 && (
                                     <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-100">
                                         Bulk calculations are running. The app may feel less responsive until they finish.
+                                    </div>
+                                )}
+                                {devDatasetLoadProgress && (
+                                    <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+                                        <div className="flex flex-col items-center text-center gap-1">
+                                            <FilePlus2 className="w-5 h-5 text-amber-300" />
+                                            <div className="text-[11px] text-amber-100">
+                                                Loading dev dataset: <span className="font-semibold">{devDatasetLoadProgress.name}</span>
+                                            </div>
+                                            <div className="text-[10px] text-amber-200/80">
+                                                {devDatasetLoadProgress.total !== null
+                                                    ? `${Math.min(devDatasetLoadProgress.loaded, devDatasetLoadProgress.total)} / ${devDatasetLoadProgress.total}`
+                                                    : `${devDatasetLoadProgress.loaded} loaded`}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -1967,6 +2004,7 @@ function App() {
                                                             if (devDatasetLoadingId) return;
                                                             if (!window.electronAPI?.loadDevDatasetChunked && !window.electronAPI?.loadDevDataset) return;
                                                             setDevDatasetLoadingId(dataset.id);
+                                                            setDevDatasetLoadProgress({ id: dataset.id, name: dataset.name, loaded: 0, total: null, done: false });
                                                             try {
                                                                 if (window.electronAPI?.loadDevDatasetChunked) {
                                                                     const result = await window.electronAPI.loadDevDatasetChunked({ id: dataset.id, chunkSize: 25 });
@@ -1979,6 +2017,9 @@ function App() {
                                                                     setScreenshotData(null);
                                                                     canceledLogsRef.current.clear();
                                                                     setDevDatasetsOpen(false);
+                                                                    if (typeof result.totalLogs === 'number') {
+                                                                        setDevDatasetLoadProgress((prev) => (prev && prev.id === dataset.id ? { ...prev, total: result.totalLogs } : prev));
+                                                                    }
                                                                 } else {
                                                                     const result = await window.electronAPI.loadDevDataset({ id: dataset.id });
                                                                     if (!result?.success || !result.dataset) return;
@@ -1989,6 +2030,11 @@ function App() {
                                                                     setScreenshotData(null);
                                                                     canceledLogsRef.current.clear();
                                                                     setDevDatasetsOpen(false);
+                                                                    const total = Array.isArray(result.dataset.logs) ? result.dataset.logs.length : 0;
+                                                                    setDevDatasetLoadProgress((prev) => (prev && prev.id === dataset.id ? { ...prev, loaded: total, total, done: true } : prev));
+                                                                    window.setTimeout(() => {
+                                                                        setDevDatasetLoadProgress((prev) => (prev?.id === dataset.id ? null : prev));
+                                                                    }, 1500);
                                                                 }
                                                             } finally {
                                                                 if (!devDatasetStreamingIdRef.current) {

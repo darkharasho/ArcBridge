@@ -134,6 +134,7 @@ const ensureDevDatasetsDir = async () => {
 const sanitizeDevDatasetId = (id: string) => id.replace(/[^a-zA-Z0-9-_]/g, '');
 const sanitizeDevDatasetName = (name: string) => name.replace(/[^a-zA-Z0-9-_ ]/g, '').trim() || 'dataset';
 const devDatasetFolderCache = new Map<string, string>();
+const MAX_DEV_DATASET_REPORT_BYTES = 50 * 1024 * 1024;
 
 const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Promise<T[]> => {
     const results: T[] = new Array(paths.length);
@@ -1965,15 +1966,37 @@ if (!gotTheLock) {
                 const logsDir = path.join(datasetDir, 'logs');
                 const metaRaw = await fs.promises.readFile(metaPath, 'utf-8');
                 const meta = JSON.parse(metaRaw);
-                const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
-                const report = JSON.parse(reportRaw);
+                let report: any = null;
+                try {
+                    const reportStat = await fs.promises.stat(reportPath);
+                    if (reportStat.size <= MAX_DEV_DATASET_REPORT_BYTES) {
+                        const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
+                        report = JSON.parse(reportRaw);
+                    } else {
+                        console.warn(`[Main] Skipping dev dataset report.json (${reportStat.size} bytes) to avoid OOM.`);
+                    }
+                } catch (reportError: any) {
+                    console.warn('[Main] Failed to read dev dataset report.json:', reportError?.message || reportError);
+                }
                 const logEntries = await fs.promises.readdir(logsDir);
                 const sortedLogEntries = logEntries
                     .filter((name) => name.endsWith('.json'))
                     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
                 const logPaths = sortedLogEntries.map((file) => path.join(logsDir, file));
-                const logs = await readJsonFilesWithLimit(logPaths, 8);
-                return { success: true, dataset: { ...meta, logs, report } };
+                const logs = await readJsonFilesWithLimit(logPaths, 1);
+                const slimLogs = logs.map((entry: any, index: number) => {
+                    const details = entry?.details ?? entry ?? {};
+                    return {
+                        id: entry?.id || details?.id || `dev-log-${index + 1}`,
+                        filePath: logPaths[index],
+                        status: 'calculating',
+                        detailsAvailable: true,
+                        fightName: details?.fightName || entry?.fightName,
+                        encounterDuration: details?.encounterDuration || entry?.encounterDuration,
+                        uploadTime: details?.uploadTime || entry?.uploadTime
+                    };
+                });
+                return { success: true, dataset: { ...meta, logs: slimLogs, report } };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to load dataset.' };
             }
@@ -1993,8 +2016,18 @@ if (!gotTheLock) {
                 const logsDir = path.join(datasetDir, 'logs');
                 const metaRaw = await fs.promises.readFile(metaPath, 'utf-8');
                 const meta = JSON.parse(metaRaw);
-                const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
-                const report = JSON.parse(reportRaw);
+                let report: any = null;
+                try {
+                    const reportStat = await fs.promises.stat(reportPath);
+                    if (reportStat.size <= MAX_DEV_DATASET_REPORT_BYTES) {
+                        const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
+                        report = JSON.parse(reportRaw);
+                    } else {
+                        console.warn(`[Main] Skipping dev dataset report.json (${reportStat.size} bytes) to avoid OOM.`);
+                    }
+                } catch (reportError: any) {
+                    console.warn('[Main] Failed to read dev dataset report.json:', reportError?.message || reportError);
+                }
                 const logEntries = await fs.promises.readdir(logsDir);
                 const sortedLogEntries = logEntries
                     .filter((name) => name.endsWith('.json'))
@@ -2005,10 +2038,22 @@ if (!gotTheLock) {
                 void (async () => {
                     for (let i = 0; i < logPaths.length; i += chunkSize) {
                         const chunkPaths = logPaths.slice(i, i + chunkSize);
-                        const logs = await readJsonFilesWithLimit(chunkPaths, 8);
+                        const logs = await readJsonFilesWithLimit(chunkPaths, 1);
+                        const slimLogs = logs.map((entry: any, offset: number) => {
+                            const details = entry?.details ?? entry ?? {};
+                            return {
+                                id: entry?.id || details?.id || `dev-log-${i + offset + 1}`,
+                                filePath: chunkPaths[offset],
+                                status: 'calculating',
+                                detailsAvailable: true,
+                                fightName: details?.fightName || entry?.fightName,
+                                encounterDuration: details?.encounterDuration || entry?.encounterDuration,
+                                uploadTime: details?.uploadTime || entry?.uploadTime
+                            };
+                        });
                         event.sender.send('dev-dataset-logs-chunk', {
                             id,
-                            logs,
+                            logs: slimLogs,
                             index: i,
                             total: logPaths.length,
                             done: i + chunkSize >= logPaths.length
@@ -2136,12 +2181,24 @@ if (!gotTheLock) {
                 return { success: false, error: 'Missing filePath.' };
             }
             const details = bulkLogDetailsCache.get(filePath);
-            if (!details) {
-                console.warn(`[Main] get-log-details not found: ${filePath}`);
-                return { success: false, error: 'Details not found.' };
+            if (details) {
+                console.log(`[Main] get-log-details hit: ${filePath}`);
+                return { success: true, details };
             }
-            console.log(`[Main] get-log-details hit: ${filePath}`);
-            return { success: true, details };
+            try {
+                const devDir = getDevDatasetsDir();
+                if (filePath.startsWith(devDir) && filePath.endsWith('.json')) {
+                    const raw = await fs.promises.readFile(filePath, 'utf-8');
+                    const parsed = JSON.parse(raw);
+                    const resolved = parsed?.details ?? parsed;
+                    console.log(`[Main] get-log-details dev-dataset: ${filePath}`);
+                    return { success: true, details: resolved };
+                }
+            } catch (err: any) {
+                console.warn('[Main] get-log-details failed:', err?.message || err);
+            }
+            console.warn(`[Main] get-log-details not found: ${filePath}`);
+            return { success: false, error: 'Details not found.' };
         });
 
         ipcMain.on('renderer-log', (_event, payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => {
