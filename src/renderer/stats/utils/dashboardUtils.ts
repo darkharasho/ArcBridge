@@ -105,15 +105,45 @@ export const formatFightDateTime = (details: any, log: any) => {
     });
 };
 
-export const formatWithCommas = (value: number, decimals = 2) =>
-    value.toLocaleString(undefined, {
+const isMobileViewport = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(max-width: 640px)').matches;
+};
+
+const formatCompactNumber = (value: number) => {
+    if (!Number.isFinite(value)) return '--';
+    const absValue = Math.abs(value);
+    const sign = value < 0 ? '-' : '';
+    if (absValue >= 1_000_000) {
+        const compact = (absValue / 1_000_000);
+        const formatted = compact.toFixed(2).replace(/\.?0+$/, '');
+        return `${sign}${formatted}m`;
+    }
+    if (absValue >= 10_000) {
+        const compact = (absValue / 1000);
+        const formatted = compact.toFixed(0).replace(/\.?0+$/, '');
+        return `${sign}${formatted}k`;
+    }
+    return `${value.toLocaleString()}`;
+};
+
+export const formatWithCommas = (value: number, decimals = 2) => {
+    if (!Number.isFinite(value)) return '--';
+    if (isMobileViewport() && Math.abs(value) >= 10_000) {
+        return formatCompactNumber(value);
+    }
+    return value.toLocaleString(undefined, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     });
+};
 
 export const formatTopStatValue = (value: number) => {
     if (!Number.isFinite(value)) return '--';
     const absValue = Math.abs(value);
+    if (isMobileViewport() && absValue >= 10_000) {
+        return formatCompactNumber(value);
+    }
     if (absValue >= 1_000_000) {
         const compact = (value / 1_000_000);
         const formatted = compact.toFixed(2).replace(/\.?0+$/, '');

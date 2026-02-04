@@ -15,17 +15,27 @@ minimum fields consumed are:
 
 - `players[*].dpsAll[0].damage`, `players[*].dpsAll[0].dps`, `players[*].dpsAll[0].breakbarDamage`
 - `players[*].defenses[0].damageTaken`, `deadCount`, `downCount`,
-  `missedCount`, `blockedCount`, `evadedCount`, `dodgeCount`
+  `missedCount`, `blockedCount`, `evadedCount`, `dodgeCount`,
+  `receivedCrowdControl`, `receivedCrowdControlDuration`,
+  `boonStrips`, `boonStripsTime`
 - `players[*].support[0].condiCleanse`, `condiCleanseSelf`, `boonStrips`,
-  `resurrects`
+  `boonStripsTime`, `resurrects`
 - `players[*].statsAll[0].stackDist`, `players[*].statsAll[0].distToCom`
 - `players[*].statsTargets[*][0].downContribution`, `killed`, `downed`,
   `againstDownedCount`
 - `players[*].extHealingStats.outgoingHealingAllies`
 - `players[*].extBarrierStats.outgoingBarrierAllies`
-- `players[*].totalDamageDist`, `players[*].totalDamageTaken`
+- `players[*].totalDamageDist`, `players[*].targetDamageDist`, `players[*].totalDamageTaken`
 - `players[*].activeTimes`
-- `buffMap` and `durationMS` for stability generation
+- `players[*].rotation`
+- `players[*].buffUptimes`
+- `players[*].selfBuffs`, `players[*].groupBuffs`, `players[*].squadBuffs`
+- `players[*].selfBuffsActive`, `players[*].groupBuffsActive`, `players[*].squadBuffsActive`
+- `players[*].group`
+- `buffMap`, `skillMap`, and `durationMS` for stability generation, boon output, and skill labeling
+- `targets[*].buffs[*].statesPerSource` when available for condition application counts
+- `details.fightName`, `details.uploadTime`, `details.zone`/`mapName`/`map`/`location`, `details.success`,
+  `details.targets`, `details.durationMS`
 
 If any of these are missing, the metric falls back to `0` as defined below.
 
@@ -236,7 +246,9 @@ Implementation: `src/shared/dashboardMetrics.ts` (getPlayerResurrects).
 ## Distance to Tag
 
 `distanceToTag = statsAll[0].distToCom` if present; otherwise use
-`statsAll[0].stackDist`; otherwise `0`.
+`statsAll[0].stackDist`. If both are missing but combat replay positions are
+available, compute the average distance to the commander tag over the
+available timeline. Otherwise `0`.
 
 Implementation: `src/shared/dashboardMetrics.ts` (getPlayerDistanceToTag).
 
@@ -264,7 +276,102 @@ The Skill Usage Tracker supports two display modes:
   `activeSeconds = players[*].activeTimes[0] / 1000` when available, otherwise
   `durationMS / 1000` from the log details.
 
-Implementation: `src/renderer/StatsView.tsx` (skill usage tracker aggregation).
+Implementation: `src/renderer/stats/computeStatsAggregation.ts` (skill usage tracker aggregation).
+
+## APM Breakdown
+
+APM is derived from the Skill Usage Tracker data (rotation casts). For each
+player:
+- `totalCasts = sum(rotationSkill.skills.length)`
+- `apm = totalCasts / (activeSeconds / 60)`
+- `aps = totalCasts / activeSeconds`
+- Auto-attack counts are excluded for the "No Auto" variants.
+
+The APM Breakdown groups players by profession and aggregates per-skill cast
+counts across the group.
+
+Implementation: `src/renderer/stats/hooks/useApmStats.ts`.
+
+## Player Skill Breakdown (Damage / Down Contribution / DPS)
+
+Per-player skill damage breakdown is built from the same damage distribution
+inputs as Top Skills (see below):
+- Outgoing skill damage uses `targetDamageDist` (default) or `totalDamageDist`
+  based on settings.
+- Each entry contributes `totalDamage` and `downContribution`.
+
+For each player and skill:
+- `totalDamage = sum(entry.totalDamage)`
+- `downContribution = sum(entry.downContribution)`
+- `dps = totalDamage / (totalFightSeconds)`
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+
+## Top Skills (Outgoing / Incoming)
+
+Top Outgoing Skills are derived from the squad-wide aggregation of
+`targetDamageDist` (default) or `totalDamageDist` entries:
+- `damage = sum(entry.totalDamage)`
+- `hits = sum(entry.connectedHits)`
+- `downContribution = sum(entry.downContribution)`
+
+Top Incoming Skills are derived from `totalDamageTaken`:
+- `damage = sum(entry.totalDamage)`
+- `hits = sum(entry.hits)`
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+
+## Boon Output
+
+Boon output tables are computed from player boon generation data:
+- `selfBuffs`, `groupBuffs`, `squadBuffs` (and their `Active` variants)
+- `buffMap` for name/icon/stacking metadata
+- `durationMS`, `activeTimes`, and `group` for normalization
+
+Implementation: `src/shared/boonGeneration.ts`.
+
+## Special Buffs
+
+Special (non-boon) buff tables are computed from `buffUptimes` using
+`buffMap` classification and icon metadata. Durations are normalized by
+`activeTimes` and `durationMS`.
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+
+## Offense / Defense / Support / Healing Tables
+
+Detailed tables aggregate the per-player totals defined in:
+- `src/renderer/stats/statsMetrics.ts` (metric definitions)
+- `src/shared/dashboardMetrics.ts` (per-player metric extraction)
+- `src/renderer/stats/computeStatsAggregation.ts` (aggregation)
+
+## Timeline / Map Distribution / Fight Breakdown
+
+These sections use log-level metadata:
+- `details.uploadTime`, `details.durationMS`, `details.success`
+- `details.targets` (enemy counts, fake target filtering)
+- `details.zone`/`mapName`/`map`/`location`/`fightName` for map labels
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+
+## Squad Composition
+
+Squad composition is derived from each player's resolved profession name
+and aggregated across logs.
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+
+## Top Stats / MVP
+
+Top stats are computed by ranking the leaderboards for key metrics (down
+contribution, barrier, healing, cleanses, strips, stability, CC, etc).
+MVP scoring uses weighted ratios against these leaderboards and is configured
+via `statsViewSettings` + `mvpWeights`.
+
+Participation is computed as `logsJoined` (number of logs where the player
+appears in the squad).
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
 
 ## Known Caveats
 
@@ -274,3 +381,24 @@ Implementation: `src/renderer/StatsView.tsx` (skill usage tracker aggregation).
 - Stability generation depends on buff metadata presence (`buffMap`) and correct `durationMS`.
 - Damage uses `dpsAll[0].damage` (player total) rather than summing per-target totals, which may differ when targets are filtered or merged.
 - Skill usage totals are raw cast counts unless the per-second view is selected; missing `activeTimes` falls back to log duration for rate calculations.
+
+## Manifest & Field Usage
+
+The dev dataset manifest is generated by the app when exporting logs. It is
+stored as `dev/datasets/<dataset>/manifest.json` and contains:
+
+- `id`: log id or generated id
+- `filePath`: relative path to the log JSON
+- `fightName`
+- `encounterDuration`
+- `uploadTime`
+- `durationMS`
+- `success`
+- `playerCount`
+- `squadCount`
+- `nonSquadCount`
+
+Stats calculations **do not** use the manifest fields directly; the manifest
+is used for listing logs and metadata only. All computations are derived from
+the EI JSON log payload fields listed in the **Input Contract** and the
+sections above.

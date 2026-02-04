@@ -179,7 +179,15 @@ export const ApmSection = ({
                                                                 : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                             }`}
                                                     >
-                                                        <InlineIconLabel name={skill.name} iconUrl={skill.icon} iconClassName="h-4 w-4" />
+                                                        <div className="min-w-0">
+                                                            <InlineIconLabel
+                                                                name={skill.name}
+                                                                iconUrl={skill.icon}
+                                                                iconClassName="h-4 w-4"
+                                                                className="min-w-0"
+                                                                textClassName="truncate"
+                                                            />
+                                                        </div>
                                                     </button>
                                                 ));
                                             })()}

@@ -34,6 +34,25 @@ export interface SkillUsageSummary {
     resUtilitySkills?: Array<{ id: string; name: string; icon?: string }>;
 }
 
+export interface PlayerSkillDamageEntry {
+    id: string;
+    name: string;
+    icon?: string;
+    damage: number;
+    downContribution: number;
+}
+
+export interface PlayerSkillBreakdown {
+    key: string;
+    account: string;
+    displayName: string;
+    profession: string;
+    professionList: string[];
+    totalFightMs: number;
+    skills: PlayerSkillDamageEntry[];
+    skillMap: Record<string, PlayerSkillDamageEntry>;
+}
+
 export interface ApmPlayerRow {
     key: string;
     account: string;

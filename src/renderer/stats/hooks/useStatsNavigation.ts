@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Swords, Shield, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse } from 'lucide-react';
+import { Trophy, Swords, Shield, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, ListTree } from 'lucide-react';
 
 export const useStatsNavigation = (embedded: boolean) => {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -22,7 +22,8 @@ export const useStatsNavigation = (embedded: boolean) => {
         { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
         { id: 'special-buffs', label: 'Special Buffs', icon: Star },
         { id: 'skill-usage', label: 'Skill Usage', icon: Zap },
-        { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
+        { id: 'apm-stats', label: 'APM Breakdown', icon: Activity },
+        { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree }
     ]), []);
 
     const scrollToSection = (id: string) => {

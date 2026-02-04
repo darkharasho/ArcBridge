@@ -24,7 +24,8 @@ import {
     Zap,
     ArrowLeft,
     ArrowUp,
-    X as CloseIcon
+    X as CloseIcon,
+    ListTree
 } from 'lucide-react';
 
 interface ReportMeta {
@@ -231,11 +232,12 @@ export function ReportApp() {
             id: 'other',
             label: 'Other Metrics',
             icon: Sparkles,
-            sectionIds: ['special-buffs', 'skill-usage', 'apm-stats'],
+            sectionIds: ['special-buffs', 'skill-usage', 'apm-stats', 'player-breakdown'],
             items: [
                 { id: 'special-buffs', label: 'Special Buffs', icon: Star },
                 { id: 'skill-usage', label: 'Skill Usage', icon: Zap },
-                { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
+                { id: 'apm-stats', label: 'APM Breakdown', icon: Activity },
+                { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree }
             ]
         }
     ]), []);

@@ -13,12 +13,13 @@ import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
 import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
-import type { SkillUsageSummary } from './stats/statsTypes';
+import type { PlayerSkillBreakdown, PlayerSkillDamageEntry, SkillUsageSummary } from './stats/statsTypes';
 import { getDefaultConditionIcon, normalizeConditionLabel } from '../shared/conditionsMetrics';
 
 
 import { SkillUsageSection } from './stats/sections/SkillUsageSection';
 import { ApmSection } from './stats/sections/ApmSection';
+import { PlayerBreakdownSection } from './stats/sections/PlayerBreakdownSection';
 import { OffenseSection } from './stats/sections/OffenseSection';
 import { ConditionsSection } from './stats/sections/ConditionsSection';
 import { BoonOutputSection } from './stats/sections/BoonOutputSection';
@@ -204,8 +205,75 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [expandedApmSpec, setExpandedApmSpec] = useState<string | null>(null);
     const [activeApmSkillId, setActiveApmSkillId] = useState<string | null>(null);
     const [apmSkillSearch, setApmSkillSearch] = useState('');
+    const [activePlayerBreakdownKey, setActivePlayerBreakdownKey] = useState<string | null>(null);
+    const [expandedPlayerBreakdownKey, setExpandedPlayerBreakdownKey] = useState<string | null>(null);
+    const [activePlayerBreakdownSkillId, setActivePlayerBreakdownSkillId] = useState<string | null>(null);
+    const [playerBreakdownSkillSearch, setPlayerBreakdownSkillSearch] = useState('');
+    const [playerBreakdownViewMode, setPlayerBreakdownViewMode] = useState<'player' | 'class'>('player');
+    const [activeClassBreakdownKey, setActiveClassBreakdownKey] = useState<string | null>(null);
+    const [expandedClassBreakdownKey, setExpandedClassBreakdownKey] = useState<string | null>(null);
+    const [activeClassBreakdownSkillId, setActiveClassBreakdownSkillId] = useState<string | null>(null);
 
     const { apmSpecBuckets: apmSpecTables } = useApmStats(skillUsageData);
+    const playerSkillBreakdowns = (stats?.playerSkillBreakdowns || []) as PlayerSkillBreakdown[];
+    const playerSkillBreakdownMap = useMemo(() => {
+        const map = new Map<string, PlayerSkillBreakdown>();
+        playerSkillBreakdowns.forEach((entry) => map.set(entry.key, entry));
+        return map;
+    }, [playerSkillBreakdowns]);
+    const classSkillBreakdowns = useMemo(() => {
+        const buckets = new Map<string, { profession: string; players: PlayerSkillBreakdown[]; skills: Map<string, PlayerSkillDamageEntry> }>();
+        playerSkillBreakdowns.forEach((player) => {
+            const profession = player.profession || 'Unknown';
+            if (!buckets.has(profession)) {
+                buckets.set(profession, { profession, players: [], skills: new Map() });
+            }
+            const bucket = buckets.get(profession)!;
+            bucket.players.push(player);
+            player.skills.forEach((skill) => {
+                const existing = bucket.skills.get(skill.id) || { ...skill, damage: 0, downContribution: 0 };
+                existing.damage += Number(skill.damage || 0);
+                existing.downContribution += Number(skill.downContribution || 0);
+                if (!existing.icon && skill.icon) existing.icon = skill.icon;
+                if (existing.name?.startsWith('Skill ') && !skill.name.startsWith('Skill ')) {
+                    existing.name = skill.name;
+                }
+                bucket.skills.set(skill.id, existing);
+            });
+        });
+        return Array.from(buckets.values())
+            .map((bucket) => {
+                const skills = Array.from(bucket.skills.values()).sort((a, b) => b.damage - a.damage);
+                const skillMap = skills.reduce<Record<string, PlayerSkillDamageEntry>>((acc, skill) => {
+                    acc[skill.id] = skill;
+                    return acc;
+                }, {});
+                return {
+                    profession: bucket.profession,
+                    players: bucket.players,
+                    skills,
+                    skillMap
+                };
+            })
+            .sort((a, b) => a.profession.localeCompare(b.profession));
+    }, [playerSkillBreakdowns]);
+    const activePlayerBreakdown = activePlayerBreakdownKey
+        ? playerSkillBreakdownMap.get(activePlayerBreakdownKey) || null
+        : null;
+    const activePlayerSkill = activePlayerBreakdown && activePlayerBreakdownSkillId
+        ? activePlayerBreakdown.skillMap?.[activePlayerBreakdownSkillId] || null
+        : null;
+    const classBreakdownMap = useMemo(() => {
+        const map = new Map<string, (typeof classSkillBreakdowns)[number]>();
+        classSkillBreakdowns.forEach((entry) => map.set(entry.profession, entry));
+        return map;
+    }, [classSkillBreakdowns]);
+    const activeClassBreakdown = activeClassBreakdownKey
+        ? classBreakdownMap.get(activeClassBreakdownKey) || null
+        : null;
+    const activeClassSkill = activeClassBreakdown && activeClassBreakdownSkillId
+        ? activeClassBreakdown.skillMap?.[activeClassBreakdownSkillId] || null
+        : null;
 
     const {
         playerMapByKey,
@@ -1038,6 +1106,40 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                     formatApmValue={formatApmValue}
                     formatCastRateValue={formatCastRateValue}
                     formatCastCountValue={formatCastCountValue}
+                    renderProfessionIcon={renderProfessionIcon}
+                />
+
+                <PlayerBreakdownSection
+                    expandedSection={expandedSection}
+                    expandedSectionClosing={expandedSectionClosing}
+                    openExpandedSection={openExpandedSection}
+                    closeExpandedSection={closeExpandedSection}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                    sidebarListClass={sidebarListClass}
+                    viewMode={playerBreakdownViewMode}
+                    setViewMode={setPlayerBreakdownViewMode}
+                    playerSkillBreakdowns={playerSkillBreakdowns}
+                    classSkillBreakdowns={classSkillBreakdowns}
+                    activePlayerKey={activePlayerBreakdownKey}
+                    setActivePlayerKey={setActivePlayerBreakdownKey}
+                    expandedPlayerKey={expandedPlayerBreakdownKey}
+                    setExpandedPlayerKey={setExpandedPlayerBreakdownKey}
+                    activePlayerSkillId={activePlayerBreakdownSkillId}
+                    setActivePlayerSkillId={setActivePlayerBreakdownSkillId}
+                    activeClassKey={activeClassBreakdownKey}
+                    setActiveClassKey={setActiveClassBreakdownKey}
+                    expandedClassKey={expandedClassBreakdownKey}
+                    setExpandedClassKey={setExpandedClassBreakdownKey}
+                    activeClassSkillId={activeClassBreakdownSkillId}
+                    setActiveClassSkillId={setActiveClassBreakdownSkillId}
+                    skillSearch={playerBreakdownSkillSearch}
+                    setSkillSearch={setPlayerBreakdownSkillSearch}
+                    activePlayerBreakdown={activePlayerBreakdown}
+                    activePlayerSkill={activePlayerSkill}
+                    activeClassBreakdown={activeClassBreakdown}
+                    activeClassSkill={activeClassSkill}
                     renderProfessionIcon={renderProfessionIcon}
                 />
                 {!embedded && <div className="h-24" aria-hidden="true" />}

@@ -6,7 +6,7 @@ import { DisruptionMethod, IMvpWeights, IStatsViewSettings, DEFAULT_DISRUPTION_M
 import { buildConditionIconMap, computeOutgoingConditions, resolveConditionNameFromEntry } from '../../shared/conditionsMetrics';
 import { OFFENSE_METRICS, DEFENSE_METRICS, SUPPORT_METRICS } from './statsMetrics';
 import { isResUtilitySkill, formatDurationMs } from './utils/dashboardUtils';
-import { SkillUsageSummary, SkillUsageLogRecord, SkillUsagePlayer } from './statsTypes';
+import { SkillUsageSummary, SkillUsageLogRecord, SkillUsagePlayer, PlayerSkillDamageEntry } from './statsTypes';
 import { PROFESSION_COLORS, getProfessionColor } from '../../shared/professionUtils';
 
 interface UseStatsAggregationProps {
@@ -133,6 +133,15 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         const supportTimeSanityFields = new Set(['boonStripsTime', 'condiCleanseTime', 'condiCleanseTimeSelf']);
         const skillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number, downContribution: number }> = {};
         const incomingSkillDamageMap: Record<number, { name: string, icon?: string, damage: number, hits: number }> = {};
+        const playerSkillBreakdownMap = new Map<string, {
+            key: string;
+            account: string;
+            displayName: string;
+            profession: string;
+            professionList: string[];
+            totalFightMs: number;
+            skills: Map<string, PlayerSkillDamageEntry>;
+        }>();
         const outgoingCondiTotals: Record<string, any> = {};
         const incomingCondiTotals: Record<string, any> = {};
         const enemyProfessionCounts: Record<string, number> = {};
@@ -433,9 +442,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     s.dps += dpsAll.dps || 0;
                 }
 
-                // Skill Damage (Global)
-                const pushSkillDamageEntry = (entry: any) => {
-                    if (!entry?.id) return;
+                // Skill Damage (Global + Player Breakdown)
+                const resolveSkillMeta = (entry: any) => {
                     let name = `Skill ${entry.id}`;
                     const mapped = details.skillMap?.[`s${entry.id}`] || details.skillMap?.[`${entry.id}`];
                     let icon = mapped?.icon;
@@ -447,17 +455,57 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             icon = details.buffMap?.[`b${entry.id}`]?.icon || icon;
                         }
                     }
+                    return { name, icon };
+                };
+                const pushSkillDamageEntry = (entry: any) => {
+                    if (!entry?.id) return;
+                    const { name, icon } = resolveSkillMeta(entry);
                     if (!skillDamageMap[entry.id]) skillDamageMap[entry.id] = { name, icon, damage: 0, hits: 0, downContribution: 0 };
-                    if (!skillDamageMap[entry.id].name.startsWith('Skill ') || name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
+                    if (skillDamageMap[entry.id].name.startsWith('Skill ') && !name.startsWith('Skill ')) skillDamageMap[entry.id].name = name;
                     if (!skillDamageMap[entry.id].icon && icon) skillDamageMap[entry.id].icon = icon;
                     skillDamageMap[entry.id].damage += entry.totalDamage;
                     skillDamageMap[entry.id].hits += entry.connectedHits;
                     skillDamageMap[entry.id].downContribution += Number(entry.downContribution || 0);
                 };
+                const playerAccount = p.account || p.name || 'Unknown';
+                const playerProfession = p.profession || 'Unknown';
+                const playerKey = `${playerAccount}|${playerProfession}`;
+                let playerBreakdown = playerSkillBreakdownMap.get(playerKey);
+                if (!playerBreakdown) {
+                    playerBreakdown = {
+                        key: playerKey,
+                        account: playerAccount,
+                        displayName: playerAccount,
+                        profession: playerProfession,
+                        professionList: [playerProfession],
+                        totalFightMs: 0,
+                        skills: new Map()
+                    };
+                    playerSkillBreakdownMap.set(playerKey, playerBreakdown);
+                }
+                if (playerProfession && !playerBreakdown.professionList.includes(playerProfession)) {
+                    playerBreakdown.professionList.push(playerProfession);
+                }
+                playerBreakdown.totalFightMs += details.durationMS || 0;
+                const pushPlayerSkillEntry = (entry: any) => {
+                    if (!entry?.id) return;
+                    const { name, icon } = resolveSkillMeta(entry);
+                    const skillId = `s${entry.id}`;
+                    let skillEntry = playerBreakdown!.skills.get(skillId);
+                    if (!skillEntry) {
+                        skillEntry = { id: skillId, name, icon, damage: 0, downContribution: 0 };
+                        playerBreakdown!.skills.set(skillId, skillEntry);
+                    }
+                    if (skillEntry.name.startsWith('Skill ') && !name.startsWith('Skill ')) skillEntry.name = name;
+                    if (!skillEntry.icon && icon) skillEntry.icon = icon;
+                    skillEntry.damage += Number(entry.totalDamage || 0);
+                    skillEntry.downContribution += Number(entry.downContribution || 0);
+                };
                 if (skillDamageSource === 'total') {
                     p.totalDamageDist?.forEach((list: any) => {
                         list?.forEach((entry: any) => {
                             pushSkillDamageEntry(entry);
+                            pushPlayerSkillEntry(entry);
                         });
                     });
                 } else {
@@ -465,6 +513,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         targetGroup?.forEach((list: any) => {
                             list?.forEach((entry: any) => {
                                 pushSkillDamageEntry(entry);
+                                pushPlayerSkillEntry(entry);
                             });
                         });
                     });
@@ -1039,6 +1088,27 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             };
         }).filter((table) => table.rows.length > 0);
 
+        const playerSkillBreakdowns = Array.from(playerSkillBreakdownMap.values())
+            .map((entry) => {
+                const skills = Array.from(entry.skills.values())
+                    .sort((a, b) => b.damage - a.damage);
+                const skillMap = skills.reduce<Record<string, PlayerSkillDamageEntry>>((acc, skill) => {
+                    acc[skill.id] = skill;
+                    return acc;
+                }, {});
+                return {
+                    key: entry.key,
+                    account: entry.account,
+                    displayName: entry.displayName,
+                    profession: entry.profession,
+                    professionList: entry.professionList,
+                    totalFightMs: entry.totalFightMs,
+                    skills,
+                    skillMap
+                };
+            })
+            .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
         return {
             total, wins, losses, avgSquadSize, avgEnemies, squadKDR, enemyKDR,
             totalSquadKills, totalSquadDeaths, totalEnemyKills, totalEnemyDeaths,
@@ -1055,6 +1125,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 conditions: s.incomingConditions
             })),
             topSkills, topIncomingSkills,
+            playerSkillBreakdowns,
             topSkillsMetric,
             mapData, timelineData, boonTables,
             offensePlayers: Array.from(playerStats.values()).map(s => ({

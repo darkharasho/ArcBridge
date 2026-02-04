@@ -83,7 +83,7 @@ export const StatsMobileNav = ({
                                     <button
                                         key={item.id}
                                         onClick={() => scrollToSection(item.id)}
-                                        className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-gray-200 border transition-colors ${isActive
+                                        className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-gray-200 border transition-colors min-w-0 ${isActive
                                             ? 'bg-white/10 border-white/20'
                                             : 'border-transparent hover:border-white/10 hover:bg-white/10'
                                             }`}
@@ -91,7 +91,7 @@ export const StatsMobileNav = ({
                                         <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10">
                                             <Icon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
                                         </span>
-                                        <span className="text-[13px] font-medium">{item.label}</span>
+                                        <span className="text-[13px] font-medium truncate min-w-0">{item.label}</span>
                                     </button>
                                 );
                             })}
