@@ -114,16 +114,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     importSettings: () => ipcRenderer.invoke('import-settings'),
     selectSettingsFile: () => ipcRenderer.invoke('select-settings-file'),
     listDevDatasets: () => ipcRenderer.invoke('list-dev-datasets'),
-    saveDevDataset: (payload: { id?: string; name: string; logs: any[]; report?: any }) =>
+    saveDevDataset: (payload: { id?: string; name: string; logs: any[]; report?: any; snapshot?: any }) =>
         ipcRenderer.invoke('save-dev-dataset', payload),
-    beginDevDatasetSave: (payload: { id?: string; name: string; report?: any }) =>
+    beginDevDatasetSave: (payload: { id?: string; name: string; report?: any; snapshot?: any }) =>
         ipcRenderer.invoke('begin-dev-dataset-save', payload),
     appendDevDatasetLogs: (payload: { id: string; logs: any[]; startIndex: number; total?: number }) =>
         ipcRenderer.invoke('append-dev-dataset-logs', payload),
     finishDevDatasetSave: (payload: { id: string; total: number }) =>
         ipcRenderer.invoke('finish-dev-dataset-save', payload),
-    loadDevDataset: (payload: { id: string }) => ipcRenderer.invoke('load-dev-dataset', payload),
-    loadDevDatasetChunked: (payload: { id: string; chunkSize?: number }) =>
+    loadDevDataset: (payload: { id: string; allowLogsOnlyOnIntegrityFailure?: boolean }) => ipcRenderer.invoke('load-dev-dataset', payload),
+    loadDevDatasetChunked: (payload: { id: string; chunkSize?: number; allowLogsOnlyOnIntegrityFailure?: boolean }) =>
         ipcRenderer.invoke('load-dev-dataset-chunked', payload),
     onDevDatasetLogsChunk: (callback: (data: any) => void) => {
         ipcRenderer.on('dev-dataset-logs-chunk', (_event, value) => callback(value));
