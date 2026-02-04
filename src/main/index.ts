@@ -169,6 +169,8 @@ const MAX_DEV_DATASET_REPORT_BYTES = 50 * 1024 * 1024;
 const DEV_DATASET_SNAPSHOT_SCHEMA_VERSION = 1;
 const DEV_DATASET_TEMP_PREFIX = '.tmp-';
 const DEV_DATASET_STATUS_FILE = 'status.json';
+const DEV_DATASET_INTEGRITY_FILE = 'integrity.json';
+const DEV_DATASET_INTEGRITY_SCHEMA_VERSION = 1;
 
 const getDevDatasetFolderName = (id: string, name: string) => `${id}-${sanitizeDevDatasetName(name).replace(/\s+/g, '-').toLowerCase()}`;
 const getDevDatasetTempFolderName = (folderName: string) => `${DEV_DATASET_TEMP_PREFIX}${folderName}`;
@@ -252,6 +254,121 @@ const resolveOrderedDatasetLogPaths = async (datasetDir: string, logsDir: string
 
     fallbackPaths.forEach((filePath) => addPath(filePath));
     return ordered;
+};
+
+const hashFileSha256 = async (filePath: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const hash = createHash('sha256');
+        const stream = fs.createReadStream(filePath);
+        stream.on('data', (chunk) => hash.update(chunk));
+        stream.on('error', reject);
+        stream.on('end', () => resolve(hash.digest('hex')));
+    });
+};
+
+const buildDatasetIntegrity = async (datasetDir: string) => {
+    const logsDir = path.join(datasetDir, 'logs');
+    const manifestPath = path.join(datasetDir, 'manifest.json');
+    const reportPath = path.join(datasetDir, 'report.json');
+    const snapshotPath = path.join(datasetDir, 'snapshot.json');
+    const manifest = fs.existsSync(manifestPath)
+        ? JSON.parse(await fs.promises.readFile(manifestPath, 'utf-8'))
+        : null;
+    const snapshot = fs.existsSync(snapshotPath)
+        ? JSON.parse(await fs.promises.readFile(snapshotPath, 'utf-8'))
+        : null;
+    const logPaths = await resolveOrderedDatasetLogPaths(datasetDir, logsDir, manifest, snapshot);
+    const logs = [];
+    for (let i = 0; i < logPaths.length; i += 1) {
+        const absolute = logPaths[i];
+        const relative = path.relative(datasetDir, absolute).replace(/\\/g, '/');
+        logs.push({
+            path: relative,
+            sha256: await hashFileSha256(absolute)
+        });
+    }
+    return {
+        schemaVersion: DEV_DATASET_INTEGRITY_SCHEMA_VERSION,
+        generatedAt: new Date().toISOString(),
+        snapshotSchemaVersion: Number.isFinite(Number(snapshot?.schemaVersion)) ? Number(snapshot?.schemaVersion) : null,
+        files: {
+            manifest: { path: 'manifest.json', sha256: await hashFileSha256(manifestPath) },
+            report: { path: 'report.json', sha256: await hashFileSha256(reportPath) },
+            snapshot: { path: 'snapshot.json', sha256: await hashFileSha256(snapshotPath) },
+            logs
+        }
+    };
+};
+
+const validateDatasetIntegrity = async (datasetDir: string) => {
+    const issues: string[] = [];
+    const integrityPath = path.join(datasetDir, DEV_DATASET_INTEGRITY_FILE);
+    const snapshotPath = path.join(datasetDir, 'snapshot.json');
+    let snapshotSchemaVersion: number | null = null;
+    try {
+        if (fs.existsSync(snapshotPath)) {
+            const snapshot = JSON.parse(await fs.promises.readFile(snapshotPath, 'utf-8'));
+            const schemaVersion = Number(snapshot?.schemaVersion);
+            if (Number.isFinite(schemaVersion)) {
+                snapshotSchemaVersion = Math.floor(schemaVersion);
+                if (snapshotSchemaVersion > DEV_DATASET_SNAPSHOT_SCHEMA_VERSION) {
+                    issues.push(`Unsupported snapshot schema version ${snapshotSchemaVersion}.`);
+                }
+            }
+        }
+    } catch (err: any) {
+        issues.push(`Failed to read snapshot.json: ${err?.message || err}`);
+    }
+
+    if (!fs.existsSync(integrityPath)) {
+        return { ok: issues.length === 0, issues, hasIntegrityFile: false, snapshotSchemaVersion };
+    }
+
+    let integrity: any = null;
+    try {
+        integrity = JSON.parse(await fs.promises.readFile(integrityPath, 'utf-8'));
+    } catch (err: any) {
+        issues.push(`Failed to read integrity.json: ${err?.message || err}`);
+        return { ok: false, issues, hasIntegrityFile: true, snapshotSchemaVersion };
+    }
+
+    const schemaVersion = Number(integrity?.schemaVersion);
+    if (!Number.isFinite(schemaVersion) || schemaVersion !== DEV_DATASET_INTEGRITY_SCHEMA_VERSION) {
+        issues.push('Unsupported integrity schema version.');
+    }
+
+    const files = integrity?.files || {};
+    const verifyFile = async (entry: any, label: string) => {
+        if (!entry || typeof entry !== 'object' || typeof entry.path !== 'string' || typeof entry.sha256 !== 'string') {
+            issues.push(`Missing checksum entry for ${label}.`);
+            return;
+        }
+        const filePath = path.join(datasetDir, entry.path);
+        if (!fs.existsSync(filePath)) {
+            issues.push(`Missing file for ${label}: ${entry.path}`);
+            return;
+        }
+        const checksum = await hashFileSha256(filePath);
+        if (checksum !== entry.sha256) {
+            issues.push(`Checksum mismatch for ${entry.path}`);
+        }
+    };
+
+    await verifyFile(files.manifest, 'manifest');
+    await verifyFile(files.report, 'report');
+    await verifyFile(files.snapshot, 'snapshot');
+
+    const logEntries = Array.isArray(files.logs) ? files.logs : [];
+    if (logEntries.length === 0) {
+        issues.push('Missing log checksum entries.');
+    } else {
+        for (let i = 0; i < logEntries.length; i += 1) {
+            const entry = logEntries[i];
+            await verifyFile(entry, `log #${i + 1}`);
+        }
+    }
+
+    return { ok: issues.length === 0, issues, hasIntegrityFile: true, snapshotSchemaVersion };
 };
 
 const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Promise<T[]> => {
@@ -2196,6 +2313,8 @@ if (!gotTheLock) {
                         'utf-8'
                     );
                 }
+                const integrity = await buildDatasetIntegrity(datasetDir);
+                await fs.promises.writeFile(path.join(datasetDir, DEV_DATASET_INTEGRITY_FILE), JSON.stringify(integrity, null, 2), 'utf-8');
                 await writeDevDatasetStatus(datasetDir, { complete: true, createdAt, completedAt: new Date().toISOString(), totalLogs: logs.length });
                 await fs.promises.rename(datasetDir, finalDatasetDir);
                 event.sender.send('dev-dataset-save-progress', { id, stage: 'done', written: logs.length, total: logs.length });
@@ -2306,6 +2425,8 @@ if (!gotTheLock) {
                         'utf-8'
                     );
                 }
+                const integrity = await buildDatasetIntegrity(datasetDir);
+                await fs.promises.writeFile(path.join(datasetDir, DEV_DATASET_INTEGRITY_FILE), JSON.stringify(integrity, null, 2), 'utf-8');
                 await writeDevDatasetStatus(datasetDir, { complete: true, completedAt: new Date().toISOString(), totalLogs: payload.total });
                 if (fs.existsSync(finalDatasetDir)) return { success: false, error: 'Dataset already exists.' };
                 await fs.promises.rename(datasetDir, finalDatasetDir);
@@ -2318,7 +2439,7 @@ if (!gotTheLock) {
             }
         });
 
-        ipcMain.handle('load-dev-dataset', async (_event, payload: { id: string }) => {
+        ipcMain.handle('load-dev-dataset', async (_event, payload: { id: string; allowLogsOnlyOnIntegrityFailure?: boolean }) => {
             try {
                 const dir = await ensureDevDatasetsDir();
                 const entries = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -2330,6 +2451,16 @@ if (!gotTheLock) {
                 const status = await readDevDatasetStatus(datasetDir);
                 if (status && status.complete !== true) {
                     return { success: false, error: 'Dataset is incomplete and cannot be loaded yet.' };
+                }
+                const integrity = await validateDatasetIntegrity(datasetDir);
+                const logsOnlyFallback = !integrity.ok;
+                if (logsOnlyFallback && !payload.allowLogsOnlyOnIntegrityFailure) {
+                    return {
+                        success: false,
+                        error: `Dataset integrity check failed: ${integrity.issues.join(' ')}`,
+                        canLoadLogsOnly: true,
+                        integrity
+                    };
                 }
                 const metaPath = path.join(datasetDir, 'meta.json');
                 const reportPath = path.join(datasetDir, 'report.json');
@@ -2348,25 +2479,29 @@ if (!gotTheLock) {
                     console.warn('[Main] Failed to read dev dataset manifest.json:', manifestError?.message || manifestError);
                 }
                 let report: any = null;
-                try {
-                    const reportStat = await fs.promises.stat(reportPath);
-                    if (reportStat.size <= MAX_DEV_DATASET_REPORT_BYTES) {
-                        const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
-                        report = JSON.parse(reportRaw);
-                    } else {
-                        console.warn(`[Main] Skipping dev dataset report.json (${reportStat.size} bytes) to avoid OOM.`);
+                if (!logsOnlyFallback) {
+                    try {
+                        const reportStat = await fs.promises.stat(reportPath);
+                        if (reportStat.size <= MAX_DEV_DATASET_REPORT_BYTES) {
+                            const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
+                            report = JSON.parse(reportRaw);
+                        } else {
+                            console.warn(`[Main] Skipping dev dataset report.json (${reportStat.size} bytes) to avoid OOM.`);
+                        }
+                    } catch (reportError: any) {
+                        console.warn('[Main] Failed to read dev dataset report.json:', reportError?.message || reportError);
                     }
-                } catch (reportError: any) {
-                    console.warn('[Main] Failed to read dev dataset report.json:', reportError?.message || reportError);
                 }
                 let snapshot: any = null;
-                try {
-                    if (fs.existsSync(snapshotPath)) {
-                        const snapshotRaw = await fs.promises.readFile(snapshotPath, 'utf-8');
-                        snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw));
+                if (!logsOnlyFallback) {
+                    try {
+                        if (fs.existsSync(snapshotPath)) {
+                            const snapshotRaw = await fs.promises.readFile(snapshotPath, 'utf-8');
+                            snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw));
+                        }
+                    } catch (snapshotError: any) {
+                        console.warn('[Main] Failed to read dev dataset snapshot.json:', snapshotError?.message || snapshotError);
                     }
-                } catch (snapshotError: any) {
-                    console.warn('[Main] Failed to read dev dataset snapshot.json:', snapshotError?.message || snapshotError);
                 }
                 const logPaths = await resolveOrderedDatasetLogPaths(datasetDir, logsDir, manifest, snapshot);
                 const snapshotLogIds = Array.isArray(snapshot?.state?.datasetLogIds) ? snapshot.state.datasetLogIds : null;
@@ -2386,13 +2521,13 @@ if (!gotTheLock) {
                         uploadTime: resolveDetailsUploadTime(details, entry)
                     };
                 });
-                return { success: true, dataset: { ...meta, logs: slimLogs, report, manifest, snapshot } };
+                return { success: true, dataset: { ...meta, logs: slimLogs, report, manifest, snapshot }, integrity, logsOnlyFallback };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to load dataset.' };
             }
         });
 
-        ipcMain.handle('load-dev-dataset-chunked', async (event, payload: { id: string; chunkSize?: number }) => {
+        ipcMain.handle('load-dev-dataset-chunked', async (event, payload: { id: string; chunkSize?: number; allowLogsOnlyOnIntegrityFailure?: boolean }) => {
             try {
                 const dir = await ensureDevDatasetsDir();
                 const entries = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -2404,6 +2539,16 @@ if (!gotTheLock) {
                 const status = await readDevDatasetStatus(datasetDir);
                 if (status && status.complete !== true) {
                     return { success: false, error: 'Dataset is incomplete and cannot be loaded yet.' };
+                }
+                const integrity = await validateDatasetIntegrity(datasetDir);
+                const logsOnlyFallback = !integrity.ok;
+                if (logsOnlyFallback && !payload.allowLogsOnlyOnIntegrityFailure) {
+                    return {
+                        success: false,
+                        error: `Dataset integrity check failed: ${integrity.issues.join(' ')}`,
+                        canLoadLogsOnly: true,
+                        integrity
+                    };
                 }
                 const metaPath = path.join(datasetDir, 'meta.json');
                 const reportPath = path.join(datasetDir, 'report.json');
@@ -2422,25 +2567,29 @@ if (!gotTheLock) {
                     console.warn('[Main] Failed to read dev dataset manifest.json:', manifestError?.message || manifestError);
                 }
                 let report: any = null;
-                try {
-                    const reportStat = await fs.promises.stat(reportPath);
-                    if (reportStat.size <= MAX_DEV_DATASET_REPORT_BYTES) {
-                        const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
-                        report = JSON.parse(reportRaw);
-                    } else {
-                        console.warn(`[Main] Skipping dev dataset report.json (${reportStat.size} bytes) to avoid OOM.`);
+                if (!logsOnlyFallback) {
+                    try {
+                        const reportStat = await fs.promises.stat(reportPath);
+                        if (reportStat.size <= MAX_DEV_DATASET_REPORT_BYTES) {
+                            const reportRaw = await fs.promises.readFile(reportPath, 'utf-8');
+                            report = JSON.parse(reportRaw);
+                        } else {
+                            console.warn(`[Main] Skipping dev dataset report.json (${reportStat.size} bytes) to avoid OOM.`);
+                        }
+                    } catch (reportError: any) {
+                        console.warn('[Main] Failed to read dev dataset report.json:', reportError?.message || reportError);
                     }
-                } catch (reportError: any) {
-                    console.warn('[Main] Failed to read dev dataset report.json:', reportError?.message || reportError);
                 }
                 let snapshot: any = null;
-                try {
-                    if (fs.existsSync(snapshotPath)) {
-                        const snapshotRaw = await fs.promises.readFile(snapshotPath, 'utf-8');
-                        snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw));
+                if (!logsOnlyFallback) {
+                    try {
+                        if (fs.existsSync(snapshotPath)) {
+                            const snapshotRaw = await fs.promises.readFile(snapshotPath, 'utf-8');
+                            snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw));
+                        }
+                    } catch (snapshotError: any) {
+                        console.warn('[Main] Failed to read dev dataset snapshot.json:', snapshotError?.message || snapshotError);
                     }
-                } catch (snapshotError: any) {
-                    console.warn('[Main] Failed to read dev dataset snapshot.json:', snapshotError?.message || snapshotError);
                 }
                 const logPaths = await resolveOrderedDatasetLogPaths(datasetDir, logsDir, manifest, snapshot);
                 const snapshotLogIds = Array.isArray(snapshot?.state?.datasetLogIds) ? snapshot.state.datasetLogIds : null;
@@ -2476,7 +2625,7 @@ if (!gotTheLock) {
                     }
                 })();
 
-                return { success: true, dataset: { ...meta, report, manifest, snapshot }, totalLogs: logPaths.length };
+                return { success: true, dataset: { ...meta, report, manifest, snapshot }, totalLogs: logPaths.length, integrity, logsOnlyFallback };
             } catch (err: any) {
                 return { success: false, error: err?.message || 'Failed to load dataset.' };
             }

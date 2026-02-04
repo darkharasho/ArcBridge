@@ -122,8 +122,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.invoke('append-dev-dataset-logs', payload),
     finishDevDatasetSave: (payload: { id: string; total: number }) =>
         ipcRenderer.invoke('finish-dev-dataset-save', payload),
-    loadDevDataset: (payload: { id: string }) => ipcRenderer.invoke('load-dev-dataset', payload),
-    loadDevDatasetChunked: (payload: { id: string; chunkSize?: number }) =>
+    loadDevDataset: (payload: { id: string; allowLogsOnlyOnIntegrityFailure?: boolean }) => ipcRenderer.invoke('load-dev-dataset', payload),
+    loadDevDatasetChunked: (payload: { id: string; chunkSize?: number; allowLogsOnlyOnIntegrityFailure?: boolean }) =>
         ipcRenderer.invoke('load-dev-dataset-chunked', payload),
     onDevDatasetLogsChunk: (callback: (data: any) => void) => {
         ipcRenderer.on('dev-dataset-logs-chunk', (_event, value) => callback(value));

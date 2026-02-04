@@ -2127,7 +2127,17 @@ function App() {
                                                             setDevDatasetLoadProgress({ id: dataset.id, name: dataset.name, loaded: 0, total: null, done: false });
                                                             try {
                                                                 if (window.electronAPI?.loadDevDatasetChunked) {
-                                                                    const result = await window.electronAPI.loadDevDatasetChunked({ id: dataset.id, chunkSize: 25 });
+                                                                    let result = await window.electronAPI.loadDevDatasetChunked({ id: dataset.id, chunkSize: 25 });
+                                                                    if (!result?.success && result?.canLoadLogsOnly) {
+                                                                        const issueText = Array.isArray(result.integrity?.issues) ? result.integrity?.issues.join('\n') : (result.error || 'Dataset integrity check failed.');
+                                                                        const confirmed = window.confirm(`Dataset integrity check failed.\n\n${issueText}\n\nLoad logs only and recompute stats?`);
+                                                                        if (!confirmed) return;
+                                                                        result = await window.electronAPI.loadDevDatasetChunked({
+                                                                            id: dataset.id,
+                                                                            chunkSize: 25,
+                                                                            allowLogsOnlyOnIntegrityFailure: true
+                                                                        });
+                                                                    }
                                                                     if (!result?.success || !result.dataset) return;
                                                                     datasetLoadRef.current = true;
                                                                     devDatasetStreamingIdRef.current = dataset.id;
@@ -2142,7 +2152,16 @@ function App() {
                                                                         setDevDatasetLoadProgress((prev) => (prev && prev.id === dataset.id ? { ...prev, total: totalLogs } : prev));
                                                                     }
                                                                 } else {
-                                                                    const result = await window.electronAPI.loadDevDataset({ id: dataset.id });
+                                                                    let result = await window.electronAPI.loadDevDataset({ id: dataset.id });
+                                                                    if (!result?.success && result?.canLoadLogsOnly) {
+                                                                        const issueText = Array.isArray(result.integrity?.issues) ? result.integrity?.issues.join('\n') : (result.error || 'Dataset integrity check failed.');
+                                                                        const confirmed = window.confirm(`Dataset integrity check failed.\n\n${issueText}\n\nLoad logs only and recompute stats?`);
+                                                                        if (!confirmed) return;
+                                                                        result = await window.electronAPI.loadDevDataset({
+                                                                            id: dataset.id,
+                                                                            allowLogsOnlyOnIntegrityFailure: true
+                                                                        });
+                                                                    }
                                                                     if (!result?.success || !result.dataset) return;
                                                                     datasetLoadRef.current = true;
                                                                     applyDevDatasetSnapshot(result.dataset.snapshot as IDevDatasetSnapshot | null);

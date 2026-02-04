@@ -97,6 +97,13 @@ export interface IDevDatasetSnapshot {
     };
 }
 
+export interface IDevDatasetIntegrityResult {
+    ok: boolean;
+    issues: string[];
+    hasIntegrityFile: boolean;
+    snapshotSchemaVersion: number | null;
+}
+
 export type UiTheme = 'classic' | 'modern';
 
 export type DisruptionMethod = 'count' | 'duration' | 'tiered';
@@ -277,8 +284,8 @@ export interface IElectronAPI {
     beginDevDatasetSave: (payload: { id?: string; name: string; report?: any; snapshot?: IDevDatasetSnapshot }) => Promise<{ success: boolean; dataset?: IDevDatasetMeta; error?: string }>;
     appendDevDatasetLogs: (payload: { id: string; logs: any[]; startIndex: number; total?: number }) => Promise<{ success: boolean; error?: string }>;
     finishDevDatasetSave: (payload: { id: string; total: number }) => Promise<{ success: boolean; error?: string }>;
-    loadDevDataset: (payload: { id: string }) => Promise<{ success: boolean; dataset?: any; error?: string }>;
-    loadDevDatasetChunked: (payload: { id: string; chunkSize?: number }) => Promise<{ success: boolean; dataset?: any; totalLogs?: number; error?: string }>;
+    loadDevDataset: (payload: { id: string; allowLogsOnlyOnIntegrityFailure?: boolean }) => Promise<{ success: boolean; dataset?: any; error?: string; canLoadLogsOnly?: boolean; integrity?: IDevDatasetIntegrityResult; logsOnlyFallback?: boolean }>;
+    loadDevDatasetChunked: (payload: { id: string; chunkSize?: number; allowLogsOnlyOnIntegrityFailure?: boolean }) => Promise<{ success: boolean; dataset?: any; totalLogs?: number; error?: string; canLoadLogsOnly?: boolean; integrity?: IDevDatasetIntegrityResult; logsOnlyFallback?: boolean }>;
     onDevDatasetLogsChunk: (callback: (data: any) => void) => () => void;
     onDevDatasetSaveProgress: (callback: (data: any) => void) => () => void;
     deleteDevDataset: (payload: { id: string }) => Promise<{ success: boolean; error?: string }>;
