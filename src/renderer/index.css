@@ -441,6 +441,14 @@ body.theme-modern .settings-view textarea::placeholder {
     color: rgba(122, 132, 148, 0.8);
 }
 
+:root {
+    --arcbridge-gradient: linear-gradient(90deg, #60a5fa, #a855f7);
+}
+
+body.theme-modern {
+    --arcbridge-gradient: linear-gradient(90deg, #60a5fa, #a855f7);
+}
+
 html.web-report,
 body.web-report {
     height: auto;
@@ -660,6 +668,23 @@ button:focus-visible,
         linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
     opacity: 0.95;
     pointer-events: none;
+}
+
+.arcbridge-logo {
+    display: inline-block;
+    background-image: var(--arcbridge-gradient);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+body.theme-modern .arcbridge-logo {
+    background-image: var(--arcbridge-gradient);
 }
 
 .stats-share-mode * {

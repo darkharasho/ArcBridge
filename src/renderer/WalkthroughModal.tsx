@@ -28,6 +28,7 @@ const STEPS = [
 export function WalkthroughModal({ isOpen, onClose, onLearnMore }: WalkthroughModalProps) {
     if (!isOpen) return null;
     const appIconPath = `${import.meta.env.BASE_URL || './'}img/ArcBridge.svg`;
+    const arcbridgeLogoStyle = { WebkitMaskImage: `url(${appIconPath})`, maskImage: `url(${appIconPath})` } as const;
 
     return (
         <AnimatePresence>
@@ -48,7 +49,7 @@ export function WalkthroughModal({ isOpen, onClose, onLearnMore }: WalkthroughMo
                     <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5">
                         <div className="flex items-center gap-3">
                             <div className="rounded-xl border border-blue-500/30 bg-blue-500/20 p-1.5">
-                                <img src={appIconPath} alt="ArcBridge logo" className="h-7 w-7 rounded-lg object-contain" />
+                                <span className="arcbridge-logo h-7 w-7 rounded-lg" style={arcbridgeLogoStyle} aria-label="ArcBridge logo" />
                             </div>
                             <div>
                                 <div className="text-lg font-bold text-white">Welcome to ArcBridge</div>

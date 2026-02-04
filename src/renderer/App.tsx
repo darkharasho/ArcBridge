@@ -1309,7 +1309,8 @@ function App() {
     };
 
     const isModernTheme = uiTheme === 'modern';
-    const appIconPath = `${import.meta.env.BASE_URL || './'}img/ArcBridgeGradient.png`;
+    const appIconPath = `${import.meta.env.BASE_URL || './'}img/ArcBridge.svg`;
+    const arcbridgeLogoStyle = { WebkitMaskImage: `url(${appIconPath})`, maskImage: `url(${appIconPath})` } as const;
     const isDev = import.meta.env.DEV;
     const shellClassName = isModernTheme
         ? 'app-shell h-screen w-screen text-white overflow-hidden flex flex-col'
@@ -1320,7 +1321,7 @@ function App() {
             {/* Custom Title Bar */}
             <div className="app-titlebar h-10 shrink-0 w-full flex justify-between items-center px-4 bg-black/20 backdrop-blur-md border-b border-white/5 drag-region select-none z-50">
                 <div className="flex items-center gap-2">
-                    <img src={appIconPath} alt="Icon" className="h-4 w-auto" />
+                    <span className="arcbridge-logo h-4 w-4" style={arcbridgeLogoStyle} aria-label="ArcBridge logo" />
                     <span className="text-xs font-medium text-gray-400">ArcBridge</span>
                     {isDev ? (
                         <span className="ml-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.3em] text-amber-300">
@@ -1353,7 +1354,7 @@ function App() {
                         className="flex items-center gap-3 min-w-0"
                     >
                         <div className="flex items-center gap-3">
-                            <img src={appIconPath} alt="ArcBridge" className="h-8 w-auto rounded-md" />
+                            <span className="arcbridge-logo h-8 w-8 rounded-md" style={arcbridgeLogoStyle} aria-label="ArcBridge logo" />
                             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
                                 ArcBridge
                             </h1>
