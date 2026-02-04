@@ -146,7 +146,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const lastDevSettingsTriggerRef = useRef<number>(developerSettingsTrigger || 0);
     const settingsScrollRef = useRef<HTMLDivElement | null>(null);
     const helpUpdatesRef = useRef<HTMLDivElement | null>(null);
-    const lastHelpUpdatesFocusTriggerRef = useRef<number>(helpUpdatesFocusTrigger || 0);
+    const lastHelpUpdatesFocusTriggerRef = useRef<number>(0);
     const inferredPagesUrl = githubRepoOwner && githubRepoName
         ? `https://${githubRepoOwner}.github.io/${githubRepoName}`
         : '';
@@ -227,10 +227,13 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         if (!container || !section) {
             return;
         }
-        const containerRect = container.getBoundingClientRect();
-        const sectionRect = section.getBoundingClientRect();
-        const targetTop = container.scrollTop + (sectionRect.top - containerRect.top) - 8;
-        container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+        const targetTop = section.offsetTop - 8;
+        const top = Math.max(0, targetTop);
+        if (typeof container.scrollTo === 'function') {
+            container.scrollTo({ top, behavior: 'smooth' });
+            return;
+        }
+        container.scrollTop = top;
     }, [helpUpdatesFocusTrigger]);
 
     const handleExportSettings = async () => {
