@@ -726,8 +726,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         if (diff !== 0) return diff;
         return String(a?.name || '').localeCompare(String(b?.name || ''));
     };
-    const sortedSquadClassData = [...stats.squadClassData].sort(sortByCountDesc);
-    const sortedEnemyClassData = [...stats.enemyClassData].sort(sortByCountDesc);
+    const squadClassData = Array.isArray(stats?.squadClassData) ? stats.squadClassData : [];
+    const enemyClassData = Array.isArray(stats?.enemyClassData) ? stats.enemyClassData : [];
+    const sortedSquadClassData = [...squadClassData].sort(sortByCountDesc);
+    const sortedEnemyClassData = [...enemyClassData].sort(sortByCountDesc);
 
     const containerClass = embedded
         ? 'stats-view min-h-screen flex flex-col p-0 w-full max-w-none'

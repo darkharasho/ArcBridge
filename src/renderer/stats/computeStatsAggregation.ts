@@ -1039,7 +1039,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             name, value, color: getProfessionColor(name)
         })).sort((a, b) => b.value - a.value);
 
-        // 2. Enemy Class Data (Top 10)
+        // 2. Enemy Class Data
         const enemyNameCounts: Record<string, number> = {};
         if (Object.keys(enemyProfessionCounts).length === 0) {
             validLogs.forEach(l => {
@@ -1054,7 +1054,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         const enemyCounts = Object.keys(enemyProfessionCounts).length > 0 ? enemyProfessionCounts : enemyNameCounts;
         const enemyClassData = Object.entries(enemyCounts).map(([name, value]) => ({
             name, value, color: getProfessionColor(name) || '#f87171'
-        })).sort((a, b) => b.value - a.value).slice(0, 10);
+        })).sort((a, b) => b.value - a.value);
 
         // 3. Fight Breakdown
         const fightBreakdown = validLogs

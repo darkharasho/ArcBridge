@@ -13,6 +13,7 @@ import { Terminal as TerminalIcon } from 'lucide-react';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IDevDatasetSnapshot, IEmbedStatSettings, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
 import { WalkthroughModal } from './WalkthroughModal';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
     const commaIndex = dataUrl.indexOf(',');
@@ -112,6 +113,7 @@ function App() {
     const [devDatasetSaving, setDevDatasetSaving] = useState(false);
     const [devDatasetLoadingId, setDevDatasetLoadingId] = useState<string | null>(null);
     const [devDatasetRefreshing, setDevDatasetRefreshing] = useState(false);
+    const [devDatasetLoadModes, setDevDatasetLoadModes] = useState<Record<string, 'frozen' | 'recompute'>>({});
     const devDatasetStreamingIdRef = useRef<string | null>(null);
     const [devDatasetSaveProgress, setDevDatasetSaveProgress] = useState<{ id: string; stage: string; written: number; total: number } | null>(null);
     const devDatasetSavingIdRef = useRef<string | null>(null);
@@ -159,13 +161,6 @@ function App() {
         }
     }, []);
 
-    const selectDevDatasetLoadMode = useCallback((): 'frozen' | 'recompute' => {
-        const useFrozen = window.confirm(
-            'Dev Dataset Load Mode\n\nOK: Restore frozen snapshot + precomputed stats.\nCancel: Recompute from logs using current settings.'
-        );
-        return useFrozen ? 'frozen' : 'recompute';
-    }, []);
-
     const loadDevDatasets = useCallback(async () => {
         if (!window.electronAPI?.listDevDatasets) return;
         setDevDatasetRefreshing(true);
@@ -173,6 +168,13 @@ function App() {
             const result = await window.electronAPI.listDevDatasets();
             if (result?.success && Array.isArray(result.datasets)) {
                 setDevDatasets(result.datasets);
+                setDevDatasetLoadModes((prev) => {
+                    const next: Record<string, 'frozen' | 'recompute'> = {};
+                    result.datasets!.forEach((dataset) => {
+                        next[dataset.id] = prev[dataset.id] || 'frozen';
+                    });
+                    return next;
+                });
             }
         } finally {
             setDevDatasetRefreshing(false);
@@ -516,10 +518,32 @@ function App() {
 
     // Stats calculation
     const totalUploads = logs.length;
-    const pendingUploads = logs.filter((log) =>
-        log.status === 'queued' || log.status === 'pending' || log.status === 'uploading' || log.status === 'calculating'
-    ).length;
-    const completedUploads = totalUploads - pendingUploads;
+    const statusCounts = logs.reduce<Record<string, number>>((acc, log) => {
+        const key = log.status || 'queued';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+    const uploadStatusBreakdown = [
+        { key: 'queued', label: 'Queued', color: '#94a3b8' },
+        { key: 'pending', label: 'Pending', color: '#f59e0b' },
+        { key: 'uploading', label: 'Uploading', color: '#38bdf8' },
+        { key: 'discord', label: 'Discord', color: '#a78bfa' },
+        { key: 'calculating', label: 'Calculating', color: '#facc15' },
+        { key: 'success', label: 'Success', color: '#34d399' },
+        { key: 'error', label: 'Error', color: '#f87171' }
+    ].map((entry) => ({ ...entry, count: statusCounts[entry.key] || 0 }));
+    const knownStatusKeys = new Set(uploadStatusBreakdown.map((entry) => entry.key));
+    const otherStatusCount = Object.entries(statusCounts).reduce((sum, [status, count]) => {
+        if (knownStatusKeys.has(status)) return sum;
+        return sum + count;
+    }, 0);
+    if (otherStatusCount > 0) {
+        uploadStatusBreakdown.push({ key: 'other', label: 'Other', color: '#9ca3af', count: otherStatusCount });
+    }
+    const uploadHasAnyStatus = uploadStatusBreakdown.some((entry) => entry.count > 0);
+    const uploadPieData = uploadHasAnyStatus
+        ? uploadStatusBreakdown
+        : [{ key: 'none', label: 'No logs', color: '#334155', count: 1 }];
     const avgSquadSize = logs.length > 0
         ? Math.round(logs.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logs.length)
         : 0;
@@ -1641,33 +1665,76 @@ function App() {
                                 transition={{ delay: 0.2 }}
                                 className="grid grid-cols-2 gap-4"
                             >
-                                <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-blue-200 text-xs font-medium mb-1 uppercase tracking-wider">Uploads</div>
-                                    <div className="text-2xl font-bold text-white">
-                                        <span className="text-amber-200">{pendingUploads}</span>
-                                        <span className="text-gray-500 mx-2">/</span>
-                                        <span className="text-emerald-300">{completedUploads}</span>
+                                <div className="h-32 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
+                                    <div className="text-blue-200 text-xs font-medium uppercase tracking-wider">Upload Status</div>
+                                    <div className="flex-1 min-h-0 flex items-center justify-center">
+                                        <div className="w-full h-full max-h-[84px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={uploadPieData}
+                                                        dataKey="count"
+                                                        nameKey="label"
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius="55%"
+                                                        outerRadius="86%"
+                                                        stroke="rgba(15, 23, 42, 0.9)"
+                                                        strokeWidth={1}
+                                                        paddingAngle={1}
+                                                    >
+                                                        {uploadPieData.map((entry) => (
+                                                            <Cell key={entry.key} fill={entry.color} />
+                                                        ))}
+                                                    </Pie>
+                                                    <text
+                                                        x="50%"
+                                                        y="50%"
+                                                        textAnchor="middle"
+                                                        dominantBaseline="middle"
+                                                        className="fill-white text-[11px] font-semibold"
+                                                    >
+                                                        {totalUploads}
+                                                    </text>
+                                                    <Tooltip
+                                                        formatter={(value: any, _name: any, payload: any) => {
+                                                            const label = payload?.payload?.label || 'Status';
+                                                            return [`${value ?? 0}`, label];
+                                                        }}
+                                                        contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.12)', borderRadius: '0.5rem', color: '#fff' }}
+                                                        itemStyle={{ color: '#fff' }}
+                                                        labelStyle={{ display: 'none' }}
+                                                    />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">W / L</div>
-                                    <div className="text-2xl font-bold text-white">
-                                        <span className="text-emerald-300">{winLoss.wins}</span>
-                                        <span className="text-gray-500 mx-2">/</span>
-                                        <span className="text-red-400">{winLoss.losses}</span>
+                                <div className="h-32 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col">
+                                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">W / L</div>
+                                    <div className="flex-1 flex items-center">
+                                        <div className="text-3xl font-bold text-white leading-none">
+                                            <span className="text-emerald-300">{winLoss.wins}</span>
+                                            <span className="text-gray-500 mx-2">/</span>
+                                            <span className="text-red-400">{winLoss.losses}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Avg Players</div>
-                                    <div className="text-2xl font-bold text-white">
-                                        <span className="text-emerald-300">{avgSquadSize}</span>
-                                        <span className="text-gray-500 mx-2">/</span>
-                                        <span className="text-red-400">{avgEnemies}</span>
+                                <div className="h-32 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col">
+                                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Avg Players</div>
+                                    <div className="flex-1 flex items-center">
+                                        <div className="text-3xl font-bold text-white leading-none">
+                                            <span className="text-emerald-300">{avgSquadSize}</span>
+                                            <span className="text-gray-500 mx-2">/</span>
+                                            <span className="text-red-400">{avgEnemies}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                                    <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Squad KDR</div>
-                                    <div className="text-2xl font-bold text-emerald-300">{squadKdr}</div>
+                                <div className="h-32 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col">
+                                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Squad KDR</div>
+                                    <div className="flex-1 flex items-center">
+                                        <div className="text-3xl font-bold text-emerald-300 leading-none">{squadKdr}</div>
+                                    </div>
                                 </div>
                             </motion.div>
                         </div>
@@ -2051,6 +2118,7 @@ function App() {
                                                 const datasetId = result.dataset.id;
                                                 devDatasetSavingIdRef.current = datasetId;
                                                 setDevDatasets((prev) => [result.dataset!, ...prev]);
+                                                setDevDatasetLoadModes((prev) => ({ ...prev, [datasetId]: prev[datasetId] || 'frozen' }));
                                                 setDevDatasetName('');
                                                 const snapshot = logs.slice();
                                                 const chunkSize = 20;
@@ -2125,12 +2193,34 @@ function App() {
                                                     <div className="text-[10px] text-amber-200/60">{new Date(dataset.createdAt).toLocaleString()}</div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
+                                                    <div className="inline-flex items-center gap-1 rounded-md border border-amber-500/25 bg-black/40 p-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDevDatasetLoadModes((prev) => ({ ...prev, [dataset.id]: 'frozen' }))}
+                                                            className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${((devDatasetLoadModes[dataset.id] || 'frozen') === 'frozen')
+                                                                ? 'bg-amber-400/25 text-amber-100'
+                                                                : 'text-amber-200/70 hover:text-amber-100 hover:bg-amber-500/10'
+                                                                }`}
+                                                        >
+                                                            Frozen
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDevDatasetLoadModes((prev) => ({ ...prev, [dataset.id]: 'recompute' }))}
+                                                            className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${((devDatasetLoadModes[dataset.id] || 'frozen') === 'recompute')
+                                                                ? 'bg-amber-400/25 text-amber-100'
+                                                                : 'text-amber-200/70 hover:text-amber-100 hover:bg-amber-500/10'
+                                                                }`}
+                                                        >
+                                                            Recompute
+                                                        </button>
+                                                    </div>
                                                     <button
                                                         type="button"
                                                         onClick={async () => {
                                                             if (devDatasetLoadingId) return;
                                                             if (!window.electronAPI?.loadDevDatasetChunked && !window.electronAPI?.loadDevDataset) return;
-                                                            const loadMode = selectDevDatasetLoadMode();
+                                                            const loadMode = devDatasetLoadModes[dataset.id] || 'frozen';
                                                             setDevDatasetLoadingId(dataset.id);
                                                             setDevDatasetLoadProgress({ id: dataset.id, name: dataset.name, loaded: 0, total: null, done: false });
                                                             try {
@@ -2211,6 +2301,11 @@ function App() {
                                                                 await window.electronAPI.deleteDevDataset({ id: dataset.id });
                                                             }
                                                             setDevDatasets((prev) => prev.filter((entry) => entry.id !== dataset.id));
+                                                            setDevDatasetLoadModes((prev) => {
+                                                                const next = { ...prev };
+                                                                delete next[dataset.id];
+                                                                return next;
+                                                            });
                                                         }}
                                                         className="px-2.5 py-1 rounded-md text-[11px] font-semibold border border-amber-700/40 bg-amber-700/10 text-amber-200 hover:bg-amber-700/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                                         disabled={devDatasetLoadingId === dataset.id}

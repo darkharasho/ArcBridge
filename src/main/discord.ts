@@ -86,6 +86,43 @@ const DISCORD_EMBED_CHAR_LIMIT = 6000;
 const DISCORD_EMBED_FIELD_LIMIT = 25;
 const DISCORD_MAX_EMBEDS = 10;
 
+const resolveFightTimestampMs = (jsonDetails: any, logData: any) => {
+    const raw = jsonDetails?.timeStartStd
+        ?? jsonDetails?.timeStart
+        ?? jsonDetails?.uploadTime
+        ?? logData?.uploadTime;
+    if (raw === undefined || raw === null || raw === '') return 0;
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+        return raw > 1e12 ? raw : raw * 1000;
+    }
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric > 1e12 ? numeric : numeric * 1000;
+    }
+    const parsed = Date.parse(String(raw));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const cleanFightMapLabel = (rawFightName: any) => {
+    return String(rawFightName || 'Unknown Map')
+        .replace(/^Detailed\s*WvW\s*-\s*/i, '')
+        .replace(/^WvW\s*-\s*/i, '')
+        .trim();
+};
+
+const formatFightTitleForDiscord = (jsonDetails: any, logData: any) => {
+    const timestampMs = resolveFightTimestampMs(jsonDetails, logData);
+    const mapLabel = cleanFightMapLabel(jsonDetails?.fightName);
+    const dateLabel = timestampMs > 0
+        ? new Date(timestampMs).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })
+        + ' '
+        + new Date(timestampMs).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+        : '';
+    if (dateLabel && mapLabel) return `${dateLabel} - ${mapLabel}`;
+    if (mapLabel) return mapLabel;
+    return jsonDetails?.fightName || 'Log Uploaded';
+};
+
 export class DiscordNotifier {
     private webhookUrl: string | null = null;
     private embedStatSettings: IEmbedStatSettings = DEFAULT_EMBED_STATS;
@@ -126,7 +163,7 @@ export class DiscordNotifier {
 
                 let content = '';
                 if (logData.id !== 'stats-dashboard' && !logData.suppressContent) {
-                    content = `**${jsonDetails?.fightName || 'Log Uploaded'}**\n[dps.report](${logData.permalink})`;
+                    content = `**${formatFightTitleForDiscord(jsonDetails, logData)}**\n[dps.report](${logData.permalink})`;
                 }
 
                 const payload: any = {
@@ -689,7 +726,7 @@ export class DiscordNotifier {
                     };
 
                     const baseEmbed = {
-                        title: `${jsonDetails.fightName || 'Log Uploaded'}`,
+                        title: formatFightTitleForDiscord(jsonDetails, logData),
                         url: logData.permalink,
                         description: desc,
                         color: getEmbedColor(jsonDetails.fightName),
