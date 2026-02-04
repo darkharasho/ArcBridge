@@ -27,7 +27,7 @@ export const StatsHeader = ({
     sharing,
     onShare
 }: StatsHeaderProps) => (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 shrink-0 px-2 2xl:px-0">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 shrink-0 px-2">
         <div className="flex items-start gap-3 sm:items-center sm:gap-4">
             {!embedded && (
                 <button
