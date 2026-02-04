@@ -48,6 +48,20 @@ const makeElectronApiMock = (overrides?: {
 };
 
 describe('App first-time walkthrough', () => {
+    it('marks walkthrough as seen immediately when first-time modal is shown', async () => {
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: false }
+        });
+        window.electronAPI = electronApi as any;
+
+        render(<App />);
+
+        expect(await screen.findByText('Welcome to ArcBridge')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(electronApi.saveSettings).toHaveBeenCalledWith({ walkthroughSeen: true });
+        });
+    });
+
     it('shows walkthrough for first-time users and marks it as seen on close', async () => {
         const user = userEvent.setup();
         const electronApi = makeElectronApiMock({
@@ -108,5 +122,32 @@ describe('App first-time walkthrough', () => {
         await user.click(screen.getByRole('button', { name: 'How To' }));
         expect(await screen.findByText('Feature and workflow reference')).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: 'ArcBridge How-To' }).length).toBeGreaterThan(0);
+    });
+
+    it('does not re-scroll to Help & Updates after leaving and returning to Settings', async () => {
+        const user = userEvent.setup();
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: false }
+        });
+        window.electronAPI = electronApi as any;
+
+        const scrollToSpy = vi.fn();
+        Object.defineProperty(HTMLDivElement.prototype, 'scrollTo', {
+            configurable: true,
+            writable: true,
+            value: scrollToSpy
+        });
+
+        render(<App />);
+
+        expect(await screen.findByText('Welcome to ArcBridge')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Learn More' }));
+        expect(await screen.findByText('Help & Updates')).toBeInTheDocument();
+        expect(scrollToSpy).toHaveBeenCalledTimes(1);
+
+        await user.click(screen.getByTitle('Dashboard'));
+        await user.click(screen.getByTitle('Settings'));
+        expect(await screen.findByText('Help & Updates')).toBeInTheDocument();
+        expect(scrollToSpy).toHaveBeenCalledTimes(1);
     });
 });

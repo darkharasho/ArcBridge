@@ -76,6 +76,7 @@ function App() {
     const [whatsNewNotes, setWhatsNewNotes] = useState<string | null>(null);
     const [walkthroughOpen, setWalkthroughOpen] = useState(false);
     const [helpUpdatesFocusTrigger, setHelpUpdatesFocusTrigger] = useState(0);
+    const walkthroughSeenMarkedRef = useRef(false);
 
     // Webhook Management
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
@@ -673,6 +674,10 @@ function App() {
             const shouldShowWalkthrough = settings.walkthroughSeen !== true;
             if (shouldShowWalkthrough) {
                 setWalkthroughOpen(true);
+                if (!walkthroughSeenMarkedRef.current) {
+                    walkthroughSeenMarkedRef.current = true;
+                    window.electronAPI?.saveSettings?.({ walkthroughSeen: true });
+                }
             } else if (whatsNew.version && whatsNew.version !== whatsNew.lastSeenVersion) {
                 setWhatsNewOpen(true);
             }
@@ -1157,6 +1162,9 @@ function App() {
         setView('settings');
         setHelpUpdatesFocusTrigger((current) => current + 1);
     };
+    const handleHelpUpdatesFocusConsumed = useCallback((trigger: number) => {
+        setHelpUpdatesFocusTrigger((current) => (current === trigger ? 0 : current));
+    }, []);
 
     const scheduleWebUploadClear = () => {
         if (webUploadClearTimerRef.current) {
@@ -1509,6 +1517,7 @@ function App() {
                         onUiThemeSaved={setUiTheme}
                         developerSettingsTrigger={developerSettingsTrigger}
                         helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
+                        onHelpUpdatesFocusConsumed={handleHelpUpdatesFocusConsumed}
                         onOpenWalkthrough={() => setWalkthroughOpen(true)}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />

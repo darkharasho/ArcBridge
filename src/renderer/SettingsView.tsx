@@ -15,6 +15,7 @@ interface SettingsViewProps {
     onOpenWhatsNew?: () => void;
     onOpenWalkthrough?: () => void;
     helpUpdatesFocusTrigger?: number;
+    onHelpUpdatesFocusConsumed?: (trigger: number) => void;
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
     onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
@@ -84,7 +85,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved, developerSettingsTrigger }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved, developerSettingsTrigger }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
@@ -231,10 +232,12 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         const top = Math.max(0, targetTop);
         if (typeof container.scrollTo === 'function') {
             container.scrollTo({ top, behavior: 'smooth' });
+            onHelpUpdatesFocusConsumed?.(trigger);
             return;
         }
         container.scrollTop = top;
-    }, [helpUpdatesFocusTrigger]);
+        onHelpUpdatesFocusConsumed?.(trigger);
+    }, [helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed]);
 
     const handleExportSettings = async () => {
         setSettingsTransferStatus(null);
