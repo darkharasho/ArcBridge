@@ -1,18 +1,17 @@
 # Release Notes
 
-Version v1.20.4 — February 4, 2026
+Version v1.20.5 — February 4, 2026
 
 ## 🌟 Highlights
-- Stats handling is safer with safer data access and a clearer logging reset.
-- Dataset deletion now requires explicit confirmation with a timeout.
-- Dev dataset enhancements include load mode options (frozen snapshot or recompute), integrity validation, snapshot support, and transactional writes.
+- Walkthrough seen tracking added to tailor your onboarding.
+- Settings view updated for a cleaner, more intuitive experience.
 
 ## 🛠️ Improvements
-- Upload status is now shown as a pie chart for easier status breakdown.
-- Dev dataset features: added load mode options, snapshot support, transactional writes, and improved loading with integrity validation.
+- Onboarding flow refined to remember when you've seen the walkthrough and adjust next steps accordingly.
+- Settings screen updated to reflect clearer options and improved layout.
 
 ## 🧯 Fixes
-- Fixed help updates focus trigger initialization and improved scroll behavior.
+- None.
 
 ## ⚠️ Breaking Changes
 - None.
