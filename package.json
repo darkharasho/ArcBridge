@@ -25,6 +25,7 @@
         "build:qa:win": "npm run build && electron-builder --win zip",
         "build:github": "node scripts/build-github.mjs",
         "generate:release-notes": "node scripts/generate-release-notes.mjs",
+        "dev:fake-first-time": "node scripts/fake-first-time.mjs",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview",
         "dev:web": "vite --config vite.web.config.ts --host 127.0.0.1 --port 4173",

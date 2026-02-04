@@ -1,0 +1,64 @@
+{
+  "id": "arcbridge",
+  "title": "ArcBridge How-To",
+  "summary": "Use this guide to navigate every core workflow in ArcBridge.",
+  "content": "ArcBridge helps you ingest **Guild Wars 2 arcdps logs**, analyze combat performance, and share outputs with your squad.\n\n## How to use this guide\n\n- Use the **Guide Map** on the left to jump by area.\n- Use the **breadcrumbs** at the top to move up/down the hierarchy.\n- Start with **Getting Started** for setup, then move to **Dashboard**, **Stats View**, and **Sharing**.\n\n> Tip: For troubleshooting, jump to the **Troubleshooting** node at any time.",
+  "children": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "summary": "Initial setup, first upload flow, and what to expect.",
+      "content": "## Setup checklist\n\n- Open ArcBridge and set your **Log Directory** to your `arcdps.cbtlogs` folder.\n- Confirm uploads are pointed at your intended output path (Discord mode, Web mode, or both).\n- Optionally add your `dps.report` user token in Settings.\n\n## First ingest workflow\n\n1. Configure the log directory.\n2. Add one or more `.zevtc` files (manual or watched ingestion).\n3. Wait for status transitions (`queued -> uploading -> success`, or error states).\n4. Verify fight cards include metadata (fight name, time, links, and computed details).\n\n## Common first-run checks\n\n- If no logs appear, verify the folder path and permissions.\n- If uploads fail, review status text and your webhook/token configuration.\n- If details are delayed, wait for parsing and aggregation to complete."
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard",
+      "summary": "Operational view for ingest, statuses, and per-fight actions.",
+      "content": "## What the Dashboard is for\n\nThe Dashboard is your **live operations surface** for fight ingestion and quick review.\n\n## Key areas\n\n- **Configuration panel**: log directory, upload mode, webhook selection.\n- **Fight cards**: per-fight status, details, and action buttons.\n- **Batch controls**: select/add many logs and process in bulk.\n\n## Best practices\n\n- Use batch adds for session analysis to avoid fragmented samples.\n- Treat status text as authoritative for upload health.\n- Open fight cards to inspect details before sharing."
+    },
+    {
+      "id": "stats-view",
+      "title": "Stats View",
+      "summary": "Deep analysis of aggregated session performance.",
+      "content": "## Purpose\n\nStats View combines selected logs into a single **session-level analysis layer**.\n\n## What you can inspect\n\n- **Overview trends** across all selected fights.\n- **Offense and defense** distribution patterns.\n- **Support and utility** contributions.\n- **Top players and top skills** by configured metrics.\n- **Timeline/context sections** for progression over time.\n\n## Interpretation guidance\n\n- Use aggregated metrics for strategy calls, not single-fight variance.\n- Compare multiple sections together (offense + support + defense) before drawing conclusions.\n- Re-check stat mode toggles in Settings to ensure rankings match your intent."
+    },
+    {
+      "id": "sharing",
+      "title": "Sharing",
+      "summary": "Output workflows for Discord, screenshots, and web reports.",
+      "content": "## Sharing options\n\n- **Discord Embed/Image**: fast in-chat delivery.\n- **Stats screenshot export**: visual snapshot for announcements.\n- **Web upload**: persistent, browsable report hosting.\n\n## Choosing the right output\n\n- Use Discord when your squad needs rapid summaries.\n- Use web reports when you want historical links and richer browsing.\n- Use screenshots for one-click, visual, low-friction communication.\n\n## Reliability checks\n\n- Validate webhook and token before high-volume posting.\n- Confirm web publish URL resolves after upload/build completion.\n- If output looks stale, re-run with fresh logs and confirm build status."
+    },
+    {
+      "id": "settings",
+      "title": "Settings & Integrations",
+      "summary": "Central control for behavior, metrics, visuals, and integrations.",
+      "content": "## Settings categories\n\n- **Appearance**: UI theme and visual presentation.\n- **Upload/Auth**: tokens, webhook settings, connection state.\n- **Stat behavior**: top-stat toggles, ranking mode, MVP weights.\n- **Web publishing**: GitHub repository and Pages support.\n- **Portability**: import/export settings snapshots.\n\n## High-impact settings to review first\n\n- `dps.report` user token\n- Notification mode (`embed`, `image`, etc.)\n- Top stats mode (`total` vs `perSecond`)\n- MVP weighting model\n\n## Maintenance workflows\n\n- Export settings before major updates.\n- Import settings to move between machines.\n- Re-open Help & Updates for walkthroughs and release notes."
+    },
+    {
+      "id": "settings-github",
+      "title": "GitHub Web Reports",
+      "summary": "Hosted report pipeline using GitHub repositories and Pages.",
+      "content": "## What is GitHub (for new users)?\n\n**GitHub** is a website that stores project files in online folders called **repositories** (or \"repos\").\n\nIn ArcBridge, GitHub is used as your report hosting backend:\n\n- ArcBridge uploads report files into a repo you choose.\n- GitHub Pages then serves those files as a normal website URL.\n- You share that URL with your squad.\n\nThink of it as: ArcBridge = report builder, GitHub = report storage + website hosting.\n\n## Why use this integration?\n\n- Your reports live at a stable URL you can bookmark.\n- Anyone with the link can view reports in a browser.\n- You can keep consistent branding (theme/logo).\n- You don't need to manually move report files around.\n\n## Before you start\n\nYou need:\n\n- A GitHub account.\n- Permission to create or use a repository in that account.\n- ArcBridge desktop app with GitHub integration enabled.\n\n## High-level setup path\n\n1. Connect ArcBridge to GitHub (authorization flow).\n2. Pick an existing report repository or create a new one.\n3. Confirm the GitHub Pages URL is set.\n4. Choose a theme/logo (optional).\n5. Upload a report and verify the published page.\n\n## Key terms (quick glossary)\n\n- **Repository (repo)**: an online folder for files.\n- **Branch**: a version stream in a repo (usually `main`).\n- **GitHub Pages**: GitHub's static website hosting.\n- **Token/Auth**: permission ArcBridge needs to upload files for you.\n- **Build status**: indicates whether Pages has finished publishing updates.\n\n## Safety and ownership notes\n\n- ArcBridge only works with the repo you select.\n- If auth expires or permissions change, uploads can fail until reconnected.\n- Keep your GitHub account secure (2FA recommended).",
+      "children": [
+        {
+          "id": "settings-github-connect",
+          "title": "Connect & Authorize",
+          "summary": "Authenticate and target the repository for publishing.",
+          "content": "## Step-by-step (beginner friendly)\n\n### 1. Start connection in ArcBridge\n\n- Open **Settings -> GitHub Web Reports**.\n- Click the connect/authenticate action.\n- ArcBridge will show a short verification code and a GitHub URL.\n\n### 2. Complete verification on GitHub\n\n- Open the provided GitHub verification page.\n- Sign in to your GitHub account (if not already signed in).\n- Enter the code shown by ArcBridge.\n- Approve access when prompted.\n\nAfter approval, ArcBridge should show a connected/authenticated state.\n\n### 3. Choose where reports should be stored\n\nYou can either:\n\n- Select an existing repository, or\n- Create a new repository from ArcBridge.\n\nIf you're new, creating a dedicated repo just for reports is usually easiest.\n\n### 4. Confirm repo details\n\nVerify these values in Settings:\n\n- **Owner**: your GitHub username or org.\n- **Repository name**: target repo for report files.\n- **Branch**: usually `main`.\n- **Pages URL**: generated website URL used for sharing.\n\n## First-time validation checklist\n\n- Auth state says connected.\n- Repo is selectable and saved.\n- Pages URL appears.\n- No current error banner in the GitHub section.\n\n## Common beginner issues\n\n- **Wrong account signed in**: sign out/in on GitHub and reconnect.\n- **Repo not visible**: ensure permissions and refresh repo list.\n- **Connection says error**: retry auth; token may be expired/revoked.\n- **Pages URL missing**: wait for repo setup/template steps, then retry."
+        },
+        {
+          "id": "settings-github-customize",
+          "title": "Theme & Branding",
+          "summary": "Set report visuals and keep published branding consistent.",
+          "content": "## What this section controls\n\n- **Web theme**: visual style/colors/layout for published reports.\n- **Logo**: image shown in your report branding area.\n- **Template sync**: ensures the hosted report structure is up to date.\n\n## Recommended beginner workflow\n\n1. Connect GitHub and select repo first.\n2. Choose your theme in ArcBridge.\n3. Optionally select a logo file.\n4. Apply/sync changes.\n5. Wait for build status to complete.\n6. Open the Pages URL and confirm visuals.\n\n## Logo guidance\n\n- Prefer a clean PNG or SVG with transparent background.\n- Avoid extremely large files.\n- If logo looks stretched, try a square or balanced aspect ratio.\n\n## How to verify your changes\n\n- Build status should move from pending/checking to success.\n- Refresh the published URL in browser after build finishes.\n- Confirm theme colors and logo match what you selected.\n\n## If customization doesn't show up\n\n- Re-run apply theme/logo.\n- Confirm repo/branch are correct.\n- Check build status for errors.\n- Hard-refresh browser cache on the report URL."
+        }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "summary": "Rapid diagnosis path for ingest, stats, and publish failures.",
+      "content": "## Quick triage sequence\n\n1. Re-check log directory path and read permissions.\n2. Confirm webhook/token/repository values in Settings.\n3. Review status banners for parse/upload/build errors.\n4. Retry with a known-good small log set.\n\n## Symptom-based hints\n\n- **No logs detected**: path mismatch or watcher not active.\n- **Upload errors**: invalid webhook/token or transient network/API issue.\n- **Missing stats sections**: check stat toggles and whether logs completed processing.\n- **Web report stale**: verify template/theme sync and Pages build status.\n\n## Escalation\n\nUse [Support Discord](https://discord.gg/UjzMXMGXEg) and include:\n\n- A short symptom summary\n- Steps to reproduce\n- Relevant status messages"
+    }
+  ]
+}

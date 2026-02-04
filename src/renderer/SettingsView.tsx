@@ -1,17 +1,20 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload } from 'lucide-react';
+import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
+import { HowToModal } from './HowToModal';
 
 interface SettingsViewProps {
     onBack: () => void;
     onEmbedStatSettingsSaved?: (settings: IEmbedStatSettings) => void;
     onOpenWhatsNew?: () => void;
+    onOpenWalkthrough?: () => void;
+    helpUpdatesFocusTrigger?: number;
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
     onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
@@ -81,7 +84,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action }: {
     );
 }
 
-export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved, developerSettingsTrigger }: SettingsViewProps) {
+export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onUiThemeSaved, developerSettingsTrigger }: SettingsViewProps) {
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
     const [embedStats, setEmbedStats] = useState<IEmbedStatSettings>(DEFAULT_EMBED_STATS);
@@ -138,8 +141,12 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [importModalOpen, setImportModalOpen] = useState(false);
     const [importPreviewSettings, setImportPreviewSettings] = useState<any | null>(null);
     const [importSelections, setImportSelections] = useState<Record<string, boolean>>({});
+    const [howToOpen, setHowToOpen] = useState(false);
     const [devSettingsOpen, setDevSettingsOpen] = useState(false);
     const lastDevSettingsTriggerRef = useRef<number>(developerSettingsTrigger || 0);
+    const settingsScrollRef = useRef<HTMLDivElement | null>(null);
+    const helpUpdatesRef = useRef<HTMLDivElement | null>(null);
+    const lastHelpUpdatesFocusTriggerRef = useRef<number>(helpUpdatesFocusTrigger || 0);
     const inferredPagesUrl = githubRepoOwner && githubRepoName
         ? `https://${githubRepoOwner}.github.io/${githubRepoName}`
         : '';
@@ -208,6 +215,23 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         }
         lastDevSettingsTriggerRef.current = trigger;
     }, [developerSettingsTrigger]);
+
+    useEffect(() => {
+        const trigger = helpUpdatesFocusTrigger || 0;
+        if (trigger <= lastHelpUpdatesFocusTriggerRef.current) {
+            return;
+        }
+        lastHelpUpdatesFocusTriggerRef.current = trigger;
+        const container = settingsScrollRef.current;
+        const section = helpUpdatesRef.current;
+        if (!container || !section) {
+            return;
+        }
+        const containerRect = container.getBoundingClientRect();
+        const sectionRect = section.getBoundingClientRect();
+        const targetTop = container.scrollTop + (sectionRect.top - containerRect.top) - 8;
+        container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }, [helpUpdatesFocusTrigger]);
 
     const handleExportSettings = async () => {
         setSettingsTransferStatus(null);
@@ -876,7 +900,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                 </div>
             </motion.div>
 
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+            <div ref={settingsScrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4">
                 <SettingsSection title="Appearance" icon={Sparkles} delay={0.02}>
                     <p className="text-sm text-gray-400 mb-4">
                         Switch between the classic interface and the new slate/pearl redesign.
@@ -1469,19 +1493,36 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                     </div>
                 </SettingsSection>
 
-                {/* Close Behavior Section */}
-                <SettingsSection title="What's New" icon={Sparkles} delay={0.18}>
-                    <p className="text-sm text-gray-400 mb-4">
-                        Review the latest update notes and feature changes.
-                    </p>
-                    <button
-                        onClick={() => onOpenWhatsNew?.()}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm font-medium text-blue-200 hover:bg-blue-500/20 transition-colors"
-                    >
-                        <Sparkles className="w-4 h-4" />
-                        View What's New
-                    </button>
-                </SettingsSection>
+                <div ref={helpUpdatesRef}>
+                    <SettingsSection title="Help & Updates" icon={Sparkles} delay={0.18}>
+                        <p className="text-sm text-gray-400 mb-4">
+                            Review release notes, reopen onboarding, or browse the complete feature guide.
+                        </p>
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => setHowToOpen(true)}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 transition-colors"
+                            >
+                                <BookOpen className="w-4 h-4" />
+                                How To
+                            </button>
+                            <button
+                                onClick={() => onOpenWalkthrough?.()}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 transition-colors"
+                            >
+                                <Compass className="w-4 h-4" />
+                                Open Walkthrough
+                            </button>
+                            <button
+                                onClick={() => onOpenWhatsNew?.()}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm font-medium text-blue-200 hover:bg-blue-500/20 transition-colors"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                View What's New
+                            </button>
+                        </div>
+                    </SettingsSection>
+                </div>
 
                 <SettingsSection title="Dashboard - Top Stats & MVP" icon={BarChart3} delay={0.18}>
                     <p className="text-sm text-gray-400 mb-4">
@@ -2232,6 +2273,8 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <HowToModal isOpen={howToOpen} onClose={() => setHowToOpen(false)} />
         </div>
     );
 }

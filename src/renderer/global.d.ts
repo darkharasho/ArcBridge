@@ -177,6 +177,7 @@ export interface IElectronAPI {
         githubWebTheme?: string | null;
         githubLogoPath?: string | null;
         githubFavoriteRepos?: string[] | null;
+        walkthroughSeen?: boolean;
     }>;
     clearDpsReportCache: () => Promise<{ success: boolean; clearedEntries?: number; error?: string }>;
     onClearDpsReportCacheProgress: (callback: (data: { stage?: string; message?: string; progress?: number; current?: number; total?: number }) => void) => () => void;
@@ -203,6 +204,7 @@ export interface IElectronAPI {
         githubWebTheme?: string | null;
         githubLogoPath?: string | null;
         githubFavoriteRepos?: string[] | null;
+        walkthroughSeen?: boolean;
     }) => void;
     onRequestScreenshot: (callback: (data: any) => void) => () => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;

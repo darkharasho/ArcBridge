@@ -12,6 +12,7 @@ import { Terminal } from './Terminal';
 import { Terminal as TerminalIcon } from 'lucide-react';
 import { DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IEmbedStatSettings, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
 import { WhatsNewModal } from './WhatsNewModal';
+import { WalkthroughModal } from './WalkthroughModal';
 
 const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
     const commaIndex = dataUrl.indexOf(',');
@@ -72,6 +73,8 @@ function App() {
     const [whatsNewOpen, setWhatsNewOpen] = useState(false);
     const [whatsNewVersion, setWhatsNewVersion] = useState<string>('');
     const [whatsNewNotes, setWhatsNewNotes] = useState<string | null>(null);
+    const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+    const [helpUpdatesFocusTrigger, setHelpUpdatesFocusTrigger] = useState(0);
 
     // Webhook Management
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
@@ -585,7 +588,10 @@ function App() {
             setAppVersion(whatsNew.version);
             setWhatsNewVersion(whatsNew.version);
             setWhatsNewNotes(whatsNew.releaseNotes);
-            if (whatsNew.version && whatsNew.version !== whatsNew.lastSeenVersion) {
+            const shouldShowWalkthrough = settings.walkthroughSeen !== true;
+            if (shouldShowWalkthrough) {
+                setWalkthroughOpen(true);
+            } else if (whatsNew.version && whatsNew.version !== whatsNew.lastSeenVersion) {
                 setWhatsNewOpen(true);
             }
         };
@@ -1059,6 +1065,17 @@ function App() {
         }
     };
 
+    const handleWalkthroughClose = () => {
+        setWalkthroughOpen(false);
+        window.electronAPI?.saveSettings?.({ walkthroughSeen: true });
+    };
+
+    const handleWalkthroughLearnMore = () => {
+        handleWalkthroughClose();
+        setView('settings');
+        setHelpUpdatesFocusTrigger((current) => current + 1);
+    };
+
     const scheduleWebUploadClear = () => {
         if (webUploadClearTimerRef.current) {
             window.clearTimeout(webUploadClearTimerRef.current);
@@ -1409,6 +1426,8 @@ function App() {
                         onDisruptionMethodSaved={setDisruptionMethod}
                         onUiThemeSaved={setUiTheme}
                         developerSettingsTrigger={developerSettingsTrigger}
+                        helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
+                        onOpenWalkthrough={() => setWalkthroughOpen(true)}
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
                 ) : view === 'stats' ? null : (
@@ -2584,6 +2603,11 @@ function App() {
                 onClose={handleWhatsNewClose}
                 version={whatsNewVersion}
                 releaseNotes={whatsNewNotes}
+            />
+            <WalkthroughModal
+                isOpen={walkthroughOpen}
+                onClose={handleWalkthroughClose}
+                onLearnMore={handleWalkthroughLearnMore}
             />
 
             {/* Terminal */}
