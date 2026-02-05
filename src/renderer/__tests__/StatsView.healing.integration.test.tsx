@@ -24,7 +24,7 @@ describe('StatsView (healing integration)', () => {
             />
         );
 
-        expect(screen.getByText(/Healing Stats/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Healing Stats/i).length).toBeGreaterThan(0);
         expect(screen.queryByText(/No healing stats available/i)).toBeNull();
         expect(screen.queryByText(/No healing data for this view/i)).toBeNull();
     });

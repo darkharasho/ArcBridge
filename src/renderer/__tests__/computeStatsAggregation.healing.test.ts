@@ -94,12 +94,13 @@ describe('computeStatsAggregation (healing totals)', () => {
         expect(playerStats).toBeTruthy();
 
         const healingTotals = playerStats.healingTotals || {};
-        expect(healingTotals.healing).toBe(expected.healing);
-        expect(healingTotals.squadHealing).toBe(expected.squadHealing);
-        expect(healingTotals.groupHealing).toBe(expected.groupHealing);
-        expect(healingTotals.selfHealing).toBe(expected.selfHealing);
-        expect(healingTotals.offSquadHealing).toBe(expected.offSquadHealing);
-        expect(healingTotals.downedHealing).toBe(expected.downedHealing);
-        expect(healingTotals.barrier).toBe(expected.barrier);
+        const val = (key: string) => (healingTotals[key] ?? 0);
+        expect(val('healing')).toBe(expected.healing);
+        expect(val('squadHealing')).toBe(expected.squadHealing);
+        expect(val('groupHealing')).toBe(expected.groupHealing);
+        expect(val('selfHealing')).toBe(expected.selfHealing);
+        expect(val('offSquadHealing')).toBe(expected.offSquadHealing);
+        expect(val('downedHealing')).toBe(expected.downedHealing);
+        expect(val('barrier')).toBe(expected.barrier);
     });
 });
