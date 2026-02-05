@@ -1,4 +1,5 @@
 import { CSSProperties, useEffect, useRef, useState, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { getProfessionIconPath } from '../../../shared/professionUtils';
 
 const TRANSPARENT_ICON = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
@@ -234,7 +235,7 @@ const ProfessionIcon = ({
             <img src={iconPath} alt={resolvedProfession || 'Unknown'} className={`${className} shrink-0`} />
             {showMulti && (
                 <>
-                    <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-300 ring-1 ring-[#0f172a]" />
+                    <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-300 ring-1 ring-[#10141b]" />
                     <div
                         ref={tooltipRef}
                         style={tooltipStyle}
@@ -300,7 +301,7 @@ export const CountClassTooltip = ({
             onMouseLeave={() => setOpen(false)}
         >
             <span className={className}>{count}</span>
-            {hasTooltip && (
+            {hasTooltip && typeof document !== 'undefined' && createPortal(
                 <div
                     ref={tooltipRef}
                     style={tooltipStyle}
@@ -332,7 +333,8 @@ export const CountClassTooltip = ({
                     ) : (
                         <div className="text-[10px] text-gray-500 italic">No class data available</div>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
         </span>
     );
@@ -392,7 +394,7 @@ export const SkillBreakdownTooltip = ({
             onMouseLeave={() => setOpen(false)}
         >
             <span>{value}</span>
-            {hasTooltip && (
+            {hasTooltip && typeof document !== 'undefined' && createPortal(
                 <div
                     ref={tooltipRef}
                     style={tooltipStyle}
@@ -409,7 +411,8 @@ export const SkillBreakdownTooltip = ({
                             </div>
                         ))}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </span>
     );

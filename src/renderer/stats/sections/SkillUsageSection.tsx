@@ -365,7 +365,7 @@ export const SkillUsageSection = ({
                                     allowDecimals={false}
                                 />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}
+                                    contentStyle={{ backgroundColor: '#161c24', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}
                                     content={({ active, payload, label }) => {
                                         if (!active || !payload || payload.length === 0) return null;
                                         const sorted = [...payload].sort((a, b) => (b.value || 0) - (a.value || 0));

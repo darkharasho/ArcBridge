@@ -52,7 +52,7 @@ export function Terminal({ isOpen, onClose }: TerminalProps) {
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="fixed bottom-0 left-0 right-0 h-[50vh] bg-[#0f172a] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col font-mono"
+                    className="fixed bottom-0 left-0 right-0 h-[50vh] bg-[#161c24] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col font-mono"
                 >
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/10 shrink-0">

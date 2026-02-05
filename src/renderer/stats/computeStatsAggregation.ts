@@ -225,6 +225,9 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             durationMs: number;
         }>>();
         const knownProfessionNames = new Set(Object.keys(PROFESSION_COLORS));
+        const knownProfessionList = Object.keys(PROFESSION_COLORS)
+            .filter((name) => name && name !== 'Unknown')
+            .sort((a, b) => b.length - a.length);
         const baseProfessionNames = [
             'Guardian',
             'Revenant',
@@ -238,9 +241,16 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         ];
         const resolveProfessionLabel = (name?: string) => {
             if (!name) return 'Unknown';
-            const cleaned = String(name).replace(/\s\d+$/, '');
+            const cleaned = String(name)
+                .replace(/\s*\([^)]*\)\s*$/, '')
+                .replace(/\s*\[[^\]]*\]\s*$/, '')
+                .replace(/\s\d+$/, '')
+                .trim();
             if (knownProfessionNames.has(cleaned)) return cleaned;
             const lower = cleaned.toLowerCase();
+            for (const prof of knownProfessionList) {
+                if (lower.includes(prof.toLowerCase())) return prof;
+            }
             const baseMatch = baseProfessionNames.find((prof) => lower.includes(prof.toLowerCase()));
             return baseMatch || cleaned || 'Unknown';
         };
@@ -1111,6 +1121,19 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     }
                     return null;
                 };
+                const countProfessions = (entries: any[], getRaw: (entry: any) => string | undefined) => {
+                    const counts: Record<string, number> = {};
+                    entries.forEach((entry: any) => {
+                        const rawName = getRaw(entry);
+                        const name = resolveProfessionLabel(rawName);
+                        if (!name) return;
+                        counts[name] = (counts[name] || 0) + 1;
+                    });
+                    return counts;
+                };
+                const squadClassCountsFight = countProfessions(squadPlayers, (p) => p?.profession || p?.name);
+                const allyClassCountsFight = countProfessions(allies, (p) => p?.profession || p?.name);
+                const enemyClassCounts = countProfessions(enemyTargets, (t) => t?.profession || t?.name || t?.id);
                 if (details.teamCounts && typeof details.teamCounts === 'object') {
                     const src: any = details.teamCounts;
                     teamCounts.red = toFiniteNumber(src.red ?? src.r ?? src[0] ?? src[1]);
@@ -1206,7 +1229,10 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             playerTotal += Number(phase?.barrier || 0);
                         });
                         return sum + playerTotal;
-                    }, 0)
+                    }, 0),
+                    squadClassCountsFight,
+                    allyClassCountsFight,
+                    enemyClassCounts
                 };
             })
             .filter(Boolean);

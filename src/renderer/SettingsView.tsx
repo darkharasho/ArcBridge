@@ -166,6 +166,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         if (!active) return WEB_THEMES;
         return [active, ...WEB_THEMES.filter((theme) => theme.id !== githubWebTheme)];
     }, [githubWebTheme]);
+    const isModernLayout = uiTheme === 'modern';
 
     const applySettingsToState = (settings: any) => {
         setDpsReportToken(settings.dpsReportToken || '');
@@ -1013,10 +1014,55 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                 </div>
             </motion.div>
 
-            <div ref={settingsScrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4">
+            <div className={isModernLayout ? 'flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-4' : 'flex flex-col flex-1 min-h-0'}>
+                {isModernLayout && (
+                    <aside className="hidden lg:flex flex-col gap-3 min-h-0">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <div className="text-[11px] uppercase tracking-[0.25em] text-gray-500 mb-2">Quick Actions</div>
+                            <button
+                                onClick={onBack}
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition-colors"
+                            >
+                                <span>Back to Dashboard</span>
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={() => scrollToSettingsSection('appearance')}
+                                className="mt-2 w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition-colors"
+                            >
+                                <span>Jump to Top</span>
+                                <ChevronDown className="w-3.5 h-3.5 -rotate-90" />
+                            </button>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex-1 min-h-0">
+                            <div className="text-[11px] uppercase tracking-[0.25em] text-gray-500 mb-2">Sections</div>
+                            <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1">
+                                {settingsSections.map((item, index) => {
+                                    const isActive = item.id === activeSettingsSectionId;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => scrollToSettingsSection(item.id)}
+                                            className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-gray-200 border transition-colors min-w-0 ${isActive
+                                                ? 'bg-white/10 border-white/20'
+                                                : 'border-transparent hover:border-white/10 hover:bg-white/10'
+                                                }`}
+                                        >
+                                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10 text-[10px] text-[color:var(--accent)]">
+                                                {index + 1}
+                                            </span>
+                                            <span className="text-[13px] font-medium truncate min-w-0">{item.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </aside>
+                )}
+                <div ref={settingsScrollRef} className={`${isModernLayout ? 'min-h-0 overflow-y-auto pr-2 space-y-4' : 'flex-1 min-h-0 overflow-y-auto pr-2 space-y-4'}`}>
                 <SettingsSection title="Appearance" icon={Sparkles} delay={0.02} sectionId="appearance">
                     <p className="text-sm text-gray-400 mb-4">
-                        Switch between the classic interface and the new slate/pearl redesign.
+                        Switch between the classic interface and the new slate redesign.
                     </p>
                     <div className="flex flex-wrap gap-3">
                         <button
@@ -1037,7 +1083,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                 : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:border-white/30'
                                 }`}
                         >
-                            Modern Pearl
+                            Modern Slate
                         </button>
                     </div>
                 </SettingsSection>
@@ -1358,7 +1404,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                     >
                                         <div
                                             className="w-full h-12 rounded-lg mb-2 border border-white/10"
-                                            style={{ backgroundImage: theme.pattern, backgroundColor: '#0f172a' }}
+                                        style={{ backgroundImage: theme.pattern, backgroundColor: '#10141b' }}
                                         />
                                         <div className="text-xs font-semibold text-gray-200">{theme.label}</div>
                                     </button>
@@ -2012,9 +2058,10 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
 
                 <div className="h-[12vh] min-h-10 max-h-28" />
                 {/* Save Button (hidden with auto-save) */}
+                </div>
             </div>
 
-            <div className="fixed bottom-4 left-4 right-4 z-40">
+            <div className={`fixed bottom-4 left-4 right-4 z-40 ${isModernLayout ? 'lg:hidden' : ''}`}>
                 <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/25 bg-white/5 backdrop-blur-2xl px-3 py-1.5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
                     <button
                         onClick={onBack}
@@ -2042,7 +2089,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             </div>
             {settingsNavOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                    className={`fixed inset-0 z-50 flex items-center justify-center px-4 ${isModernLayout ? 'lg:hidden' : ''}`}
                     onClick={(event) => {
                         if (event.target === event.currentTarget) {
                             setSettingsNavOpen(false);
@@ -2096,7 +2143,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="w-full max-w-3xl bg-[#101826]/90 border border-white/10 rounded-2xl shadow-2xl"
+                            className="w-full max-w-3xl bg-[#161c24]/95 border border-white/10 rounded-2xl shadow-2xl"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
@@ -2137,7 +2184,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                     <div className="text-sm text-gray-500 italic py-6 text-center">No settings found in file.</div>
                                 )}
                             </div>
-                            <div className="sticky bottom-0 px-6 py-4 border-t border-white/10 bg-[#101826] flex justify-end gap-3">
+                            <div className="sticky bottom-0 px-6 py-4 border-t border-white/10 bg-[#161c24] flex justify-end gap-3">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -2170,7 +2217,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="w-full max-w-xl bg-[#101826]/90 border border-white/10 rounded-2xl shadow-2xl"
+                            className="w-full max-w-xl bg-[#161c24]/95 border border-white/10 rounded-2xl shadow-2xl"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
@@ -2266,7 +2313,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="w-full max-w-3xl bg-[#101826]/90 border border-white/10 rounded-2xl shadow-2xl p-6"
+                            className="w-full max-w-3xl bg-[#161c24]/95 border border-white/10 rounded-2xl shadow-2xl p-6"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
@@ -2373,7 +2420,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                         onClick={(event) => event.target === event.currentTarget && setProofOfWorkOpen(false)}
                     >
                         <motion.div
-                            className="w-full max-w-4xl bg-[#101826]/90 border border-white/10 rounded-2xl shadow-2xl p-6"
+                            className="w-full max-w-4xl bg-[#161c24]/95 border border-white/10 rounded-2xl shadow-2xl p-6"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}

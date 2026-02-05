@@ -832,7 +832,7 @@ function App() {
                         if (fallbackNode) {
                             try {
                                 const dataUrl = await safeToPng(fallbackNode, {
-                                    backgroundColor: '#0f172a',
+                                    backgroundColor: '#10141b',
                                     quality: 0.95,
                                     pixelRatio: 3
                                 });
@@ -856,7 +856,7 @@ function App() {
                             const transparent = (node as HTMLElement).dataset.screenshotTransparent === 'true';
                             try {
                                 const dataUrl = await safeToPng(node as HTMLElement, {
-                                    backgroundColor: transparent ? 'rgba(0,0,0,0)' : '#0f172a',
+                                    backgroundColor: transparent ? 'rgba(0,0,0,0)' : '#10141b',
                                     quality: 0.95,
                                     pixelRatio: 3,
                                     width: (node as HTMLElement).offsetWidth,
@@ -917,7 +917,7 @@ function App() {
                     if (node) {
                         try {
                             const dataUrl = await safeToPng(node, {
-                                backgroundColor: '#0f172a', // Match bg-slate-900
+                                backgroundColor: '#10141b',
                                 quality: 0.95,
                                 pixelRatio: 3 // Higher fidelity for Discord
                             });
@@ -1316,6 +1316,656 @@ function App() {
         ? 'app-shell h-screen w-screen text-white overflow-hidden flex flex-col'
         : 'app-shell h-screen w-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-gray-900 to-black text-white font-sans overflow-hidden flex flex-col';
 
+    const notificationTypePanel = (
+        <div>
+            <label className={`text-xs uppercase tracking-wider text-gray-500 font-semibold ${isModernTheme ? 'mb-3 block' : 'mb-2 block'}`}>Notification Type</label>
+            <div className={isModernTheme ? 'flex flex-col gap-2' : 'flex flex-col gap-2'}>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => {
+                            setNotificationType('image');
+                            handleUpdateSettings({ discordNotificationType: 'image' });
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'image' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
+                    >
+                        <ImageIcon className="w-4 h-4" />
+                        <span className="text-sm font-medium">Image</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            setNotificationType('embed');
+                            handleUpdateSettings({ discordNotificationType: 'embed' });
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'embed' ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
+                    >
+                        <Layout className="w-4 h-4" />
+                        <span className="text-sm font-medium">Embed</span>
+                    </button>
+                </div>
+                <button
+                    onClick={() => {
+                        setNotificationType('image-beta');
+                        handleUpdateSettings({ discordNotificationType: 'image-beta' });
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'image-beta' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
+                >
+                    <Grid3X3 className="w-4 h-4" />
+                    <span className="text-sm font-medium">Tiled</span>
+                </button>
+            </div>
+        </div>
+    );
+
+    const configurationPanel = (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl hover:border-white/20 transition-colors"
+        >
+            {isModernTheme ? (
+                <div className="grid grid-cols-[minmax(0,1fr)_240px] gap-6">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold w-28 shrink-0">Log Directory</label>
+                            <div className="flex gap-2 w-full max-w-full">
+                                <div className="flex-1 min-w-0 bg-black/40 border border-white/5 rounded-xl px-2 h-11 flex items-center gap-3 hover:border-blue-500/50 transition-colors">
+                                    <div className="pl-2 shrink-0">
+                                        <FolderOpen className="w-5 h-5 text-blue-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={logDirectory || ''}
+                                        placeholder="C:\...\arcdps.cbtlogs"
+                                        className="flex-1 bg-transparent border-none text-sm text-gray-300 placeholder-gray-600 focus:ring-0 px-2 min-w-0 w-full h-full"
+                                        onChange={(e) => setLogDirectory(e.target.value)}
+                                        onBlur={(e) => {
+                                            if (e.target.value) {
+                                                window.electronAPI.startWatching(e.target.value);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && logDirectory) {
+                                                window.electronAPI.startWatching(logDirectory);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleSelectDirectory}
+                                    className="shrink-0 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl w-11 h-11 flex items-center justify-center transition-colors"
+                                    title="Browse..."
+                                >
+                                    <FolderOpen className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold w-28 shrink-0">Discord Webhook</label>
+                            <div className="flex gap-2 w-full">
+                                <div ref={webhookDropdownRef} className="relative flex-1 min-w-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setWebhookDropdownOpen((prev) => !prev)}
+                                        className="w-full bg-black/40 border border-white/5 rounded-xl px-3 h-11 flex items-center justify-between gap-2 text-sm text-gray-300 hover:border-purple-500/50 hover:bg-black/50 transition-colors"
+                                        aria-haspopup="listbox"
+                                        aria-expanded={webhookDropdownOpen}
+                                    >
+                                        <span className="truncate">
+                                            {selectedWebhook?.name || 'Disabled'}
+                                        </span>
+                                        <ChevronDown className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${webhookDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {webhookDropdownOpen && (
+                                        <div
+                                            className="glass-dropdown absolute z-30 mt-2 w-full rounded-xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+                                            role="listbox"
+                                        >
+                                            <div className="relative z-10 max-h-64 overflow-y-auto">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedWebhookId(null);
+                                                        handleUpdateSettings({ selectedWebhookId: null });
+                                                        setWebhookDropdownOpen(false);
+                                                    }}
+                                                    className={`w-full px-3 py-2 text-left text-sm transition-colors ${!selectedWebhookId
+                                                        ? 'bg-purple-500/20 text-purple-100'
+                                                        : 'text-gray-300 hover:bg-white/10'
+                                                        }`}
+                                                    role="option"
+                                                    aria-selected={!selectedWebhookId}
+                                                >
+                                                    Disabled
+                                                </button>
+                                                {webhooks.map((hook) => (
+                                                    <button
+                                                        key={hook.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedWebhookId(hook.id);
+                                                            handleUpdateSettings({ selectedWebhookId: hook.id });
+                                                            setWebhookDropdownOpen(false);
+                                                        }}
+                                                        className={`w-full px-3 py-2 text-left text-sm transition-colors ${selectedWebhookId === hook.id
+                                                            ? 'bg-purple-500/20 text-purple-100'
+                                                            : 'text-gray-300 hover:bg-white/10'
+                                                            }`}
+                                                        role="option"
+                                                        aria-selected={selectedWebhookId === hook.id}
+                                                    >
+                                                        {hook.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setWebhookModalOpen(true)}
+                                    className="shrink-0 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl w-11 h-11 flex items-center justify-center gap-2 transition-colors"
+                                    title="Manage Webhooks"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {notificationTypePanel}
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Log Directory</label>
+                        <div className="flex gap-2 w-full max-w-full">
+                            <div className="flex-1 min-w-0 bg-black/40 border border-white/5 rounded-xl px-2 h-11 flex items-center gap-3 hover:border-blue-500/50 transition-colors">
+                                <div className="pl-2 shrink-0">
+                                    <FolderOpen className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={logDirectory || ''}
+                                    placeholder="C:\...\arcdps.cbtlogs"
+                                    className="flex-1 bg-transparent border-none text-sm text-gray-300 placeholder-gray-600 focus:ring-0 px-2 min-w-0 w-full h-full"
+                                    onChange={(e) => setLogDirectory(e.target.value)}
+                                    onBlur={(e) => {
+                                        if (e.target.value) {
+                                            window.electronAPI.startWatching(e.target.value);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && logDirectory) {
+                                            window.electronAPI.startWatching(logDirectory);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <button
+                                onClick={handleSelectDirectory}
+                                className="shrink-0 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl w-11 h-11 flex items-center justify-center transition-colors"
+                                title="Browse..."
+                            >
+                                <FolderOpen className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Discord Webhook</label>
+                        <div className="flex gap-2 w-full">
+                            <div ref={webhookDropdownRef} className="relative flex-1 min-w-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setWebhookDropdownOpen((prev) => !prev)}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 h-11 flex items-center justify-between gap-2 text-sm text-gray-300 hover:border-purple-500/50 hover:bg-black/50 transition-colors"
+                                    aria-haspopup="listbox"
+                                    aria-expanded={webhookDropdownOpen}
+                                >
+                                    <span className="truncate">
+                                        {selectedWebhook?.name || 'Disabled'}
+                                    </span>
+                                    <ChevronDown className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${webhookDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {webhookDropdownOpen && (
+                                    <div
+                                        className="glass-dropdown absolute z-30 mt-2 w-full rounded-xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+                                        role="listbox"
+                                    >
+                                        <div className="relative z-10 max-h-64 overflow-y-auto">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedWebhookId(null);
+                                                    handleUpdateSettings({ selectedWebhookId: null });
+                                                    setWebhookDropdownOpen(false);
+                                                }}
+                                                className={`w-full px-3 py-2 text-left text-sm transition-colors ${!selectedWebhookId
+                                                    ? 'bg-purple-500/20 text-purple-100'
+                                                    : 'text-gray-300 hover:bg-white/10'
+                                                    }`}
+                                                role="option"
+                                                aria-selected={!selectedWebhookId}
+                                            >
+                                                Disabled
+                                            </button>
+                                            {webhooks.map((hook) => (
+                                                <button
+                                                    key={hook.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedWebhookId(hook.id);
+                                                        handleUpdateSettings({ selectedWebhookId: hook.id });
+                                                        setWebhookDropdownOpen(false);
+                                                    }}
+                                                    className={`w-full px-3 py-2 text-left text-sm transition-colors ${selectedWebhookId === hook.id
+                                                        ? 'bg-purple-500/20 text-purple-100'
+                                                        : 'text-gray-300 hover:bg-white/10'
+                                                        }`}
+                                                    role="option"
+                                                    aria-selected={selectedWebhookId === hook.id}
+                                                >
+                                                    {hook.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setWebhookModalOpen(true)}
+                                className="shrink-0 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl w-11 h-11 flex items-center justify-center gap-2 transition-colors"
+                                title="Manage Webhooks"
+                            >
+                                <Settings className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                    {notificationTypePanel}
+                </div>
+            )}
+        </motion.div>
+    );
+
+    const successCount = statusCounts.success || 0;
+    const errorCount = statusCounts.error || 0;
+    const uploadingCount = (statusCounts.uploading || 0) + (statusCounts.retrying || 0);
+    const winRate = totalUploads > 0 ? Math.round((winLoss.wins / totalUploads) * 100) : 0;
+
+    const statsTilesPanel = isModernTheme ? (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-3"
+        >
+            <div className="grid grid-cols-4 gap-4">
+                <div className="h-24 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <div className="text-blue-200 text-xs font-medium uppercase tracking-wider">Upload Status</div>
+                        <div className="mt-2 text-2xl font-bold text-white leading-none">{totalUploads}</div>
+                        <div className="mt-1 text-[11px] text-blue-100/70">
+                            {successCount} success • {errorCount} error{uploadingCount > 0 ? ` • ${uploadingCount} active` : ''}
+                        </div>
+                    </div>
+                    <div className="w-16 h-16 shrink-0">
+                        <div className="w-full h-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={uploadPieData}
+                                        dataKey="count"
+                                        nameKey="label"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius="55%"
+                                        outerRadius="86%"
+                                        stroke="rgba(15, 23, 42, 0.9)"
+                                        strokeWidth={1}
+                                        paddingAngle={1}
+                                    >
+                                        {uploadPieData.map((entry) => (
+                                            <Cell key={entry.key} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        formatter={(value: any, _name: any, payload: any) => {
+                                            const label = payload?.payload?.label || 'Status';
+                                            return [`${value ?? 0}`, label];
+                                        }}
+                                        contentStyle={{ backgroundColor: '#161c24', borderColor: 'rgba(255,255,255,0.12)', borderRadius: '0.5rem', color: '#fff' }}
+                                        itemStyle={{ color: '#fff' }}
+                                        labelStyle={{ display: 'none' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+                <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">W / L</div>
+                        <div className="text-2xl font-bold text-white leading-none">
+                            <span className="text-emerald-300">{winLoss.wins}</span>
+                            <span className="text-gray-500 mx-2">/</span>
+                            <span className="text-red-400">{winLoss.losses}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500">Totals</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-[11px] uppercase tracking-widest text-gray-500">Win rate</div>
+                        <div className="text-xl font-semibold text-emerald-200">{winRate}%</div>
+                        <div className="text-[11px] text-gray-500">{totalUploads} logs</div>
+                    </div>
+                </div>
+                <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Avg Players</div>
+                        <div className="text-2xl font-bold text-white leading-none">
+                            <span className="text-emerald-300">{avgSquadSize}</span>
+                            <span className="text-gray-500 mx-2">/</span>
+                            <span className="text-red-400">{avgEnemies}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500">Squad / Enemy</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-[11px] uppercase tracking-widest text-gray-500">Diff</div>
+                        <div className="text-xl font-semibold text-sky-200">{avgSquadSize - avgEnemies}</div>
+                        <div className="text-[11px] text-gray-500">Ratio {(avgEnemies ? (avgSquadSize / avgEnemies) : 0).toFixed(2)}</div>
+                    </div>
+                </div>
+                <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Squad KDR</div>
+                        <div className="text-2xl font-bold text-emerald-300 leading-none">{squadKdr}</div>
+                        <div className="text-[11px] text-gray-500">Kills / Deaths</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-[11px] uppercase tracking-widest text-gray-500">Success</div>
+                        <div className="text-xl font-semibold text-emerald-200">{successCount}</div>
+                        <div className="text-[11px] text-gray-500">Errors {errorCount}</div>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    ) : (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-2 gap-4"
+        >
+            <div className="h-24 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex flex-col">
+                <div className="text-blue-200 text-xs font-medium uppercase tracking-wider">Upload Status</div>
+                <div className="flex-1 min-h-0 flex items-center justify-center">
+                    <div className="w-full h-full max-h-[63px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={uploadPieData}
+                                    dataKey="count"
+                                    nameKey="label"
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="55%"
+                                    outerRadius="86%"
+                                    stroke="rgba(15, 23, 42, 0.9)"
+                                    strokeWidth={1}
+                                    paddingAngle={1}
+                                >
+                                    {uploadPieData.map((entry) => (
+                                        <Cell key={entry.key} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <text
+                                    x="50%"
+                                    y="50%"
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                    className="fill-white text-[11px] font-semibold"
+                                >
+                                    {totalUploads}
+                                </text>
+                                <Tooltip
+                                    formatter={(value: any, _name: any, payload: any) => {
+                                        const label = payload?.payload?.label || 'Status';
+                                        return [`${value ?? 0}`, label];
+                                    }}
+                                    contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.12)', borderRadius: '0.5rem', color: '#fff' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    labelStyle={{ display: 'none' }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+            <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
+                <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">W / L</div>
+                <div className="flex-1 flex items-center">
+                    <div className="text-2xl font-bold text-white leading-none">
+                        <span className="text-emerald-300">{winLoss.wins}</span>
+                        <span className="text-gray-500 mx-2">/</span>
+                        <span className="text-red-400">{winLoss.losses}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
+                <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Avg Players</div>
+                <div className="flex-1 flex items-center">
+                    <div className="text-2xl font-bold text-white leading-none">
+                        <span className="text-emerald-300">{avgSquadSize}</span>
+                        <span className="text-gray-500 mx-2">/</span>
+                        <span className="text-red-400">{avgEnemies}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
+                <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Squad KDR</div>
+                <div className="flex-1 flex items-center">
+                    <div className="text-2xl font-bold text-emerald-300 leading-none">{squadKdr}</div>
+                </div>
+            </div>
+        </motion.div>
+    );
+
+    const activityPanel = (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className={`bg-white/5 backdrop-blur-xl border ${isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'} rounded-2xl p-6 flex flex-col h-full shadow-2xl transition-all duration-300 relative`}
+            onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'copy';
+                setIsDragging(true);
+            }}
+            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+            onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragging(false);
+                const files = Array.from(e.dataTransfer.files);
+                const validFiles: string[] = [];
+                const optimisticLogs: ILogData[] = [];
+
+                files.forEach(file => {
+                    const filePath = (file as any).path;
+                    if (filePath && (file.name.endsWith('.evtc') || file.name.endsWith('.zevtc'))) {
+                        validFiles.push(filePath);
+                        optimisticLogs.push({
+                            id: file.name,
+                            filePath: filePath,
+                            status: 'pending',
+                            fightName: file.name,
+                            uploadTime: Date.now() / 1000,
+                            permalink: ''
+                        });
+                    }
+                });
+
+                if (validFiles.length > 0) {
+                    setLogs(currentLogs => {
+                        const newLogs = [...currentLogs];
+                        optimisticLogs.forEach(optLog => {
+                            if (!newLogs.some(l => l.filePath === optLog.filePath)) {
+                                newLogs.unshift(optLog);
+                            }
+                        });
+                        return newLogs;
+                    });
+
+                    if (validFiles.length > 1) {
+                        setBulkUploadMode(true);
+                        bulkUploadExpectedRef.current = validFiles.length;
+                        bulkUploadCompletedRef.current = 0;
+                    }
+                    window.electronAPI.manualUploadBatch(validFiles);
+                }
+            }}
+        >
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-gray-400" />
+                    Recent Activity
+                </h2>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setFilePickerOpen(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                        title="Select logs to upload"
+                    >
+                        <FilePlus2 className="w-3.5 h-3.5" />
+                        Add Logs
+                    </button>
+                    <button
+                        onClick={() => {
+                            setLogs([]);
+                            setExpandedLogId(null);
+                            setScreenshotData(null);
+                            canceledLogsRef.current.clear();
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors"
+                        title="Clear all logs"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Clear Logs
+                    </button>
+                </div>
+            </div>
+            {bulkCalculatingActive && calculatingCount > 0 && (
+                <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-100">
+                    Bulk calculations are running. The app may feel less responsive until they finish.
+                </div>
+            )}
+            {(uploadRetryQueue.failed > 0 || uploadRetryQueue.retrying > 0 || uploadRetryQueue.entries.length > 0) && (
+                <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-100">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="font-semibold">Upload Retry Queue</div>
+                        <div className="flex items-center gap-2">
+                            {uploadRetryQueue.paused && (
+                                <button
+                                    type="button"
+                                    onClick={handleResumeUploadRetries}
+                                    disabled={retryQueueBusy}
+                                    className="rounded-md border border-rose-300/30 bg-rose-400/20 px-2.5 py-1 text-[11px] font-semibold text-rose-50 hover:bg-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {retryQueueBusy ? 'Resuming...' : 'Resume'}
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handleRetryFailedUploads}
+                                disabled={retryQueueBusy || uploadRetryQueue.failed === 0 || uploadRetryQueue.paused}
+                                className="rounded-md border border-rose-300/30 bg-rose-400/20 px-2.5 py-1 text-[11px] font-semibold text-rose-50 hover:bg-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {retryQueueBusy ? 'Retrying...' : 'Retry failed'}
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mt-1 text-[11px] text-rose-100/80">
+                        Failed: {uploadRetryQueue.failed} | Retrying: {uploadRetryQueue.retrying} | Resolved: {uploadRetryQueue.resolved}
+                    </div>
+                    {uploadRetryQueue.paused && (
+                        <div className="mt-1 text-[10px] text-rose-50">
+                            Paused: {uploadRetryQueue.pauseReason || 'Retry queue is paused.'}
+                        </div>
+                    )}
+                    {uploadRetryQueue.entries.length > 0 && (
+                        <div className="mt-2 max-h-24 overflow-y-auto space-y-1 pr-1">
+                            {uploadRetryQueue.entries.slice(0, 5).map((entry) => {
+                                const fileName = entry.filePath.split(/[\\/]/).pop() || entry.filePath;
+                                return (
+                                    <div key={entry.filePath} className="truncate text-[10px] text-rose-100/75">
+                                        [{entry.category}] {fileName}: {entry.error}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+            {devDatasetLoadProgress && (
+                <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+                    <div className="flex flex-col items-center text-center gap-1">
+                        <FilePlus2 className="w-5 h-5 text-amber-300" />
+                        <div className="text-[11px] text-amber-100">
+                            Loading dev dataset: <span className="font-semibold">{devDatasetLoadProgress.name}</span>
+                        </div>
+                        <div className="text-[10px] text-amber-200/80">
+                            {devDatasetLoadProgress.total !== null
+                                ? `${Math.min(devDatasetLoadProgress.loaded, devDatasetLoadProgress.total)} / ${devDatasetLoadProgress.total}`
+                                : `${devDatasetLoadProgress.loaded} loaded`}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div
+                className="flex-1 overflow-y-auto pr-2"
+                ref={logsListRef}
+            >
+                {logs.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-20">
+                        <UploadCloud className="w-12 h-12 mb-3" />
+                        <p>Drop logs to upload</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {logs.map((log) => (
+                            <ExpandableLogCard
+                                key={log.filePath}
+                                log={log}
+                                isExpanded={expandedLogId === log.filePath}
+                                onToggle={() => {
+                                    const nextExpanded = expandedLogId === log.filePath ? null : log.filePath;
+                                    setExpandedLogId(nextExpanded);
+                                    if (nextExpanded) {
+                                        fetchLogDetails(log);
+                                    }
+                                }}
+                                layoutEnabled={!isBulkUploadActive}
+                                motionEnabled={!isBulkUploadActive}
+                                onCancel={() => {
+                                    if (!log.filePath) return;
+                                    canceledLogsRef.current.add(log.filePath);
+                                    setLogs((currentLogs) => currentLogs.filter((entry) => entry.filePath !== log.filePath));
+                                    if (expandedLogId === log.filePath) {
+                                        setExpandedLogId(null);
+                                    }
+                                }}
+                                embedStatSettings={embedStatSettings}
+                                disruptionMethod={disruptionMethod}
+                                useClassIcons={showClassIcons}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        </motion.div>
+    );
+
     return (
         <div className={shellClassName}>
             {/* Custom Title Bar */}
@@ -1346,7 +1996,7 @@ function App() {
             <div className="legacy-orb absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[100px] pointer-events-none" />
             <div className="legacy-orb absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[100px] pointer-events-none" />
 
-            <div className={`app-content relative z-10 max-w-5xl mx-auto flex-1 w-full min-w-0 flex flex-col min-h-0 ${view === 'stats' ? 'pt-8 px-8 pb-2' : 'p-8'}`}>
+        <div className={`app-content relative z-10 max-w-5xl mx-auto flex-1 w-full min-w-0 flex flex-col min-h-0 ${view === 'stats' ? 'pt-8 px-8 pb-2 overflow-hidden' : 'p-8 overflow-hidden'}`}>
                 <header className="app-header flex flex-wrap justify-between items-center gap-3 mb-10 shrink-0">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -1355,7 +2005,7 @@ function App() {
                     >
                         <div className="flex items-center gap-3">
                             <span className="arcbridge-logo h-8 w-8 rounded-md" style={arcbridgeLogoStyle} aria-label="ArcBridge logo" />
-                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                            <h1 className="text-3xl font-bold arcbridge-gradient-text">
                                 ArcBridge
                             </h1>
                         </div>
@@ -1511,9 +2161,9 @@ function App() {
                                     {webUploadState.detail}
                                 </pre>
                             )}
-                            <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div className={`mt-4 h-2 rounded-full overflow-hidden ${isModernTheme ? 'bg-slate-800/70 border border-white/20' : 'bg-white/10'}`}>
                                 <div
-                                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all"
+                                    className={`h-full transition-all ${isModernTheme ? 'bg-slate-200 shadow-[0_0_10px_rgba(226,232,240,0.6)]' : 'bg-gradient-to-r from-cyan-300 to-blue-400'}`}
                                     style={{ width: `${webUploadState.progress ?? (webUploadState.uploading ? 35 : 100)}%` }}
                                 />
                             </div>
@@ -1580,447 +2230,29 @@ function App() {
                         onOpenWhatsNew={() => setWhatsNewOpen(true)}
                     />
                 ) : view === 'stats' ? null : (
-                    <div className="dashboard-view grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-hidden">
-                        <div className="space-y-6 overflow-y-auto pr-2">
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl hover:border-white/20 transition-colors"
-                            >
-                                <h2 className="text-lg font-semibold mb-4 text-gray-200 flex items-center gap-2">
-                                    <Settings className="w-4 h-4 text-gray-400" />
-                                    Configuration
-                                </h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Log Directory</label>
-                                        <div className="flex gap-2 w-full max-w-full">
-                                            <div className="flex-1 min-w-0 bg-black/40 border border-white/5 rounded-xl p-2 flex items-center gap-3 hover:border-blue-500/50 transition-colors">
-                                                <div className="pl-2 shrink-0">
-                                                    <FolderOpen className="w-5 h-5 text-blue-400" />
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={logDirectory || ''}
-                                                    placeholder="C:\...\arcdps.cbtlogs"
-                                                    className="flex-1 bg-transparent border-none text-sm text-gray-300 placeholder-gray-600 focus:ring-0 px-2 min-w-0 w-full"
-                                                    onChange={(e) => setLogDirectory(e.target.value)}
-                                                    onBlur={(e) => {
-                                                        if (e.target.value) {
-                                                            window.electronAPI.startWatching(e.target.value);
-                                                        }
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && logDirectory) {
-                                                            window.electronAPI.startWatching(logDirectory);
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
-                                            <button
-                                                onClick={handleSelectDirectory}
-                                                className="shrink-0 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl px-4 flex items-center justify-center transition-colors"
-                                                title="Browse..."
-                                            >
-                                                <FolderOpen className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Discord Webhook</label>
-                                        <div className="flex gap-2">
-                                            <div ref={webhookDropdownRef} className="relative flex-1 min-w-0">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setWebhookDropdownOpen((prev) => !prev)}
-                                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 text-sm text-gray-300 hover:border-purple-500/50 hover:bg-black/50 transition-colors"
-                                                    aria-haspopup="listbox"
-                                                    aria-expanded={webhookDropdownOpen}
-                                                >
-                                                    <span className="truncate">
-                                                        {selectedWebhook?.name || 'Disabled'}
-                                                    </span>
-                                                    <ChevronDown className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${webhookDropdownOpen ? 'rotate-180' : ''}`} />
-                                                </button>
-                                                {webhookDropdownOpen && (
-                                                    <div
-                                                        className="glass-dropdown absolute z-30 mt-2 w-full rounded-xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden"
-                                                        role="listbox"
-                                                    >
-                                                        <div className="relative z-10 max-h-64 overflow-y-auto">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setSelectedWebhookId(null);
-                                                                    handleUpdateSettings({ selectedWebhookId: null });
-                                                                    setWebhookDropdownOpen(false);
-                                                                }}
-                                                                className={`w-full px-3 py-2 text-left text-sm transition-colors ${!selectedWebhookId
-                                                                    ? 'bg-purple-500/20 text-purple-100'
-                                                                    : 'text-gray-300 hover:bg-white/10'
-                                                                    }`}
-                                                                role="option"
-                                                                aria-selected={!selectedWebhookId}
-                                                            >
-                                                                Disabled
-                                                            </button>
-                                                            {webhooks.map((hook) => (
-                                                                <button
-                                                                    key={hook.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setSelectedWebhookId(hook.id);
-                                                                        handleUpdateSettings({ selectedWebhookId: hook.id });
-                                                                        setWebhookDropdownOpen(false);
-                                                                    }}
-                                                                    className={`w-full px-3 py-2 text-left text-sm transition-colors ${selectedWebhookId === hook.id
-                                                                        ? 'bg-purple-500/20 text-purple-100'
-                                                                        : 'text-gray-300 hover:bg-white/10'
-                                                                        }`}
-                                                                    role="option"
-                                                                    aria-selected={selectedWebhookId === hook.id}
-                                                                >
-                                                                    {hook.name}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={() => setWebhookModalOpen(true)}
-                                                className="shrink-0 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl px-3 flex items-center justify-center gap-2 transition-colors"
-                                                title="Manage Webhooks"
-                                            >
-                                                <Settings className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 block">Notification Type</label>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setNotificationType('image');
-                                                        handleUpdateSettings({ discordNotificationType: 'image' });
-                                                    }}
-                                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'image' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
-                                                >
-                                                    <ImageIcon className="w-4 h-4" />
-                                                    <span className="text-sm font-medium">Image</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setNotificationType('embed');
-                                                        handleUpdateSettings({ discordNotificationType: 'embed' });
-                                                    }}
-                                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'embed' ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
-                                                >
-                                                    <Layout className="w-4 h-4" />
-                                                    <span className="text-sm font-medium">Embed</span>
-                                                </button>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    setNotificationType('image-beta');
-                                                    handleUpdateSettings({ discordNotificationType: 'image-beta' });
-                                                }}
-                                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all ${notificationType === 'image-beta' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-black/20 border-white/5 text-gray-500 hover:text-gray-300'}`}
-                                            >
-                                                <Grid3X3 className="w-4 h-4" />
-                                                <span className="text-sm font-medium">Tiled</span>
-                                            </button>
-                                        </div>
-                                    </div>
+                    isModernTheme ? (
+                        <div className="dashboard-view dashboard-modern flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto pr-1">
+                            {statsTilesPanel}
+                            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 flex-1 min-h-0 content-start">
+                                <div className="order-2 xl:order-1 min-h-0">
+                                    {activityPanel}
                                 </div>
-
-
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="grid grid-cols-2 gap-4"
-                            >
-                                <div className="h-24 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex flex-col">
-                                    <div className="text-blue-200 text-xs font-medium uppercase tracking-wider">Upload Status</div>
-                                    <div className="flex-1 min-h-0 flex items-center justify-center">
-                                        <div className="w-full h-full max-h-[63px]">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={uploadPieData}
-                                                        dataKey="count"
-                                                        nameKey="label"
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius="55%"
-                                                        outerRadius="86%"
-                                                        stroke="rgba(15, 23, 42, 0.9)"
-                                                        strokeWidth={1}
-                                                        paddingAngle={1}
-                                                    >
-                                                        {uploadPieData.map((entry) => (
-                                                            <Cell key={entry.key} fill={entry.color} />
-                                                        ))}
-                                                    </Pie>
-                                                    <text
-                                                        x="50%"
-                                                        y="50%"
-                                                        textAnchor="middle"
-                                                        dominantBaseline="middle"
-                                                        className="fill-white text-[11px] font-semibold"
-                                                    >
-                                                        {totalUploads}
-                                                    </text>
-                                                    <Tooltip
-                                                        formatter={(value: any, _name: any, payload: any) => {
-                                                            const label = payload?.payload?.label || 'Status';
-                                                            return [`${value ?? 0}`, label];
-                                                        }}
-                                                        contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(255,255,255,0.12)', borderRadius: '0.5rem', color: '#fff' }}
-                                                        itemStyle={{ color: '#fff' }}
-                                                        labelStyle={{ display: 'none' }}
-                                                    />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
+                                <div className="dashboard-rail order-1 xl:order-2 flex flex-col gap-4 overflow-y-auto pr-2">
+                                    {configurationPanel}
                                 </div>
-                                <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
-                                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">W / L</div>
-                                    <div className="flex-1 flex items-center">
-                                        <div className="text-2xl font-bold text-white leading-none">
-                                            <span className="text-emerald-300">{winLoss.wins}</span>
-                                            <span className="text-gray-500 mx-2">/</span>
-                                            <span className="text-red-400">{winLoss.losses}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
-                                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Avg Players</div>
-                                    <div className="flex-1 flex items-center">
-                                        <div className="text-2xl font-bold text-white leading-none">
-                                            <span className="text-emerald-300">{avgSquadSize}</span>
-                                            <span className="text-gray-500 mx-2">/</span>
-                                            <span className="text-red-400">{avgEnemies}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col">
-                                    <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Squad KDR</div>
-                                    <div className="flex-1 flex items-center">
-                                        <div className="text-2xl font-bold text-emerald-300 leading-none">{squadKdr}</div>
-                                    </div>
-                                </div>
-                            </motion.div>
+                            </div>
                         </div>
-
-                        <div className="lg:col-span-2 flex flex-col min-h-0">
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className={`bg-white/5 backdrop-blur-xl border ${isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'} rounded-2xl p-6 flex flex-col h-full shadow-2xl transition-all duration-300 relative`}
-                                onDragOver={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    e.dataTransfer.dropEffect = 'copy'; // Explicitly show copy cursor
-                                    setIsDragging(true);
-                                }}
-                                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
-                                onDrop={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setIsDragging(false);
-                                    const files = Array.from(e.dataTransfer.files);
-                                    const validFiles: string[] = [];
-                                    const optimisticLogs: ILogData[] = [];
-
-                                    files.forEach(file => {
-                                        // On some systems 'path' is a property of the File object in Electron
-                                        const filePath = (file as any).path;
-                                        if (filePath && (file.name.endsWith('.evtc') || file.name.endsWith('.zevtc'))) {
-                                            validFiles.push(filePath);
-                                            // Create optimistic entry
-                                            optimisticLogs.push({
-                                                id: file.name, // Temporary ID
-                                                filePath: filePath,
-                                                status: 'pending',
-                                                fightName: file.name,
-                                                uploadTime: Date.now() / 1000,
-                                                permalink: '' // Placeholder
-                                            });
-                                        }
-                                    });
-
-                                    if (validFiles.length > 0) {
-                                        // Immediately show these logs in the UI
-                                        setLogs(currentLogs => {
-                                            const newLogs = [...currentLogs];
-                                            optimisticLogs.forEach(optLog => {
-                                                if (!newLogs.some(l => l.filePath === optLog.filePath)) {
-                                                    newLogs.unshift(optLog);
-                                                }
-                                            });
-                                            return newLogs;
-                                        });
-
-                                        if (validFiles.length > 1) {
-                                            setBulkUploadMode(true);
-                                            bulkUploadExpectedRef.current = validFiles.length;
-                                            bulkUploadCompletedRef.current = 0;
-                                        }
-                                        window.electronAPI.manualUploadBatch(validFiles);
-                                    }
-                                }}
-                            >
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-gray-400" />
-                                        Recent Activity
-                                    </h2>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setFilePickerOpen(true)}
-                                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-                                            title="Select logs to upload"
-                                        >
-                                            <FilePlus2 className="w-3.5 h-3.5" />
-                                            Add Logs
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setLogs([]);
-                                                setExpandedLogId(null);
-                                                setScreenshotData(null);
-                                                canceledLogsRef.current.clear();
-                                            }}
-                                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors"
-                                            title="Clear all logs"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            Clear Logs
-                                        </button>
-                                    </div>
-                                </div>
-                                {bulkCalculatingActive && calculatingCount > 0 && (
-                                    <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-100">
-                                        Bulk calculations are running. The app may feel less responsive until they finish.
-                                    </div>
-                                )}
-                                {(uploadRetryQueue.failed > 0 || uploadRetryQueue.retrying > 0 || uploadRetryQueue.entries.length > 0) && (
-                                    <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-100">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="font-semibold">Upload Retry Queue</div>
-                                            <div className="flex items-center gap-2">
-                                                {uploadRetryQueue.paused && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleResumeUploadRetries}
-                                                        disabled={retryQueueBusy}
-                                                        className="rounded-md border border-rose-300/30 bg-rose-400/20 px-2.5 py-1 text-[11px] font-semibold text-rose-50 hover:bg-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {retryQueueBusy ? 'Resuming...' : 'Resume'}
-                                                    </button>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    onClick={handleRetryFailedUploads}
-                                                    disabled={retryQueueBusy || uploadRetryQueue.failed === 0 || uploadRetryQueue.paused}
-                                                    className="rounded-md border border-rose-300/30 bg-rose-400/20 px-2.5 py-1 text-[11px] font-semibold text-rose-50 hover:bg-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {retryQueueBusy ? 'Retrying...' : 'Retry failed'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="mt-1 text-[11px] text-rose-100/80">
-                                            Failed: {uploadRetryQueue.failed} | Retrying: {uploadRetryQueue.retrying} | Resolved: {uploadRetryQueue.resolved}
-                                        </div>
-                                        {uploadRetryQueue.paused && (
-                                            <div className="mt-1 text-[10px] text-rose-50">
-                                                Paused: {uploadRetryQueue.pauseReason || 'Retry queue is paused.'}
-                                            </div>
-                                        )}
-                                        {uploadRetryQueue.entries.length > 0 && (
-                                            <div className="mt-2 max-h-24 overflow-y-auto space-y-1 pr-1">
-                                                {uploadRetryQueue.entries.slice(0, 5).map((entry) => {
-                                                    const fileName = entry.filePath.split(/[\\/]/).pop() || entry.filePath;
-                                                    return (
-                                                        <div key={entry.filePath} className="truncate text-[10px] text-rose-100/75">
-                                                            [{entry.category}] {fileName}: {entry.error}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {devDatasetLoadProgress && (
-                                    <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-                                        <div className="flex flex-col items-center text-center gap-1">
-                                            <FilePlus2 className="w-5 h-5 text-amber-300" />
-                                            <div className="text-[11px] text-amber-100">
-                                                Loading dev dataset: <span className="font-semibold">{devDatasetLoadProgress.name}</span>
-                                            </div>
-                                            <div className="text-[10px] text-amber-200/80">
-                                                {devDatasetLoadProgress.total !== null
-                                                    ? `${Math.min(devDatasetLoadProgress.loaded, devDatasetLoadProgress.total)} / ${devDatasetLoadProgress.total}`
-                                                    : `${devDatasetLoadProgress.loaded} loaded`}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div
-                                    className="flex-1 overflow-y-auto pr-2"
-                                    ref={logsListRef}
-                                >
-                                    {logs.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-20">
-                                            <UploadCloud className="w-12 h-12 mb-3" />
-                                            <p>Drop logs to upload</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {logs.map((log) => (
-                                                <ExpandableLogCard
-                                                    key={log.filePath}
-                                                    log={log}
-                                                    isExpanded={expandedLogId === log.filePath}
-                                                    onToggle={() => {
-                                                        const nextExpanded = expandedLogId === log.filePath ? null : log.filePath;
-                                                        setExpandedLogId(nextExpanded);
-                                                        if (nextExpanded) {
-                                                            fetchLogDetails(log);
-                                                        }
-                                                    }}
-                                                    layoutEnabled={!isBulkUploadActive}
-                                                    motionEnabled={!isBulkUploadActive}
-                                                    onCancel={() => {
-                                                        if (!log.filePath) return;
-                                                        canceledLogsRef.current.add(log.filePath);
-                                                        setLogs((currentLogs) => currentLogs.filter((entry) => entry.filePath !== log.filePath));
-                                                        if (expandedLogId === log.filePath) {
-                                                            setExpandedLogId(null);
-                                                        }
-                                                    }}
-                                                    embedStatSettings={embedStatSettings}
-                                                    disruptionMethod={disruptionMethod}
-                                                    useClassIcons={showClassIcons}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
+                    ) : (
+                        <div className="dashboard-view grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 overflow-y-auto pr-1">
+                            <div className="space-y-6 overflow-y-auto pr-2">
+                                {configurationPanel}
+                                {statsTilesPanel}
+                            </div>
+                            <div className="lg:col-span-2 flex flex-col min-h-0">
+                                {activityPanel}
+                            </div>
                         </div>
-                    </div>
+                    )
                 )}
             </div>
 
@@ -2167,7 +2399,7 @@ function App() {
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="w-full max-w-2xl bg-[#0a0f1a]/95 border border-amber-500/30 rounded-2xl shadow-2xl"
+                            className="w-full max-w-2xl bg-[#161c24]/95 border border-amber-500/30 rounded-2xl shadow-2xl"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
@@ -2500,7 +2732,7 @@ function App() {
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="w-full max-w-2xl bg-[#101826]/90 border border-white/10 rounded-2xl shadow-2xl p-6"
+                            className="w-full max-w-2xl bg-[#161c24]/95 border border-white/10 rounded-2xl shadow-2xl p-6"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}

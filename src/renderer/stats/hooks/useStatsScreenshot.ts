@@ -129,7 +129,7 @@ export const useStatsScreenshot = (embedded: boolean) => {
                     const scrollWidth = node.scrollWidth;
                     const scrollHeight = node.scrollHeight;
                     dataUrl = await withImageFetchProxy(() => toPng(node, {
-                        backgroundColor: '#0f172a',
+                        backgroundColor: '#10141b',
                         quality: 0.95,
                         pixelRatio: 2,
                         cacheBust: true,

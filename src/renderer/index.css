@@ -40,16 +40,21 @@ body,
 }
 
 body.theme-modern:not(.web-report) {
-    background:
-        radial-gradient(1200px 700px at 15% 0%, rgba(120, 188, 220, 0.12), transparent 62%),
-        radial-gradient(900px 520px at 85% 8%, rgba(112, 126, 212, 0.18), transparent 60%),
-        radial-gradient(700px 420px at 20% 92%, rgba(34, 211, 238, 0.06), transparent 68%),
-        radial-gradient(600px 380px at 80% 88%, rgba(30, 64, 175, 0.12), transparent 70%),
-        linear-gradient(180deg, rgba(11, 14, 19, 0.96), rgba(15, 18, 24, 0.98)),
-        var(--bg-base);
+    --bg-base: #10141b;
+    --bg-elevated: #161c24;
+    --bg-card: #1b222c;
+    --bg-hover: #222b36;
+    --bg-input: #141a22;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #eef2f7;
+    --text-secondary: #c7d0de;
+    --text-muted: #8a97ab;
+    background: var(--bg-base);
     color: var(--text-primary);
     font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-    box-shadow: var(--window-glow);
+    box-shadow: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -61,24 +66,17 @@ body.theme-modern .app-shell {
 
 body.theme-modern .app-shell::before,
 body.theme-modern .app-shell::after {
-    content: "";
-    position: absolute;
-    inset: -20%;
-    pointer-events: none;
-    z-index: 0;
+    display: none;
 }
 
 body.theme-modern .app-shell::before {
-    background:
-        radial-gradient(600px 300px at 10% 0%, rgba(122, 215, 240, 0.06), transparent 68%),
-        radial-gradient(700px 380px at 85% 12%, rgba(139, 124, 246, 0.08), transparent 62%);
+    background: none;
 }
 
 body.theme-modern .app-shell::after {
-    background:
-        radial-gradient(500px 320px at 80% 90%, rgba(14, 116, 144, 0.16), transparent 62%);
-    mix-blend-mode: screen;
-    opacity: 0.6;
+    background: none;
+    mix-blend-mode: normal;
+    opacity: 0;
 }
 
 body.theme-modern .legacy-orb {
@@ -87,23 +85,28 @@ body.theme-modern .legacy-orb {
 
 
 body.theme-modern .app-shell .bg-white\/5 {
+    background-image: linear-gradient(145deg, rgba(36, 44, 58, 0.8), rgba(24, 30, 40, 0.9)) !important;
     background-color: var(--bg-card) !important;
 }
 
 body.theme-modern .app-shell .bg-white\/10 {
+    background-image: linear-gradient(145deg, rgba(46, 54, 70, 0.85), rgba(28, 35, 46, 0.92)) !important;
     background-color: var(--bg-hover) !important;
 }
 
 body.theme-modern .app-shell .bg-black\/20 {
-    background-color: rgba(0, 0, 0, 0.22) !important;
+    background-image: linear-gradient(145deg, rgba(28, 35, 46, 0.85), rgba(20, 26, 34, 0.95)) !important;
+    background-color: var(--bg-input) !important;
 }
 
 body.theme-modern .app-shell .bg-black\/30 {
-    background-color: rgba(0, 0, 0, 0.32) !important;
+    background-image: linear-gradient(145deg, rgba(32, 40, 52, 0.85), rgba(22, 28, 38, 0.95)) !important;
+    background-color: var(--bg-card) !important;
 }
 
 body.theme-modern .app-shell .bg-black\/40 {
-    background-color: rgba(0, 0, 0, 0.42) !important;
+    background-image: linear-gradient(145deg, rgba(36, 44, 58, 0.9), rgba(24, 30, 40, 0.98)) !important;
+    background-color: var(--bg-elevated) !important;
 }
 
 body.theme-modern .app-shell .border-white\/5 {
@@ -119,34 +122,99 @@ body.theme-modern .app-shell .border-white\/20 {
 }
 
 body.theme-modern .app-shell .shadow-2xl {
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55), 0 0 26px rgba(122, 215, 240, 0.1) !important;
+    box-shadow: none !important;
 }
 
 body.theme-modern .app-shell .rounded-2xl {
-    border-radius: 20px !important;
+    border-radius: 0 !important;
 }
 
 body.theme-modern .app-shell .rounded-xl {
-    border-radius: 16px !important;
+    border-radius: 0 !important;
 }
 
 body.theme-modern .app-shell .rounded-lg {
-    border-radius: 12px !important;
+    border-radius: 0 !important;
+}
+
+body.theme-modern .app-shell .rounded-md {
+    border-radius: 0 !important;
+}
+
+body.theme-modern .app-shell .rounded-full {
+    border-radius: 0 !important;
+}
+
+body.theme-modern .app-shell .p-6 {
+    padding: 0.75rem !important;
+}
+
+body.theme-modern .app-shell .p-5 {
+    padding: 0.625rem !important;
+}
+
+body.theme-modern .app-shell .p-4 {
+    padding: 0.5rem !important;
+}
+
+body.theme-modern .app-shell .px-6 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+}
+
+body.theme-modern .app-shell .py-4 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+body.theme-modern .app-shell .px-4 {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
+body.theme-modern .app-shell .py-3 {
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+}
+
+body.theme-modern .app-shell .px-3 {
+    padding-left: 0.375rem !important;
+    padding-right: 0.375rem !important;
+}
+
+body.theme-modern .app-shell .py-2 {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+}
+
+body.theme-modern .app-shell .px-2 {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+}
+
+body.theme-modern .app-shell .gap-6 {
+    gap: 1.25rem !important;
+}
+
+body.theme-modern .app-shell .gap-4 {
+    gap: 0.875rem !important;
 }
 
 body.theme-modern .app-shell .backdrop-blur-xl,
 body.theme-modern .app-shell .backdrop-blur-2xl,
 body.theme-modern .app-shell .backdrop-blur-md {
-    backdrop-filter: blur(18px) saturate(150%);
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 body.theme-modern .app-shell .bg-gradient-to-br {
-    background-image: linear-gradient(135deg, rgba(18, 22, 30, 0.92), rgba(26, 32, 42, 0.88)) !important;
+    background-image: none !important;
+    background-color: var(--bg-card) !important;
 }
 
 body.theme-modern .app-shell .bg-gradient-to-r {
-    background-image: linear-gradient(90deg, rgba(122, 215, 240, 0.9), rgba(139, 124, 246, 0.9)) !important;
+    background-image: none !important;
+    background-color: var(--bg-hover) !important;
 }
 
 body.theme-modern .app-shell .text-gray-200,
@@ -165,76 +233,76 @@ body.theme-modern .app-shell .text-white {
 
 body.theme-modern .app-shell .bg-blue-500\/20,
 body.theme-modern .app-shell .bg-blue-500\/10 {
-    background-color: rgba(122, 215, 240, 0.16) !important;
+    background-color: rgba(122, 215, 240, 0.12) !important;
 }
 
 body.theme-modern .app-shell .text-blue-400,
 body.theme-modern .app-shell .text-blue-500 {
-    color: #7ad7f0 !important;
+    color: #8fd6ea !important;
 }
 
 body.theme-modern .app-shell .border-blue-500\/30,
 body.theme-modern .app-shell .border-blue-500\/50 {
-    border-color: rgba(122, 215, 240, 0.45) !important;
+    border-color: rgba(122, 215, 240, 0.3) !important;
 }
 
 body.theme-modern .app-shell .bg-purple-500\/20,
 body.theme-modern .app-shell .bg-purple-500\/10 {
-    background-color: rgba(139, 124, 246, 0.16) !important;
+    background-color: rgba(139, 124, 246, 0.12) !important;
 }
 
 body.theme-modern .app-shell .text-purple-400,
 body.theme-modern .app-shell .text-purple-500 {
-    color: #a49bff !important;
+    color: #b1a6ff !important;
 }
 
 body.theme-modern .app-shell .border-purple-500\/30,
 body.theme-modern .app-shell .border-purple-500\/50 {
-    border-color: rgba(139, 124, 246, 0.45) !important;
+    border-color: rgba(139, 124, 246, 0.3) !important;
 }
 
 body.theme-modern .app-shell .bg-amber-500\/15,
 body.theme-modern .app-shell .bg-amber-500\/20 {
-    background-color: rgba(234, 179, 8, 0.18) !important;
+    background-color: rgba(234, 179, 8, 0.12) !important;
 }
 
 body.theme-modern .app-shell .text-amber-200,
 body.theme-modern .app-shell .text-amber-500 {
-    color: #f9d66d !important;
+    color: #f0d38a !important;
 }
 
 body.theme-modern .app-shell .border-amber-500\/30 {
-    border-color: rgba(234, 179, 8, 0.35) !important;
+    border-color: rgba(234, 179, 8, 0.28) !important;
 }
 
 body.theme-modern .app-shell .bg-green-500\/20,
 body.theme-modern .app-shell .bg-green-500\/10 {
-    background-color: rgba(16, 185, 129, 0.14) !important;
+    background-color: rgba(16, 185, 129, 0.1) !important;
 }
 
 body.theme-modern .app-shell .text-green-400,
 body.theme-modern .app-shell .text-green-300 {
-    color: #6ee7b7 !important;
+    color: #8be0c3 !important;
 }
 
 body.theme-modern .app-shell .border-green-500\/30,
 body.theme-modern .app-shell .border-green-500\/40 {
-    border-color: rgba(16, 185, 129, 0.35) !important;
+    border-color: rgba(16, 185, 129, 0.28) !important;
 }
 
 body.theme-modern .app-shell .bg-red-500\/20,
 body.theme-modern .app-shell .bg-red-500\/10 {
-    background-color: rgba(248, 113, 113, 0.12) !important;
+    background-color: rgba(248, 113, 113, 0.1) !important;
 }
 
 body.theme-modern .app-shell .text-red-400,
 body.theme-modern .app-shell .text-red-300 {
-    color: #fca5a5 !important;
+    color: #f3b3b3 !important;
 }
 
 body.theme-modern .app-shell .border-red-500\/30,
 body.theme-modern .app-shell .border-red-500\/40 {
-    border-color: rgba(248, 113, 113, 0.32) !important;
+    border-color: rgba(248, 113, 113, 0.26) !important;
 }
 
 body.web-report.theme-modern {
@@ -245,23 +313,28 @@ body.web-report.theme-modern {
 }
 
 body.web-report.theme-modern .bg-white\/5 {
+    background-image: linear-gradient(145deg, rgba(36, 44, 58, 0.8), rgba(24, 30, 40, 0.9)) !important;
     background-color: var(--bg-card) !important;
 }
 
 body.web-report.theme-modern .bg-white\/10 {
+    background-image: linear-gradient(145deg, rgba(46, 54, 70, 0.85), rgba(28, 35, 46, 0.92)) !important;
     background-color: var(--bg-hover) !important;
 }
 
 body.web-report.theme-modern .bg-black\/20 {
-    background-color: rgba(0, 0, 0, 0.22) !important;
+    background-image: linear-gradient(145deg, rgba(28, 35, 46, 0.85), rgba(20, 26, 34, 0.95)) !important;
+    background-color: var(--bg-input) !important;
 }
 
 body.web-report.theme-modern .bg-black\/30 {
-    background-color: rgba(0, 0, 0, 0.32) !important;
+    background-image: linear-gradient(145deg, rgba(32, 40, 52, 0.85), rgba(22, 28, 38, 0.95)) !important;
+    background-color: var(--bg-card) !important;
 }
 
 body.web-report.theme-modern .bg-black\/40 {
-    background-color: rgba(0, 0, 0, 0.42) !important;
+    background-image: linear-gradient(145deg, rgba(36, 44, 58, 0.9), rgba(24, 30, 40, 0.98)) !important;
+    background-color: var(--bg-elevated) !important;
 }
 
 body.web-report.theme-modern .border-white\/5 {
@@ -274,6 +347,14 @@ body.web-report.theme-modern .border-white\/10 {
 
 body.web-report.theme-modern .border-white\/20 {
     border-color: var(--border-hover) !important;
+}
+
+body.web-report.theme-modern .rounded-2xl,
+body.web-report.theme-modern .rounded-xl,
+body.web-report.theme-modern .rounded-lg,
+body.web-report.theme-modern .rounded-md,
+body.web-report.theme-modern .rounded-full {
+    border-radius: 0 !important;
 }
 
 body.web-report.theme-modern .text-gray-200,
@@ -292,13 +373,13 @@ body.web-report.theme-modern .text-white {
 
 body.web-report.theme-modern #stats-dashboard-container,
 body.web-report.theme-modern #report-list-container {
-    background-color: rgba(22, 26, 34, 0.7) !important;
-    background-image: linear-gradient(160deg, rgba(26, 32, 42, 0.75), rgba(30, 38, 50, 0.82)) !important;
+    background-color: var(--bg-elevated) !important;
+    background-image: linear-gradient(160deg, rgba(27, 34, 44, 0.75), rgba(33, 41, 54, 0.82)) !important;
     border-color: var(--border-subtle) !important;
 }
 
 body.web-report.theme-modern .stats-view .bg-gradient-to-br {
-    background-image: linear-gradient(135deg, rgba(18, 22, 30, 0.92), rgba(26, 32, 42, 0.88)) !important;
+    background-image: linear-gradient(135deg, rgba(24, 30, 39, 0.92), rgba(32, 40, 52, 0.88)) !important;
 }
 
 body.web-report.theme-modern .stats-view .border-green-500\/30,
@@ -312,9 +393,9 @@ body.web-report.theme-modern .stats-view .border-red-500\/40 {
 }
 
 body.theme-modern .app-titlebar {
-    background: rgba(12, 15, 20, 0.8) !important;
+    background: var(--bg-elevated) !important;
     border-bottom-color: var(--border-subtle) !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    box-shadow: none;
     position: relative;
     z-index: 2;
 }
@@ -330,7 +411,7 @@ body.theme-modern .app-header h2 {
 }
 
 body.theme-modern .app-header .bg-clip-text {
-    filter: drop-shadow(0 6px 18px rgba(122, 215, 240, 0.2));
+    filter: none;
 }
 
 body.theme-modern .dashboard-view .bg-white\/5 {
@@ -347,7 +428,7 @@ body.theme-modern .dashboard-view .text-gray-500 {
 
 body.theme-modern .stats-view .bg-black\/30,
 body.theme-modern .stats-view .bg-black\/20 {
-    background-color: rgba(7, 10, 14, 0.55) !important;
+    background-color: var(--bg-card) !important;
 }
 
 body.theme-modern .stats-view .border-white\/5 {
@@ -360,31 +441,31 @@ body.theme-modern .stats-view .text-yellow-400 {
 }
 
 body.theme-modern .stats-view .mvp-card {
-    background-image:
-        linear-gradient(140deg, rgba(10, 12, 18, 0.96), rgba(16, 20, 28, 0.92));
+    background-image: none;
+    background-color: var(--bg-elevated);
     border-color: rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: none;
 }
 
 body.theme-modern .stats-view .mvp-card--gold {
-    background-image:
-        linear-gradient(140deg, rgba(10, 12, 18, 0.96), rgba(18, 22, 30, 0.92));
+    background-image: none;
+    background-color: var(--bg-elevated);
     border-color: rgba(234, 179, 8, 0.65) !important;
-    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.6), 0 0 28px rgba(234, 179, 8, 0.2), inset 0 0 0 1px rgba(234, 179, 8, 0.25);
+    box-shadow: none;
 }
 
 body.theme-modern .stats-view .mvp-card--silver {
-    background-image:
-        linear-gradient(140deg, rgba(10, 12, 18, 0.96), rgba(18, 22, 30, 0.92));
+    background-image: none;
+    background-color: var(--bg-elevated);
     border-color: rgba(148, 163, 184, 0.6) !important;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 22px rgba(148, 163, 184, 0.18), inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+    box-shadow: none;
 }
 
 body.theme-modern .stats-view .mvp-card--bronze {
-    background-image:
-        linear-gradient(140deg, rgba(10, 12, 18, 0.96), rgba(18, 22, 30, 0.92));
+    background-image: none;
+    background-color: var(--bg-elevated);
     border-color: rgba(234, 88, 12, 0.6) !important;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 22px rgba(234, 88, 12, 0.18), inset 0 0 0 1px rgba(234, 88, 12, 0.22);
+    box-shadow: none;
 }
 
 body.theme-classic .stats-view .mvp-card {
@@ -431,7 +512,7 @@ body.theme-modern .settings-view .bg-black\/30 {
 body.theme-modern .settings-view input,
 body.theme-modern .settings-view textarea,
 body.theme-modern .settings-view select {
-    background-color: rgba(7, 10, 14, 0.65) !important;
+    background-color: var(--bg-input) !important;
     border-color: var(--border-default) !important;
     color: var(--text-primary) !important;
 }
@@ -442,11 +523,17 @@ body.theme-modern .settings-view textarea::placeholder {
 }
 
 :root {
-    --arcbridge-gradient: linear-gradient(90deg, #60a5fa, #a855f7);
+    --arcbridge-gradient: linear-gradient(90deg, #7ad7f0, #8b7cf6);
 }
 
 body.theme-modern {
-    --arcbridge-gradient: linear-gradient(90deg, #60a5fa, #a855f7);
+    --arcbridge-gradient: linear-gradient(90deg, #94a3b8, #cbd5e1);
+}
+
+.arcbridge-gradient-text {
+    background-image: var(--arcbridge-gradient);
+    -webkit-background-clip: text;
+    color: transparent;
 }
 
 html.web-report,
@@ -585,8 +672,11 @@ button:focus-visible,
     animation-timing-function: ease-out;
     animation-fill-mode: both;
     will-change: transform, opacity;
-    background-color: rgba(2, 6, 23, 0.96);
-    backdrop-filter: blur(18px);
+    background-color: var(--bg-elevated);
+    backdrop-filter: none;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    box-shadow: none;
     padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
 }
 
@@ -604,6 +694,7 @@ button:focus-visible,
     animation-duration: 160ms;
     animation-timing-function: ease-out;
     animation-fill-mode: both;
+    background-color: rgba(10, 14, 18, 0.85);
 }
 
 .modal-backdrop-enter {
@@ -638,7 +729,7 @@ button:focus-visible,
 }
 
 .glass-dropdown {
-    background: rgba(6, 8, 16, 0.90);
+    background: rgba(16, 20, 27, 0.92);
     backdrop-filter: blur(34px) saturate(140%);
     -webkit-backdrop-filter: blur(34px) saturate(140%);
     box-shadow:
