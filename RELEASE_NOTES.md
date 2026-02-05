@@ -1,26 +1,19 @@
 # Release Notes
 
-Version v1.20.6 — February 4, 2026
+Version v1.21.0 — February 4, 2026
 
 ## 🌟 Highlights
-- Stats view now supports sharing stats to Discord.
-- Stats view icons are fetched and cached for faster loading.
-- Settings navigation now uses section IDs with smooth scrolling for easier access.
-- Smarter upload retry queue with UI and state management.
+- Major refactor of the modern slate theme for ArcBridge.
+- ArcBridge logo updated with gradient styling for a fresher look.
+- Web assets refreshed to support the new visuals.
 
 ## 🛠️ Improvements
-- Settings view now supports custom scroll handling for a smoother experience.
-- Settings layout enhances padding and spacing across screen sizes.
-- Left content alignment and mobile navigation padding improved for smaller screens.
-- App layout and header styling refined for a cleaner, more consistent look.
-- Upload status pie chart visuals refined for clarity.
+- Gradient styling applied to the logo and UI accents.
+- Refreshed class icons (Antiquary and Luminary) for clearer visuals.
+- UI assets and styles updated to align with the new theme.
 
 ## 🧯 Fixes
-- Fix: correct global fetch binding in useStatsScreenshot hook to ensure stats images load reliably.
-- Upload retry queue now checks for actual entries to determine when to retry.
-- When retrying uploads, status now shows as 'uploading' to stay consistent.
-- Mobile navigation items max height and padding adjusted for better fit on small screens.
-- General layout and styling fixes for app content and header alignment.
+- None.
 
 ## ⚠️ Breaking Changes
-None.
+- Theme overhaul may change visuals and layout; some screens may look different from prior versions.
