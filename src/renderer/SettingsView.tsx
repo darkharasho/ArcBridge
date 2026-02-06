@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload, ChevronDown } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
-import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
+import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
@@ -161,12 +161,25 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const logoSyncInFlightRef = useRef(false);
     const queuedLogoPathRef = useRef<string | null>(null);
     const favoriteRepoSet = useMemo(() => new Set(githubFavoriteRepos), [githubFavoriteRepos]);
+    const availableWebThemes = useMemo(() => (uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES), [uiTheme]);
     const orderedThemes = useMemo(() => {
-        const active = WEB_THEMES.find((theme) => theme.id === githubWebTheme);
-        if (!active) return WEB_THEMES;
-        return [active, ...WEB_THEMES.filter((theme) => theme.id !== githubWebTheme)];
-    }, [githubWebTheme]);
+        const active = availableWebThemes.find((theme) => theme.id === githubWebTheme);
+        if (!active) return availableWebThemes;
+        return [active, ...availableWebThemes.filter((theme) => theme.id !== githubWebTheme)];
+    }, [availableWebThemes, githubWebTheme]);
     const isModernLayout = uiTheme === 'modern';
+
+    useEffect(() => {
+        if (uiTheme === 'crt') {
+            if (githubWebTheme !== CRT_WEB_THEME_ID) {
+                setGithubWebTheme(CRT_WEB_THEME_ID);
+            }
+            return;
+        }
+        if (githubWebTheme === CRT_WEB_THEME_ID) {
+            setGithubWebTheme(DEFAULT_WEB_THEME_ID);
+        }
+    }, [uiTheme, githubWebTheme]);
 
     const applySettingsToState = (settings: any) => {
         setDpsReportToken(settings.dpsReportToken || '');
@@ -1062,7 +1075,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                 <div ref={settingsScrollRef} className={`${isModernLayout ? 'min-h-0 overflow-y-auto pr-2 space-y-4' : 'flex-1 min-h-0 overflow-y-auto pr-2 space-y-4'}`}>
                 <SettingsSection title="Appearance" icon={Sparkles} delay={0.02} sectionId="appearance">
                     <p className="text-sm text-gray-400 mb-4">
-                        Switch between Classic, Modern Slate, or the new CRT Hacker terminal look.
+                        Switch between Classic, Modern Slate, or CRT Hacker.
                     </p>
                     <div className="flex flex-wrap gap-3">
                         <button

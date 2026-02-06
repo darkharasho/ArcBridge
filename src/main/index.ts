@@ -5,7 +5,7 @@ import https from 'node:https'
 import { createHash } from 'node:crypto'
 import util from 'node:util'
 import { spawn } from 'node:child_process'
-import { DEFAULT_WEB_THEME_ID, WEB_THEMES } from '../shared/webThemes';
+import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID } from '../shared/webThemes';
 import { computeOutgoingConditions } from '../shared/conditionsMetrics';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { LogWatcher } from './watcher'
@@ -3538,10 +3538,13 @@ if (!gotTheLock) {
                     pagesPath = getStoredPagesPath();
                 }
 
-                const themeId = payload?.themeId
+                const uiTheme = store.get('uiTheme', 'classic') as string;
+                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
+                const requestedThemeId = payload?.themeId
                     || (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string)
                     || DEFAULT_WEB_THEME_ID;
-                const selectedTheme = WEB_THEMES.find((theme) => theme.id === themeId) || WEB_THEMES[0];
+                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : requestedThemeId;
+                const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
 
                 sendGithubThemeStatus('Preparing', 'Loading report index...', 15);
                 let reportIds: string[] = [];
@@ -3695,8 +3698,11 @@ if (!gotTheLock) {
                     ...payload.meta,
                     appVersion: app.getVersion()
                 };
-                const themeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
-                const selectedTheme = WEB_THEMES.find((theme) => theme.id === themeId) || WEB_THEMES[0];
+                const uiTheme = store.get('uiTheme', 'classic') as string;
+                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
+                const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
+                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : requestedThemeId;
+                const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
 
                 sendWebUploadStatus('Packaging', 'Preparing report bundle...', 40);
                 const stagingRoot = path.join(app.getPath('userData'), 'web-report-staging', reportMeta.id);
