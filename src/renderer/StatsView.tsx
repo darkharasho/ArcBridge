@@ -3,7 +3,7 @@ import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 
 
 import { formatTopStatValue, formatWithCommas } from './stats/utils/dashboardUtils';
-import { OFFENSE_METRICS, DEFENSE_METRICS, SUPPORT_METRICS, HEALING_METRICS } from './stats/statsMetrics';
+import { OFFENSE_METRICS, DEFENSE_METRICS, DAMAGE_MITIGATION_METRICS, SUPPORT_METRICS, HEALING_METRICS } from './stats/statsMetrics';
 import { useStatsNavigation } from './stats/hooks/useStatsNavigation';
 import { useStatsUploads } from './stats/hooks/useStatsUploads';
 import { useStatsScreenshot } from './stats/hooks/useStatsScreenshot';
@@ -24,6 +24,7 @@ import { OffenseSection } from './stats/sections/OffenseSection';
 import { ConditionsSection } from './stats/sections/ConditionsSection';
 import { BoonOutputSection } from './stats/sections/BoonOutputSection';
 import { DefenseSection } from './stats/sections/DefenseSection';
+import { DamageMitigationSection } from './stats/sections/DamageMitigationSection';
 import { SupportSection } from './stats/sections/SupportSection';
 import { HealingSection } from './stats/sections/HealingSection';
 import { SpecialBuffsSection } from './stats/sections/SpecialBuffsSection';
@@ -115,6 +116,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             avgMvpScore: Number((source as any).avgMvpScore || 0),
             offensePlayers: asArray((source as any).offensePlayers),
             defensePlayers: asArray((source as any).defensePlayers),
+            damageMitigationPlayers: asArray((source as any).damageMitigationPlayers),
+            damageMitigationMinions: asArray((source as any).damageMitigationMinions),
             supportPlayers: asArray((source as any).supportPlayers),
             healingPlayers: asArray((source as any).healingPlayers),
             boonTables: asArray((source as any).boonTables),
@@ -244,11 +247,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [specialSearch, setSpecialSearch] = useState('');
     const [offenseSearch, setOffenseSearch] = useState('');
     const [defenseSearch, setDefenseSearch] = useState('');
+    const [damageMitigationSearch, setDamageMitigationSearch] = useState('');
     const [conditionSearch, setConditionSearch] = useState('');
     const [conditionDirection, setConditionDirection] = useState<'outgoing' | 'incoming'>('outgoing');
     const [supportSearch, setSupportSearch] = useState('');
     const [activeOffenseStat, setActiveOffenseStat] = useState<string>('damage');
     const [activeDefenseStat, setActiveDefenseStat] = useState<string>('damageTaken');
+    const [activeDamageMitigationStat, setActiveDamageMitigationStat] = useState<string>('totalMitigation');
     const [activeConditionName, setActiveConditionName] = useState<string>('all');
     const [conditionSort, setConditionSort] = useState<{ key: 'applications' | 'damage'; dir: 'asc' | 'desc' }>({
         key: 'damage',
@@ -268,9 +273,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [activeResUtilitySkill, setActiveResUtilitySkill] = useState<string>('all');
     const [offenseViewMode, setOffenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [defenseViewMode, setDefenseViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
+    const [damageMitigationViewMode, setDamageMitigationViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [supportViewMode, setSupportViewMode] = useState<'total' | 'per1s' | 'per60s'>('total');
     const [cleanseScope, setCleanseScope] = useState<'squad' | 'all'>('all');
     const [timelineFriendlyScope, setTimelineFriendlyScope] = useState<'squad' | 'squadAllies'>('squad');
+    const [damageMitigationScope, setDamageMitigationScope] = useState<'player' | 'minions'>('player');
 
 
 
@@ -1038,6 +1045,30 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                                 sidebarListClass={sidebarListClass}
                             />
 
+                            <DamageMitigationSection
+                                stats={safeStats}
+                                DAMAGE_MITIGATION_METRICS={DAMAGE_MITIGATION_METRICS}
+                                damageMitigationSearch={damageMitigationSearch}
+                                setDamageMitigationSearch={setDamageMitigationSearch}
+                                activeDamageMitigationStat={activeDamageMitigationStat}
+                                setActiveDamageMitigationStat={setActiveDamageMitigationStat}
+                                damageMitigationViewMode={damageMitigationViewMode}
+                                setDamageMitigationViewMode={setDamageMitigationViewMode}
+                                damageMitigationScope={damageMitigationScope}
+                                setDamageMitigationScope={setDamageMitigationScope}
+                                roundCountStats={roundCountStats}
+                                formatWithCommas={formatWithCommas}
+                                renderProfessionIcon={renderProfessionIcon}
+                                expandedSection={expandedSection}
+                                expandedSectionClosing={expandedSectionClosing}
+                                openExpandedSection={openExpandedSection}
+                                closeExpandedSection={closeExpandedSection}
+                                isSectionVisible={isSectionVisible}
+                                isFirstVisibleSection={isFirstVisibleSection}
+                                sectionClass={sectionClass}
+                                sidebarListClass={sidebarListClass}
+                            />
+
                             <SupportSection
                                 stats={safeStats}
                                 SUPPORT_METRICS={SUPPORT_METRICS}
@@ -1362,6 +1393,30 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                     setActiveDefenseStat={setActiveDefenseStat}
                     defenseViewMode={defenseViewMode}
                     setDefenseViewMode={setDefenseViewMode}
+                    roundCountStats={roundCountStats}
+                    formatWithCommas={formatWithCommas}
+                    renderProfessionIcon={renderProfessionIcon}
+                    expandedSection={expandedSection}
+                    expandedSectionClosing={expandedSectionClosing}
+                    openExpandedSection={openExpandedSection}
+                    closeExpandedSection={closeExpandedSection}
+                    isSectionVisible={isSectionVisible}
+                    isFirstVisibleSection={isFirstVisibleSection}
+                    sectionClass={sectionClass}
+                    sidebarListClass={sidebarListClass}
+                />
+
+                <DamageMitigationSection
+                    stats={safeStats}
+                    DAMAGE_MITIGATION_METRICS={DAMAGE_MITIGATION_METRICS}
+                    damageMitigationSearch={damageMitigationSearch}
+                    setDamageMitigationSearch={setDamageMitigationSearch}
+                    activeDamageMitigationStat={activeDamageMitigationStat}
+                    setActiveDamageMitigationStat={setActiveDamageMitigationStat}
+                    damageMitigationViewMode={damageMitigationViewMode}
+                    setDamageMitigationViewMode={setDamageMitigationViewMode}
+                    damageMitigationScope={damageMitigationScope}
+                    setDamageMitigationScope={setDamageMitigationScope}
                     roundCountStats={roundCountStats}
                     formatWithCommas={formatWithCommas}
                     renderProfessionIcon={renderProfessionIcon}

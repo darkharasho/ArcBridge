@@ -585,7 +585,11 @@ const pruneDetailsForStats = (details: any) => {
         'combatReplayMetaData',
         'skillMap',
         'buffMap',
-        'encounterDuration'
+        'encounterDuration',
+        'player_damage_mitigation',
+        'player_minion_damage_mitigation',
+        'playerDamageMitigation',
+        'playerMinionDamageMitigation'
     ]);
     if (Array.isArray(pruned.players)) {
         pruned.players = pruned.players.map((player: any) => {
@@ -616,6 +620,8 @@ const pruneDetailsForStats = (details: any) => {
                 'totalDamageDist',
                 'targetDamageDist',
                 'totalDamageTaken',
+                'totalDamageTakenDist',
+                'minions',
                 'combatReplayData',
                 'hasCommanderTag',
                 'notInSquad',
@@ -627,7 +633,18 @@ const pruneDetailsForStats = (details: any) => {
     }
     if (Array.isArray(pruned.targets)) {
         pruned.targets = pruned.targets.map((target: any) =>
-            pick(target, ['id', 'name', 'isFake', 'dpsAll', 'statsAll', 'defenses', 'totalHealth', 'healthPercentBurned', 'enemyPlayer'])
+            pick(target, [
+                'id',
+                'name',
+                'isFake',
+                'dpsAll',
+                'statsAll',
+                'defenses',
+                'totalHealth',
+                'healthPercentBurned',
+                'enemyPlayer',
+                'totalDamageDist'
+            ])
         );
     }
     return pruned;

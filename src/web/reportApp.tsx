@@ -7,6 +7,7 @@ import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
 import {
     ShieldCheck,
     Shield,
+    ShieldAlert,
     CalendarDays,
     Users,
     ExternalLink,
@@ -220,9 +221,10 @@ export function ReportApp() {
             id: 'defense',
             label: 'Defensive Stats',
             icon: Shield,
-            sectionIds: ['defense-detailed', 'boon-output', 'support-detailed', 'healing-stats'],
+            sectionIds: ['defense-detailed', 'defense-mitigation', 'boon-output', 'support-detailed', 'healing-stats'],
             items: [
                 { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
+                { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
                 { id: 'boon-output', label: 'Boon Output', icon: ShieldCheck },
                 { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
                 { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse }

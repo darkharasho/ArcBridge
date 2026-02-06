@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Swords, Shield, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, ListTree } from 'lucide-react';
+import { Trophy, Swords, Shield, ShieldAlert, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, ListTree } from 'lucide-react';
 
 export const useStatsNavigation = (embedded: boolean) => {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -18,6 +18,7 @@ export const useStatsNavigation = (embedded: boolean) => {
         { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
         { id: 'conditions-outgoing', label: 'Conditions', icon: Skull },
         { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
+        { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
         { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
         { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
         { id: 'special-buffs', label: 'Special Buffs', icon: Star },

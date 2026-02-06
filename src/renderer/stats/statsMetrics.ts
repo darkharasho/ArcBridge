@@ -75,6 +75,21 @@ export const DEFENSE_METRICS: Array<{
         { id: 'receivedCrowdControl', label: 'Crowd Control (Incoming)', field: 'receivedCrowdControl' }
     ];
 
+export const DAMAGE_MITIGATION_METRICS: Array<{
+    id: string;
+    label: string;
+}> = [
+        { id: 'totalHits', label: 'Total Hits' },
+        { id: 'evaded', label: 'Evaded' },
+        { id: 'blocked', label: 'Blocked' },
+        { id: 'glanced', label: 'Glanced' },
+        { id: 'missed', label: 'Missed' },
+        { id: 'invulned', label: 'Invulned' },
+        { id: 'interrupted', label: 'Interrupted' },
+        { id: 'totalMitigation', label: 'Damage Mitigation' },
+        { id: 'minMitigation', label: 'Min Damage Mitigation' }
+    ];
+
 export const SUPPORT_METRICS: Array<{
     id: string;
     label: string;
