@@ -1,6 +1,6 @@
 import { CSSProperties, useEffect, useMemo, useState, useRef } from 'react';
 import { StatsView } from '../renderer/StatsView';
-import { DEFAULT_WEB_THEME, WebTheme } from '../shared/webThemes';
+import { DEFAULT_WEB_THEME, WebTheme, WEB_THEMES } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
@@ -395,6 +395,17 @@ export function ReportApp() {
     }, [report]);
 
     useEffect(() => {
+        if (!report) return;
+        const requestedThemeId = report.stats?.webThemeId;
+        if (!requestedThemeId) return;
+        if (!isDevLocalWeb && theme?.id === requestedThemeId) return;
+        const matched = WEB_THEMES.find((entry) => entry.id === requestedThemeId);
+        if (matched && (!theme || theme.id !== matched.id || isDevLocalWeb)) {
+            setTheme(matched);
+        }
+    }, [report, theme, isDevLocalWeb]);
+
+    useEffect(() => {
         const body = document.body;
         body.classList.add('web-report');
         body.classList.remove('theme-classic', 'theme-modern', 'theme-crt');
@@ -404,6 +415,7 @@ export function ReportApp() {
     }, [uiTheme]);
 
     useEffect(() => {
+        if (isDevLocalWeb && report?.stats?.webThemeId) return;
         let isMounted = true;
         fetch(`${assetBasePath}theme.json`, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
@@ -418,7 +430,7 @@ export function ReportApp() {
         return () => {
             isMounted = false;
         };
-    }, [assetBasePath]);
+    }, [assetBasePath, isDevLocalWeb, report]);
 
     useEffect(() => {
         let isMounted = true;

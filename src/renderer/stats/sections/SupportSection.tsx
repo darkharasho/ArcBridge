@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { HelpingHand, Maximize2, X } from 'lucide-react';
+import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
+import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
+import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
@@ -52,6 +55,35 @@ export const SupportSection = ({
     sidebarListClass
 }: SupportSectionProps) => {
     const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
+        columnId: SUPPORT_METRICS[0]?.id || 'value',
+        dir: 'desc'
+    });
+    const isExpanded = expandedSection === 'support-detailed';
+    const [selectedSupportColumnIds, setSelectedSupportColumnIds] = useState<string[]>([]);
+    const [selectedSupportPlayers, setSelectedSupportPlayers] = useState<string[]>([]);
+    const filteredSupportMetrics = SUPPORT_METRICS.filter((metric) =>
+        metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
+    );
+    const supportColumnOptions = SUPPORT_METRICS.map((metric) => ({ id: metric.id, label: metric.label }));
+    const supportColumnOptionsFiltered = supportColumnOptions.filter((option) =>
+        option.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
+    );
+    const selectedSupportColumns = selectedSupportColumnIds.length > 0
+        ? SUPPORT_METRICS.filter((metric) => selectedSupportColumnIds.includes(metric.id))
+        : SUPPORT_METRICS;
+    const visibleSupportColumns = selectedSupportColumns;
+    const supportPlayerOptions = Array.from(new Map(
+        stats.supportPlayers.map((row: any) => [row.account, row])
+    ).values()).map((row: any) => ({
+        id: row.account,
+        label: row.account,
+        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
+    }));
+    const supportSearchSelectedIds = new Set([
+        ...selectedSupportColumnIds.map((id) => `column:${id}`),
+        ...selectedSupportPlayers.map((id) => `player:${id}`)
+    ]);
     const updateSort = (key: 'value' | 'fightTime') => {
         setSortState((prev) => ({
             key,
@@ -88,6 +120,200 @@ export const SupportSection = ({
         </div>
         {stats.supportPlayers.length === 0 ? (
             <div className="text-center text-gray-500 italic py-8">No support stats available</div>
+        ) : isExpanded ? (
+            <div className="flex flex-col gap-4">
+                <div className="bg-black/20 border border-white/5 rounded-xl px-4 py-3">
+                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <SearchSelectDropdown
+                            options={[
+                                ...supportColumnOptions.map((option) => ({ ...option, type: 'column' as const })),
+                                ...supportPlayerOptions.map((option) => ({ ...option, type: 'player' as const }))
+                            ]}
+                            onSelect={(option: SearchSelectOption) => {
+                                if (option.type === 'column') {
+                                    setSelectedSupportColumnIds((prev) =>
+                                        prev.includes(option.id) ? prev.filter((entry) => entry !== option.id) : [...prev, option.id]
+                                    );
+                                } else {
+                                    setSelectedSupportPlayers((prev) =>
+                                        prev.includes(option.id) ? prev.filter((entry) => entry !== option.id) : [...prev, option.id]
+                                    );
+                                }
+                            }}
+                            selectedIds={supportSearchSelectedIds}
+                            className="w-full sm:w-64"
+                        />
+                        <ColumnFilterDropdown
+                            options={supportColumnOptionsFiltered}
+                            selectedIds={selectedSupportColumnIds}
+                            onToggle={(id) => {
+                                setSelectedSupportColumnIds((prev) =>
+                                    prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+                                );
+                            }}
+                            onClear={() => setSelectedSupportColumnIds([])}
+                        />
+                        <ColumnFilterDropdown
+                            options={supportPlayerOptions}
+                            selectedIds={selectedSupportPlayers}
+                            onToggle={(id) => {
+                                setSelectedSupportPlayers((prev) =>
+                                    prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+                                );
+                            }}
+                            onClear={() => setSelectedSupportPlayers([])}
+                            buttonLabel="Players"
+                        />
+                        <PillToggleGroup
+                            value={supportViewMode}
+                            onChange={setSupportViewMode}
+                            options={[
+                                { value: 'total', label: 'Total' },
+                                { value: 'per1s', label: 'Stat/1s' },
+                                { value: 'per60s', label: 'Stat/60s' }
+                            ]}
+                            activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
+                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                        />
+                        {activeSupportStat === 'condiCleanse' && (
+                            <PillToggleGroup
+                                value={cleanseScope}
+                                onChange={setCleanseScope}
+                                options={[
+                                    { value: 'all', label: 'All' },
+                                    { value: 'squad', label: 'Squad' }
+                                ]}
+                                activeClassName="bg-emerald-500/20 text-emerald-200 border border-emerald-500/40"
+                                inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                            />
+                        )}
+                    </div>
+                    {(selectedSupportColumnIds.length > 0 || selectedSupportPlayers.length > 0) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedSupportColumnIds([]);
+                                    setSelectedSupportPlayers([]);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                            >
+                                Clear All
+                            </button>
+                            {selectedSupportColumnIds.map((id) => {
+                                const label = supportColumnOptions.find((option) => option.id === id)?.label || id;
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => setSelectedSupportColumnIds((prev) => prev.filter((entry) => entry !== id))}
+                                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                                    >
+                                        <span>{label}</span>
+                                        <span className="text-gray-400">×</span>
+                                    </button>
+                                );
+                            })}
+                            {selectedSupportPlayers.map((id) => (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setSelectedSupportPlayers((prev) => prev.filter((entry) => entry !== id))}
+                                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                                >
+                                    <span>{id}</span>
+                                    <span className="text-gray-400">×</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                    {filteredSupportMetrics.length === 0 ? (
+                        <div className="px-4 py-10 text-center text-gray-500 italic text-sm">No support stats match this filter</div>
+                    ) : (
+                        (() => {
+                            const resolveSupportTotal = (row: any, metricId: string) => {
+                                if (metricId === 'condiCleanse') {
+                                    const squad = row.supportTotals?.condiCleanse || 0;
+                                    const self = row.supportTotals?.condiCleanseSelf || 0;
+                                    return cleanseScope === 'all' ? squad + self : squad;
+                                }
+                                return row.supportTotals?.[metricId] || 0;
+                            };
+                            const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
+                            const formatValue = (metric: { id: string; isTime?: boolean }, value: number) => {
+                                const decimals = metric.isTime
+                                    ? 1
+                                    : (roundCountStats && supportViewMode === 'total' ? 0 : 2);
+                                return formatWithCommas(value, decimals);
+                            };
+                            const resolvedSortColumnId = visibleSupportColumns.find((metric) => metric.id === denseSort.columnId)?.id
+                                || visibleSupportColumns[0]?.id
+                                || '';
+                            const rows = [...stats.supportPlayers]
+                                .filter((row: any) => selectedSupportPlayers.length === 0 || selectedSupportPlayers.includes(row.account))
+                                .map((row: any) => {
+                                    const values: Record<string, string> = {};
+                                    const numericValues: Record<string, number> = {};
+                                    visibleSupportColumns.forEach((metric) => {
+                                        const total = resolveSupportTotal(row, metric.id);
+                                        const value = supportViewMode === 'total'
+                                            ? total
+                                            : supportViewMode === 'per1s'
+                                                ? total / totalSeconds(row)
+                                                : (total * 60) / totalSeconds(row);
+                                        numericValues[metric.id] = value;
+                                        values[metric.id] = formatValue(metric, value);
+                                    });
+                                    return {
+                                        row,
+                                        values,
+                                        numericValues
+                                    };
+                                })
+                                .sort((a, b) => {
+                                    const resolvedA = a.numericValues[resolvedSortColumnId] ?? 0;
+                                    const resolvedB = b.numericValues[resolvedSortColumnId] ?? 0;
+                                    const primary = denseSort.dir === 'desc' ? resolvedB - resolvedA : resolvedA - resolvedB;
+                                    return primary || String(a.row.account || '').localeCompare(String(b.row.account || ''));
+                                });
+                            return (
+                                <DenseStatsTable
+                                    title="Support - Dense View"
+                                    subtitle="Support"
+                                    sortColumnId={resolvedSortColumnId}
+                                    sortDirection={denseSort.dir}
+                                    onSortColumn={(columnId) => {
+                                        setDenseSort((prev) => ({
+                                            columnId,
+                                            dir: prev.columnId === columnId ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+                                        }));
+                                    }}
+                                    columns={visibleSupportColumns.map((metric) => ({
+                                        id: metric.id,
+                                        label: metric.label,
+                                        align: 'right',
+                                        minWidth: 90
+                                    }))}
+                                    rows={rows.map((entry, idx) => ({
+                                        id: `${entry.row.account}-${idx}`,
+                                        label: (
+                                            <>
+                                                <span className="text-gray-500 font-mono">{idx + 1}</span>
+                                                {renderProfessionIcon(entry.row.profession, entry.row.professionList, 'w-4 h-4')}
+                                                <span className="truncate">{entry.row.account}</span>
+                                            </>
+                                        ),
+                                        values: entry.values
+                                    }))}
+                                />
+                            );
+                        })()
+                    )}
+                </div>
+            </div>
         ) : (
             <StatsTableLayout
                 expanded={expandedSection === 'support-detailed'}
@@ -104,13 +330,10 @@ export const SupportSection = ({
                         />
                         <div className={`${sidebarListClass} ${expandedSection === 'support-detailed' ? 'max-h-none flex-1 min-h-0' : ''}`}>
                             {(() => {
-                                const filtered = SUPPORT_METRICS.filter((metric) =>
-                                    metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
-                                );
-                                if (filtered.length === 0) {
+                                if (filteredSupportMetrics.length === 0) {
                                     return <div className="text-center text-gray-500 italic py-6 text-xs">No support stats match this filter</div>;
                                 }
-                                return filtered.map((metric) => (
+                                return filteredSupportMetrics.map((metric) => (
                                     <button
                                         key={metric.id}
                                         onClick={() => setActiveSupportStat(metric.id)}

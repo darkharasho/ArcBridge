@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Maximize2, ShieldCheck, X } from 'lucide-react';
+import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
+import { DenseStatsTable } from '../ui/DenseStatsTable';
+import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
@@ -57,6 +60,19 @@ export const BoonOutputSection = ({
     sidebarListClass
 }: BoonOutputSectionProps) => {
     const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({ columnId: '', dir: 'desc' });
+    const isExpanded = expandedSection === 'boon-output';
+    const [selectedBoonColumnIds, setSelectedBoonColumnIds] = useState<string[]>([]);
+    const [selectedBoonPlayers, setSelectedBoonPlayers] = useState<string[]>([]);
+    const allBoonColumns = stats.boonTables || [];
+    const selectedBoonColumns = selectedBoonColumnIds.length > 0
+        ? allBoonColumns.filter((boon: any) => selectedBoonColumnIds.includes(boon.id))
+        : allBoonColumns;
+    const visibleBoonColumns = selectedBoonColumns;
+    const boonSearchSelectedIds = new Set([
+        ...selectedBoonColumnIds.map((id) => `column:${id}`),
+        ...selectedBoonPlayers.map((id) => `player:${id}`)
+    ]);
     const updateSort = (key: 'value' | 'fightTime') => {
         setSortState((prev) => ({
             key,
@@ -91,6 +107,208 @@ export const BoonOutputSection = ({
         </div>
         {stats.boonTables.length === 0 ? (
             <div className="text-center text-gray-500 italic py-8">No boon data available</div>
+        ) : isExpanded ? (
+            <div className="flex flex-col gap-4">
+                <div className="bg-black/20 border border-white/5 rounded-xl px-4 py-3">
+                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <SearchSelectDropdown
+                            options={[
+                                ...allBoonColumns.map((boon: any) => ({ id: boon.id, label: boon.name, type: 'column' as const })),
+                                ...Array.from(new Map((stats.boonTables || [])
+                                    .flatMap((table: any) => table.rows || [])
+                                    .filter((row: any) => row.account)
+                                    .map((row: any) => [row.account, row])).values())
+                                    .map((row: any) => ({
+                                        id: row.account,
+                                        label: row.account,
+                                        type: 'player' as const,
+                                        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
+                                    }))
+                            ]}
+                            onSelect={(option: SearchSelectOption) => {
+                                if (option.type === 'column') {
+                                    setSelectedBoonColumnIds((prev) =>
+                                        prev.includes(option.id) ? prev.filter((entry) => entry !== option.id) : [...prev, option.id]
+                                    );
+                                } else {
+                                    setSelectedBoonPlayers((prev) =>
+                                        prev.includes(option.id) ? prev.filter((entry) => entry !== option.id) : [...prev, option.id]
+                                    );
+                                }
+                            }}
+                            selectedIds={boonSearchSelectedIds}
+                            className="w-full sm:w-64"
+                        />
+                        <ColumnFilterDropdown
+                            options={filteredBoonTables.map((boon: any) => ({ id: boon.id, label: boon.name }))}
+                            selectedIds={selectedBoonColumnIds}
+                            onToggle={(id) => {
+                                setSelectedBoonColumnIds((prev) =>
+                                    prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+                                );
+                            }}
+                            onClear={() => setSelectedBoonColumnIds([])}
+                        />
+                        <ColumnFilterDropdown
+                            options={Array.from(new Set((stats.boonTables || [])
+                                .flatMap((table: any) => table.rows || [])
+                                .map((row: any) => row.account)
+                                .filter(Boolean)))
+                                .map((account: string) => ({ id: account, label: account }))}
+                            selectedIds={selectedBoonPlayers}
+                            onToggle={(id) => {
+                                setSelectedBoonPlayers((prev) =>
+                                    prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+                                );
+                            }}
+                            onClear={() => setSelectedBoonPlayers([])}
+                            buttonLabel="Players"
+                        />
+                        <PillToggleGroup
+                            value={activeBoonCategory}
+                            onChange={setActiveBoonCategory}
+                            options={[
+                                { value: 'selfBuffs', label: 'Self' },
+                                { value: 'groupBuffs', label: 'Group' },
+                                { value: 'squadBuffs', label: 'Squad' },
+                                { value: 'totalBuffs', label: 'Total' }
+                            ]}
+                            activeClassName="bg-blue-500/20 text-blue-200 border border-blue-500/40"
+                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                        />
+                        <PillToggleGroup
+                            value={activeBoonMetric}
+                            onChange={setActiveBoonMetric}
+                            options={[
+                                { value: 'total', label: 'Total Gen' },
+                                { value: 'average', label: 'Gen/Sec' },
+                                { value: 'uptime', label: 'Uptime' }
+                            ]}
+                            activeClassName="bg-blue-500/20 text-blue-200 border border-blue-500/40"
+                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                        />
+                    </div>
+                    {(selectedBoonColumnIds.length > 0 || selectedBoonPlayers.length > 0) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedBoonColumnIds([]);
+                                    setSelectedBoonPlayers([]);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                            >
+                                Clear All
+                            </button>
+                            {selectedBoonColumnIds.map((id) => {
+                                const label = allBoonColumns.find((boon: any) => boon.id === id)?.name || id;
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => setSelectedBoonColumnIds((prev) => prev.filter((entry) => entry !== id))}
+                                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                                    >
+                                        <span>{label}</span>
+                                        <span className="text-gray-400">×</span>
+                                    </button>
+                                );
+                            })}
+                            {selectedBoonPlayers.map((id) => (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setSelectedBoonPlayers((prev) => prev.filter((entry) => entry !== id))}
+                                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                                >
+                                    <span>{id}</span>
+                                    <span className="text-gray-400">×</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                    {allBoonColumns.length === 0 ? (
+                        <div className="px-4 py-10 text-center text-gray-500 italic text-sm">No boons match this filter</div>
+                    ) : (
+                        (() => {
+                            const columnTables = visibleBoonColumns;
+                            const resolvedSortColumnId = columnTables.find((item) => item.id === denseSort.columnId)?.id
+                                || (activeBoonTab && columnTables.some((item) => item.id === activeBoonTab) ? activeBoonTab : undefined)
+                                || columnTables[0]?.id
+                                || '';
+                            const tableRowMaps = new Map<string, Map<string, any>>();
+                            const playerMap = new Map<string, any>();
+                            columnTables.forEach((table) => {
+                                const rowMap = new Map<string, any>();
+                                table.rows.forEach((row: any) => {
+                                    const key = row.account || row.name || row.id;
+                                    if (!key) return;
+                                    rowMap.set(key, row);
+                                    if (!playerMap.has(key)) {
+                                        playerMap.set(key, row);
+                                    }
+                                });
+                                tableRowMaps.set(table.id, rowMap);
+                            });
+                            const rows = Array.from(playerMap.entries())
+                                .filter(([key]) => selectedBoonPlayers.length === 0 || selectedBoonPlayers.includes(String(key)))
+                                .map(([key, row]) => {
+                                const values: Record<string, string> = {};
+                                columnTables.forEach((table) => {
+                                    const tableRow = tableRowMaps.get(table.id)?.get(key);
+                                    values[table.id] = tableRow
+                                        ? formatBoonMetricDisplay(tableRow, activeBoonCategory, table.stacking, activeBoonMetric, { roundCountStats })
+                                        : '-';
+                                });
+                                return { key, row, values };
+                            }).sort((a, b) => {
+                                if (!resolvedSortColumnId) return String(a.key).localeCompare(String(b.key));
+                                const table = columnTables.find((item) => item.id === resolvedSortColumnId);
+                                const aRow = table ? tableRowMaps.get(table.id)?.get(a.key) : null;
+                                const bRow = table ? tableRowMaps.get(table.id)?.get(b.key) : null;
+                                const aVal = aRow ? getBoonMetricValue(aRow, activeBoonCategory, table?.stacking, activeBoonMetric) : 0;
+                                const bVal = bRow ? getBoonMetricValue(bRow, activeBoonCategory, table?.stacking, activeBoonMetric) : 0;
+                                const primary = denseSort.dir === 'desc' ? bVal - aVal : aVal - bVal;
+                                return primary || String(a.key).localeCompare(String(b.key));
+                            });
+                            return (
+                                <DenseStatsTable
+                                    title="Boon Output - Dense View"
+                                    subtitle={`${activeBoonCategory.replace('Buffs', '')} • ${activeBoonMetric === 'total' ? 'Total Gen' : activeBoonMetric === 'average' ? 'Gen/Sec' : 'Uptime'}`}
+                                    sortColumnId={resolvedSortColumnId}
+                                    sortDirection={denseSort.dir}
+                                    onSortColumn={(columnId) => {
+                                        setDenseSort((prev) => ({
+                                            columnId,
+                                            dir: prev.columnId === columnId ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+                                        }));
+                                    }}
+                                    columns={columnTables.map((boon) => ({
+                                        id: boon.id,
+                                        label: <InlineIconLabel name={boon.name} iconUrl={boon.icon} iconClassName="h-4 w-4" />,
+                                        align: 'right',
+                                        minWidth: 90
+                                    }))}
+                                    rows={rows.map((entry, idx) => ({
+                                        id: `${entry.key}-${idx}`,
+                                        label: (
+                                            <>
+                                                <span className="text-gray-500 font-mono">{idx + 1}</span>
+                                                {renderProfessionIcon(entry.row.profession, entry.row.professionList, 'w-4 h-4')}
+                                                <span className="truncate">{entry.row.account || entry.row.name || entry.key}</span>
+                                            </>
+                                        ),
+                                        values: entry.values
+                                    }))}
+                                />
+                            );
+                        })()
+                    )}
+                </div>
+            </div>
         ) : (
             <StatsTableLayout
                 expanded={expandedSection === 'boon-output'}

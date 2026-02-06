@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Maximize2, Sparkles, X } from 'lucide-react';
+import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
+import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { DenseStatsTable } from '../ui/DenseStatsTable';
+import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { InlineIconLabel } from '../ui/StatsViewShared';
@@ -51,6 +55,19 @@ export const SpecialBuffsSection = ({
 }: SpecialBuffsSectionProps) => {
     const [sortKey, setSortKey] = useState<SpecialSortKey>('total');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({ columnId: '', dir: 'desc' });
+    const isExpanded = expandedSection === 'special-buffs';
+    const [selectedSpecialColumns, setSelectedSpecialColumns] = useState<string[]>([]);
+    const [selectedSpecialPlayers, setSelectedSpecialPlayers] = useState<string[]>([]);
+    const allSpecialColumns = stats.specialTables || [];
+    const selectedSpecialTables = selectedSpecialColumns.length > 0
+        ? allSpecialColumns.filter((buff: any) => selectedSpecialColumns.includes(buff.id))
+        : allSpecialColumns;
+    const visibleSpecialTables = selectedSpecialTables;
+    const specialSearchSelectedIds = new Set([
+        ...selectedSpecialColumns.map((id) => `column:${id}`),
+        ...selectedSpecialPlayers.map((id) => `player:${id}`)
+    ]);
 
     const sortedRows = useMemo(() => {
         if (!activeSpecialTable?.rows) return [];
@@ -107,6 +124,206 @@ export const SpecialBuffsSection = ({
         </div>
         {stats.specialTables.length === 0 ? (
             <div className="text-center text-gray-500 italic py-8">No special buff data available</div>
+        ) : isExpanded ? (
+            <div className="flex flex-col gap-4">
+                <div className="bg-black/20 border border-white/5 rounded-xl px-4 py-3">
+                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Special Buffs</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <SearchSelectDropdown
+                            options={[
+                                ...allSpecialColumns.map((buff: any) => ({ id: buff.id, label: buff.name, type: 'column' as const })),
+                                ...Array.from(new Map((stats.specialTables || [])
+                                    .flatMap((table: any) => table.rows || [])
+                                    .filter((row: any) => row.account)
+                                    .map((row: any) => [row.account, row])).values())
+                                    .map((row: any) => ({
+                                        id: row.account,
+                                        label: row.account,
+                                        type: 'player' as const,
+                                        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
+                                    }))
+                            ]}
+                            onSelect={(option: SearchSelectOption) => {
+                                if (option.type === 'column') {
+                                    setSelectedSpecialColumns((prev) =>
+                                        prev.includes(option.id) ? prev.filter((entry) => entry !== option.id) : [...prev, option.id]
+                                    );
+                                } else {
+                                    setSelectedSpecialPlayers((prev) =>
+                                        prev.includes(option.id) ? prev.filter((entry) => entry !== option.id) : [...prev, option.id]
+                                    );
+                                }
+                            }}
+                            selectedIds={specialSearchSelectedIds}
+                            className="w-full sm:w-64"
+                        />
+                        <ColumnFilterDropdown
+                            options={filteredSpecialTables.map((buff: any) => ({ id: buff.id, label: buff.name }))}
+                            selectedIds={selectedSpecialColumns}
+                            onToggle={(id) => {
+                                setSelectedSpecialColumns((prev) =>
+                                    prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+                                );
+                            }}
+                            onClear={() => setSelectedSpecialColumns([])}
+                        />
+                        <ColumnFilterDropdown
+                            options={Array.from(new Set((stats.specialTables || [])
+                                .flatMap((table: any) => table.rows || [])
+                                .map((row: any) => row.account)
+                                .filter(Boolean)))
+                                .map((account: string) => ({ id: account, label: account }))}
+                            selectedIds={selectedSpecialPlayers}
+                            onToggle={(id) => {
+                                setSelectedSpecialPlayers((prev) =>
+                                    prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+                                );
+                            }}
+                            onClear={() => setSelectedSpecialPlayers([])}
+                            buttonLabel="Players"
+                        />
+                        <PillToggleGroup
+                            value={sortKey}
+                            onChange={(value) => setSortKey(value as SpecialSortKey)}
+                            options={[
+                                { value: 'total', label: 'Total' },
+                                { value: 'perSecond', label: 'Per Sec' },
+                                { value: 'duration', label: 'Fight Time' }
+                            ]}
+                            activeClassName="bg-purple-500/20 text-purple-200 border border-purple-500/40"
+                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                        />
+                    </div>
+                    {(selectedSpecialColumns.length > 0 || selectedSpecialPlayers.length > 0) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedSpecialColumns([]);
+                                    setSelectedSpecialPlayers([]);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                            >
+                                Clear All
+                            </button>
+                            {selectedSpecialColumns.map((id) => {
+                                const label = allSpecialColumns.find((buff: any) => buff.id === id)?.name || id;
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => setSelectedSpecialColumns((prev) => prev.filter((entry) => entry !== id))}
+                                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                                    >
+                                        <span>{label}</span>
+                                        <span className="text-gray-400">×</span>
+                                    </button>
+                                );
+                            })}
+                            {selectedSpecialPlayers.map((id) => (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setSelectedSpecialPlayers((prev) => prev.filter((entry) => entry !== id))}
+                                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-200 hover:text-white"
+                                >
+                                    <span>{id}</span>
+                                    <span className="text-gray-400">×</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="bg-black/30 border border-white/5 rounded-xl overflow-hidden">
+                    {allSpecialColumns.length === 0 ? (
+                        <div className="px-4 py-10 text-center text-gray-500 italic text-sm">No special buffs match this filter</div>
+                    ) : (
+                        (() => {
+                            const columnTables = visibleSpecialTables;
+                            const tableRowMaps = new Map<string, Map<string, any>>();
+                            const playerMap = new Map<string, any>();
+                            columnTables.forEach((table) => {
+                                const rowMap = new Map<string, any>();
+                                table.rows.forEach((row: any) => {
+                                    const key = row.account || row.name || row.id;
+                                    if (!key) return;
+                                    rowMap.set(key, row);
+                                    if (!playerMap.has(key)) {
+                                        playerMap.set(key, row);
+                                    }
+                                });
+                                tableRowMaps.set(table.id, rowMap);
+                            });
+                            const rows = Array.from(playerMap.entries())
+                                .filter(([key]) => selectedSpecialPlayers.length === 0 || selectedSpecialPlayers.includes(String(key)))
+                                .map(([key, row]) => {
+                                const values: Record<string, string> = {};
+                                const numericValues: Record<string, number> = {};
+                                columnTables.forEach((table) => {
+                                    const tableRow = tableRowMaps.get(table.id)?.get(key);
+                                    if (!tableRow) {
+                                        values[table.id] = '-';
+                                        numericValues[table.id] = 0;
+                                        return;
+                                    }
+                                    if (sortKey === 'duration') {
+                                        values[table.id] = tableRow.duration ? `${tableRow.duration.toFixed(1)}s` : '-';
+                                        numericValues[table.id] = Number(tableRow.duration || 0);
+                                        return;
+                                    }
+                                    const raw = sortKey === 'total' ? tableRow.total : tableRow.perSecond;
+                                    const decimals = sortKey === 'total' ? 0 : 1;
+                                    numericValues[table.id] = Number(raw || 0);
+                                    values[table.id] = formatWithCommas(raw || 0, decimals);
+                                });
+                                return { key, row, values, numericValues };
+                            });
+                            const resolvedSortColumnId = columnTables.find((item) => item.id === denseSort.columnId)?.id
+                                || (activeSpecialTab && columnTables.some((item) => item.id === activeSpecialTab) ? activeSpecialTab : undefined)
+                                || columnTables[0]?.id
+                                || '';
+                            const sortedRows = [...rows].sort((a, b) => {
+                                if (!resolvedSortColumnId) return String(a.key).localeCompare(String(b.key));
+                                const aVal = a.numericValues[resolvedSortColumnId] ?? 0;
+                                const bVal = b.numericValues[resolvedSortColumnId] ?? 0;
+                                const primary = denseSort.dir === 'desc' ? bVal - aVal : aVal - bVal;
+                                return primary || String(a.key).localeCompare(String(b.key));
+                            });
+                            return (
+                                <DenseStatsTable
+                                    title="Special Buffs - Dense View"
+                                    subtitle="Totals"
+                                    sortColumnId={resolvedSortColumnId}
+                                    sortDirection={denseSort.dir}
+                                    onSortColumn={(columnId) => {
+                                        setDenseSort((prev) => ({
+                                            columnId,
+                                            dir: prev.columnId === columnId ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
+                                        }));
+                                    }}
+                                    columns={columnTables.map((buff) => ({
+                                        id: buff.id,
+                                        label: <InlineIconLabel name={buff.name} iconUrl={buff.icon} iconClassName="h-4 w-4" />,
+                                        align: 'right',
+                                        minWidth: 90
+                                    }))}
+                                    rows={sortedRows.map((entry, idx) => ({
+                                        id: `${entry.key}-${idx}`,
+                                        label: (
+                                            <>
+                                                <span className="text-gray-500 font-mono">{idx + 1}</span>
+                                                {renderProfessionIcon(entry.row.profession, entry.row.professionList, 'w-4 h-4')}
+                                                <span className="truncate">{entry.row.account || entry.row.name || entry.key}</span>
+                                            </>
+                                        ),
+                                        values: entry.values
+                                    }))}
+                                />
+                            );
+                        })()
+                    )}
+                </div>
+            </div>
         ) : (
             <StatsTableLayout
                 expanded={expandedSection === 'special-buffs'}

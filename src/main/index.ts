@@ -3598,8 +3598,8 @@ if (!gotTheLock) {
                 reportIds.forEach((id) => {
                     queueFile(withPagesPath(pagesPath, `reports/${id}/theme.json`), themeBuffer);
                 });
-                const uiTheme = store.get('uiTheme', 'classic') as string;
-                const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiTheme }, null, 2));
+                const uiThemeValue = store.get('uiTheme', 'classic') as string;
+                const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiThemeValue }, null, 2));
                 queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
 
                 if (pendingEntries.length === 0) {
@@ -3842,8 +3842,8 @@ if (!gotTheLock) {
                     const themeBuffer = Buffer.from(JSON.stringify(selectedTheme, null, 2));
                     queueFile(withPagesPath(pagesPath, 'theme.json'), themeBuffer);
                 }
-                const uiTheme = store.get('uiTheme', 'classic') as string;
-                const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiTheme }, null, 2));
+                const uiThemeValue = store.get('uiTheme', 'classic') as string;
+                const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiThemeValue }, null, 2));
                 queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
                 const logoPath = store.get('githubLogoPath') as string | undefined;
                 if (logoPath && fs.existsSync(logoPath)) {
@@ -3932,13 +3932,32 @@ if (!gotTheLock) {
                     ...payload.meta,
                     appVersion: app.getVersion()
                 };
-                const reportPayload = { meta: reportMeta, stats: payload.stats };
+                const uiTheme = store.get('uiTheme', 'classic') as string;
+                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
+                const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
+                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : requestedThemeId;
+                const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
+                const reportPayload = {
+                    meta: reportMeta,
+                    stats: {
+                        ...(payload.stats || {}),
+                        webThemeId: selectedTheme?.id || DEFAULT_WEB_THEME_ID
+                    }
+                };
                 const reportsRoot = path.join(webRoot, 'reports');
                 const reportDir = path.join(reportsRoot, reportMeta.id);
                 fs.mkdirSync(reportDir, { recursive: true });
                 fs.mkdirSync(devRoot, { recursive: true });
                 fs.writeFileSync(path.join(devRoot, 'report.json'), JSON.stringify(reportPayload, null, 2));
                 fs.writeFileSync(path.join(reportDir, 'report.json'), JSON.stringify(reportPayload, null, 2));
+                if (selectedTheme) {
+                    const themePayload = JSON.stringify(selectedTheme, null, 2);
+                    fs.writeFileSync(path.join(appRoot, 'theme.json'), themePayload);
+                    fs.writeFileSync(path.join(webRoot, 'theme.json'), themePayload);
+                }
+                const uiThemePayload = JSON.stringify({ theme: uiTheme }, null, 2);
+                fs.writeFileSync(path.join(appRoot, 'ui-theme.json'), uiThemePayload);
+                fs.writeFileSync(path.join(webRoot, 'ui-theme.json'), uiThemePayload);
 
                 const redirectHtml = `<!DOCTYPE html>
 <html lang="en">
