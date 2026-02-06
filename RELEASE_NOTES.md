@@ -1,18 +1,17 @@
 # Release Notes
 
-Version v1.22.0 — February 5, 2026
+Version v1.22.1 — February 5, 2026
 
 ## 🌟 Highlights
-- Profession icons look better now with improved scaling.
-- Web assets updated for a refreshed visual experience.
+- Updated dist-web assets for ArcBridge's web version.
+- Web icons and images refreshed for a polished look.
 
 ## 🛠️ Improvements
-- None.
+- Updated web build assets to ensure visuals render consistently.
+- Minor refinements to support the refreshed assets across platforms.
 
 ## 🧯 Fixes
-- Fixed icon scaling by applying a consistent containment style to profession icons.
-- New high res icons powered by https://github.com/darkharasho/gw2-class-icons/releases/tag/v1.2.1
-- Prevented a main-process crash when logging circular or deeply nested objects.
+- Improve error handling for console logging to prevent crashes when logging complex objects.
 
 ## ⚠️ Breaking Changes
 - None.
