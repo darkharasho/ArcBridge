@@ -1,22 +1,22 @@
 # Release Notes
 
-Version v1.24.0 — February 7, 2026
+Version v1.25.0 — February 7, 2026
 
 ## 🌟 Highlights
-- Player Breakdown now supports expandable details for players and classes, plus a new skill search to help you find what you need faster.
-- Matte theme added with corresponding styles and settings for a sleeker look.
-- UI components and styling refreshed across the app for a smoother, more polished feel.
-- Slate neumorphic styling updates bring a softer, modern vibe to the interface.
-- UI assets updated to improve visuals and overall experience.
+- Skill search feature enabled with expand/collapse for player and class breakdown sections.
+- New ScreenshotContainer and WebUploadOverlay components to streamline screenshots and web uploads.
+- Uploads are faster and more reliable thanks to bounded concurrency and improved timestamp handling.
 
 ## 🛠️ Improvements
-- Refactor of the PlayerBreakdownSection for easier skill and player selection.
-- UI components, styling, and build assets refreshed across the application.
-- Matte theme styling integration and new styling classes added to PillToggleGroup for more customization.
-- General code structure improvements aimed at readability and maintainability.
+- Upload processing now uses bounded concurrency and improved timestamp handling for faster, more reliable uploads.
+- Stats calculations are faster and smoother thanks to memoization and callbacks.
+- Stats layout is improved with StatsTableLayout and StatsTableShell; newer StatsTableCard and StatsTableCardTable components enhance stats display.
+- New components for stats and visuals: StatsTableCard and StatsTableCardTable to enhance how stats are shown.
 
 ## 🧯 Fixes
-- None.
+- Sidebar styling enhanced for better visibility and overflow handling.
+- Ensure fresh data for stats-dependent sections when navigating.
+- Fix table and sidebar height mismatch for a more consistent layout.
 
 ## ⚠️ Breaking Changes
-- None.
+None.
