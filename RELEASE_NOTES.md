@@ -1,17 +1,22 @@
 # Release Notes
 
-Version v1.22.2 — February 5, 2026
+Version v1.23.0 — February 6, 2026
 
 ## 🌟 Highlights
-- Enhanced in-app console logging to include warnings and improved message formatting for clearer logs in the app UI.
+- Added CRT Hacker theme option and refreshed theme management for a more customizable look.
+- Updated damage mitigation calculations and refreshed related UI components.
+- UI now supports icons in multiple sections and dropdowns for quicker recognition.
+- Stats UI begins taking shape with initial HTML structure and components.
+- Player breakdown improvements to simplify skill and player selection.
 
 ## 🛠️ Improvements
-- Warnings are now captured and shown in the app’s log view with clearer formatting.
-- Console messages (info, warning, error) are formatted consistently before they appear in the UI.
+- Icon support expanded to UI components and dropdowns across sections.
+- CRT Hacker theme added, with clearer theme management.
+- Stats UI structure and components introduced (builds the foundation for stats pages).
+- PlayerBreakdownSection enhanced to improve skill and player selection flow.
 
 ## 🧯 Fixes
-- Improved handling to ensure warnings are displayed alongside other logs without losing formatting.
-- Error messages are now presented with clearer, unified formatting in the log display.
+- None.
 
 ## ⚠️ Breaking Changes
 - None.
