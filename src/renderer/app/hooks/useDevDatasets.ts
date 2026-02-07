@@ -155,6 +155,8 @@ export function useDevDatasets({
     useEffect(() => {
         if (view === 'stats') {
             setStatsViewMounted(true);
+            // Ensure stats-dependent sections (APM/Player Breakdown) have fresh data immediately on navigation.
+            setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
         }
     }, [view]);
 
