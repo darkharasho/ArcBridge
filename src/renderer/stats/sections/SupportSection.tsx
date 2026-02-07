@@ -4,7 +4,8 @@ import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
-import { StatsTableCard, StatsTableCardTable } from '../ui/StatsTableCard';
+import { StatsTableLayout } from '../ui/StatsTableLayout';
+import { StatsTableShell } from '../ui/StatsTableShell';
 
 type SupportSectionProps = {
     stats: any;
@@ -316,8 +317,10 @@ export const SupportSection = ({
                 </div>
             </div>
         ) : (
-            <StatsTableCard
+            <StatsTableLayout
                 expanded={expandedSection === 'support-detailed'}
+                sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'support-detailed' ? 'h-full flex-1' : 'self-start'}`}
+                contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'support-detailed' ? 'flex flex-col min-h-0' : ''}`}
                 sidebar={
                     <>
                         <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Support Tabs</div>
@@ -380,7 +383,7 @@ export const SupportSection = ({
                                 });
 
                             return (
-                                <StatsTableCardTable
+                                <StatsTableShell
                                     expanded={expandedSection === 'support-detailed'}
                                     header={
                                         <div className="flex items-center justify-between px-4 py-3 bg-white/5">

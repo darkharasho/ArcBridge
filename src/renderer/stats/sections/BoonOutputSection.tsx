@@ -4,7 +4,8 @@ import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
-import { StatsTableCard, StatsTableCardTable } from '../ui/StatsTableCard';
+import { StatsTableLayout } from '../ui/StatsTableLayout';
+import { StatsTableShell } from '../ui/StatsTableShell';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 
 type BoonOutputSectionProps = {
@@ -321,8 +322,10 @@ export const BoonOutputSection = ({
                 </div>
             </div>
         ) : (
-            <StatsTableCard
+            <StatsTableLayout
                 expanded={expandedSection === 'boon-output'}
+                sidebarClassName={`bg-black/20 border border-white/5 rounded-xl px-3 pt-3 pb-2 flex flex-col min-h-0 ${expandedSection === 'boon-output' ? 'h-full flex-1' : 'self-start'}`}
+                contentClassName={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${expandedSection === 'boon-output' ? 'flex flex-col min-h-0' : ''}`}
                 sidebar={
                     <>
                         <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Boons</div>
@@ -356,7 +359,7 @@ export const BoonOutputSection = ({
                     !activeBoonTable ? (
                         <div className="px-4 py-10 text-center text-gray-500 italic text-sm">Select a boon to view details</div>
                     ) : (
-                        <StatsTableCardTable
+                        <StatsTableShell
                             expanded={expandedSection === 'boon-output'}
                             maxHeightClass="max-h-64"
                             header={
