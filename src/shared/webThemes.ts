@@ -18,8 +18,8 @@ export const DEFAULT_WEB_THEME: WebTheme = {
 export const MATTE_WEB_THEME: WebTheme = {
     id: MATTE_WEB_THEME_ID,
     label: 'Matte Slate',
-    rgb: '77, 139, 168',
-    pattern: 'radial-gradient(at 20% 0%, hsla(200, 10%, 16%, 1) 0, transparent 65%), radial-gradient(at 85% 15%, hsla(210, 12%, 18%, 1) 0, transparent 60%), radial-gradient(at 50% 100%, hsla(210, 8%, 12%, 1) 0, transparent 70%)'
+    rgb: '93, 163, 194',
+    pattern: 'radial-gradient(at 20% 0%, hsla(210, 8%, 20%, 1) 0, transparent 65%), radial-gradient(at 85% 15%, hsla(210, 10%, 22%, 1) 0, transparent 60%), radial-gradient(at 50% 100%, hsla(210, 8%, 18%, 1) 0, transparent 70%)'
 };
 
 export const BASE_WEB_THEMES: WebTheme[] = [

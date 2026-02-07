@@ -446,7 +446,12 @@ body.theme-matte .app-titlebar button {
     color: var(--text-secondary) !important;
     background: var(--bg-elevated);
     border-radius: 8px;
-    padding: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     box-shadow: none;
 }
 
@@ -526,7 +531,7 @@ body.theme-modern .stats-layout-modern {
     grid-template-columns: 1fr !important;
 }
 
-body.theme-modern .stats-layout-modern > div {
+body.theme-modern .stats-layout-modern>div {
     width: 100%;
 }
 
@@ -546,11 +551,11 @@ body.theme-classic .stats-view .mvp-card--bronze {
     background-image: linear-gradient(90deg, rgba(234, 88, 12, 0.25), rgba(120, 53, 15, 0.15));
 }
 
-body.web-report .stats-sections > [data-section-visible="true"] + [data-section-visible="true"] {
+body.web-report .stats-sections>[data-section-visible="true"]+[data-section-visible="true"] {
     margin-top: 1.5rem;
 }
 
-body.web-report .stats-sections > [data-section-first="true"] {
+body.web-report .stats-sections>[data-section-first="true"] {
     margin-top: 0.5rem;
 }
 
@@ -585,32 +590,36 @@ body.theme-modern .settings-view textarea::placeholder {
 }
 
 body.theme-matte {
-    --brand-primary: #4D8BA8;
-    --brand-secondary: #6fa3b9;
-    --brand-gradient: linear-gradient(135deg, #4D8BA8, #6fa3b9);
-    --accent-bg: rgba(77, 139, 168, 0.12);
-    --accent-bg-strong: rgba(77, 139, 168, 0.2);
-    --accent-border: rgba(77, 139, 168, 0.4);
-    --glow-primary: rgba(77, 139, 168, 0.16);
-    --glow-secondary: rgba(255, 255, 255, 0.04);
-    --window-glow: 0 0 70px rgba(10, 11, 12, 0.55), 0 0 110px rgba(77, 139, 168, 0.12);
+    --brand-primary: #5da3c2;
+    --brand-secondary: #7fb0c2;
+    --brand-gradient: linear-gradient(135deg, #5da3c2, #7fb0c2);
+    --accent-bg: rgba(93, 163, 194, 0.12);
+    --accent-bg-strong: rgba(93, 163, 194, 0.18);
+    --accent-border: rgba(93, 163, 194, 0.4);
+    --glow-primary: rgba(93, 163, 194, 0.16);
+    --glow-secondary: rgba(255, 255, 255, 0.05);
+    --window-glow: 0 0 70px rgba(10, 11, 12, 0.55), 0 0 110px rgba(93, 163, 194, 0.1);
 
-    --bg-base: #1B1D1E;
-    --bg-elevated: #26292B;
-    --bg-card: #232628;
-    --bg-hover: #2B2E31;
-    --bg-input: #1C1E20;
+    /* Stone Slate Palette */
+    --bg-base: #222629;
+    --bg-elevated: #292d30;
+    --bg-card: #262a2d;
+    --bg-hover: #2e3236;
+    --bg-input: #1e2124;
 
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --border-default: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(255, 255, 255, 0.12);
+    --border-subtle: rgba(255, 255, 255, 0.03);
+    --border-default: rgba(255, 255, 255, 0.06);
+    --border-hover: rgba(255, 255, 255, 0.1);
 
-    --text-primary: #E1E1E1;
-    --text-secondary: #C7CBCC;
-    --text-muted: #8A8F93;
-    --matte-light: rgba(255, 255, 255, 0.05);
-    --matte-dark: rgba(0, 0, 0, 0.6);
-    background: #1B1D1E;
+    --text-primary: #e6e8ea;
+    --text-secondary: #9da3a8;
+    --text-muted: #6e767d;
+
+    /* Neumorphic Lighting */
+    --matte-light: rgba(255, 255, 255, 0.035);
+    --matte-dark: rgba(0, 0, 0, 0.4);
+
+    background: #222629;
     color: var(--text-primary);
     font-family: "Manrope", "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
     box-shadow: none;
@@ -634,9 +643,10 @@ body.theme-matte::before {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: 0.02;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
-    mix-blend-mode: soft-light;
+    opacity: 0.015;
+    /* Subtler texture */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
     z-index: 0;
 }
 
@@ -650,12 +660,12 @@ body.theme-matte .legacy-orb {
 
 body.theme-matte .app-shell .bg-white\/5 {
     background-color: var(--bg-card) !important;
-    box-shadow: -4px -4px 8px var(--matte-light), 6px 6px 12px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
 }
 
 body.theme-matte .app-shell .bg-white\/10 {
     background-color: var(--bg-hover) !important;
-    box-shadow: -4px -4px 8px var(--matte-light), 6px 6px 12px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
 }
 
 body.theme-matte .app-shell .bg-black\/20 {
@@ -665,12 +675,12 @@ body.theme-matte .app-shell .bg-black\/20 {
 
 body.theme-matte .app-shell .bg-black\/30 {
     background-color: var(--bg-card) !important;
-    box-shadow: -4px -4px 8px var(--matte-light), 6px 6px 12px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
 }
 
 body.theme-matte .app-shell .bg-black\/40 {
     background-color: var(--bg-elevated) !important;
-    box-shadow: -4px -4px 8px var(--matte-light), 6px 6px 12px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
 }
 
 
@@ -728,8 +738,8 @@ body.web-report.theme-matte button.rounded-full,
 body.web-report.theme-matte a.rounded-full,
 body.web-report.theme-matte .rounded-full,
 body.web-report.theme-matte .rounded-full.text-xs,
-body.web-report.theme-matte .rounded-full.text-[9px],
-body.web-report.theme-matte .rounded-full.text-[10px],
+body.web-report.theme-matte .rounded-full.text-\[9px\],
+body.web-report.theme-matte .rounded-full.text-\[10px\],
 body.web-report.theme-matte .rounded-full.uppercase {
     border-radius: 8px !important;
 }
@@ -737,21 +747,103 @@ body.web-report.theme-matte .rounded-full.uppercase {
 body.theme-matte .toggle-track {
     background-color: var(--bg-input) !important;
     border-color: var(--border-default) !important;
-    box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.65), inset -3px -3px 6px rgba(255, 255, 255, 0.05);
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+    border-radius: 9999px !important;
 }
 
 body.theme-matte .toggle-track.toggle-track--on {
-    border-color: rgba(77, 139, 168, 0.5) !important;
+    border-color: rgba(93, 163, 194, 0.25) !important;
+    background-color: rgba(34, 38, 41, 0.8) !important;
+    /* Keep it dark, just tint slightly */
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.4), inset -2px -2px 5px rgba(93, 163, 194, 0.1);
 }
 
 body.theme-matte .toggle-knob {
-    background-color: var(--bg-card) !important;
-    box-shadow: -3px -3px 6px rgba(255, 255, 255, 0.06), 4px 4px 8px rgba(0, 0, 0, 0.6);
+    background-color: #9ca3af !important;
+    /* Muted gray for off */
+    box-shadow: -1px -1px 2px rgba(255, 255, 255, 0.1), 1px 1px 3px rgba(0, 0, 0, 0.4) !important;
+    border: none !important;
+    border-radius: 50% !important;
+}
+
+body.theme-matte .toggle-track--on .toggle-knob {
+    background-color: #5da3c2 !important;
+    /* Brand color for ON knob instead of track */
+    box-shadow: -1px -1px 3px rgba(255, 255, 255, 0.15), 1px 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Activity Panel Buttons (Add/Clear Logs) */
+body.theme-matte .matte-activity-panel button.rounded-full {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: -3px -3px 6px var(--matte-light), 3px 3px 6px var(--matte-dark) !important;
+    color: var(--text-secondary) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pill Toggle Group (Stats Dashboard) */
+body.theme-matte .pill-toggle-group {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--border-default) !important;
+    border-radius: 12px !important;
+}
+
+body.theme-matte .pill-toggle-option {
+    border: 1px solid transparent !important;
+    color: var(--text-secondary) !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body.theme-matte .pill-toggle-option:hover {
+    color: var(--text-primary) !important;
+}
+
+body.theme-matte .pill-toggle-option--active {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    box-shadow: -2px -2px 5px var(--matte-light), 2px 2px 5px var(--matte-dark) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 8px !important;
+}
+
+body.theme-matte .matte-activity-panel button.rounded-full {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: -3px -3px 6px var(--matte-light), 3px 3px 6px var(--matte-dark) !important;
+    color: var(--text-secondary) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px !important;
+}
+
+body.theme-matte .matte-activity-panel button.rounded-full:hover {
+    color: var(--text-primary) !important;
+    transform: translateY(-1px);
+    box-shadow: -4px -4px 8px var(--matte-light), 4px 4px 8px var(--matte-dark) !important;
+    background-color: var(--bg-hover) !important;
+}
+
+body.theme-matte .matte-activity-panel button.rounded-full:active {
+    transform: translateY(0);
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.4), inset -2px -2px 4px var(--matte-light) !important;
+}
+
+body.theme-matte .matte-activity-panel button.rounded-full.text-red-300 {
+    color: #e07a7a !important;
+    border-color: rgba(224, 122, 122, 0.2) !important;
+}
+
+body.theme-matte .matte-activity-panel button.rounded-full.text-red-300:hover {
+    color: #ff9999 !important;
+    border-color: rgba(224, 122, 122, 0.4) !important;
+    background-color: rgba(224, 122, 122, 0.1) !important;
 }
 
 body.theme-matte .toggle-track--on .toggle-knob {
     background-color: #2b3134 !important;
 }
+
 body.theme-matte .app-shell .backdrop-blur-xl,
 body.theme-matte .app-shell .backdrop-blur-2xl,
 body.theme-matte .app-shell .backdrop-blur-md {
@@ -854,18 +946,21 @@ body.theme-matte .app-shell .border-red-500\/40 {
 
 body.theme-matte .app-shell button,
 body.theme-matte .app-shell [role="button"] {
-    box-shadow: -3px -3px 6px var(--matte-light), 5px 5px 10px var(--matte-dark);
-    transition: box-shadow 0.2s ease, background-color 0.2s ease;
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 8px var(--matte-dark);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--border-subtle);
 }
 
 body.theme-matte .app-shell button:hover,
 body.theme-matte .app-shell [role="button"]:hover {
-    box-shadow: -2px -2px 5px rgba(255, 255, 255, 0.05), 4px 4px 8px rgba(0, 0, 0, 0.6);
+    box-shadow: -4px -4px 8px var(--matte-light), 5px 5px 10px var(--matte-dark);
+    transform: translateY(-1px);
 }
 
 body.theme-matte .app-shell button:active,
 body.theme-matte .app-shell [role="button"]:active {
-    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.7), inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+    box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.5), inset -3px -3px 6px rgba(255, 255, 255, 0.05);
+    transform: translateY(0);
 }
 
 body.theme-matte .app-shell .settings-nav-item,
@@ -961,33 +1056,34 @@ body.theme-matte .dashboard-view {
 body.theme-matte .matte-dashboard-shell {
     padding-top: 18px;
     margin-top: -18px;
+    padding-bottom: 2rem;
 }
 
 body.theme-matte .matte-activity-panel {
-    background-color: #25282a !important;
-    border-color: rgba(255, 255, 255, 0.02) !important;
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
     box-shadow:
-        -4px -4px 8px rgba(255, 255, 255, 0.06),
-        6px 6px 12px rgba(0, 0, 0, 0.6) !important;
+        -4px -4px 8px var(--matte-light),
+        6px 6px 12px var(--matte-dark) !important;
     backdrop-filter: none !important;
 }
 
 body.theme-matte .matte-config-panel {
-    background-color: #25282a !important;
-    border-color: rgba(255, 255, 255, 0.02) !important;
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
     box-shadow:
-        -4px -4px 8px rgba(255, 255, 255, 0.06),
-        6px 6px 12px rgba(0, 0, 0, 0.6) !important;
+        -4px -4px 8px var(--matte-light),
+        6px 6px 12px var(--matte-dark) !important;
     backdrop-filter: none !important;
 }
 
 body.theme-matte .matte-upload-card {
     background-color: var(--bg-card) !important;
     background-image: none !important;
-    border-color: rgba(255, 255, 255, 0.02) !important;
+    border-color: var(--border-subtle) !important;
     box-shadow:
-        -4px -4px 8px rgba(255, 255, 255, 0.06),
-        6px 6px 12px rgba(0, 0, 0, 0.6) !important;
+        -3px -3px 6px var(--matte-light),
+        5px 5px 10px var(--matte-dark) !important;
     backdrop-filter: none !important;
 }
 
@@ -1011,7 +1107,7 @@ body.theme-matte .matte-log-list {
     overflow-x: visible;
 }
 
-body.theme-matte .matte-log-list > .space-y-3 {
+body.theme-matte .matte-log-list>.space-y-3 {
     padding-left: 0;
 }
 
@@ -1362,15 +1458,31 @@ body.theme-crt .settings-title {
 }
 
 @keyframes crt-scan {
-    0% { opacity: 0.32; }
-    50% { opacity: 0.42; }
-    100% { opacity: 0.32; }
+    0% {
+        opacity: 0.32;
+    }
+
+    50% {
+        opacity: 0.42;
+    }
+
+    100% {
+        opacity: 0.32;
+    }
 }
 
 @keyframes crt-roll {
-    0% { transform: translateY(-1%); }
-    50% { transform: translateY(1%); }
-    100% { transform: translateY(-1%); }
+    0% {
+        transform: translateY(-1%);
+    }
+
+    50% {
+        transform: translateY(1%);
+    }
+
+    100% {
+        transform: translateY(-1%);
+    }
 }
 
 :root {
@@ -1382,7 +1494,7 @@ body.theme-modern {
 }
 
 body.theme-matte {
-    --arcbridge-gradient: linear-gradient(90deg, #4D8BA8, #7fb0c2);
+    --arcbridge-gradient: linear-gradient(135deg, #5da3c2, #7fb0c2);
 }
 
 body.theme-crt {
@@ -1391,6 +1503,7 @@ body.theme-crt {
 
 .arcbridge-gradient-text {
     background-image: var(--arcbridge-gradient);
+    background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
 }
@@ -1490,6 +1603,7 @@ button:focus-visible,
         opacity: 0;
         transform: scale(0.96);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -1501,6 +1615,7 @@ button:focus-visible,
         opacity: 1;
         transform: scale(1);
     }
+
     to {
         opacity: 0;
         transform: scale(0.98);
@@ -1511,6 +1626,7 @@ button:focus-visible,
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1520,6 +1636,7 @@ button:focus-visible,
     from {
         opacity: 1;
     }
+
     to {
         opacity: 0;
     }
@@ -1676,19 +1793,19 @@ button:focus-visible,
     background: rgba(255, 255, 255, 0.02);
 }
 
-.dense-table__row:nth-of-type(odd) > .dense-table__cell {
+.dense-table__row:nth-of-type(odd)>.dense-table__cell {
     background: rgba(255, 255, 255, 0.03);
 }
 
-.dense-table__row:hover > .dense-table__cell {
+.dense-table__row:hover>.dense-table__cell {
     background: rgba(255, 255, 255, 0.06);
 }
 
-.dense-table__row:nth-of-type(odd) > .dense-table__cell--pinned {
+.dense-table__row:nth-of-type(odd)>.dense-table__cell--pinned {
     background: #0c1424;
 }
 
-.dense-table__row:hover > .dense-table__cell--pinned {
+.dense-table__row:hover>.dense-table__cell--pinned {
     background: #101a30;
 }
 
@@ -1831,8 +1948,8 @@ body.theme-modern .arcbridge-logo {
     overflow: visible;
 }
 
-.stats-share-mode #top-skills-outgoing .max-h-80 > div:nth-child(n + 6),
-.stats-share-mode #top-skills-incoming .max-h-80 > div:nth-child(n + 6) {
+.stats-share-mode #top-skills-outgoing .max-h-80>div:nth-child(n + 6),
+.stats-share-mode #top-skills-incoming .max-h-80>div:nth-child(n + 6) {
     display: none;
 }
 
@@ -1840,7 +1957,239 @@ body.theme-modern .arcbridge-logo {
     display: none;
 }
 
-.stats-share-mode #apm-stats,
 .stats-share-mode #player-breakdown {
     display: none;
+}
+
+/* =========================================
+   Theme: Matte Slate - Overview & MVP extensions
+   ========================================= */
+
+body.theme-matte .overview-card {
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: -5px -5px 10px var(--matte-light), 5px 5px 10px var(--matte-dark) !important;
+}
+
+body.theme-matte .overview-card--green {
+    border-left: 4px solid rgba(74, 222, 128, 0.4) !important;
+}
+
+body.theme-matte .overview-card--red {
+    border-left: 4px solid rgba(248, 113, 113, 0.4) !important;
+}
+
+/* MVP Cards - Neumorphic Stone */
+body.theme-matte .mvp-card {
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: -5px -5px 10px var(--matte-light), 5px 5px 10px var(--matte-dark) !important;
+}
+
+body.theme-matte .mvp-card--gold {
+    background: linear-gradient(145deg, rgba(234, 179, 8, 0.05), rgba(0, 0, 0, 0)) var(--bg-elevated) !important;
+    border: 1px solid rgba(234, 179, 8, 0.2) !important;
+}
+
+body.theme-matte .mvp-card--gold .rounded-full.bg-yellow-500\/20 {
+    background: var(--bg-elevated) !important;
+    box-shadow: inset 4px 4px 8px var(--matte-dark), inset -4px -4px 8px var(--matte-light) !important;
+    border: 1px solid rgba(234, 179, 8, 0.2) !important;
+}
+
+body.theme-matte .mvp-card--silver {
+    background: linear-gradient(145deg, rgba(148, 163, 184, 0.05), rgba(0, 0, 0, 0)) var(--bg-elevated) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+
+body.theme-matte .mvp-card--bronze {
+    background: linear-gradient(145deg, rgba(251, 146, 60, 0.05), rgba(0, 0, 0, 0)) var(--bg-elevated) !important;
+    border: 1px solid rgba(251, 146, 60, 0.2) !important;
+}
+
+/* Tone down the big glow blobs in matte mode */
+body.theme-matte .mvp-card .absolute.blur-\[80px\],
+body.theme-matte .mvp-card .absolute.blur-\[70px\] {
+    opacity: 0.15 !important;
+}
+
+/* Terminal Screen - Matte Theme */
+body.theme-matte .terminal-window {
+    background-color: #2b3035 !important;
+    /* Deep slate, slightly lighter than pure black */
+    border-top: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.theme-matte .terminal-header {
+    background-color: var(--bg-elevated) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-matte .terminal-window .text-gray-300 {
+    color: var(--text-primary) !important;
+}
+
+body.theme-matte .terminal-window .text-gray-400 {
+    color: var(--text-secondary) !important;
+}
+
+body.theme-matte .terminal-window .text-gray-500,
+body.theme-matte .terminal-window .text-gray-600 {
+    color: #64748b !important;
+    /* Slate-500 */
+}
+
+/* Scrollbar in terminal */
+body.theme-matte .terminal-window ::-webkit-scrollbar-thumb {
+    background-color: var(--border-default) !important;
+    border-radius: 4px;
+}
+
+body.theme-matte .terminal-window ::-webkit-scrollbar-track {
+    background-color: transparent !important;
+}
+
+/* =========================================
+   Theme: Matte Slate - Proof of Work Modal
+   ========================================= */
+
+body.theme-matte .proof-of-work-modal {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.theme-matte .proof-of-work-search {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.4), inset -2px -2px 5px rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+}
+
+body.theme-matte .proof-of-work-sidebar {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.theme-matte .proof-of-work-content {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-matte .proof-of-work-sidebar button {
+    color: var(--text-secondary);
+}
+
+body.theme-matte .proof-of-work-sidebar button:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover) !important;
+}
+
+body.theme-matte .proof-of-work-content h1,
+body.theme-matte .proof-of-work-content h2,
+body.theme-matte .proof-of-work-content h3 {
+    color: var(--text-primary) !important;
+}
+
+body.theme-matte .proof-of-work-content p,
+body.theme-matte .proof-of-work-content li {
+    color: var(--text-secondary) !important;
+}
+
+body.theme-matte .proof-of-work-content code {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: #93c5fd !important;
+    /* light blue 300 */
+}
+
+body.theme-matte .proof-of-work-content pre {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+/* =========================================
+   Theme: Matte Slate - Web Reports Modal
+   ========================================= */
+
+body.theme-matte .web-reports-modal {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.theme-matte .web-report-item {
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.theme-matte .web-report-item:hover {
+    background: var(--bg-hover) !important;
+}
+
+body.theme-matte .web-report-item button {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4), -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-secondary) !important;
+}
+
+body.theme-matte .web-report-item button:hover {
+    color: var(--text-primary) !important;
+    transform: translateY(-1px);
+    box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5), -1px -1px 4px rgba(255, 255, 255, 0.08) !important;
+}
+
+/* =========================================
+   Theme: Matte Slate - Web Report App
+   ========================================= */
+
+body.theme-matte.web-report {
+    background-color: var(--bg-base);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+body.theme-matte.web-report .glass-card {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06),
+        inset 1px 1px 0 rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: none !important;
+}
+
+body.theme-matte.web-report .glass-card>div {
+    border-color: var(--border-subtle) !important;
+}
+
+/* Adjust search inputs in web report */
+body.theme-matte.web-report input[type="text"] {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.4), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Adjust buttons in web report */
+body.theme-matte.web-report button.bg-white\/5 {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2), -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+body.theme-matte.web-report button.bg-white\/5:hover {
+    background-color: var(--bg-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3), -1px -1px 4px rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Adjust Legal Notice pane */
+body.theme-matte.web-report .text-gray-500.rounded-xl {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2) !important;
 }

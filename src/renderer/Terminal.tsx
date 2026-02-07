@@ -52,10 +52,10 @@ export function Terminal({ isOpen, onClose }: TerminalProps) {
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="fixed bottom-0 left-0 right-0 h-[50vh] bg-[#161c24] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col font-mono"
+                    className="terminal-window fixed bottom-0 left-0 right-0 h-[50vh] bg-[#161c24] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col font-mono"
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/10 shrink-0">
+                    <div className="terminal-header flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/10 shrink-0">
                         <div className="flex items-center gap-2 text-gray-400">
                             <TerminalIcon className="w-4 h-4" />
                             <span className="text-xs font-bold uppercase tracking-wider">System Terminal</span>
