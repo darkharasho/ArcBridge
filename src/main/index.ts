@@ -3875,10 +3875,10 @@ if (!gotTheLock) {
                 queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
                 const logoPath = store.get('githubLogoPath') as string | undefined;
                 if (logoPath && fs.existsSync(logoPath)) {
-                const logoBuffer = fs.readFileSync(logoPath);
-                queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
-                const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
-                queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
+                    const logoBuffer = fs.readFileSync(logoPath);
+                    queueFile(withPagesPath(pagesPath, 'logo.png'), logoBuffer);
+                    const logoJson = Buffer.from(JSON.stringify({ path: 'logo.png', updatedAt: new Date().toISOString() }, null, 2));
+                    queueFile(withPagesPath(pagesPath, 'logo.json'), logoJson);
                 }
 
                 if (pendingEntries.length === 0) {
@@ -3963,7 +3963,7 @@ if (!gotTheLock) {
                 const uiTheme = store.get('uiTheme', 'classic') as string;
                 const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
                 const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
-                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : requestedThemeId;
+                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : (uiTheme === 'matte' ? MATTE_WEB_THEME_ID : requestedThemeId);
                 const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
                 const reportPayload = {
                     meta: reportMeta,

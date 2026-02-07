@@ -644,8 +644,9 @@ body.theme-matte::before {
     inset: 0;
     pointer-events: none;
     opacity: 0.015;
-    /* Subtler texture */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+    /* Subtler texture - Optimized: Removed expensive feTurbulence SVG filter which causes sluggishness */
+    /* background-image: url("data:image/svg+xml,..."); */
+    background-image: none;
     mix-blend-mode: overlay;
     z-index: 0;
 }
@@ -659,30 +660,58 @@ body.theme-matte .legacy-orb {
 }
 
 body.theme-matte .app-shell .bg-white\/5 {
+    /* Reverted to default transparent background for small elements (headers, rows) */
+    /* background-color: var(--bg-card) !important; */
+    box-shadow: none !important;
+}
+
+body.theme-matte .app-shell .bg-white\/5.rounded-xl,
+body.theme-matte .app-shell .bg-white\/5.rounded-2xl {
     background-color: var(--bg-card) !important;
-    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark) !important;
 }
 
 body.theme-matte .app-shell .bg-white\/10 {
+    /* Reverted to default transparent background */
+    /* background-color: var(--bg-hover) !important; */
+    box-shadow: none !important;
+}
+
+body.theme-matte .app-shell .bg-white\/10.rounded-xl,
+body.theme-matte .app-shell .bg-white\/10.rounded-2xl {
     background-color: var(--bg-hover) !important;
-    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark) !important;
 }
 
 body.theme-matte .app-shell .bg-black\/20 {
+    /* Inputs usually use this, closer to opaque is better for inputs but let's stick to pattern */
     background-color: var(--bg-input) !important;
-    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.7), inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05);
 }
 
 body.theme-matte .app-shell .bg-black\/30 {
+    /* Reverted to default transparent background */
+    /* background-color: var(--bg-card) !important; */
+    box-shadow: none !important;
+}
+
+body.theme-matte .app-shell .bg-black\/30.rounded-xl,
+body.theme-matte .app-shell .bg-black\/30.rounded-2xl {
     background-color: var(--bg-card) !important;
-    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark) !important;
 }
 
 body.theme-matte .app-shell .bg-black\/40 {
-    background-color: var(--bg-elevated) !important;
-    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark);
+    /* Reverted to default transparent background */
+    /* background-color: var(--bg-elevated) !important; */
+    box-shadow: none !important;
 }
 
+body.theme-matte .app-shell .bg-black\/40.rounded-xl,
+body.theme-matte .app-shell .bg-black\/40.rounded-2xl {
+    background-color: var(--bg-elevated) !important;
+    box-shadow: -3px -3px 6px var(--matte-light), 4px 4px 10px var(--matte-dark) !important;
+}
 
 body.theme-matte .app-shell .border-white\/5 {
     border-color: var(--border-subtle) !important;
@@ -702,22 +731,22 @@ body.theme-matte .app-shell .shadow-2xl {
 
 body.theme-matte .rounded-2xl,
 body.theme-matte .app-shell .rounded-2xl {
-    border-radius: 10px;
+    border-radius: 12px !important;
 }
 
 body.theme-matte .rounded-xl,
 body.theme-matte .app-shell .rounded-xl {
-    border-radius: 9px;
+    border-radius: 10px !important;
 }
 
 body.theme-matte .rounded-lg,
 body.theme-matte .app-shell .rounded-lg {
-    border-radius: 8px;
+    border-radius: 8px !important;
 }
 
 body.theme-matte .rounded-md,
 body.theme-matte .app-shell .rounded-md {
-    border-radius: 6px;
+    border-radius: 6px !important;
 }
 
 body.theme-matte .app-shell .rounded-full {
@@ -728,8 +757,8 @@ body.theme-matte button.rounded-full,
 body.theme-matte a.rounded-full,
 body.theme-matte .rounded-full,
 body.theme-matte .rounded-full.text-xs,
-body.theme-matte .rounded-full.text-[10px],
-body.theme-matte .rounded-full.text-[11px],
+body.theme-matte .rounded-full.text-\[10px\],
+body.theme-matte .rounded-full.text-\[11px\],
 body.theme-matte .rounded-full.uppercase {
     border-radius: 8px !important;
 }
@@ -1206,8 +1235,9 @@ body.web-report.theme-matte .glass-card {
 
 body.web-report.theme-matte #stats-dashboard-container,
 body.web-report.theme-matte #report-list-container {
-    background-color: var(--bg-elevated) !important;
-    border-color: var(--border-default) !important;
+    background-color: var(--bg-base) !important;
+    background-image: none !important;
+    border: none !important;
     box-shadow: -6px -6px 12px var(--matte-light), 8px 8px 14px var(--matte-dark) !important;
 }
 
@@ -2151,7 +2181,8 @@ body.theme-matte .web-report-item button:hover {
 
 body.theme-matte.web-report {
     background-color: var(--bg-base);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+    background-image: none;
+    /* Optimized: Removed expensive noise filter */
 }
 
 body.theme-matte.web-report .glass-card {

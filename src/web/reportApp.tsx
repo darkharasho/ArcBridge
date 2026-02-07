@@ -460,7 +460,7 @@ export function ReportApp() {
         };
         requestAnimationFrame(tick);
     }, [activeGroup]);
-    const isMatteUi = uiTheme === 'matte';
+    const isMatteUi = uiTheme === 'matte' || theme?.id === MATTE_WEB_THEME_ID;
     const resolvedTheme = isMatteUi ? MATTE_WEB_THEME : (theme ?? DEFAULT_WEB_THEME);
     const accentRgb = resolvedTheme.rgb;
     const accentVars = {
@@ -524,6 +524,8 @@ export function ReportApp() {
                 const themeChoice = normalized?.stats?.uiTheme;
                 if (themeChoice === 'modern' || themeChoice === 'classic' || themeChoice === 'crt' || themeChoice === 'matte') {
                     setUiTheme(themeChoice);
+                } else if (normalized?.stats?.webThemeId === MATTE_WEB_THEME_ID) {
+                    setUiTheme('matte');
                 }
             })
             .catch(() => {
@@ -541,7 +543,7 @@ export function ReportApp() {
                     .catch(() => {
                         if (!isMounted) return;
                         setError('No report data found.');
-                });
+                    });
             });
         return () => {
             isMounted = false;
@@ -618,7 +620,7 @@ export function ReportApp() {
             })
             .catch(() => {
                 if (!isMounted) return;
-                setUiTheme('classic');
+                // Do not force classic on failure; keep existing theme (e.g. from report)
             });
         return () => {
             isMounted = false;
@@ -790,11 +792,11 @@ export function ReportApp() {
                                         <button
                                             key={`${result.index}-${result.text}`}
                                             className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 border-b border-white/5 last:border-b-0"
-                                        onMouseDown={(event) => {
-                                            event.preventDefault();
-                                            setMetricsSpecSearchFocused(true);
-                                            scrollMetricsSpecToNodeIndex(result.hitId, result.text);
-                                        }}
+                                            onMouseDown={(event) => {
+                                                event.preventDefault();
+                                                setMetricsSpecSearchFocused(true);
+                                                scrollMetricsSpecToNodeIndex(result.hitId, result.text);
+                                            }}
                                         >
                                             <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">{result.section}</div>
                                             <div className="truncate">
@@ -1095,27 +1097,27 @@ export function ReportApp() {
                 <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
                     <div className="flex flex-col w-full">
                         <div className="px-6 pt-6 pb-5">
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20"
-                                        style={{
-                                            backgroundColor: 'var(--accent)',
-                                            maskImage: `url(${arcbridgeLogoUrl})`,
-                                            WebkitMaskImage: `url(${arcbridgeLogoUrl})`,
-                                            maskRepeat: 'no-repeat',
-                                            WebkitMaskRepeat: 'no-repeat',
-                                            maskPosition: 'center',
-                                            WebkitMaskPosition: 'center',
-                                            maskSize: '65%',
-                                            WebkitMaskSize: '65%'
-                                        }}
-                                        aria-label="ArcBridge logo"
-                                    />
-                                    <div>
-                                        <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">ArcBridge Reports</div>
-                                        <div className="text-sm font-semibold text-white">Navigation</div>
-                                    </div>
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20"
+                                    style={{
+                                        backgroundColor: 'var(--accent)',
+                                        maskImage: `url(${arcbridgeLogoUrl})`,
+                                        WebkitMaskImage: `url(${arcbridgeLogoUrl})`,
+                                        maskRepeat: 'no-repeat',
+                                        WebkitMaskRepeat: 'no-repeat',
+                                        maskPosition: 'center',
+                                        WebkitMaskPosition: 'center',
+                                        maskSize: '65%',
+                                        WebkitMaskSize: '65%'
+                                    }}
+                                    aria-label="ArcBridge logo"
+                                />
+                                <div>
+                                    <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">ArcBridge Reports</div>
+                                    <div className="text-sm font-semibold text-white">Navigation</div>
                                 </div>
+                            </div>
                         </div>
                         <nav className="px-4 space-y-4 text-sm flex-1 overflow-y-auto" onWheel={handleNavWheel}>
                             {navGroups.map((group) => {
@@ -1252,11 +1254,12 @@ export function ReportApp() {
                         <div id="stats-view-top">
                             <StatsView
                                 logs={[]}
-                                onBack={() => {}}
+                                onBack={() => { }}
                                 mvpWeights={undefined}
                                 precomputedStats={report.stats}
                                 statsViewSettings={report.stats?.statsViewSettings}
                                 embedded
+                                uiTheme={uiTheme}
                                 sectionVisibility={(id) => activeSectionIds.has(id)}
                                 dashboardTitle={`Statistics Dashboard - ${activeGroupDef?.label || 'Overview'}`}
                             />
@@ -1300,8 +1303,8 @@ export function ReportApp() {
         <div
             className="min-h-screen text-white relative overflow-x-hidden"
             style={{
-                backgroundColor: isMatteUi ? '#1B1D1E' : (isModernUi ? '#0f141c' : '#0f172a'),
-                backgroundImage: reportBackgroundImage,
+                backgroundColor: isMatteUi ? 'var(--bg-base)' : (isModernUi ? '#0f141c' : '#0f172a'),
+                backgroundImage: isMatteUi ? 'none' : reportBackgroundImage,
                 ...accentVars
             }}
         >
@@ -1321,7 +1324,7 @@ export function ReportApp() {
                     />
                 </div>
             )}
-                <div className="max-w-[1600px] mx-auto px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
+            <div className="max-w-[1600px] mx-auto px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
                 <div id="report-list-container" className="rounded-2xl border border-white/5 bg-black/20 p-4 sm:p-6">
                     <div id="report-top" className={`${glassCard} p-5 sm:p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-h-[56px] text-center sm:text-left">
@@ -1356,11 +1359,11 @@ export function ReportApp() {
                                 <p className="text-xs sm:text-sm text-gray-400 mt-1">Select a report to view the full stats dashboard.</p>
                             </div>
                         </div>
-                    <div className="flex items-center gap-3">
-                        <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300">
-                            {filteredIndex.length} Reports
+                        <div className="flex items-center gap-3">
+                            <div className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] sm:text-xs uppercase tracking-widest text-gray-300">
+                                {filteredIndex.length} Reports
+                            </div>
                         </div>
-                    </div>
                     </div>
 
                     <div className={`${glassCard} px-4 py-3 mb-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-between`} style={glassCardStyle}>

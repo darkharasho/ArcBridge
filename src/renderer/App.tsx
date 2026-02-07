@@ -167,7 +167,7 @@ function App() {
         if (state.disruptionMethod === 'count' || state.disruptionMethod === 'duration' || state.disruptionMethod === 'tiered') {
             setDisruptionMethod(state.disruptionMethod);
         }
-        if (state.uiTheme === 'classic' || state.uiTheme === 'modern' || state.uiTheme === 'crt') {
+        if (state.uiTheme === 'classic' || state.uiTheme === 'modern' || state.uiTheme === 'crt' || state.uiTheme === 'matte') {
             setUiTheme(state.uiTheme);
         }
         if (state.selectedWebhookId === null || typeof state.selectedWebhookId === 'string') {
@@ -1441,7 +1441,7 @@ function App() {
                                     type="text"
                                     value={logDirectory || ''}
                                     placeholder="C:\...\arcdps.cbtlogs"
-                                className="flex-1 bg-transparent border-none text-[11px] text-gray-300 placeholder-gray-600 focus:ring-0 px-2 min-w-0 w-full h-full"
+                                    className="flex-1 bg-transparent border-none text-[11px] text-gray-300 placeholder-gray-600 focus:ring-0 px-2 min-w-0 w-full h-full"
                                     onChange={(e) => setLogDirectory(e.target.value)}
                                     onBlur={(e) => {
                                         if (e.target.value) {
@@ -1977,7 +1977,7 @@ function App() {
             <div className="legacy-orb absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[100px] pointer-events-none" />
             <div className="legacy-orb absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[100px] pointer-events-none" />
 
-        <div className={`app-content relative z-10 ${isModernTheme ? 'max-w-none' : 'max-w-5xl mx-auto'} flex-1 w-full min-w-0 flex flex-col min-h-0 ${view === 'stats' ? 'pt-8 px-8 pb-2 overflow-hidden' : (isModernTheme ? 'p-8 overflow-visible' : 'p-8 overflow-hidden')}`}>
+            <div className={`app-content relative z-10 ${isModernTheme ? 'max-w-none' : 'max-w-5xl mx-auto'} flex-1 w-full min-w-0 flex flex-col min-h-0 ${view === 'stats' ? 'pt-8 px-8 pb-2 overflow-hidden' : (isModernTheme ? 'p-8 overflow-visible' : 'p-8 overflow-hidden')}`}>
                 <header className="app-header flex flex-wrap justify-between items-center gap-3 mb-10 shrink-0">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -2121,11 +2121,10 @@ function App() {
 
                 {(webUploadState.uploading || webUploadState.stage) && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg">
-                        <div className={`w-full bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl ${
-                            isDev && (webUploadState.stage === 'Upload failed' || webUploadState.buildStatus === 'errored')
+                        <div className={`w-full bg-white/10 border border-white/15 rounded-2xl p-6 shadow-2xl backdrop-blur-2xl ${isDev && (webUploadState.stage === 'Upload failed' || webUploadState.buildStatus === 'errored')
                                 ? 'max-w-2xl'
                                 : 'max-w-md'
-                        }`}>
+                            }`}>
                             <div className="text-sm uppercase tracking-widest text-cyan-300/70">Web Upload</div>
                             <div className="text-2xl font-bold text-white mt-2">{webUploadState.stage || 'Uploading'}</div>
                             <div className="text-sm text-gray-400 mt-2">
@@ -2816,13 +2815,13 @@ function App() {
                                                                 </button>
                                                                 <AnimatePresence>
                                                                     {selectSinceMonthOpen && (
-                                                                    <motion.div
-                                                                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                                                                        transition={{ duration: 0.14, ease: 'easeOut' }}
-                                                                        className="absolute z-10 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/90 backdrop-blur-md shadow-2xl p-2 file-picker-popover"
-                                                                    >
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                                                                            transition={{ duration: 0.14, ease: 'easeOut' }}
+                                                                            className="absolute z-10 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/90 backdrop-blur-md shadow-2xl p-2 file-picker-popover"
+                                                                        >
                                                                             <div className="flex items-center justify-between mb-2">
                                                                                 <button
                                                                                     onClick={() => setSelectSinceView((prev) => new Date(prev.getFullYear() - 1, prev.getMonth(), 1))}

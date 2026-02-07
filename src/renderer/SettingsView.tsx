@@ -461,42 +461,8 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         };
     }, []);
 
-    useEffect(() => {
-        if (importModalOpen || devSettingsOpen || githubManageOpen || proofOfWorkOpen || howToOpen) {
-            return;
-        }
-
-        const canScroll = (element: HTMLElement, deltaY: number) => {
-            if (deltaY < 0) return element.scrollTop > 0;
-            if (deltaY > 0) return element.scrollTop + element.clientHeight < element.scrollHeight;
-            return false;
-        };
-
-        const handleWheel = (event: WheelEvent) => {
-            const container = settingsScrollRef.current;
-            if (!container) return;
-            const target = event.target as HTMLElement | null;
-            if (!target) return;
-
-            let node: HTMLElement | null = target;
-            while (node && node !== container) {
-                const style = window.getComputedStyle(node);
-                const isScrollable = (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflowY === 'overlay')
-                    && node.scrollHeight > node.clientHeight + 1;
-                if (isScrollable && canScroll(node, event.deltaY)) {
-                    return;
-                }
-                node = node.parentElement;
-            }
-
-            if (!canScroll(container, event.deltaY)) return;
-            container.scrollTop += event.deltaY;
-            event.preventDefault();
-        };
-
-        window.addEventListener('wheel', handleWheel, { passive: false });
-        return () => window.removeEventListener('wheel', handleWheel);
-    }, [importModalOpen, devSettingsOpen, githubManageOpen, proofOfWorkOpen, howToOpen]);
+    // Optimized: Removed manual wheel listener that was causing severe scroll lag and conflicts with overlay elements (Terminal)
+    // The container uses standard CSS overflow-y-auto which handles scrolling natively and efficiently.
 
     const handleExportSettings = async () => {
         setSettingsTransferStatus(null);
