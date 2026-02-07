@@ -368,6 +368,64 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         ? activeClassBreakdown.skillMap?.[activeClassBreakdownSkillId] || null
         : null;
 
+    useEffect(() => {
+        if (playerSkillBreakdowns.length === 0) {
+            if (activePlayerBreakdownKey !== null) setActivePlayerBreakdownKey(null);
+            if (activePlayerBreakdownSkillId !== null) setActivePlayerBreakdownSkillId(null);
+            return;
+        }
+        if (!activePlayerBreakdownKey || !playerSkillBreakdownMap.has(activePlayerBreakdownKey)) {
+            const nextPlayerKey = playerSkillBreakdowns[0].key;
+            setActivePlayerBreakdownKey(nextPlayerKey);
+            setExpandedPlayerBreakdownKey(null);
+        }
+    }, [
+        playerSkillBreakdowns,
+        playerSkillBreakdownMap,
+        activePlayerBreakdownKey,
+        activePlayerBreakdownSkillId
+    ]);
+
+    useEffect(() => {
+        if (!activePlayerBreakdown || activePlayerBreakdown.skills.length === 0) {
+            if (activePlayerBreakdownSkillId !== null) setActivePlayerBreakdownSkillId(null);
+            return;
+        }
+        const hasSkill = activePlayerBreakdown.skills.some((skill) => skill.id === activePlayerBreakdownSkillId);
+        if (!activePlayerBreakdownSkillId || !hasSkill) {
+            setActivePlayerBreakdownSkillId(activePlayerBreakdown.skills[0].id);
+        }
+    }, [activePlayerBreakdown, activePlayerBreakdownSkillId]);
+
+    useEffect(() => {
+        if (classSkillBreakdowns.length === 0) {
+            if (activeClassBreakdownKey !== null) setActiveClassBreakdownKey(null);
+            if (activeClassBreakdownSkillId !== null) setActiveClassBreakdownSkillId(null);
+            return;
+        }
+        if (!activeClassBreakdownKey || !classBreakdownMap.has(activeClassBreakdownKey)) {
+            const nextClassKey = classSkillBreakdowns[0].profession;
+            setActiveClassBreakdownKey(nextClassKey);
+            setExpandedClassBreakdownKey(null);
+        }
+    }, [
+        classSkillBreakdowns,
+        classBreakdownMap,
+        activeClassBreakdownKey,
+        activeClassBreakdownSkillId
+    ]);
+
+    useEffect(() => {
+        if (!activeClassBreakdown || activeClassBreakdown.skills.length === 0) {
+            if (activeClassBreakdownSkillId !== null) setActiveClassBreakdownSkillId(null);
+            return;
+        }
+        const hasSkill = activeClassBreakdown.skills.some((skill) => skill.id === activeClassBreakdownSkillId);
+        if (!activeClassBreakdownSkillId || !hasSkill) {
+            setActiveClassBreakdownSkillId(activeClassBreakdown.skills[0].id);
+        }
+    }, [activeClassBreakdown, activeClassBreakdownSkillId]);
+
     const {
         playerMapByKey,
         playerTotalsForSkill,
