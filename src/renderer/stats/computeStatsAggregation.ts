@@ -957,7 +957,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 Object.entries(mitigationSource).forEach(([rawKey, skillMap]) => {
                     if (!skillMap || typeof skillMap !== 'object') return;
                     const base = parseMitigationKey(rawKey);
-                    ensureMitigationRow(damageMitigationPlayersMap, base.account, base);
+                    const row = ensureMitigationRow(damageMitigationPlayersMap, base.account, base);
                     Object.values(skillMap as any).forEach((entry: any) => {
                         const avoided = readNumber(entry?.avoided_damage ?? entry?.avoidedDamage);
                         if (avoided <= 0) return;

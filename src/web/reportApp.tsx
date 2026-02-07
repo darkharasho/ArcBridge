@@ -92,7 +92,6 @@ const MapDonut = ({ slices }: { slices: Array<{ value: number; color: string }> 
     const circumference = 2 * Math.PI * radius;
     const total = slices.reduce((sum, slice) => sum + (slice.value || 0), 0);
     let offset = 0;
-    metricsSpecHeadingCountsRef.current = new Map();
 
     return (
         <svg width="48" height="48" viewBox="0 0 48 48">

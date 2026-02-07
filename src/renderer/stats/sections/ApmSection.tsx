@@ -78,6 +78,7 @@ export const ApmSection = ({
     void apmSkillSearch;
     void setApmSkillSearch;
     void isAllApmSkills;
+    void activeApmSkill;
     const [allSkillsSort, setAllSkillsSort] = useState<{ key: 'apm' | 'apmNoAuto'; dir: 'asc' | 'desc' }>({ key: 'apm', dir: 'desc' });
     const isExpanded = expandedSection === 'apm-stats';
     const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({ columnId: '', dir: 'desc' });
