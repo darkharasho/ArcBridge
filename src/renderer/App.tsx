@@ -466,92 +466,97 @@ function App() {
 
 
     // Stats calculation
-    const totalUploads = logs.length;
-    const statusCounts = logs.reduce<Record<string, number>>((acc, log) => {
-        const key = log.status || 'queued';
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-    }, {});
-    const uploadStatusBreakdown = [
-        { key: 'queued', label: 'Queued', color: '#94a3b8' },
-        { key: 'pending', label: 'Pending', color: '#f59e0b' },
-        { key: 'uploading', label: 'Uploading', color: '#38bdf8' },
-        { key: 'retrying', label: 'Retrying', color: '#0ea5e9' },
-        { key: 'discord', label: 'Discord', color: '#a78bfa' },
-        { key: 'calculating', label: 'Calculating', color: '#facc15' },
-        { key: 'success', label: 'Success', color: '#34d399' },
-        { key: 'error', label: 'Error', color: '#f87171' }
-    ].map((entry) => ({ ...entry, count: statusCounts[entry.key] || 0 }));
-    const knownStatusKeys = new Set(uploadStatusBreakdown.map((entry) => entry.key));
-    const otherStatusCount = Object.entries(statusCounts).reduce((sum, [status, count]) => {
-        if (knownStatusKeys.has(status)) return sum;
-        return sum + count;
-    }, 0);
-    if (otherStatusCount > 0) {
-        uploadStatusBreakdown.push({ key: 'other', label: 'Other', color: '#9ca3af', count: otherStatusCount });
-    }
-    const uploadHasAnyStatus = uploadStatusBreakdown.some((entry) => entry.count > 0);
-    const uploadPieData = uploadHasAnyStatus
-        ? uploadStatusBreakdown
-        : [{ key: 'none', label: 'No logs', color: '#334155', count: 1 }];
-    const avgSquadSize = logs.length > 0
-        ? Math.round(logs.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logs.length)
-        : 0;
-    const avgEnemies = logs.length > 0
-        ? Math.round(logs.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logs.length)
-        : 0;
-    const getFightDownsDeaths = (details: any) => {
-        const players = details?.players || [];
-        const squadPlayers = players.filter((p: any) => !p.notInSquad);
-        let squadDownsDeaths = 0;
-        let enemyDownsDeaths = 0;
-        let squadDeaths = 0;
-        let enemyDeaths = 0;
-
-        squadPlayers.forEach((p: any) => {
-            const defenses = p.defenses?.[0];
-            if (!defenses) return;
-            const downCount = Number(defenses.downCount || 0);
-            const deadCount = Number(defenses.deadCount || 0);
-            squadDownsDeaths += downCount + deadCount;
-            squadDeaths += deadCount;
-        });
-
-        squadPlayers.forEach((p: any) => {
-            if (!p.statsTargets || p.statsTargets.length === 0) return;
-            p.statsTargets.forEach((targetStats: any) => {
-                const st = targetStats?.[0];
-                if (!st) return;
-                const downed = Number(st.downed || 0);
-                const killed = Number(st.killed || 0);
-                enemyDownsDeaths += downed + killed;
-                enemyDeaths += killed;
-            });
-        });
-
-        return { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths };
-    };
-    const getFightOutcome = (details: any) => {
-        const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
-        if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
-            return enemyDownsDeaths > squadDownsDeaths;
-        }
-        if (typeof details?.success === 'boolean') return details.success;
-        return false;
-    };
-
-    const winLoss = logs.reduce(
-        (acc, log) => {
-            const details: any = log.details;
-            if (!details?.players) return acc;
-            const isWin = getFightOutcome(details);
-            if (isWin) acc.wins += 1;
-            else acc.losses += 1;
+    const { totalUploads, statusCounts, uploadPieData, avgSquadSize, avgEnemies, winLoss, squadKdr } = useMemo(() => {
+        const totalUploads = logs.length;
+        const statusCounts = logs.reduce<Record<string, number>>((acc, log) => {
+            const key = log.status || 'queued';
+            acc[key] = (acc[key] || 0) + 1;
             return acc;
-        },
-        { wins: 0, losses: 0 }
-    );
-    const squadKdr = (() => {
+        }, {});
+
+        const uploadStatusBreakdown = [
+            { key: 'queued', label: 'Queued', color: '#94a3b8' },
+            { key: 'pending', label: 'Pending', color: '#f59e0b' },
+            { key: 'uploading', label: 'Uploading', color: '#38bdf8' },
+            { key: 'retrying', label: 'Retrying', color: '#0ea5e9' },
+            { key: 'discord', label: 'Discord', color: '#a78bfa' },
+            { key: 'calculating', label: 'Calculating', color: '#facc15' },
+            { key: 'success', label: 'Success', color: '#34d399' },
+            { key: 'error', label: 'Error', color: '#f87171' }
+        ].map((entry) => ({ ...entry, count: statusCounts[entry.key] || 0 }));
+        const knownStatusKeys = new Set(uploadStatusBreakdown.map((entry) => entry.key));
+        const otherStatusCount = Object.entries(statusCounts).reduce((sum, [status, count]) => {
+            if (knownStatusKeys.has(status)) return sum;
+            return sum + count;
+        }, 0);
+        if (otherStatusCount > 0) {
+            uploadStatusBreakdown.push({ key: 'other', label: 'Other', color: '#9ca3af', count: otherStatusCount });
+        }
+        const uploadHasAnyStatus = uploadStatusBreakdown.some((entry) => entry.count > 0);
+        const uploadPieData = uploadHasAnyStatus
+            ? uploadStatusBreakdown
+            : [{ key: 'none', label: 'No logs', color: '#334155', count: 1 }];
+
+        const avgSquadSize = logs.length > 0
+            ? Math.round(logs.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logs.length)
+            : 0;
+        const avgEnemies = logs.length > 0
+            ? Math.round(logs.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logs.length)
+            : 0;
+
+        const getFightDownsDeaths = (details: any) => {
+            const players = details?.players || [];
+            const squadPlayers = players.filter((p: any) => !p.notInSquad);
+            let squadDownsDeaths = 0;
+            let enemyDownsDeaths = 0;
+            let squadDeaths = 0;
+            let enemyDeaths = 0;
+
+            squadPlayers.forEach((p: any) => {
+                const defenses = p.defenses?.[0];
+                if (!defenses) return;
+                const downCount = Number(defenses.downCount || 0);
+                const deadCount = Number(defenses.deadCount || 0);
+                squadDownsDeaths += downCount + deadCount;
+                squadDeaths += deadCount;
+            });
+
+            squadPlayers.forEach((p: any) => {
+                if (!p.statsTargets || p.statsTargets.length === 0) return;
+                p.statsTargets.forEach((targetStats: any) => {
+                    const st = targetStats?.[0];
+                    if (!st) return;
+                    const downed = Number(st.downed || 0);
+                    const killed = Number(st.killed || 0);
+                    enemyDownsDeaths += downed + killed;
+                    enemyDeaths += killed;
+                });
+            });
+
+            return { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths };
+        };
+
+        const getFightOutcome = (details: any) => {
+            const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
+            if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
+                return enemyDownsDeaths > squadDownsDeaths;
+            }
+            if (typeof details?.success === 'boolean') return details.success;
+            return false;
+        };
+
+        const winLoss = logs.reduce(
+            (acc, log) => {
+                const details: any = log.details;
+                if (!details?.players) return acc;
+                const isWin = getFightOutcome(details);
+                if (isWin) acc.wins += 1;
+                else acc.losses += 1;
+                return acc;
+            },
+            { wins: 0, losses: 0 }
+        );
+
         let totalSquadDeaths = 0;
         let totalEnemyDeaths = 0;
         logs.forEach((log) => {
@@ -561,8 +566,10 @@ function App() {
             totalEnemyDeaths += enemyDeaths;
         });
         const denom = totalSquadDeaths === 0 ? 1 : totalSquadDeaths;
-        return Number((totalEnemyDeaths / denom).toFixed(2));
-    })();
+        const squadKdr = Number((totalEnemyDeaths / denom).toFixed(2));
+
+        return { totalUploads, statusCounts, uploadPieData, avgSquadSize, avgEnemies, winLoss, squadKdr };
+    }, [logs]);
 
     useEffect(() => {
         // Load saved settings
