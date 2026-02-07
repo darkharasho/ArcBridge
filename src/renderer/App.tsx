@@ -462,7 +462,7 @@ function App() {
             hydrateDetailsQueueRef.current = null;
             if (!window.electronAPI?.getLogDetails) return;
             const candidates = logsRef.current
-                .filter((log) => (log.detailsAvailable || log.status === 'success' || log.status === 'calculating') && !log.details && log.filePath)
+                .filter((log) => log.detailsAvailable && !log.details && log.filePath)
                 .sort((a, b) => {
                     const aTime = a.uploadTime || 0;
                     const bTime = b.uploadTime || 0;

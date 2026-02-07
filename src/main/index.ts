@@ -1010,11 +1010,19 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
             }
 
             let jsonDetails = cached?.jsonDetails || await uploader.fetchDetailedJson(result.permalink);
+            if (!jsonDetails || jsonDetails.error) {
+                const reason = jsonDetails?.error || 'null-response';
+                console.warn(`[Main] JSON details missing or error for ${filePath} (${result.permalink}): ${reason}`);
+            }
 
             if (!jsonDetails || jsonDetails.error) {
                 console.log('[Main] Retrying JSON fetch in 2 seconds...');
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 jsonDetails = await uploader.fetchDetailedJson(result.permalink);
+                if (!jsonDetails || jsonDetails.error) {
+                    const retryReason = jsonDetails?.error || 'null-response';
+                    console.warn(`[Main] JSON details retry failed for ${filePath} (${result.permalink}): ${retryReason}`);
+                }
             }
 
             const cacheableDetails = jsonDetails && !jsonDetails.error ? jsonDetails : null;
@@ -1082,7 +1090,8 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                 console.log('[Main] Discord notification skipped: no webhook selected.');
             }
 
-            const prunedDetails = pruneDetailsForStats(jsonDetails);
+            const hasDetails = Boolean(jsonDetails && !jsonDetails.error);
+            const prunedDetails = hasDetails ? pruneDetailsForStats(jsonDetails) : null;
             const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
             const detailsSummary = {
                 fightName: prunedDetails?.fightName,
@@ -1090,15 +1099,17 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                 uploadTime: prunedDetails?.uploadTime,
                 success: prunedDetails?.success
             };
-            bulkLogDetailsCache.set(filePath, prunedDetails);
-            void updateGlobalManifest(prunedDetails, filePath);
+            if (prunedDetails) {
+                bulkLogDetailsCache.set(filePath, prunedDetails);
+                void updateGlobalManifest(prunedDetails, filePath);
+            }
             if (bulkUploadMode) {
                 win?.webContents.send('upload-complete', {
                     ...result,
                     ...detailsSummary,
                     filePath,
-                    status: 'calculating',
-                    detailsAvailable: true,
+                    status: hasDetails ? 'calculating' : 'success',
+                    detailsAvailable: hasDetails,
                     playerCount
                 });
                 console.log(`[Main] upload-complete (bulk): ${filePath} players=${playerCount ?? 'n/a'}`);
@@ -1107,8 +1118,8 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     ...result,
                     ...detailsSummary,
                     filePath,
-                    status: 'calculating',
-                    detailsAvailable: true,
+                    status: hasDetails ? 'calculating' : 'success',
+                    detailsAvailable: hasDetails,
                     playerCount
                 });
                 console.log(`[Main] upload-complete: ${filePath} summary sent`);
