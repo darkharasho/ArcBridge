@@ -824,7 +824,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const sortedSquadClassData = [...squadClassData].sort(sortByCountDesc);
     const sortedEnemyClassData = [...enemyClassData].sort(sortByCountDesc);
 
-    const useModernLayout = uiTheme === 'modern' && !embedded;
+    const useModernLayout = false;
     const containerClass = embedded
         ? 'stats-view min-h-screen flex flex-col p-0 w-full max-w-none'
         : 'stats-view h-full flex flex-col p-1 w-full max-w-6xl mx-auto overflow-hidden';
@@ -839,6 +839,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             backgroundImage: 'linear-gradient(160deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.04) 70%)'
         }
         : undefined;
+
 
     const formatSkillUsageValue = (val: number) => {
         return skillUsageView === 'perSecond'
@@ -906,7 +907,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                 style={scrollContainerStyle}
             >
                 {useModernLayout ? (
-                    <div className="stats-layout stats-layout-modern grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
+                    <div className="stats-layout stats-layout-modern grid gap-4 grid-cols-1">
                         <div className="space-y-4 min-w-0">
                             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <OverviewSection

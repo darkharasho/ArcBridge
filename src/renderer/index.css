@@ -403,6 +403,10 @@ body.theme-modern .app-titlebar {
 body.theme-modern .app-content {
     position: relative;
     z-index: 1;
+    max-width: none;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
 }
 
 body.theme-modern .app-header h1,
@@ -466,6 +470,14 @@ body.theme-modern .stats-view .mvp-card--bronze {
     background-color: var(--bg-elevated);
     border-color: rgba(234, 88, 12, 0.6) !important;
     box-shadow: none;
+}
+
+body.theme-modern .stats-layout-modern {
+    grid-template-columns: 1fr !important;
+}
+
+body.theme-modern .stats-layout-modern > div {
+    width: 100%;
 }
 
 body.theme-classic .stats-view .mvp-card {
