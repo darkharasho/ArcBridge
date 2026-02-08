@@ -1,16 +1,17 @@
 # Release Notes
 
-Version v1.25.4 — February 7, 2026
+Version v1.25.5 — February 7, 2026
 
 ## 🌟 Highlights
-- Clearer, more accurate encounter duration display in ExpandableLogCard.
+- Added crash diagnostics for RangeError maximum call stack size exceeded, now monitored in both main and renderer processes.
+- Diagnostics capture memory usage and environment details to help pinpoint where things go wrong.
 
 ## 🛠️ Improvements
-- Refactored the duration handling logic in ExpandableLogCard to be more robust.
-- Updated the UI so encounter duration is shown more clearly in logs.
+- Main process now detects the RangeError and logs a structured crash report with memory usage and environment info.
+- Renderer now reports RangeError events to the main process with context like the page URL and user agent; reports are throttled to avoid log floods.
 
 ## 🧯 Fixes
-- None.
+- Ensure that RangeError stack overflow crashes trigger crash diagnostics rather than failing silently.
 
 ## ⚠️ Breaking Changes
 - None.
