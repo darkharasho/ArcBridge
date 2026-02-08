@@ -465,6 +465,108 @@ Detailed tables aggregate the per-player totals defined in:
 - `src/shared/dashboardMetrics.ts` (per-player metric extraction)
 - `src/renderer/stats/computeStatsAggregation.ts` (aggregation)
 
+## Spike Damage
+
+Spike Damage has three modes:
+- `hit`: highest single skill hit in a fight
+- `1s`: highest rolling 1-second damage burst in a fight
+- `5s`: highest rolling 5-second damage burst in a fight
+
+### Player Identity
+
+Per-fight player keys are resolved as:
+- `key = "${account}|${profession}"`
+- `account = player.account || player.name || "Unknown"`
+- `profession = player.profession || "Unknown"`
+
+This same key is used to join:
+- player list
+- per-fight values
+- selected-player chart/drilldown
+
+### Highest Single Hit (`hit`)
+
+For each squad player (`!notInSquad`), the highest single-hit value is scanned
+from damage distributions (skill maps used for names):
+- `totalDamageDist`
+- `targetDamageDist`
+
+Value:
+- `hit = max(entry.max)` across scanned entries
+
+Skill label:
+- `skillName` from `skillMap`/`buffMap` by id fallback (`Unknown Skill` if missing)
+
+### Rolling Burst (`1s` / `5s`)
+
+Burst uses per-second **delta** damage:
+1. Build cumulative damage for phase 0:
+   - prefer aggregated target phase 0 from `targetDamage1S` when available
+   - fallback to `damage1S[0]`
+2. Convert cumulative -> per-second deltas:
+   - `delta[i] = max(0, cumulative[i] - cumulative[i-1])` (`i=0` uses prev `0`)
+3. Compute rolling windows:
+   - `burst1s = max(sum(delta[i..i]))`
+   - `burst5s = max(sum(delta[i..i+4]))`
+
+Implementation includes support for EI shape variants:
+- Shape A: `[phase][target][time]`
+- Shape B: `[target][phase][time]`
+
+### Per-Fight Max Reference Line
+
+For each fight:
+- `maxHit = max(values[*].hit)`
+- `max1s = max(values[*].burst1s)`
+- `max5s = max(values[*].burst5s)`
+
+The selected mode uses the corresponding max series as the dashed reference line.
+
+### Drilldown (5s Buckets)
+
+Selected fight drilldown is always rendered as 5-second buckets.
+
+Bucket source:
+- preferred: precomputed `buckets5s`
+- fallback: recompute from selected player per-second delta series
+
+Bucket value:
+- `bucket[k] = sum(delta[k*5 .. k*5+4])`
+
+Bucket count:
+- extended to full fight duration (`ceil(durationMS / 5000)`) so trailing
+  down/death events are representable even if damage is zero late-fight.
+
+### Down / Death Markers
+
+Marker events are read from `combatReplayData`:
+- supports both replay object and segmented replay-array forms
+- uses `down` and `dead` arrays
+
+Timestamp normalization:
+- handles mixed encodings (ms/seconds/large scales) and offset baselines
+  using replay starts/global starts/log offsets
+- selects the shift/scale that maximizes in-range alignment with fight buckets
+
+Marker placement:
+- convert normalized time to bucket index:
+  - `index = floor(timeMs / 5000)`
+- constrain to visible drilldown bucket range
+- render:
+  - down marker: yellow
+  - death marker: red
+
+Web report parity:
+- precomputed spike payload stores marker indices as:
+  - `downIndices5s`
+  - `deathIndices5s`
+- embedded/web mode can render markers without raw `logs` by consuming these fields.
+
+Implementation:
+- Aggregation/precompute: `src/renderer/stats/computeStatsAggregation.ts`
+- Runtime selection/drilldown + fallbacks: `src/renderer/StatsView.tsx`
+- Chart rendering/interaction: `src/renderer/stats/sections/SpikeDamageSection.tsx`
+
 ## Timeline / Map Distribution / Fight Breakdown
 
 These sections use log-level metadata:
