@@ -5,7 +5,7 @@ import https from 'node:https'
 import { createHash } from 'node:crypto'
 import util from 'node:util'
 import { spawn } from 'node:child_process'
-import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, MATTE_WEB_THEME_ID } from '../shared/webThemes';
+import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, MATTE_WEB_THEME, MATTE_WEB_THEME_ID } from '../shared/webThemes';
 import { computeOutgoingConditions } from '../shared/conditionsMetrics';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { LogWatcher } from './watcher'
@@ -3687,11 +3687,11 @@ if (!gotTheLock) {
                 }
 
                 const uiTheme = store.get('uiTheme', 'classic') as string;
-                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
+                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : [...BASE_WEB_THEMES, MATTE_WEB_THEME];
                 const requestedThemeId = payload?.themeId
                     || (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string)
                     || DEFAULT_WEB_THEME_ID;
-                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : requestedThemeId;
+                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : (uiTheme === 'matte' ? MATTE_WEB_THEME_ID : requestedThemeId);
                 const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
 
                 sendGithubThemeStatus('Preparing', 'Loading report index...', 15);
@@ -3847,9 +3847,9 @@ if (!gotTheLock) {
                     appVersion: app.getVersion()
                 };
                 const uiTheme = store.get('uiTheme', 'classic') as string;
-                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
+                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : [...BASE_WEB_THEMES, MATTE_WEB_THEME];
                 const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
-                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : requestedThemeId;
+                const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : (uiTheme === 'matte' ? MATTE_WEB_THEME_ID : requestedThemeId);
                 const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
 
                 sendWebUploadStatus('Packaging', 'Preparing report bundle...', 40);
@@ -4081,7 +4081,7 @@ if (!gotTheLock) {
                     appVersion: app.getVersion()
                 };
                 const uiTheme = store.get('uiTheme', 'classic') as string;
-                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : BASE_WEB_THEMES;
+                const availableThemes = uiTheme === 'crt' ? [CRT_WEB_THEME] : [...BASE_WEB_THEMES, MATTE_WEB_THEME];
                 const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
                 const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : (uiTheme === 'matte' ? MATTE_WEB_THEME_ID : requestedThemeId);
                 const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
