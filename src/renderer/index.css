@@ -1247,7 +1247,7 @@ body.theme-matte .file-picker-popover .file-picker-time-option--active {
 }
 
 body.web-report.theme-matte {
-    background: #1B1D1E;
+    background: var(--bg-base);
     color: var(--text-primary);
 }
 
@@ -1333,7 +1333,7 @@ body.web-report.theme-matte .to-transparent {
 }
 
 body.web-report.theme-matte .bg-slate-950\/70 {
-    background-color: #1b1d1e !important;
+    background-color: var(--bg-base) !important;
 }
 
 body.web-report.theme-matte .stats-view .bg-gradient-to-br,

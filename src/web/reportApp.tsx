@@ -1006,25 +1006,27 @@ export function ReportApp() {
             <div
                 className="min-h-screen text-white relative overflow-x-hidden"
                 style={{
-                    backgroundColor: isModernUi ? '#0f141c' : '#0f172a',
-                    backgroundImage: reportBackgroundImage,
+                    backgroundColor: isMatteUi ? 'var(--bg-base)' : (isModernUi ? '#0f141c' : '#0f172a'),
+                    backgroundImage: isMatteUi ? 'none' : reportBackgroundImage,
                     ...accentVars
                 }}
             >
-                <div className="absolute inset-0 pointer-events-none">
-                    <div
-                        className="absolute -top-32 -right-24 h-80 w-80 rounded-full blur-[140px]"
-                        style={{ backgroundColor: 'var(--accent-glow)' }}
-                    />
-                    <div
-                        className="absolute top-40 -left-20 h-72 w-72 rounded-full blur-[120px]"
-                        style={{ backgroundColor: 'var(--accent-glow-soft)' }}
-                    />
-                    <div
-                        className="absolute bottom-10 right-10 h-64 w-64 rounded-full blur-[120px]"
-                        style={{ backgroundColor: 'var(--accent-glow-soft)' }}
-                    />
-                </div>
+                {!isMatteUi && (
+                    <div className="absolute inset-0 pointer-events-none">
+                        <div
+                            className="absolute -top-32 -right-24 h-80 w-80 rounded-full blur-[140px]"
+                            style={{ backgroundColor: 'var(--accent-glow)' }}
+                        />
+                        <div
+                            className="absolute top-40 -left-20 h-72 w-72 rounded-full blur-[120px]"
+                            style={{ backgroundColor: 'var(--accent-glow-soft)' }}
+                        />
+                        <div
+                            className="absolute bottom-10 right-10 h-64 w-64 rounded-full blur-[120px]"
+                            style={{ backgroundColor: 'var(--accent-glow-soft)' }}
+                        />
+                    </div>
+                )}
                 <div className={`fixed inset-0 z-20 bg-black/40 backdrop-blur-sm transition-opacity lg:hidden ${tocOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setTocOpen(false)} />
                 <aside
                     className={`fixed z-30 top-0 bottom-0 w-64 max-w-[80vw] transition-transform duration-300 lg:hidden ${tocOpen ? 'translate-x-0' : '-translate-x-full'}`}
