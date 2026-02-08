@@ -146,13 +146,53 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
         ];
         const raw = candidates.find((value) => typeof value === 'string' && value.trim().length > 0);
         if (!raw) return 'Unknown Borderland';
-        const normalized = String(raw).trim();
+        const normalized = String(raw).trim().replace(/^Detailed\s+WvW\s*-\s*/i, '');
         if (/borderlands?/i.test(normalized)) {
             return normalized.replace(/\bborderlands?\b/i, 'Borderland');
         }
         return normalized;
     };
     const cardTitle = `${formattedDateTime()} - ${borderlandLabel()}`;
+    const formatDurationFromMs = (ms: number) => {
+        const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    };
+    const resolveEncounterDuration = () => {
+        const direct = [details.encounterDuration, log.encounterDuration]
+            .find((value) => typeof value === 'string' && value.trim().length > 0);
+        if (direct) {
+            return String(direct).trim();
+        }
+
+        const rawDuration = [details.duration, log.duration]
+            .find((value) => typeof value === 'string' && value.trim().length > 0);
+        if (rawDuration) {
+            const text = String(rawDuration).trim();
+            const minuteSecondMatch = text.match(/(\d+)\s*m(?:in)?\s*(\d+)\s*s/i);
+            if (minuteSecondMatch) {
+                const minutes = Number(minuteSecondMatch[1]);
+                const seconds = Number(minuteSecondMatch[2]);
+                if (Number.isFinite(minutes) && Number.isFinite(seconds)) {
+                    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+            }
+            return text;
+        }
+
+        const durationMs = Number(details.durationMS ?? log.durationMS);
+        if (Number.isFinite(durationMs) && durationMs > 0) {
+            return formatDurationFromMs(durationMs);
+        }
+
+        return '--:--';
+    };
+    const encounterDurationLabel = resolveEncounterDuration();
 
     // --- Stats Calculation ---
     let totalDps = 0;
@@ -707,7 +747,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         <div className="flex-1 min-w-0 text-left">
                             <div className="flex justify-between items-start">
                                 <h4 className="text-2xl font-black text-white truncate leading-tight">{details.fightName || log.fightName || log.filePath.split(/[\\\/]/).pop()}</h4>
-                                <span className="text-lg text-blue-400 font-mono font-bold">{details.encounterDuration || log.encounterDuration || '--:--'}</span>
+                                <span className="text-lg text-blue-400 font-mono font-bold">{encounterDurationLabel}</span>
                             </div>
                             <div className="flex items-center gap-4 mt-2 text-sm font-medium text-gray-400">
                                 <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{players.length} Players {nonSquadPlayers.length > 0 ? `(${squadPlayers.length} Squad + ${nonSquadPlayers.length} Others)` : ''}</span>
@@ -836,7 +876,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                         <h4 className="text-sm font-bold text-gray-200 truncate">{cardTitle}</h4>
-                        <span className="text-xs text-gray-500 font-mono">{details.encounterDuration || log.encounterDuration || '--:--'}</span>
+                        <span className="text-xs text-gray-500 font-mono">{encounterDurationLabel}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                         <span>{statusLabel ? statusLabel : `${playerCount || '0'} Players${nonSquadPlayers.length > 0 ? ` (${squadPlayers.length} +${nonSquadPlayers.length})` : ''}`}</span>
