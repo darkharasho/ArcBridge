@@ -490,6 +490,7 @@ export function ReportApp() {
     const isMatteUi = uiTheme === 'matte' || theme?.id === MATTE_WEB_THEME_ID || report?.stats?.webThemeId === MATTE_WEB_THEME_ID || theme?.label === 'Matte Slate' || (theme?.rgb || '').replace(/\s/g, '') === '93,163,194';
     const resolvedTheme = isMatteUi ? MATTE_WEB_THEME : (theme ?? DEFAULT_WEB_THEME);
     const accentRgb = resolvedTheme.rgb;
+    const defaultLogoColor = isMatteUi ? '#d8e1eb' : 'var(--accent)';
     const accentVars = {
         '--accent': `rgb(${accentRgb})`,
         '--accent-rgb': accentRgb,
@@ -1114,9 +1115,9 @@ export function ReportApp() {
                         <div className="px-6 pt-6 pb-5">
                             <div className="flex items-center gap-3">
                                 <div
-                                    className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20"
+                                    className="h-10 w-10 rounded-2xl border border-white/20"
                                     style={{
-                                        backgroundColor: 'var(--accent)',
+                                        backgroundColor: defaultLogoColor,
                                         maskImage: `url(${arcbridgeLogoUrl})`,
                                         WebkitMaskImage: `url(${arcbridgeLogoUrl})`,
                                         maskRepeat: 'no-repeat',
@@ -1194,7 +1195,7 @@ export function ReportApp() {
                                         <div
                                             className="w-16 h-16 sm:w-24 sm:h-24 mx-auto sm:mx-0"
                                             style={{
-                                                backgroundColor: 'var(--accent)',
+                                                backgroundColor: defaultLogoColor,
                                                 maskImage: `url(${logoUrl})`,
                                                 WebkitMaskImage: `url(${logoUrl})`,
                                                 maskRepeat: 'no-repeat',
@@ -1348,7 +1349,7 @@ export function ReportApp() {
                                     <div
                                         className="w-16 h-16 sm:w-24 sm:h-24 mx-auto sm:mx-0"
                                         style={{
-                                            backgroundColor: 'var(--accent)',
+                                            backgroundColor: defaultLogoColor,
                                             maskImage: `url(${logoUrl})`,
                                             WebkitMaskImage: `url(${logoUrl})`,
                                             maskRepeat: 'no-repeat',
