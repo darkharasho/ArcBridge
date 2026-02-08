@@ -208,6 +208,7 @@ export function ReportApp() {
     const [defaultUiTheme, setDefaultUiTheme] = useState<UiThemeChoice>('classic');
     const [defaultThemeId, setDefaultThemeId] = useState<string>(DEFAULT_WEB_THEME.id);
     const [themeIdOverride, setThemeIdOverride] = useState<string | null>(null);
+    const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
     const [proofOfWorkOpen, setProofOfWorkOpen] = useState(false);
     const [proofOfWorkTocItems, setProofOfWorkTocItems] = useState<TocHeading[]>([]);
     const [metricsSpecSearch, setMetricsSpecSearch] = useState('');
@@ -217,6 +218,7 @@ export function ReportApp() {
     const statsWrapperRef = useRef<HTMLDivElement | null>(null);
     const metricsSpecContentRef = useRef<HTMLDivElement | null>(null);
     const metricsSpecSearchRef = useRef<HTMLDivElement | null>(null);
+    const themeDropdownRef = useRef<HTMLDivElement | null>(null);
     const metricsSpecHighlightRef = useRef<number | null>(null);
     const pendingScrollIdRef = useRef<string | null>(null);
     const basePath = useMemo(() => {
@@ -774,23 +776,75 @@ export function ReportApp() {
         if (nextThemeIdOverride && !WEB_THEMES.some((entry) => entry.id === nextThemeIdOverride)) return;
         setThemeIdOverride(nextThemeIdOverride);
         persistOverridesCookie(nextThemeIdOverride);
+        setThemeDropdownOpen(false);
     };
 
+    useEffect(() => {
+        const onWindowPointerDown = (event: MouseEvent) => {
+            if (!themeDropdownRef.current) return;
+            if (themeDropdownRef.current.contains(event.target as Node)) return;
+            setThemeDropdownOpen(false);
+        };
+        const onWindowKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setThemeDropdownOpen(false);
+        };
+        window.addEventListener('mousedown', onWindowPointerDown);
+        window.addEventListener('keydown', onWindowKeyDown);
+        return () => {
+            window.removeEventListener('mousedown', onWindowPointerDown);
+            window.removeEventListener('keydown', onWindowKeyDown);
+        };
+    }, []);
+
+    const activeThemeLabel = useMemo(() => {
+        if (!themeIdOverride) return 'Default';
+        const active = WEB_THEMES.find((entry) => entry.id === themeIdOverride);
+        return active?.label || 'Default';
+    }, [themeIdOverride]);
+
     const themeSelectControl = (
-        <div className="flex items-center gap-2">
+        <div className="relative flex items-center gap-2" ref={themeDropdownRef}>
             <div className="text-[9px] uppercase tracking-widest text-gray-400 whitespace-nowrap">Theme</div>
-            <select
-                value={themeIdOverride || DEFAULT_THEME_SELECT_VALUE}
-                onChange={(event) => selectThemeOverride(event.target.value)}
-                className="w-[132px] bg-white/5 border border-white/10 rounded-full px-2.5 py-1 text-[9px] uppercase tracking-widest text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+            <button
+                type="button"
+                onClick={() => setThemeDropdownOpen((value) => !value)}
+                className="w-[152px] inline-flex items-center justify-between gap-2 rounded-full border px-3 py-1 text-[9px] uppercase tracking-widest text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                style={{
+                    backgroundColor: 'var(--bg-card)',
+                    borderColor: 'var(--accent-border)'
+                }}
             >
-                <option value={DEFAULT_THEME_SELECT_VALUE}>Default</option>
-                {WEB_THEMES.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                        {entry.label}
-                    </option>
-                ))}
-            </select>
+                <span className="truncate text-left">{activeThemeLabel}</span>
+                <span className={`transition-transform ${themeDropdownOpen ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {themeDropdownOpen && (
+                <div
+                    className="absolute right-0 bottom-[calc(100%+6px)] z-20 w-[240px] overflow-y-auto rounded-xl border shadow-2xl backdrop-blur-xl"
+                    style={{
+                        maxHeight: '240px',
+                        backgroundColor: 'color-mix(in srgb, var(--bg-card) 92%, black)',
+                        borderColor: 'var(--accent-border)'
+                    }}
+                >
+                    <button
+                        type="button"
+                        onClick={() => selectThemeOverride(DEFAULT_THEME_SELECT_VALUE)}
+                        className="w-full px-3 py-2 text-left text-[10px] uppercase tracking-[0.2em] text-gray-200 hover:bg-white/10 transition-colors"
+                    >
+                        Default
+                    </button>
+                    {WEB_THEMES.map((entry) => (
+                        <button
+                            key={entry.id}
+                            type="button"
+                            onClick={() => selectThemeOverride(entry.id)}
+                            className={`w-full px-3 py-2 text-left text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-white/10 ${themeIdOverride === entry.id ? 'text-[color:var(--accent)]' : 'text-gray-200'}`}
+                        >
+                            {entry.label}
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 
