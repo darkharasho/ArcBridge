@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Maximize2, Zap, X } from 'lucide-react';
 import { getProfessionColor } from '../../../shared/professionUtils';
@@ -55,6 +56,8 @@ type SpikeDamageSectionProps = {
     setSelectedSpikeFightIndex: (value: number | null) => void;
     spikeDrilldownTitle: string;
     spikeDrilldownData: SpikeDrilldownPoint[];
+    spikeDrilldownDownIndices: number[];
+    spikeDrilldownDeathIndices: number[];
     formatWithCommas: (value: number, decimals: number) => string;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
@@ -81,9 +84,18 @@ export const SpikeDamageSection = ({
     setSelectedSpikeFightIndex,
     spikeDrilldownTitle,
     spikeDrilldownData,
+    spikeDrilldownDownIndices,
+    spikeDrilldownDeathIndices,
     formatWithCommas,
     renderProfessionIcon
 }: SpikeDamageSectionProps) => {
+    const [hoveredMarkerKey, setHoveredMarkerKey] = useState<string | null>(null);
+    const [hoveredMarkerInfo, setHoveredMarkerInfo] = useState<null | {
+        x: number;
+        y: number;
+        kind: 'down' | 'death';
+        label: string;
+    }>(null);
     const sanitizeWvwLabel = (value: string) => String(value || '')
         .replace(/^Detailed\s*WvW\s*-\s*/i, '')
         .replace(/^World\s*vs\s*World\s*-\s*/i, '')
@@ -120,6 +132,49 @@ export const SpikeDamageSection = ({
         } catch {
             return '';
         }
+    };
+    const drilldownMax = spikeDrilldownData.reduce((max, point) => Math.max(max, Number(point.value || 0)), 0);
+    const markerBaseline = Math.max(1, drilldownMax);
+    const downIndexSet = new Set(spikeDrilldownDownIndices);
+    const deathIndexSet = new Set(spikeDrilldownDeathIndices);
+    const drilldownSeries = spikeDrilldownData.map((point, index) => ({
+        ...point,
+        downMarker: downIndexSet.has(index) ? Math.max(Number(point.value || 0), markerBaseline * 0.88) : null,
+        deathMarker: deathIndexSet.has(index) ? Math.max(Number(point.value || 0), markerBaseline * 0.96) : null
+    }));
+    const makeMarkerDot = (kind: 'down' | 'death') => (props: any) => {
+        const cx = Number(props?.cx);
+        const cy = Number(props?.cy);
+        const index = Number(props?.index);
+        if (!Number.isFinite(cx) || !Number.isFinite(cy) || !Number.isFinite(index)) return null;
+        const point = props?.payload || {};
+        const markerValue = kind === 'down' ? point?.downMarker : point?.deathMarker;
+        if (!Number.isFinite(Number(markerValue))) return null;
+        const key = `${kind}-${index}`;
+        const hovered = hoveredMarkerKey === key;
+        const fill = kind === 'down' ? '#facc15' : '#ef4444';
+        const glow = kind === 'down' ? '#fde047' : '#f87171';
+        return (
+            <g
+                style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                onMouseEnter={() => {
+                    setHoveredMarkerKey(key);
+                    setHoveredMarkerInfo({
+                        x: cx,
+                        y: cy,
+                        kind,
+                        label: String(point?.label || '')
+                    });
+                }}
+                onMouseLeave={() => {
+                    setHoveredMarkerKey((current) => (current === key ? null : current));
+                    setHoveredMarkerInfo((current) => (current?.kind === kind && current?.label === String(point?.label || '') ? null : current));
+                }}
+            >
+                <circle cx={cx} cy={cy} r={hovered ? 10 : 7} fill={glow} opacity={hovered ? 0.35 : 0.18} />
+                <circle cx={cx} cy={cy} r={hovered ? 7 : 5.5} fill={fill} stroke="#0f172a" strokeWidth={hovered ? 2.25 : 1.75} />
+            </g>
+        );
     };
 
     return (
@@ -369,14 +424,15 @@ export const SpikeDamageSection = ({
                             Clear
                         </button>
                     </div>
-                    <div className="h-[220px]">
+                    <div className="h-[220px] relative">
                         {spikeDrilldownData.length === 0 ? (
                             <div className="h-full flex items-center justify-center text-xs text-gray-500">
                                 No detailed data available for this fight.
                             </div>
                         ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={spikeDrilldownData}>
+                            <>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={drilldownSeries}>
                                     <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
                                     <XAxis dataKey="label" tick={{ fill: '#e2e8f0', fontSize: 10 }} />
                                     <YAxis
@@ -385,7 +441,12 @@ export const SpikeDamageSection = ({
                                     />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#161c24', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.5rem' }}
-                                        formatter={(value: any) => [formatWithCommas(Number(value || 0), 0), 'Damage']}
+                                        formatter={(value: any, name: any) => {
+                                            const series = String(name || '');
+                                            if (series === 'Down') return ['Downed', 'Event'];
+                                            if (series === 'Death') return ['Dead', 'Event'];
+                                            return [formatWithCommas(Number(value || 0), 0), 'Damage'];
+                                        }}
                                         labelFormatter={(value: any) => String(value || '')}
                                     />
                                     <Line
@@ -397,8 +458,44 @@ export const SpikeDamageSection = ({
                                         dot={spikeMode === 'hit' ? { r: 2 } : false}
                                         activeDot={{ r: 4 }}
                                     />
-                                </LineChart>
-                            </ResponsiveContainer>
+                                    <Line
+                                        type="linear"
+                                        dataKey="downMarker"
+                                        name="Down"
+                                        stroke="transparent"
+                                        connectNulls={false}
+                                        isAnimationActive={false}
+                                        activeDot={false}
+                                        dot={makeMarkerDot('down')}
+                                    />
+                                    <Line
+                                        type="linear"
+                                        dataKey="deathMarker"
+                                        name="Death"
+                                        stroke="transparent"
+                                        connectNulls={false}
+                                        isAnimationActive={false}
+                                        activeDot={false}
+                                        dot={makeMarkerDot('death')}
+                                    />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                                {hoveredMarkerInfo && (
+                                    <div
+                                        className="pointer-events-none absolute z-20 rounded-md border border-white/15 bg-[#101722] px-2 py-1 text-xs shadow-xl"
+                                        style={{
+                                            left: `${Math.max(8, hoveredMarkerInfo.x)}px`,
+                                            top: `${Math.max(8, hoveredMarkerInfo.y - 38)}px`,
+                                            transform: 'translate(-50%, -100%)'
+                                        }}
+                                    >
+                                        <div className={`${hoveredMarkerInfo.kind === 'down' ? 'text-yellow-300' : 'text-red-300'} font-semibold`}>
+                                            {hoveredMarkerInfo.kind === 'down' ? 'Down' : 'Death'}
+                                        </div>
+                                        <div className="text-gray-300">{hoveredMarkerInfo.label}</div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

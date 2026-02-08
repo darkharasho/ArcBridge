@@ -392,16 +392,24 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         ? activeClassBreakdown.skillMap?.[activeClassBreakdownSkillId] || null
         : null;
 
-    type SpikeFight = {
-        id: string;
-        shortLabel: string;
-        fullLabel: string;
-        timestamp: number;
-        values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s?: number[] }>;
-        maxHit: number;
-        max1s: number;
-        max5s: number;
-    };
+type SpikeFight = {
+    id: string;
+    shortLabel: string;
+    fullLabel: string;
+    timestamp: number;
+    values: Record<string, {
+        hit: number;
+        burst1s: number;
+        burst5s: number;
+        skillName: string;
+        buckets5s?: number[];
+        downIndices5s?: number[];
+        deathIndices5s?: number[];
+    }>;
+    maxHit: number;
+    max1s: number;
+    max5s: number;
+};
     type SpikePlayer = {
         key: string;
         account: string;
@@ -488,7 +496,15 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         if (shouldUsePrecomputedSpike) {
             const fights: SpikeFight[] = precomputedFights.map((fight: any, index: number) => {
                 const rawValues = fight?.values && typeof fight.values === 'object' ? fight.values : {};
-                const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s?: number[] }> = {};
+                const values: Record<string, {
+                    hit: number;
+                    burst1s: number;
+                    burst5s: number;
+                    skillName: string;
+                    buckets5s?: number[];
+                    downIndices5s?: number[];
+                    deathIndices5s?: number[];
+                }> = {};
                 Object.entries(rawValues).forEach(([key, value]: any) => {
                     if (value && typeof value === 'object') {
                         const legacyDamage = Number((value as any).damage || 0);
@@ -499,6 +515,12 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                             skillName: String((value as any).skillName || ''),
                             buckets5s: Array.isArray((value as any).buckets5s)
                                 ? (value as any).buckets5s.map((entry: any) => Number(entry || 0))
+                                : undefined,
+                            downIndices5s: Array.isArray((value as any).downIndices5s)
+                                ? (value as any).downIndices5s.map((entry: any) => Number(entry)).filter((entry: number) => Number.isFinite(entry) && entry >= 0)
+                                : undefined,
+                            deathIndices5s: Array.isArray((value as any).deathIndices5s)
+                                ? (value as any).deathIndices5s.map((entry: any) => Number(entry)).filter((entry: number) => Number.isFinite(entry) && entry >= 0)
                                 : undefined
                         };
                         return;
@@ -812,40 +834,223 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             ? null
             : spikeChartData.find((point) => point.index === selectedSpikeFightIndex) || null;
         if (!selectedPoint || !selectedSpikePlayerKey) {
-            return { title: 'Fight Breakdown', data: [] as Array<{ label: string; value: number }> };
+            return {
+                title: 'Fight Breakdown',
+                data: [] as Array<{ label: string; value: number }>,
+                downLabels: [] as string[],
+                deathLabels: [] as string[],
+                downIndices: [] as number[],
+                deathIndices: [] as number[]
+            };
         }
         const selectedFight = spikeDamageData.fights.find((fight, index) => (
             String(fight.id || '') === String(selectedPoint.fightId || '')
             || index === selectedPoint.index
         )) || null;
-        const precomputedBuckets = Array.isArray(selectedFight?.values?.[selectedSpikePlayerKey]?.buckets5s)
-            ? selectedFight?.values?.[selectedSpikePlayerKey]?.buckets5s || []
-            : [];
-        if (precomputedBuckets.length > 0) {
-            return {
-                title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Damage Buckets)`,
-                data: precomputedBuckets.map((value, idx) => ({
-                    label: `${idx * 5}s-${(idx + 1) * 5}s`,
-                    value: Number(value || 0)
-                }))
-            };
-        }
         const [account, profession] = selectedSpikePlayerKey.split('|');
         const selectedLog = logs.find((log) => {
             const id = String(log?.filePath || log?.id || '');
             return id === String(selectedPoint.fightId || '');
         });
         const details = selectedLog?.details;
+        const toPairs = (value: any): Array<[number, number]> => {
+            if (!Array.isArray(value)) return [];
+            return value
+                .map((entry: any) => {
+                    if (Array.isArray(entry)) return [Number(entry[0]), Number(entry[1])] as [number, number];
+                    if (entry && typeof entry === 'object') return [Number((entry as any).time), Number((entry as any).value)] as [number, number];
+                    return null;
+                })
+                .filter((entry: any): entry is [number, number] => !!entry && Number.isFinite(entry[0]) && entry[0] >= 0);
+        };
+        const normalizeText = (value: any) => String(value || '').trim().toLowerCase();
+        const accountNorm = normalizeText(account);
+        const professionNorm = normalizeText(profession);
+        const selectedSpikePlayerMeta = spikePlayerMap.get(selectedSpikePlayerKey);
+        const candidateNames = new Set<string>([
+            normalizeText(selectedSpikePlayerMeta?.displayName),
+            normalizeText(selectedSpikePlayerMeta?.characterName),
+            normalizeText(selectedSpikePlayerMeta?.account)
+        ].filter(Boolean));
+        const selectedReplayPlayer = Array.isArray(details?.players)
+            ? details.players
+                .map((player: any) => {
+                    const playerAccount = normalizeText(player?.account);
+                    const playerName = normalizeText(player?.name);
+                    const playerProfession = normalizeText(player?.profession);
+                    const accountMatch = !!playerAccount && playerAccount === accountNorm;
+                    const nameMatch = !!playerName && (playerName === accountNorm || candidateNames.has(playerName));
+                    const candidateAccountMatch = !!playerAccount && candidateNames.has(playerAccount);
+                    const professionMatch = !professionNorm || playerProfession === professionNorm;
+                    let score = 0;
+                    if (accountMatch) score += 100;
+                    if (nameMatch) score += 90;
+                    if (candidateAccountMatch) score += 80;
+                    if (professionMatch) score += 20;
+                    return { player, score };
+                })
+                .filter((entry: any) => entry.score > 0)
+                .sort((a: any, b: any) => b.score - a.score)[0]?.player || null
+            : null;
+        const replayEntries = (() => {
+            const replay = (selectedReplayPlayer as any)?.combatReplayData;
+            if (Array.isArray(replay)) return replay.filter((entry: any) => entry && typeof entry === 'object');
+            return replay && typeof replay === 'object' ? [replay] : [];
+        })();
+        const downMsRaw = replayEntries.flatMap((entry: any) => toPairs(entry?.down).map(([time]) => time));
+        const deathMsRaw = replayEntries.flatMap((entry: any) => toPairs(entry?.dead).map(([time]) => time));
+        const replayStartHints = replayEntries
+            .map((entry: any) => Number(entry?.start))
+            .filter((value: number) => Number.isFinite(value) && value >= 0);
+        const minGlobalReplayStart = Array.isArray(details?.players)
+            ? details.players
+                .flatMap((player: any) => {
+                    const replay = player?.combatReplayData;
+                    if (Array.isArray(replay)) return replay.map((entry: any) => Number(entry?.start));
+                    return [Number(replay?.start)];
+                })
+                .filter((value: number) => Number.isFinite(value) && value >= 0)
+                .reduce((min: number, value: number) => Math.min(min, value), Number.POSITIVE_INFINITY)
+            : Number.POSITIVE_INFINITY;
+        const replayOffsetHints = [
+            0,
+            Number(details?.logStartOffset || 0),
+            ...replayStartHints,
+            Number.isFinite(minGlobalReplayStart) ? minGlobalReplayStart : 0
+        ].filter((value) => Number.isFinite(value) && value >= 0);
+        const markerLabelForMs = (timeMs: number) => {
+            const second = Math.max(0, Math.floor(Number(timeMs || 0) / 1000));
+            const start = Math.floor(second / 5) * 5;
+            return `${start}s-${start + 5}s`;
+        };
+        const normalizeReplayTimes = (timesMs: number[], labels: string[]) => {
+            if (timesMs.length === 0 || labels.length === 0) return [] as number[];
+            const maxMs = labels.length * 5000;
+            const validRangeScore = (values: number[]) => values.reduce((count, value) => (
+                value >= 0 && value <= (maxMs + 2000) ? count + 1 : count
+            ), 0);
+            const timeVariants: number[][] = [];
+            const raw = timesMs.map((value) => Number(value || 0)).filter((value) => Number.isFinite(value) && value >= 0);
+            if (raw.length === 0) return [] as number[];
+            timeVariants.push(raw);
+            const maxRaw = raw.reduce((max, value) => Math.max(max, value), 0);
+            const minRaw = raw.reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY);
+            // Some replay payloads can be encoded in seconds or microseconds.
+            if (maxRaw > (maxMs * 20)) {
+                timeVariants.push(raw.map((value) => value / 1000));
+            }
+            if (maxRaw <= (maxMs * 2) && minRaw >= 0 && maxRaw > 0 && maxRaw < Math.max(120, labels.length * 5 + 10)) {
+                timeVariants.push(raw.map((value) => value * 1000));
+            }
+            let bestValues = raw;
+            let bestOffset = 0;
+            let bestScore = -1;
+            timeVariants.forEach((variant) => {
+                const offsets = new Set<number>(replayOffsetHints);
+                const minTime = variant.reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY);
+                if (Number.isFinite(minTime) && maxMs > 0 && minTime > maxMs) {
+                    const approx = Math.floor(minTime / maxMs) * maxMs;
+                    offsets.add(approx);
+                    offsets.add(Math.max(0, approx - maxMs));
+                }
+                offsets.forEach((offset) => {
+                    const shifted = variant.map((value) => value - offset);
+                    const score = validRangeScore(shifted);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestOffset = offset;
+                        bestValues = variant;
+                    }
+                });
+            });
+            return bestValues.map((value) => value - bestOffset).filter((value) => Number.isFinite(value) && value >= 0);
+        };
+        const buildMarkerLabels = (labels: string[], timesMs: number[]) => {
+            if (labels.length === 0 || timesMs.length === 0) return [] as string[];
+            const normalizedTimes = normalizeReplayTimes(timesMs, labels);
+            const labelByBucketStart = new Map<number, string>();
+            labels.forEach((label) => {
+                const match = /^(\d+)s-/.exec(String(label));
+                if (!match) return;
+                const start = Number(match[1]);
+                if (Number.isFinite(start)) labelByBucketStart.set(start, label);
+            });
+            const resolved: string[] = [];
+            normalizedTimes.forEach((timeMs) => {
+                const second = Math.max(0, Math.floor(Number(timeMs || 0) / 1000));
+                const start = Math.floor(second / 5) * 5;
+                const label = labelByBucketStart.get(start) || markerLabelForMs(timeMs);
+                if (labels.includes(label)) resolved.push(label);
+            });
+            return Array.from(new Set(resolved));
+        };
+        const buildMarkerIndices = (bucketCount: number, timesMs: number[]) => {
+            if (bucketCount <= 0 || timesMs.length === 0) return [] as number[];
+            const fakeLabels = Array.from({ length: bucketCount }, (_, idx) => `${idx * 5}s-${(idx + 1) * 5}s`);
+            const normalizedTimes = normalizeReplayTimes(timesMs, fakeLabels);
+            const indices = normalizedTimes
+                .map((timeMs) => Math.floor(Math.max(0, Number(timeMs || 0)) / 5000))
+                .filter((idx) => Number.isFinite(idx) && idx >= 0 && idx < bucketCount);
+            return Array.from(new Set(indices));
+        };
+        const precomputedBuckets = Array.isArray(selectedFight?.values?.[selectedSpikePlayerKey]?.buckets5s)
+            ? selectedFight?.values?.[selectedSpikePlayerKey]?.buckets5s || []
+            : [];
+        const precomputedDownIndices = Array.isArray((selectedFight as any)?.values?.[selectedSpikePlayerKey]?.downIndices5s)
+            ? ((selectedFight as any).values[selectedSpikePlayerKey].downIndices5s as any[])
+                .map((value: any) => Number(value))
+                .filter((value: number) => Number.isFinite(value) && value >= 0)
+            : [];
+        const precomputedDeathIndices = Array.isArray((selectedFight as any)?.values?.[selectedSpikePlayerKey]?.deathIndices5s)
+            ? ((selectedFight as any).values[selectedSpikePlayerKey].deathIndices5s as any[])
+                .map((value: any) => Number(value))
+                .filter((value: number) => Number.isFinite(value) && value >= 0)
+            : [];
+        if (precomputedBuckets.length > 0) {
+            const durationBuckets = Math.max(0, Math.ceil(Number(details?.durationMS || 0) / 5000));
+            const bucketCount = Math.max(precomputedBuckets.length, durationBuckets);
+            const data = Array.from({ length: bucketCount }, (_, idx) => ({
+                label: `${idx * 5}s-${(idx + 1) * 5}s`,
+                value: Number(precomputedBuckets[idx] || 0)
+            }));
+            const labels = data.map((entry) => entry.label);
+            return {
+                title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Damage Buckets)`,
+                data,
+                downLabels: buildMarkerLabels(labels, downMsRaw),
+                deathLabels: buildMarkerLabels(labels, deathMsRaw),
+                downIndices: precomputedDownIndices.length > 0
+                    ? precomputedDownIndices.filter((idx) => idx < data.length)
+                    : buildMarkerIndices(data.length, downMsRaw),
+                deathIndices: precomputedDeathIndices.length > 0
+                    ? precomputedDeathIndices.filter((idx) => idx < data.length)
+                    : buildMarkerIndices(data.length, deathMsRaw)
+            };
+        }
         const fightLabel = selectedPoint.shortLabel || 'Fight';
         if (!details || !Array.isArray(details.players)) {
-            return { title: `Fight Breakdown - ${fightLabel}`, data: [] as Array<{ label: string; value: number }> };
+            return {
+                title: `Fight Breakdown - ${fightLabel}`,
+                data: [] as Array<{ label: string; value: number }>,
+                downLabels: [] as string[],
+                deathLabels: [] as string[],
+                downIndices: [] as number[],
+                deathIndices: [] as number[]
+            };
         }
         const selectedPlayer = details.players.find((player: any) =>
             String(player?.account || player?.name || 'Unknown') === account
             && String(player?.profession || 'Unknown') === profession
         );
         if (!selectedPlayer) {
-            return { title: `Fight Breakdown - ${fightLabel}`, data: [] as Array<{ label: string; value: number }> };
+            return {
+                title: `Fight Breakdown - ${fightLabel}`,
+                data: [] as Array<{ label: string; value: number }>,
+                downLabels: [] as string[],
+                deathLabels: [] as string[],
+                downIndices: [] as number[],
+                deathIndices: [] as number[]
+            };
         }
         const selectedPlayerAny = selectedPlayer as any;
 
@@ -898,18 +1103,29 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             : (Array.isArray(totalPhase0) ? totalPhase0.map((v: any) => Number(v || 0)) : []);
         const perSecond = toPerSecond(cumulative);
         const bucketSizeSeconds = 5;
+        const durationBuckets = Math.max(0, Math.ceil(Number(details?.durationMS || 0) / (bucketSizeSeconds * 1000)));
+        const damageBuckets = Math.max(0, Math.ceil(perSecond.length / bucketSizeSeconds));
+        const bucketCount = Math.max(durationBuckets, damageBuckets);
         const data: Array<{ label: string; value: number }> = [];
-        for (let i = 0; i < perSecond.length; i += bucketSizeSeconds) {
-            const start = i;
-            const end = Math.min(i + bucketSizeSeconds, perSecond.length);
+        for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex += 1) {
+            const start = bucketIndex * bucketSizeSeconds;
+            const end = Math.min(start + bucketSizeSeconds, perSecond.length);
             const value = perSecond.slice(start, end).reduce((sum, entry) => sum + Number(entry || 0), 0);
             data.push({
-                label: `${start}s-${end}s`,
+                label: `${start}s-${start + bucketSizeSeconds}s`,
                 value
             });
         }
-        return { title: `Fight Breakdown - ${fightLabel} (5s Damage Buckets)`, data };
-    }, [selectedSpikeFightIndex, spikeChartData, selectedSpikePlayerKey, logs, spikeDamageData.fights]);
+        const labels = data.map((entry) => entry.label);
+        return {
+            title: `Fight Breakdown - ${fightLabel} (5s Damage Buckets)`,
+            data,
+            downLabels: buildMarkerLabels(labels, downMsRaw),
+            deathLabels: buildMarkerLabels(labels, deathMsRaw),
+            downIndices: buildMarkerIndices(data.length, downMsRaw),
+            deathIndices: buildMarkerIndices(data.length, deathMsRaw)
+        };
+    }, [selectedSpikeFightIndex, spikeChartData, selectedSpikePlayerKey, logs, spikeDamageData.fights, spikePlayerMap]);
 
     useEffect(() => {
         if (playerSkillBreakdowns.length === 0) {
@@ -1669,6 +1885,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                                 setSelectedSpikeFightIndex={setSelectedSpikeFightIndex}
                                 spikeDrilldownTitle={spikeDrilldown.title}
                                 spikeDrilldownData={spikeDrilldown.data}
+                                spikeDrilldownDownIndices={spikeDrilldown.downIndices}
+                                spikeDrilldownDeathIndices={spikeDrilldown.deathIndices}
                                 formatWithCommas={formatWithCommas}
                                 renderProfessionIcon={renderProfessionIcon}
                             />
@@ -2057,6 +2275,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                             setSelectedSpikeFightIndex={setSelectedSpikeFightIndex}
                             spikeDrilldownTitle={spikeDrilldown.title}
                             spikeDrilldownData={spikeDrilldown.data}
+                            spikeDrilldownDownIndices={spikeDrilldown.downIndices}
+                            spikeDrilldownDeathIndices={spikeDrilldown.deathIndices}
                             formatWithCommas={formatWithCommas}
                             renderProfessionIcon={renderProfessionIcon}
                         />

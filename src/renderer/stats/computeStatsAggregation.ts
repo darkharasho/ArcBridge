@@ -2001,7 +2001,15 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 shortLabel: string;
                 fullLabel: string;
                 timestamp: number;
-                values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s: number[] }>;
+                values: Record<string, {
+                    hit: number;
+                    burst1s: number;
+                    burst5s: number;
+                    skillName: string;
+                    buckets5s: number[];
+                    downIndices5s: number[];
+                    deathIndices5s: number[];
+                }>;
                 maxHit: number;
                 max1s: number;
                 max5s: number;
@@ -2101,6 +2109,60 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 }
                 return out;
             };
+            const toPairs = (value: any): Array<[number, number]> => {
+                if (!Array.isArray(value)) return [];
+                return value
+                    .map((entry: any) => {
+                        if (Array.isArray(entry)) return [Number(entry[0]), Number(entry[1])] as [number, number];
+                        if (entry && typeof entry === 'object') return [Number(entry.time), Number(entry.value)] as [number, number];
+                        return null;
+                    })
+                    .filter((entry: any): entry is [number, number] => !!entry && Number.isFinite(entry[0]) && entry[0] >= 0);
+            };
+            const normalizeEventTimes = (times: number[], replayStarts: number[], allReplayStarts: number[], bucketCount: number, durationMs: number) => {
+                if (!times.length || bucketCount <= 0) return [] as number[];
+                const maxMs = Math.max(bucketCount * 5000, durationMs || 0);
+                const validRangeScore = (values: number[]) => values.reduce((count, value) => (
+                    value >= 0 && value <= (maxMs + 2000) ? count + 1 : count
+                ), 0);
+                const raw = times.map((value) => Number(value || 0)).filter((value) => Number.isFinite(value) && value >= 0);
+                if (!raw.length) return [] as number[];
+                const variants: number[][] = [raw];
+                const maxRaw = raw.reduce((max, value) => Math.max(max, value), 0);
+                const minRaw = raw.reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY);
+                if (maxRaw > (maxMs * 20)) variants.push(raw.map((value) => value / 1000));
+                if (maxRaw <= (maxMs * 2) && minRaw >= 0 && maxRaw > 0 && maxRaw < Math.max(120, bucketCount * 5 + 10)) {
+                    variants.push(raw.map((value) => value * 1000));
+                }
+                let best = raw;
+                let bestOffset = 0;
+                let bestScore = -1;
+                variants.forEach((variant) => {
+                    const minTime = variant.reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY);
+                    const offsets = new Set<number>([0, ...replayStarts, ...allReplayStarts]);
+                    if (Number.isFinite(minTime) && maxMs > 0 && minTime > maxMs) {
+                        const approx = Math.floor(minTime / maxMs) * maxMs;
+                        offsets.add(approx);
+                        offsets.add(Math.max(0, approx - maxMs));
+                    }
+                    offsets.forEach((offset) => {
+                        const shifted = variant.map((value) => value - offset);
+                        const score = validRangeScore(shifted);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestOffset = offset;
+                            best = variant;
+                        }
+                    });
+                });
+                return best.map((value) => value - bestOffset).filter((value) => Number.isFinite(value) && value >= 0);
+            };
+            const markerIndicesFromTimes = (times: number[], replayStarts: number[], allReplayStarts: number[], bucketCount: number, durationMs: number) => {
+                const normalized = normalizeEventTimes(times, replayStarts, allReplayStarts, bucketCount, durationMs);
+                return Array.from(new Set(normalized
+                    .map((value) => Math.floor(value / 5000))
+                    .filter((idx) => Number.isFinite(idx) && idx >= 0 && idx < bucketCount)));
+            };
 
             validLogs
                 .map((log) => ({ log, ts: resolveFightTimestamp(log?.details, log) }))
@@ -2111,8 +2173,23 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
                     const mapName = resolveMapName(details, log);
                     const fullLabel = buildFightLabel(fightName, String(mapName || ''));
-                    const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s: number[] }> = {};
+                    const values: Record<string, {
+                        hit: number;
+                        burst1s: number;
+                        burst5s: number;
+                        skillName: string;
+                        buckets5s: number[];
+                        downIndices5s: number[];
+                        deathIndices5s: number[];
+                    }> = {};
                     const players = Array.isArray(details.players) ? details.players : [];
+                    const allReplayStarts = players
+                        .flatMap((entry: any) => {
+                            const replay = entry?.combatReplayData;
+                            if (Array.isArray(replay)) return replay.map((seg: any) => Number(seg?.start));
+                            return [Number(replay?.start)];
+                        })
+                        .filter((value: number) => Number.isFinite(value) && value >= 0);
                     players.forEach((player: any) => {
                         if (player?.notInSquad) return;
                         const account = String(player?.account || player?.name || 'Unknown');
@@ -2124,12 +2201,29 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         const perSecond = getPerSecondDamageSeries(player);
                         const burst1s = Number(getMaxRollingDamage(perSecond, 1) || 0);
                         const burst5s = Number(getMaxRollingDamage(perSecond, 5) || 0);
+                        const durationBuckets = Math.max(0, Math.ceil(Number(details?.durationMS || 0) / 5000));
+                        const damageBuckets = Math.max(0, Math.ceil(perSecond.length / 5));
+                        const bucketCount = Math.max(durationBuckets, damageBuckets);
+                        const rawBuckets = getBuckets(perSecond, 5);
+                        const buckets5s = Array.from({ length: bucketCount }, (_, idx) => Number(rawBuckets[idx] || 0));
+                        const replayEntries = (() => {
+                            const replay = player?.combatReplayData;
+                            if (Array.isArray(replay)) return replay.filter((entry: any) => entry && typeof entry === 'object');
+                            return replay && typeof replay === 'object' ? [replay] : [];
+                        })();
+                        const replayStarts = replayEntries
+                            .map((entry: any) => Number(entry?.start))
+                            .filter((value: number) => Number.isFinite(value) && value >= 0);
+                        const downTimes = replayEntries.flatMap((entry: any) => toPairs(entry?.down).map(([time]) => Number(time || 0)));
+                        const deathTimes = replayEntries.flatMap((entry: any) => toPairs(entry?.dead).map(([time]) => Number(time || 0)));
                         values[key] = {
                             hit,
                             burst1s,
                             burst5s,
                             skillName: spike.skillName || 'Unknown Skill',
-                            buckets5s: getBuckets(perSecond, 5)
+                            buckets5s,
+                            downIndices5s: markerIndicesFromTimes(downTimes, replayStarts, allReplayStarts, bucketCount, Number(details?.durationMS || 0)),
+                            deathIndices5s: markerIndicesFromTimes(deathTimes, replayStarts, allReplayStarts, bucketCount, Number(details?.durationMS || 0))
                         };
 
                         const existing = playerMap.get(key) || {
