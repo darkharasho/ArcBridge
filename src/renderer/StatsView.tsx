@@ -308,7 +308,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
     const [selectedSpikePlayerKey, setSelectedSpikePlayerKey] = useState<string | null>(null);
     const [selectedSpikeFightIndex, setSelectedSpikeFightIndex] = useState<number | null>(null);
-    const [spikeMode, setSpikeMode] = useState<'hit' | '1s' | '5s'>('hit');
+    const [spikeMode, setSpikeMode] = useState<'hit' | '1s' | '5s' | '30s'>('hit');
     const [hoveredSkillPlayer, setHoveredSkillPlayer] = useState<string[]>([]);
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const [expandedSectionClosing, setExpandedSectionClosing] = useState(false);
@@ -401,6 +401,7 @@ type SpikeFight = {
         hit: number;
         burst1s: number;
         burst5s: number;
+        burst30s: number;
         skillName: string;
         buckets5s?: number[];
         downIndices5s?: number[];
@@ -409,6 +410,7 @@ type SpikeFight = {
     maxHit: number;
     max1s: number;
     max5s: number;
+    max30s: number;
 };
     type SpikePlayer = {
         key: string;
@@ -421,6 +423,7 @@ type SpikeFight = {
         peakHit: number;
         peak1s: number;
         peak5s: number;
+        peak30s: number;
         peakFightLabel: string;
         peakSkillName: string;
     };
@@ -489,8 +492,13 @@ type SpikeFight = {
             return rawValues.some((value: any) => value && typeof value === 'object' && (
                 Number((value as any).burst1s || 0) > 0
                 || Number((value as any).burst5s || 0) > 0
+                || Number((value as any).burst30s || 0) > 0
             ));
-        }) || precomputedPlayers.some((player: any) => Number(player?.peak1s || 0) > 0 || Number(player?.peak5s || 0) > 0);
+        }) || precomputedPlayers.some((player: any) =>
+            Number(player?.peak1s || 0) > 0
+            || Number(player?.peak5s || 0) > 0
+            || Number(player?.peak30s || 0) > 0
+        );
         const shouldUsePrecomputedSpike = (precomputedFights.length > 0 || precomputedPlayers.length > 0)
             && (precomputedHasBurstValues || logs.length === 0);
         if (shouldUsePrecomputedSpike) {
@@ -500,6 +508,7 @@ type SpikeFight = {
                     hit: number;
                     burst1s: number;
                     burst5s: number;
+                    burst30s: number;
                     skillName: string;
                     buckets5s?: number[];
                     downIndices5s?: number[];
@@ -512,6 +521,7 @@ type SpikeFight = {
                             hit: Number((value as any).hit ?? legacyDamage),
                             burst1s: Number((value as any).burst1s || 0),
                             burst5s: Number((value as any).burst5s || 0),
+                            burst30s: Number((value as any).burst30s || 0),
                             skillName: String((value as any).skillName || ''),
                             buckets5s: Array.isArray((value as any).buckets5s)
                                 ? (value as any).buckets5s.map((entry: any) => Number(entry || 0))
@@ -529,6 +539,7 @@ type SpikeFight = {
                         hit: Number(value || 0),
                         burst1s: 0,
                         burst5s: 0,
+                        burst30s: 0,
                         skillName: ''
                     };
                 });
@@ -540,7 +551,8 @@ type SpikeFight = {
                     values,
                     maxHit: Number(fight?.maxHit ?? fight?.maxDamage ?? 0),
                     max1s: Number(fight?.max1s || 0),
-                    max5s: Number(fight?.max5s || 0)
+                    max5s: Number(fight?.max5s || 0),
+                    max30s: Number(fight?.max30s || 0)
                 };
             });
             const players: SpikePlayer[] = precomputedPlayers.map((player: any) => ({
@@ -554,6 +566,7 @@ type SpikeFight = {
                 peakHit: Number(player?.peakHit || 0),
                 peak1s: Number(player?.peak1s || 0),
                 peak5s: Number(player?.peak5s || 0),
+                peak30s: Number(player?.peak30s || 0),
                 peakFightLabel: sanitizeWvwLabel(player?.peakFightLabel || ''),
                 peakSkillName: String(player?.peakSkillName || '')
             }));
@@ -692,7 +705,7 @@ type SpikeFight = {
             const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${fightIndex}`);
             const rawMap = details.zone || details.mapName || details.map || details.location || '';
             const fullLabel = buildFightLabel(fightName, String(rawMap || ''));
-            const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s?: number[] }> = {};
+            const values: Record<string, { hit: number; burst1s: number; burst5s: number; burst30s: number; skillName: string; buckets5s?: number[] }> = {};
 
             const fightPlayers = Array.isArray(details.players) ? details.players : [];
             fightPlayers.forEach((player: any) => {
@@ -705,7 +718,8 @@ type SpikeFight = {
                 const hit = Number(spike.peak || 0);
                 const burst1s = Number(getBurstFromTimeline(player, 1) || 0);
                 const burst5s = Number(getBurstFromTimeline(player, 5) || 0);
-                values[key] = { hit, burst1s, burst5s, skillName: spike.skillName || 'Unknown Skill' };
+                const burst30s = Number(getBurstFromTimeline(player, 30) || 0);
+                values[key] = { hit, burst1s, burst5s, burst30s, skillName: spike.skillName || 'Unknown Skill' };
 
                 const existing = playerMap.get(key) || {
                     key,
@@ -718,6 +732,7 @@ type SpikeFight = {
                     peakHit: 0,
                     peak1s: 0,
                     peak5s: 0,
+                    peak30s: 0,
                     peakFightLabel: '',
                     peakSkillName: ''
                 };
@@ -735,12 +750,14 @@ type SpikeFight = {
                 }
                 if (burst1s > existing.peak1s) existing.peak1s = burst1s;
                 if (burst5s > existing.peak5s) existing.peak5s = burst5s;
+                if (burst30s > existing.peak30s) existing.peak30s = burst30s;
                 playerMap.set(key, existing);
             });
 
             const maxHit = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.hit || 0)), 0);
             const max1s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst1s || 0)), 0);
             const max5s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst5s || 0)), 0);
+            const max30s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst30s || 0)), 0);
             fights.push({
                 id: log.filePath || log.id || `fight-${fightIndex}`,
                 shortLabel: `F${fightIndex}`,
@@ -749,7 +766,8 @@ type SpikeFight = {
                 values,
                 maxHit,
                 max1s,
-                max5s
+                max5s,
+                max30s
             });
         });
 
@@ -769,7 +787,7 @@ type SpikeFight = {
 
     const groupedSpikePlayers = useMemo(() => {
         const modeValue = (player: SpikePlayer) => (
-            spikeMode === 'hit' ? player.peakHit : spikeMode === '1s' ? player.peak1s : player.peak5s
+            spikeMode === 'hit' ? player.peakHit : spikeMode === '1s' ? player.peak1s : spikeMode === '5s' ? player.peak5s : player.peak30s
         );
         const term = spikePlayerFilter.trim().toLowerCase();
         const filtered = !term
@@ -800,16 +818,18 @@ type SpikeFight = {
 
     const spikeChartData = useMemo(() => {
         if (!selectedSpikePlayerKey) return [];
-        const getValue = (entry: { hit: number; burst1s: number; burst5s: number } | undefined) => {
+        const getValue = (entry: { hit: number; burst1s: number; burst5s: number; burst30s: number } | undefined) => {
             if (!entry) return 0;
             if (spikeMode === 'hit') return Number(entry.hit || 0);
             if (spikeMode === '1s') return Number(entry.burst1s || 0);
-            return Number(entry.burst5s || 0);
+            if (spikeMode === '5s') return Number(entry.burst5s || 0);
+            return Number(entry.burst30s || 0);
         };
         const getReference = (fight: SpikeFight) => {
             if (spikeMode === 'hit') return Number(fight.maxHit || 0);
             if (spikeMode === '1s') return Number(fight.max1s || 0);
-            return Number(fight.max5s || 0);
+            if (spikeMode === '5s') return Number(fight.max5s || 0);
+            return Number(fight.max30s || 0);
         };
         return spikeDamageData.fights.map((fight, index) => ({
             index,

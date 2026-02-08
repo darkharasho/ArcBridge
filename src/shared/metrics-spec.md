@@ -467,10 +467,11 @@ Detailed tables aggregate the per-player totals defined in:
 
 ## Spike Damage
 
-Spike Damage has three modes:
+Spike Damage has four modes:
 - `hit`: highest single skill hit in a fight
 - `1s`: highest rolling 1-second damage burst in a fight
 - `5s`: highest rolling 5-second damage burst in a fight
+- `30s`: highest rolling 30-second damage burst in a fight
 
 ### Player Identity
 
@@ -506,8 +507,9 @@ Burst uses per-second **delta** damage:
 2. Convert cumulative -> per-second deltas:
    - `delta[i] = max(0, cumulative[i] - cumulative[i-1])` (`i=0` uses prev `0`)
 3. Compute rolling windows:
-   - `burst1s = max(sum(delta[i..i]))`
-   - `burst5s = max(sum(delta[i..i+4]))`
+- `burst1s = max(sum(delta[i..i]))`
+- `burst5s = max(sum(delta[i..i+4]))`
+- `burst30s = max(sum(delta[i..i+29]))`
 
 Implementation includes support for EI shape variants:
 - Shape A: `[phase][target][time]`
@@ -519,6 +521,7 @@ For each fight:
 - `maxHit = max(values[*].hit)`
 - `max1s = max(values[*].burst1s)`
 - `max5s = max(values[*].burst5s)`
+- `max30s = max(values[*].burst30s)`
 
 The selected mode uses the corresponding max series as the dashed reference line.
 

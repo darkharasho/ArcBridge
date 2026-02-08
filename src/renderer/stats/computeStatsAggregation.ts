@@ -2005,6 +2005,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     hit: number;
                     burst1s: number;
                     burst5s: number;
+                    burst30s: number;
                     skillName: string;
                     buckets5s: number[];
                     downIndices5s: number[];
@@ -2013,6 +2014,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 maxHit: number;
                 max1s: number;
                 max5s: number;
+                max30s: number;
             }> = [];
             const playerMap = new Map<string, {
                 key: string;
@@ -2025,6 +2027,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 peakHit: number;
                 peak1s: number;
                 peak5s: number;
+                peak30s: number;
                 peakFightLabel: string;
                 peakSkillName: string;
             }>();
@@ -2177,6 +2180,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         hit: number;
                         burst1s: number;
                         burst5s: number;
+                        burst30s: number;
                         skillName: string;
                         buckets5s: number[];
                         downIndices5s: number[];
@@ -2201,6 +2205,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         const perSecond = getPerSecondDamageSeries(player);
                         const burst1s = Number(getMaxRollingDamage(perSecond, 1) || 0);
                         const burst5s = Number(getMaxRollingDamage(perSecond, 5) || 0);
+                        const burst30s = Number(getMaxRollingDamage(perSecond, 30) || 0);
                         const durationBuckets = Math.max(0, Math.ceil(Number(details?.durationMS || 0) / 5000));
                         const damageBuckets = Math.max(0, Math.ceil(perSecond.length / 5));
                         const bucketCount = Math.max(durationBuckets, damageBuckets);
@@ -2220,6 +2225,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             hit,
                             burst1s,
                             burst5s,
+                            burst30s,
                             skillName: spike.skillName || 'Unknown Skill',
                             buckets5s,
                             downIndices5s: markerIndicesFromTimes(downTimes, replayStarts, allReplayStarts, bucketCount, Number(details?.durationMS || 0)),
@@ -2237,6 +2243,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             peakHit: 0,
                             peak1s: 0,
                             peak5s: 0,
+                            peak30s: 0,
                             peakFightLabel: '',
                             peakSkillName: ''
                         };
@@ -2254,12 +2261,14 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         }
                         if (burst1s > existing.peak1s) existing.peak1s = burst1s;
                         if (burst5s > existing.peak5s) existing.peak5s = burst5s;
+                        if (burst30s > existing.peak30s) existing.peak30s = burst30s;
                         playerMap.set(key, existing);
                     });
 
                     const maxHit = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.hit || 0)), 0);
                     const max1s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst1s || 0)), 0);
                     const max5s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst5s || 0)), 0);
+                    const max30s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst30s || 0)), 0);
                     fights.push({
                         id: log.filePath || log.id || `fight-${index + 1}`,
                         shortLabel: `F${index + 1}`,
@@ -2268,7 +2277,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         values,
                         maxHit,
                         max1s,
-                        max5s
+                        max5s,
+                        max30s
                     });
                 });
 

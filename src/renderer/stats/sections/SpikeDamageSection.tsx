@@ -15,6 +15,7 @@ type SpikeDamagePlayer = {
     peakHit: number;
     peak1s: number;
     peak5s: number;
+    peak30s: number;
     peakFightLabel: string;
     peakSkillName: string;
 };
@@ -45,8 +46,8 @@ type SpikeDamageSectionProps = {
     spikePlayerFilter: string;
     setSpikePlayerFilter: (value: string) => void;
     groupedSpikePlayers: Array<{ profession: string; players: SpikeDamagePlayer[] }>;
-    spikeMode: 'hit' | '1s' | '5s';
-    setSpikeMode: (value: 'hit' | '1s' | '5s') => void;
+    spikeMode: 'hit' | '1s' | '5s' | '30s';
+    setSpikeMode: (value: 'hit' | '1s' | '5s' | '30s') => void;
     selectedSpikePlayerKey: string | null;
     setSelectedSpikePlayerKey: (value: string | null) => void;
     selectedSpikePlayer: SpikeDamagePlayer | null;
@@ -105,9 +106,9 @@ export const SpikeDamageSection = ({
     const selectedLineColor = selectedSpikePlayer
         ? (getProfessionColor(selectedSpikePlayer.profession) || '#fda4af')
         : '#fda4af';
-    const modeLabel = spikeMode === 'hit' ? 'Highest Damage' : spikeMode === '1s' ? '1s Burst' : '5s Burst';
+    const modeLabel = spikeMode === 'hit' ? 'Highest Damage' : spikeMode === '1s' ? '1s Burst' : spikeMode === '5s' ? '5s Burst' : '30s Burst';
     const peakValueForPlayer = (player: SpikeDamagePlayer) => (
-        spikeMode === 'hit' ? player.peakHit : spikeMode === '1s' ? player.peak1s : player.peak5s
+        spikeMode === 'hit' ? player.peakHit : spikeMode === '1s' ? player.peak1s : spikeMode === '5s' ? player.peak5s : player.peak30s
     );
     const flatSpikePlayers = groupedSpikePlayers
         .flatMap((group) => group.players.map((player) => ({ ...player, groupProfession: group.profession })))
@@ -200,11 +201,12 @@ export const SpikeDamageSection = ({
                 <div className={`flex items-center gap-3 ${isExpanded ? 'pr-10 md:pr-0' : ''}`}>
                     <PillToggleGroup
                         value={spikeMode}
-                        onChange={(value) => setSpikeMode(value as 'hit' | '1s' | '5s')}
+                        onChange={(value) => setSpikeMode(value as 'hit' | '1s' | '5s' | '30s')}
                         options={[
                             { value: 'hit', label: 'Highest Damage' },
                             { value: '1s', label: '1s' },
-                            { value: '5s', label: '5s' }
+                            { value: '5s', label: '5s' },
+                            { value: '30s', label: '30s' }
                         ]}
                         activeClassName="bg-rose-500/20 text-rose-200 border border-rose-500/40"
                         inactiveClassName="border border-transparent text-gray-400 hover:text-white"
