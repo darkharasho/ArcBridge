@@ -43,29 +43,50 @@ if (!app.isPackaged) {
     app.setPath('userData', devUserDataDir);
 }
 
-function formatLogArgs(args: any[]) {
-    return args.map(arg => {
+function formatLogArg(arg: any): string {
+    try {
         if (arg instanceof Error) {
-            return arg.stack || arg.message;
+            try {
+                if (typeof arg.stack === 'string' && arg.stack.length > 0) {
+                    return arg.stack;
+                }
+            } catch {
+                // Some stack getters can throw; fall through to message.
+            }
+            const errorName = typeof arg.name === 'string' && arg.name.length > 0 ? arg.name : 'Error';
+            const errorMessage = typeof arg.message === 'string' && arg.message.length > 0 ? arg.message : '[no message]';
+            return `${errorName}: ${errorMessage}`;
         }
         if (typeof arg === 'object' && arg !== null) {
             try {
                 return util.inspect(arg, {
-                    depth: 4,
+                    depth: 3,
                     maxArrayLength: 50,
+                    maxStringLength: 5000,
                     breakLength: 120,
                     customInspect: false,
+                    getters: false
                 });
             } catch {
                 try {
                     return Object.prototype.toString.call(arg);
                 } catch {
-                    return '[Unserializable]';
+                    return '[Unserializable object]';
                 }
             }
         }
         return String(arg);
-    }).join(' ');
+    } catch {
+        return '[Unserializable argument]';
+    }
+}
+
+function formatLogArgs(args: any[]) {
+    try {
+        return args.map((arg) => formatLogArg(arg)).join(' ');
+    } catch {
+        return '[Log formatting failed]';
+    }
 }
 
 const safeSendToRenderer = (payload: { type: 'info' | 'error'; message: string; timestamp: string }) => {

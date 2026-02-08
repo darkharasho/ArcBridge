@@ -1,18 +1,21 @@
 # Release Notes
 
-Version v1.25.1 — February 7, 2026
+Version v1.25.2 — February 7, 2026
 
 ## 🌟 Highlights
-- Matte theme gets a new background pattern and smarter detection
-- FilePickerModal updated to better fit the matte look
-- Web assets refreshed to support the matte visuals
+- Polished proof-of-work sidebar styling for clearer visuals.
+- Active heading tracking now highlights your current section for easier navigation.
+- Theme and UI-theme updated to Dark Pearl with classic settings for a consistent look.
+- Dist-web assets refreshed for smoother rendering and visuals.
 
 ## 🛠️ Improvements
-- Refactored FilePickerModal code and its styles for matte theme integration
-- Updated dist-web assets to align with the matte theme visuals
+- Enhanced proof-of-work sidebar visuals for better readability.
+- Active heading tracking added to improve orientation within sections.
+- Theme and ui-theme reworked to Dark Pearl with classic settings.
+- Web assets updated to align with the new visuals.
 
 ## 🧯 Fixes
-None.
+- None.
 
 ## ⚠️ Breaking Changes
-None.
+- None.

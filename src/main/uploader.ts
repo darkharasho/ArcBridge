@@ -25,6 +25,17 @@ export class Uploader {
     private activeUploads = 0;
     private userToken: string | null = null;
 
+    private static formatErrorSummary(error: any): string {
+        if (!error) return 'Unknown error';
+        if (typeof error === 'string') return error;
+        if (typeof error?.message === 'string' && error.message.length > 0) return error.message;
+        try {
+            return JSON.stringify(error);
+        } catch {
+            return Object.prototype.toString.call(error);
+        }
+    }
+
     // Set user token for authenticated uploads
     public setUserToken(token: string | null) {
         this.userToken = token;
@@ -54,12 +65,12 @@ export class Uploader {
             result = await this.performUpload(task.filePath);
             task.resolve(result);
         } catch (err: any) {
-            console.error("Critical queue error:", err);
+            console.error('Critical queue error:', Uploader.formatErrorSummary(err));
             task.resolve({
                 id: '',
                 permalink: '',
                 userToken: '',
-                error: err.message || 'Unknown queue error'
+                error: Uploader.formatErrorSummary(err)
             });
         } finally {
             const delay = this.getInterUploadDelayMs(result);
@@ -179,7 +190,11 @@ export class Uploader {
             console.error('[Uploader] Failed to fetch detailed JSON:', error.message);
             if (error.response) {
                 console.error('[Uploader] Response status:', error.response.status);
-                console.error('[Uploader] Response data:', JSON.stringify(error.response.data));
+                try {
+                    console.error('[Uploader] Response data:', JSON.stringify(error.response.data));
+                } catch {
+                    console.error('[Uploader] Response data:', '[Unserializable]');
+                }
             }
             return null;
         }
