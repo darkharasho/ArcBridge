@@ -1372,6 +1372,71 @@ body.web-report.theme-matte .stats-view .border-red-500\/40 {
     border-color: rgba(209, 160, 160, 0.32) !important;
 }
 
+/* In web report matte, make table sidebars inset like the in-app dashboard. */
+body.web-report.theme-matte .stats-view .stats-table-layout__sidebar.bg-black\/20,
+body.web-report.theme-matte .stats-view .stats-table-sidebar.bg-black\/20 {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Keep table shells and search fields inset across app + web report in matte stats view. */
+body.theme-matte .stats-view .stats-table-layout__sidebar.bg-black\/20,
+body.theme-matte .stats-view .stats-table-sidebar.bg-black\/20,
+body.theme-matte .stats-view .bg-black\/20.border.border-white\/5.rounded-xl,
+body.theme-matte .stats-view .bg-black\/20.border.border-white\/5.rounded-2xl {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Table content panels: slightly outset on top/left/right in matte stats view. */
+body.theme-matte .stats-view .stats-table-layout__content.bg-black\/30,
+body.theme-matte .stats-view .stats-share-table.bg-black\/30,
+body.theme-matte .stats-view .bg-black\/30.border.border-white\/5.rounded-xl,
+body.theme-matte .stats-view .bg-black\/30.border.border-white\/5.rounded-2xl {
+    background-color: var(--bg-input) !important;
+    box-shadow:
+        0 -2px 5px rgba(255, 255, 255, 0.04),
+        -3px 0 6px rgba(255, 255, 255, 0.03),
+        3px 0 8px rgba(0, 0, 0, 0.35),
+        inset 0 1px 2px rgba(0, 0, 0, 0.45),
+        inset 2px 2px 5px rgba(0, 0, 0, 0.7),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+body.theme-matte .stats-view input:not([type="checkbox"]):not([type="radio"]),
+body.theme-matte .stats-view select,
+body.theme-matte .stats-view textarea {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-subtle) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Skill Usage: container inset, list rows flat (app + web report matte). */
+body.theme-matte .stats-view .skill-usage-player-list-container {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+body.theme-matte .stats-view .skill-usage-player-list-item,
+body.theme-matte .stats-view .skill-usage-player-list-item:hover,
+body.theme-matte .stats-view .skill-usage-player-list-item:active,
+body.theme-matte .stats-view .skill-usage-player-list-item:focus {
+    box-shadow: none !important;
+}
+
+/* Spike Damage player list: container inset, rows flat. */
+body.theme-matte .stats-view .spike-player-list-container {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+body.theme-matte .stats-view .spike-player-list-item,
+body.theme-matte .stats-view .spike-player-list-item:hover,
+body.theme-matte .stats-view .spike-player-list-item:active,
+body.theme-matte .stats-view .spike-player-list-item:focus {
+    box-shadow: none !important;
+}
+
 body.theme-crt {
     --brand-primary: #57ff9a;
     --brand-secondary: #2fcf74;
@@ -2080,6 +2145,140 @@ body.theme-modern .arcbridge-logo {
 
 .stats-share-mode #player-breakdown {
     display: none;
+}
+
+/* Stats dashboard nav entries should stay flat across themes. */
+.stats-nav-entry,
+.stats-nav-entry:hover,
+.stats-nav-entry:active,
+.stats-nav-entry:focus,
+.stats-nav-entry:focus-visible {
+    box-shadow: none !important;
+    border-color: transparent !important;
+}
+
+/* Table header stacks should read as an elevated unit (up to 3 rows). */
+.app-shell .stats-table-shell__head-stack {
+    background-image: none !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    box-shadow:
+        -3px -3px 6px rgba(255, 255, 255, 0.04),
+        4px 4px 10px rgba(0, 0, 0, 0.42) !important;
+}
+
+body.theme-matte .app-shell .stats-table-shell__head-stack {
+    background-color: var(--bg-card) !important;
+    box-shadow:
+        -5px -5px 10px var(--matte-light),
+        7px 7px 13px var(--matte-dark),
+        inset 0 1px 2px rgba(255, 255, 255, 0.03) !important;
+}
+
+.app-shell .stats-table-shell__header > .bg-white\/5,
+.app-shell .stats-table-shell__columns > .bg-white\/5 {
+    background-image: none !important;
+    background-color: inherit !important;
+    box-shadow: none !important;
+}
+
+/* Custom header rows inside the shared head stack should use the same surface color. */
+.stats-table-shell__head-stack > .bg-white\/5 {
+    background-image: none !important;
+    background-color: inherit !important;
+    box-shadow: none !important;
+}
+
+/* Match web report table header stack elevation; child rows remain one combined surface. */
+body.web-report .stats-table-shell__head-stack {
+    background-image: none !important;
+    position: relative;
+    z-index: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+        inset 6px 0 10px -10px rgba(255, 255, 255, 0.22),
+        inset -10px 0 14px -12px rgba(0, 0, 0, 0.5),
+        -3px -3px 6px rgba(255, 255, 255, 0.04),
+        4px 4px 10px rgba(0, 0, 0, 0.42) !important;
+}
+
+body.web-report.theme-modern .stats-table-shell__head-stack {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.42),
+        inset 8px 0 12px -12px rgba(255, 255, 255, 0.25),
+        inset -12px 0 16px -14px rgba(0, 0, 0, 0.55),
+        -4px -4px 8px rgba(255, 255, 255, 0.05),
+        5px 5px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.web-report.theme-matte .stats-table-shell__head-stack {
+    background-color: var(--bg-card) !important;
+    box-shadow:
+        -5px -5px 10px var(--matte-light),
+        7px 7px 13px var(--matte-dark),
+        inset 0 1px 2px rgba(255, 255, 255, 0.03) !important;
+}
+
+body.web-report .stats-table-shell__header > .bg-white\/5,
+body.web-report .stats-table-shell__columns > .bg-white\/5 {
+    background-image: none !important;
+    background-color: inherit !important;
+    box-shadow: none !important;
+}
+
+/* Custom column-header rows (APM/Player Breakdown): no top glow, keep subtle bottom separation only. */
+.stats-table-column-header {
+    background-image: none !important;
+    background-color: inherit !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10), 0 12px 16px -10px rgba(0, 0, 0, 0.58) !important;
+}
+
+/* Match Offense-style sortable header buttons for custom header rows in app/web. */
+.stats-table-column-header button,
+.stats-table-column-header button:hover,
+.stats-table-column-header button:active,
+.stats-table-column-header button:focus {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Keep app matte custom header rows visually consistent with the shared table header stack. */
+body.theme-matte .app-shell .stats-table-column-header {
+    background-color: var(--bg-card) !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10), 0 12px 16px -10px rgba(0, 0, 0, 0.58) !important;
+}
+
+/* Row region stays inset to contrast with the outset header. */
+body.theme-matte .stats-view .stats-table-shell__rows {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+    min-height: 16rem;
+}
+
+/* Expanded/full-height tables should be allowed to fully stretch without a floor. */
+body.theme-matte .stats-view .stats-table-shell__rows.flex-1 {
+    min-height: 0;
+}
+
+/* Match lighter web-report table row tone inside the app stats dashboard. */
+body.theme-modern .app-shell .stats-table-shell__rows > .grid {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Keep sortable column header buttons as plain text in app stats dashboard. */
+.app-shell .stats-table-shell__columns > .grid button {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Add subtle separation depth under the table column header row in app + web report. */
+.app-shell .stats-table-shell__columns > .grid.bg-white\/5,
+body.web-report .stats-table-shell__columns > .grid.bg-white\/5 {
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10), 0 12px 16px -10px rgba(0, 0, 0, 0.58) !important;
 }
 
 /* =========================================

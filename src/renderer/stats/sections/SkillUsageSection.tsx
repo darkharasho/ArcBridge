@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { CheckCircle2, ChevronDown, ChevronRight, Maximize2, X, XCircle, Zap } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Keyboard, Maximize2, X, XCircle } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 import type { SkillUsagePlayer } from '../statsTypes';
@@ -103,7 +103,7 @@ export const SkillUsageSection = ({
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4 relative">
             <div className={expandedSection === 'skill-usage' ? 'pr-10 md:pr-0' : ''}>
                 <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-cyan-400" />
+                    <Keyboard className="w-5 h-5 text-cyan-400" />
                     Skill Usage Tracker
                 </h3>
                 <p className="text-xs text-gray-400">
@@ -172,7 +172,7 @@ export const SkillUsageSection = ({
                     placeholder="Search player or account"
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-cyan-400 focus:outline-none"
                 />
-                <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
+                <div className="skill-usage-player-list-container flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
                     {groupedSkillUsagePlayers.length === 0 ? (
                         <div className="px-3 py-4 text-xs text-gray-500 italic">
                             No squad players match the filter
@@ -193,7 +193,7 @@ export const SkillUsageSection = ({
                                             }
                                             setExpandedSkillUsageClass(group.profession);
                                         }}
-                                        className={`w-full px-3 py-2 text-left transition-colors ${isExpanded ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                                        className={`skill-usage-player-list-item w-full px-3 py-2 text-left transition-colors ${isExpanded ? 'bg-white/10' : 'hover:bg-white/5'}`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2 min-w-0">
@@ -214,22 +214,22 @@ export const SkillUsageSection = ({
                                         <div className="pb-2">
                                             <div className="px-6 pt-1 pb-2 flex items-center justify-between text-[11px] text-gray-400">
                                                 <span>{group.players.length} {group.players.length === 1 ? 'player' : 'players'}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelectedPlayers((prev) => {
-                                                            if (allSelected) {
-                                                                return prev.filter((key) => !groupKeys.includes(key));
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedPlayers((prev) => {
+                                                                if (allSelected) {
+                                                                    return prev.filter((key) => !groupKeys.includes(key));
                                                             }
                                                             const next = new Set(prev);
                                                             groupKeys.forEach((key) => next.add(key));
                                                             return Array.from(next);
                                                         });
                                                     }}
-                                                    className="px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white"
-                                                >
-                                                    {allSelected ? 'Clear All' : 'Select All'}
-                                                </button>
+                                                        className="skill-usage-player-list-item px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white"
+                                                    >
+                                                        {allSelected ? 'Clear All' : 'Select All'}
+                                                    </button>
                                             </div>
                                             {group.players.map((player) => {
                                                 const isSelected = selectedPlayers.includes(player.key);
@@ -238,7 +238,7 @@ export const SkillUsageSection = ({
                                                         type="button"
                                                         key={player.key}
                                                         onClick={() => togglePlayerSelection(player.key)}
-                                                        className={`w-full border-b border-white/5 px-6 py-2 text-left transition-colors last:border-b-0 ${isSelected ? 'border-cyan-400 bg-cyan-500/10 text-white' : 'border-transparent hover:border-white/10 hover:bg-white/5'}`}
+                                                        className={`skill-usage-player-list-item w-full border-b border-white/5 px-6 py-2 text-left transition-colors last:border-b-0 ${isSelected ? 'border-cyan-400 bg-cyan-500/10 text-white' : 'border-transparent hover:border-white/10 hover:bg-white/5'}`}
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div>

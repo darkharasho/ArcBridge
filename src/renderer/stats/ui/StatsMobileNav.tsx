@@ -25,21 +25,21 @@ export const StatsMobileNav = ({
     return (
         <>
             <div
-                className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-md transition-opacity ${mobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                className={`fixed inset-0 z-40 bg-black/60 transition-opacity ${mobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 onClick={() => setMobileNavOpen(false)}
             />
             <div className="fixed bottom-4 left-4 right-4 z-50">
-                <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/25 bg-white/5 backdrop-blur-2xl px-3 py-1.5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
+                <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/15 bg-[#1f252b] px-3 py-1.5">
                     <button
                         onClick={() => stepSection(-1)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#202830] border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
                     >
                         <ChevronDown className="w-4 h-4 rotate-90 text-[color:var(--accent)]" />
                         Prev
                     </button>
                     <button
                         onClick={() => setMobileNavOpen((open) => !open)}
-                        className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-[#202830] border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
                     >
                         <span className="truncate max-w-[160px]">
                             {tocItems.find((item) => item.id === activeNavId)?.label || 'Sections'}
@@ -48,7 +48,7 @@ export const StatsMobileNav = ({
                     </button>
                     <button
                         onClick={() => stepSection(1)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#202830] border border-white/10 text-[10px] uppercase tracking-widest text-gray-200"
                     >
                         Next
                         <ChevronDown className="w-4 h-4 -rotate-90 text-[color:var(--accent)]" />
@@ -57,6 +57,7 @@ export const StatsMobileNav = ({
             </div>
             {mobileNavOpen && (
                 <div
+                    data-stats-mobile-nav="overlay"
                     className="fixed inset-0 z-50 flex items-center justify-center px-4"
                     onClick={(event) => {
                         if (event.target === event.currentTarget) {
@@ -64,7 +65,7 @@ export const StatsMobileNav = ({
                         }
                     }}
                 >
-                    <div className="w-full max-w-sm max-h-[85vh] rounded-2xl p-4 border border-white/20 bg-white/5 shadow-[0_22px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl flex flex-col">
+                    <div data-stats-mobile-nav="panel" className="w-full max-w-sm max-h-[68vh] rounded-2xl p-4 border border-white/20 bg-[#1f252b] flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between mb-3">
                             <div className="text-[11px] uppercase tracking-[0.3em] text-gray-400">Jump to</div>
                             <button
@@ -75,7 +76,12 @@ export const StatsMobileNav = ({
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
-                        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1 pb-4">
+                        <div
+                            data-stats-mobile-nav="list"
+                            className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y -mx-4 px-4 pb-8"
+                            onWheel={(event) => event.stopPropagation()}
+                            onTouchMove={(event) => event.stopPropagation()}
+                        >
                             {tocItems.map((item) => {
                                 const Icon = item.icon;
                                 const isActive = item.id === activeNavId;
@@ -83,12 +89,12 @@ export const StatsMobileNav = ({
                                     <button
                                         key={item.id}
                                         onClick={() => scrollToSection(item.id)}
-                                        className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-gray-200 border transition-colors min-w-0 ${isActive
-                                            ? 'bg-white/10 border-white/20'
-                                            : 'border-transparent hover:border-white/10 hover:bg-white/10'
+                                        className={`stats-nav-entry stats-nav-entry--item w-full text-left flex items-center gap-2 px-2 py-2 text-gray-200 transition-colors min-w-0 ${isActive
+                                            ? 'bg-white/10'
+                                            : 'hover:bg-white/[0.03]'
                                             }`}
                                     >
-                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10">
+                                        <span className="flex items-center justify-center w-6 h-6">
                                             <Icon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
                                         </span>
                                         <span className="text-[13px] font-medium truncate min-w-0">{item.label}</span>

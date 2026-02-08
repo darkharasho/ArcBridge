@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Swords, Shield, ShieldAlert, Zap, Activity, HelpingHand, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, ListTree } from 'lucide-react';
+import { Trophy, Swords, Shield, ShieldAlert, Zap, Activity, Plus, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree } from 'lucide-react';
 
 export const useStatsNavigation = (embedded: boolean) => {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -16,16 +16,16 @@ export const useStatsNavigation = (embedded: boolean) => {
         { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon },
         { id: 'boon-output', label: 'Boon Output', icon: ShieldCheck },
         { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
+        { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
         { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
         { id: 'conditions-outgoing', label: 'Conditions', icon: Skull },
         { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
         { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
-        { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
+        { id: 'support-detailed', label: 'Support Detailed', icon: Plus },
         { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
         { id: 'special-buffs', label: 'Special Buffs', icon: Star },
-        { id: 'skill-usage', label: 'Skill Usage', icon: Zap },
-        { id: 'apm-stats', label: 'APM Breakdown', icon: Activity },
-        { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree }
+        { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
+        { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
     ]), []);
 
     const scrollToSection = (id: string) => {
@@ -52,8 +52,9 @@ export const useStatsNavigation = (embedded: boolean) => {
         const onWheel = (event: WheelEvent) => {
             const container = scrollContainerRef.current;
             if (!container) return;
-            const target = event.target as Node | null;
-            if (target && container.contains(target)) return;
+            const target = event.target;
+            if (target instanceof Element && target.closest('[data-stats-mobile-nav]')) return;
+            if (target instanceof Node && container.contains(target)) return;
             if (event.deltaY === 0) return;
             if (container.scrollHeight <= container.clientHeight) return;
             scrollDeltaRef.current += event.deltaY;

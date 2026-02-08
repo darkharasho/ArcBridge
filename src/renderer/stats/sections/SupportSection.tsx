@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HelpingHand, Maximize2, X, Columns, Users } from 'lucide-react';
+import { Plus, Maximize2, X, Columns, Users } from 'lucide-react';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
@@ -105,7 +105,7 @@ export const SupportSection = ({
     >
         <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                <HelpingHand className="w-5 h-5 text-emerald-300" />
+                <Plus className="w-5 h-5 text-emerald-300" />
                 Support - Detailed
             </h3>
             <button

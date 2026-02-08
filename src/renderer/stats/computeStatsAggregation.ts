@@ -2001,7 +2001,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 shortLabel: string;
                 fullLabel: string;
                 timestamp: number;
-                values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string }>;
+                values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s: number[] }>;
                 maxHit: number;
                 max1s: number;
                 max5s: number;
@@ -2021,7 +2021,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 peakSkillName: string;
             }>();
 
-            const getBurstFromTimeline = (player: any, seconds: number) => {
+            const getPerSecondDamageSeries = (player: any) => {
                 const toPerSecond = (series: number[]) => {
                     if (!Array.isArray(series) || series.length === 0) return [] as number[];
                     const deltas: number[] = [];
@@ -2031,19 +2031,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         deltas.push(Math.max(0, current - prev));
                     }
                     return deltas;
-                };
-                const maxRolling = (values: number[], window: number) => {
-                    if (!Array.isArray(values) || values.length === 0 || window <= 0) return 0;
-                    let sum = 0;
-                    let best = 0;
-                    for (let i = 0; i < values.length; i += 1) {
-                        sum += Number(values[i] || 0);
-                        if (i >= window) {
-                            sum -= Number(values[i - window] || 0);
-                        }
-                        if (i >= window - 1 && sum > best) best = sum;
-                    }
-                    return Math.max(0, best);
                 };
                 const sumCumulativeTargets = (targetSeries: any[]) => {
                     if (!Array.isArray(targetSeries)) return [] as number[];
@@ -2087,8 +2074,32 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const cumulative = targetPhase0
                     ? targetPhase0
                     : (Array.isArray(totalPhase0) ? totalPhase0.map((v: any) => Number(v || 0)) : []);
-                const perSecond = toPerSecond(cumulative);
-                return maxRolling(perSecond, seconds);
+                return toPerSecond(cumulative);
+            };
+
+            const getMaxRollingDamage = (values: number[], window: number) => {
+                if (!Array.isArray(values) || values.length === 0 || window <= 0) return 0;
+                let sum = 0;
+                let best = 0;
+                for (let i = 0; i < values.length; i += 1) {
+                    sum += Number(values[i] || 0);
+                    if (i >= window) {
+                        sum -= Number(values[i - window] || 0);
+                    }
+                    if (i >= window - 1 && sum > best) best = sum;
+                }
+                return Math.max(0, best);
+            };
+
+            const getBuckets = (values: number[], bucketSizeSeconds: number) => {
+                if (!Array.isArray(values) || values.length === 0 || bucketSizeSeconds <= 0) return [] as number[];
+                const out: number[] = [];
+                for (let i = 0; i < values.length; i += bucketSizeSeconds) {
+                    const end = Math.min(i + bucketSizeSeconds, values.length);
+                    const bucket = values.slice(i, end).reduce((sum, value) => sum + Number(value || 0), 0);
+                    out.push(bucket);
+                }
+                return out;
             };
 
             validLogs
@@ -2100,7 +2111,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
                     const mapName = resolveMapName(details, log);
                     const fullLabel = buildFightLabel(fightName, String(mapName || ''));
-                    const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string }> = {};
+                    const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s: number[] }> = {};
                     const players = Array.isArray(details.players) ? details.players : [];
                     players.forEach((player: any) => {
                         if (player?.notInSquad) return;
@@ -2110,9 +2121,16 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         const key = `${account}|${profession}`;
                         const spike = getHighestSingleHit(player, details);
                         const hit = Number(spike.peak || 0);
-                        const burst1s = Number(getBurstFromTimeline(player, 1) || 0);
-                        const burst5s = Number(getBurstFromTimeline(player, 5) || 0);
-                        values[key] = { hit, burst1s, burst5s, skillName: spike.skillName || 'Unknown Skill' };
+                        const perSecond = getPerSecondDamageSeries(player);
+                        const burst1s = Number(getMaxRollingDamage(perSecond, 1) || 0);
+                        const burst5s = Number(getMaxRollingDamage(perSecond, 5) || 0);
+                        values[key] = {
+                            hit,
+                            burst1s,
+                            burst5s,
+                            skillName: spike.skillName || 'Unknown Skill',
+                            buckets5s: getBuckets(perSecond, 5)
+                        };
 
                         const existing = playerMap.get(key) || {
                             key,

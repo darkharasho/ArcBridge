@@ -566,26 +566,28 @@ export const PlayerBreakdownSection = ({
                                             );
                                         })() : (
                                             <>
-                                                <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
-                                                    <div className="flex flex-col gap-2 min-w-0">
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {renderProfessionIcon(activePlayerBreakdown.profession, activePlayerBreakdown.professionList, 'w-4 h-4')}
-                                                            <div className="text-sm font-semibold text-gray-200">{activePlayerBreakdown.displayName}</div>
-                                                            <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
-                                                            <div className="text-sm font-semibold text-gray-200 truncate">
-                                                                <InlineIconLabel name={activePlayerSkill?.name || ''} iconUrl={activePlayerSkill?.icon} iconClassName="h-6 w-6" />
+                                                <div className="stats-table-shell__head-stack">
+                                                    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
+                                                        <div className="flex flex-col gap-2 min-w-0">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {renderProfessionIcon(activePlayerBreakdown.profession, activePlayerBreakdown.professionList, 'w-4 h-4')}
+                                                                <div className="text-sm font-semibold text-gray-200">{activePlayerBreakdown.displayName}</div>
+                                                                <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
+                                                                <div className="text-sm font-semibold text-gray-200 truncate">
+                                                                    <InlineIconLabel name={activePlayerSkill?.name || ''} iconUrl={activePlayerSkill?.icon} iconClassName="h-6 w-6" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-[11px] text-gray-500">
+                                                                {activePlayerBreakdown.skills.length} skills | {formatTopStatValue(totalPlayerDamage)} total damage
                                                             </div>
                                                         </div>
-                                                        <div className="text-[11px] text-gray-500">
-                                                            {activePlayerBreakdown.skills.length} skills | {formatTopStatValue(totalPlayerDamage)} total damage
-                                                        </div>
+                                                    </div>
+                                                    <div className="stats-table-column-header grid grid-cols-[1.2fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                        <div>Metric</div>
+                                                        <div className="text-right">Value</div>
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-[1.2fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                    <div>Metric</div>
-                                                    <div className="text-right">Value</div>
-                                                </div>
-                                                <div className={expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
+                                                <div className={`stats-table-shell__rows ${expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}`}>
                                                     {([
                                                         { label: 'Down Contribution', value: formatTopStatValue(activePlayerSkill?.downContribution || 0) },
                                                         { label: 'Total Damage', value: formatTopStatValue(activePlayerSkill?.damage || 0) },
@@ -798,49 +800,51 @@ export const PlayerBreakdownSection = ({
                                             );
                                         })() : (
                                             <>
-                                                <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
-                                                    <div className="flex flex-col gap-2 min-w-0">
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            {renderProfessionIcon(activeClassBreakdown.profession, undefined, 'w-4 h-4')}
-                                                            <div className="text-sm font-semibold text-gray-200">{activeClassBreakdown.profession}</div>
-                                                            <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
-                                                            <div className="text-sm font-semibold text-gray-200 truncate">
-                                                                <InlineIconLabel name={activeClassSkill?.name || ''} iconUrl={activeClassSkill?.icon} iconClassName="h-6 w-6" />
+                                                <div className="stats-table-shell__head-stack">
+                                                    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 bg-white/5">
+                                                        <div className="flex flex-col gap-2 min-w-0">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                {renderProfessionIcon(activeClassBreakdown.profession, undefined, 'w-4 h-4')}
+                                                                <div className="text-sm font-semibold text-gray-200">{activeClassBreakdown.profession}</div>
+                                                                <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
+                                                                <div className="text-sm font-semibold text-gray-200 truncate">
+                                                                    <InlineIconLabel name={activeClassSkill?.name || ''} iconUrl={activeClassSkill?.icon} iconClassName="h-6 w-6" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-[11px] text-gray-500">
+                                                                {activeClassRows.length} players | {activeClassBreakdown.skills.length} skills
                                                             </div>
                                                         </div>
-                                                        <div className="text-[11px] text-gray-500">
-                                                            {activeClassRows.length} players | {activeClassBreakdown.skills.length} skills
-                                                        </div>
+                                                    </div>
+                                                    <div className="stats-table-column-header grid grid-cols-[1.6fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                        <div>Player</div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleClassSort('down')}
+                                                            className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'down' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                        >
+                                                            Down Contrib
+                                                            <span className="text-[10px]">{classSort.key === 'down' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleClassSort('damage')}
+                                                            className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'damage' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                        >
+                                                            Damage
+                                                            <span className="text-[10px]">{classSort.key === 'damage' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleClassSort('dps')}
+                                                            className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'dps' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
+                                                        >
+                                                            DPS
+                                                            <span className="text-[10px]">{classSort.key === 'dps' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-[1.6fr_0.8fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                    <div>Player</div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleClassSort('down')}
-                                                        className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'down' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
-                                                    >
-                                                        Down Contrib
-                                                        <span className="text-[10px]">{classSort.key === 'down' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleClassSort('damage')}
-                                                        className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'damage' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
-                                                    >
-                                                        Damage
-                                                        <span className="text-[10px]">{classSort.key === 'damage' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleClassSort('dps')}
-                                                        className={`text-right flex items-center justify-end gap-1 transition-colors ${classSort.key === 'dps' ? 'text-sky-200' : 'text-gray-400 hover:text-gray-200'}`}
-                                                    >
-                                                        DPS
-                                                        <span className="text-[10px]">{classSort.key === 'dps' ? (classSort.dir === 'desc' ? '↓' : '↑') : ''}</span>
-                                                    </button>
-                                                </div>
-                                                <div className={expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
+                                                <div className={`stats-table-shell__rows ${expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}`}>
                                                     {sortedClassRows.map((player) => {
                                                         const skillEntry = player.skillMap?.[activeClassSkill?.id || ''];
                                                         const downContribution = Number(skillEntry?.downContribution || 0);

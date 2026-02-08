@@ -466,28 +466,28 @@ export const ApmSection = ({
                                     })()
                                 ) : (
                                     <>
-                                        <div className="flex items-center justify-between gap-2 px-4 py-3 bg-white/5">
-                                            <div className="min-w-0 text-sm font-semibold text-gray-200">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    {renderProfessionIcon(activeApmSpecTable.profession, undefined, 'w-4 h-4')}
-                                                    <span className="truncate">{activeApmSpecTable.profession}</span>
-                                                    <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
-                                                    {isAllApmSkills || !activeApmSkill ? (
-                                                        <span className="truncate">All Skills</span>
-                                                    ) : (
-                                                        <InlineIconLabel name={activeApmSkill.name} iconUrl={activeApmSkill.icon} iconClassName="h-5 w-5" />
-                                                    )}
+                                        <div className="stats-table-shell__head-stack">
+                                            <div className="flex items-center justify-between gap-2 px-4 py-3 bg-white/5">
+                                                <div className="min-w-0 text-sm font-semibold text-gray-200">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        {renderProfessionIcon(activeApmSpecTable.profession, undefined, 'w-4 h-4')}
+                                                        <span className="truncate">{activeApmSpecTable.profession}</span>
+                                                        <span className="text-[11px] uppercase tracking-widest text-gray-500">/</span>
+                                                        {isAllApmSkills || !activeApmSkill ? (
+                                                            <span className="truncate">All Skills</span>
+                                                        ) : (
+                                                            <InlineIconLabel name={activeApmSkill.name} iconUrl={activeApmSkill.icon} iconClassName="h-5 w-5" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-[11px] text-gray-500">
+                                                    {isAllApmSkills || !activeApmSkill
+                                                        ? `${activeApmSpecTable.playerRows?.length || 0} players`
+                                                        : `${(activeApmSkill as any)?.totalCasts ?? 0} casts`}
                                                 </div>
                                             </div>
-                                            <div className="text-[11px] text-gray-500">
-                                                {isAllApmSkills || !activeApmSkill
-                                                    ? `${activeApmSpecTable.playerRows?.length || 0} players`
-                                                    : `${(activeApmSkill as any)?.totalCasts ?? 0} casts`}
-                                            </div>
-                                        </div>
-                                        {isAllApmSkills || !activeApmSkill ? (
-                                            <>
-                                                <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                            {isAllApmSkills || !activeApmSkill ? (
+                                                <div className="stats-table-column-header grid grid-cols-[1.6fr_0.7fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                     <div>Player</div>
                                                     <button
                                                         type="button"
@@ -504,7 +504,17 @@ export const ApmSection = ({
                                                         {apmView === 'perSecond' ? 'APS' : 'APM'} (No Auto){allSkillsSort.key === 'apmNoAuto' ? (allSkillsSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}
                                                     </button>
                                                 </div>
-                                                <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
+                                            ) : (
+                                                <div className="stats-table-column-header grid grid-cols-[1.4fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
+                                                    <div>Player</div>
+                                                    <div className="text-right">Casts</div>
+                                                    <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {isAllApmSkills || !activeApmSkill ? (
+                                            <>
+                                                <div className={`stats-table-shell__rows ${expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}`}>
                                                     {sortedAllSkillsRows.map((row: ApmPlayerRow, index: number) => (
                                                         <div
                                                             key={`${activeApmSpecTable.profession}-all-${row.key}`}
@@ -529,12 +539,7 @@ export const ApmSection = ({
                                             </>
                                         ) : (
                                             <>
-                                                <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
-                                                    <div>Player</div>
-                                                    <div className="text-right">Casts</div>
-                                                    <div className="text-right">{apmView === 'perSecond' ? 'APS' : 'APM'}</div>
-                                                </div>
-                                                <div className={expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}>
+                                                <div className={`stats-table-shell__rows ${expandedSection === 'apm-stats' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}`}>
                                                     {((activeApmSkill as any)?.playerRows || []).length === 0 ? (
                                                         <div className="px-4 py-8 text-center text-sm text-gray-500 italic border-t border-white/5">
                                                             No player rows available for this skill.

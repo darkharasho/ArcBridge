@@ -397,7 +397,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         shortLabel: string;
         fullLabel: string;
         timestamp: number;
-        values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string }>;
+        values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s?: number[] }>;
         maxHit: number;
         max1s: number;
         max5s: number;
@@ -488,7 +488,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         if (shouldUsePrecomputedSpike) {
             const fights: SpikeFight[] = precomputedFights.map((fight: any, index: number) => {
                 const rawValues = fight?.values && typeof fight.values === 'object' ? fight.values : {};
-                const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string }> = {};
+                const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s?: number[] }> = {};
                 Object.entries(rawValues).forEach(([key, value]: any) => {
                     if (value && typeof value === 'object') {
                         const legacyDamage = Number((value as any).damage || 0);
@@ -496,7 +496,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                             hit: Number((value as any).hit ?? legacyDamage),
                             burst1s: Number((value as any).burst1s || 0),
                             burst5s: Number((value as any).burst5s || 0),
-                            skillName: String((value as any).skillName || '')
+                            skillName: String((value as any).skillName || ''),
+                            buckets5s: Array.isArray((value as any).buckets5s)
+                                ? (value as any).buckets5s.map((entry: any) => Number(entry || 0))
+                                : undefined
                         };
                         return;
                     }
@@ -667,7 +670,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${fightIndex}`);
             const rawMap = details.zone || details.mapName || details.map || details.location || '';
             const fullLabel = buildFightLabel(fightName, String(rawMap || ''));
-            const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string }> = {};
+            const values: Record<string, { hit: number; burst1s: number; burst5s: number; skillName: string; buckets5s?: number[] }> = {};
 
             const fightPlayers = Array.isArray(details.players) ? details.players : [];
             fightPlayers.forEach((player: any) => {
@@ -811,6 +814,22 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         if (!selectedPoint || !selectedSpikePlayerKey) {
             return { title: 'Fight Breakdown', data: [] as Array<{ label: string; value: number }> };
         }
+        const selectedFight = spikeDamageData.fights.find((fight, index) => (
+            String(fight.id || '') === String(selectedPoint.fightId || '')
+            || index === selectedPoint.index
+        )) || null;
+        const precomputedBuckets = Array.isArray(selectedFight?.values?.[selectedSpikePlayerKey]?.buckets5s)
+            ? selectedFight?.values?.[selectedSpikePlayerKey]?.buckets5s || []
+            : [];
+        if (precomputedBuckets.length > 0) {
+            return {
+                title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Damage Buckets)`,
+                data: precomputedBuckets.map((value, idx) => ({
+                    label: `${idx * 5}s-${(idx + 1) * 5}s`,
+                    value: Number(value || 0)
+                }))
+            };
+        }
         const [account, profession] = selectedSpikePlayerKey.split('|');
         const selectedLog = logs.find((log) => {
             const id = String(log?.filePath || log?.id || '');
@@ -890,7 +909,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             });
         }
         return { title: `Fight Breakdown - ${fightLabel} (5s Damage Buckets)`, data };
-    }, [selectedSpikeFightIndex, spikeChartData, selectedSpikePlayerKey, logs]);
+    }, [selectedSpikeFightIndex, spikeChartData, selectedSpikePlayerKey, logs, spikeDamageData.fights]);
 
     useEffect(() => {
         if (playerSkillBreakdowns.length === 0) {
@@ -1131,13 +1150,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         [isSectionVisible]
     );
     const isFirstVisibleSection = useCallback((id: string) => id === firstVisibleSectionId, [firstVisibleSectionId]);
-
-
-
-
-
-
-
     const classRankByPlayer = useMemo(() => {
         const ranks = new Map<string, number>();
         const grouped = new Map<string, Array<{ key: string; total: number }>>();
@@ -1500,12 +1512,13 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                 devMockUploadState={devMockUploadState}
             />
 
-            <div
-                id="stats-dashboard-container"
-                ref={scrollContainerRef}
-                className={scrollContainerClass}
-                style={scrollContainerStyle}
-            >
+            <div className={embedded ? '' : 'flex-1 min-h-0 flex'}>
+                <div
+                    id="stats-dashboard-container"
+                    ref={scrollContainerRef}
+                    className={`${scrollContainerClass} ${embedded ? '' : 'flex-1'}`}
+                    style={scrollContainerStyle}
+                >
                 {useModernLayout ? (
                     <div className="stats-layout stats-layout-modern grid gap-4 grid-cols-1">
                         <div className="space-y-4 min-w-0">
@@ -1598,6 +1611,40 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                                 isFirstVisibleSection={isFirstVisibleSection}
                                 sectionClass={sectionClass}
                                 sidebarListClass={sidebarListClass}
+                            />
+
+                            <PlayerBreakdownSection
+                                expandedSection={expandedSection}
+                                expandedSectionClosing={expandedSectionClosing}
+                                openExpandedSection={openExpandedSection}
+                                closeExpandedSection={closeExpandedSection}
+                                isSectionVisible={isSectionVisible}
+                                isFirstVisibleSection={isFirstVisibleSection}
+                                sectionClass={sectionClass}
+                                sidebarListClass={sidebarListClass}
+                                viewMode={playerBreakdownViewMode}
+                                setViewMode={setPlayerBreakdownViewMode}
+                                playerSkillBreakdowns={playerSkillBreakdowns}
+                                classSkillBreakdowns={classSkillBreakdowns}
+                                activePlayerKey={activePlayerBreakdownKey}
+                                setActivePlayerKey={setActivePlayerBreakdownKey}
+                                expandedPlayerKey={expandedPlayerBreakdownKey}
+                                setExpandedPlayerKey={setExpandedPlayerBreakdownKey}
+                                activePlayerSkillId={activePlayerBreakdownSkillId}
+                                setActivePlayerSkillId={setActivePlayerBreakdownSkillId}
+                                activeClassKey={activeClassBreakdownKey}
+                                setActiveClassKey={setActiveClassBreakdownKey}
+                                expandedClassKey={expandedClassBreakdownKey}
+                                setExpandedClassKey={setExpandedClassBreakdownKey}
+                                activeClassSkillId={activeClassBreakdownSkillId}
+                                setActiveClassSkillId={setActiveClassBreakdownSkillId}
+                                skillSearch={playerBreakdownSkillSearch}
+                                setSkillSearch={setPlayerBreakdownSkillSearch}
+                                activePlayerBreakdown={activePlayerBreakdown}
+                                activePlayerSkill={activePlayerSkill}
+                                activeClassBreakdown={activeClassBreakdown}
+                                activeClassSkill={activeClassSkill}
+                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <SpikeDamageSection
@@ -1835,39 +1882,6 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                                 renderProfessionIcon={renderProfessionIcon}
                             />
 
-                            <PlayerBreakdownSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
-                                viewMode={playerBreakdownViewMode}
-                                setViewMode={setPlayerBreakdownViewMode}
-                                playerSkillBreakdowns={playerSkillBreakdowns}
-                                classSkillBreakdowns={classSkillBreakdowns}
-                                activePlayerKey={activePlayerBreakdownKey}
-                                setActivePlayerKey={setActivePlayerBreakdownKey}
-                                expandedPlayerKey={expandedPlayerBreakdownKey}
-                                setExpandedPlayerKey={setExpandedPlayerBreakdownKey}
-                                activePlayerSkillId={activePlayerBreakdownSkillId}
-                                setActivePlayerSkillId={setActivePlayerBreakdownSkillId}
-                                activeClassKey={activeClassBreakdownKey}
-                                setActiveClassKey={setActiveClassBreakdownKey}
-                                expandedClassKey={expandedClassBreakdownKey}
-                                setExpandedClassKey={setExpandedClassBreakdownKey}
-                                activeClassSkillId={activeClassBreakdownSkillId}
-                                setActiveClassSkillId={setActiveClassBreakdownSkillId}
-                                skillSearch={playerBreakdownSkillSearch}
-                                setSkillSearch={setPlayerBreakdownSkillSearch}
-                                activePlayerBreakdown={activePlayerBreakdown}
-                                activePlayerSkill={activePlayerSkill}
-                                activeClassBreakdown={activeClassBreakdown}
-                                activeClassSkill={activeClassSkill}
-                                renderProfessionIcon={renderProfessionIcon}
-                            />
                         </div>
                         <div className="space-y-4 min-w-0">
                             <SquadCompositionSection
@@ -1985,6 +1999,40 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                             isFirstVisibleSection={isFirstVisibleSection}
                             sectionClass={sectionClass}
                             sidebarListClass={sidebarListClass}
+                        />
+
+                        <PlayerBreakdownSection
+                            expandedSection={expandedSection}
+                            expandedSectionClosing={expandedSectionClosing}
+                            openExpandedSection={openExpandedSection}
+                            closeExpandedSection={closeExpandedSection}
+                            isSectionVisible={isSectionVisible}
+                            isFirstVisibleSection={isFirstVisibleSection}
+                            sectionClass={sectionClass}
+                            sidebarListClass={sidebarListClass}
+                            viewMode={playerBreakdownViewMode}
+                            setViewMode={setPlayerBreakdownViewMode}
+                            playerSkillBreakdowns={playerSkillBreakdowns}
+                            classSkillBreakdowns={classSkillBreakdowns}
+                            activePlayerKey={activePlayerBreakdownKey}
+                            setActivePlayerKey={setActivePlayerBreakdownKey}
+                            expandedPlayerKey={expandedPlayerBreakdownKey}
+                            setExpandedPlayerKey={setExpandedPlayerBreakdownKey}
+                            activePlayerSkillId={activePlayerBreakdownSkillId}
+                            setActivePlayerSkillId={setActivePlayerBreakdownSkillId}
+                            activeClassKey={activeClassBreakdownKey}
+                            setActiveClassKey={setActiveClassBreakdownKey}
+                            expandedClassKey={expandedClassBreakdownKey}
+                            setExpandedClassKey={setExpandedClassBreakdownKey}
+                            activeClassSkillId={activeClassBreakdownSkillId}
+                            setActiveClassSkillId={setActiveClassBreakdownSkillId}
+                            skillSearch={playerBreakdownSkillSearch}
+                            setSkillSearch={setPlayerBreakdownSkillSearch}
+                            activePlayerBreakdown={activePlayerBreakdown}
+                            activePlayerSkill={activePlayerSkill}
+                            activeClassBreakdown={activeClassBreakdown}
+                            activeClassSkill={activeClassSkill}
+                            renderProfessionIcon={renderProfessionIcon}
                         />
 
                         <SpikeDamageSection
@@ -2249,42 +2297,10 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                             renderProfessionIcon={renderProfessionIcon}
                         />
 
-                        <PlayerBreakdownSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
-                            viewMode={playerBreakdownViewMode}
-                            setViewMode={setPlayerBreakdownViewMode}
-                            playerSkillBreakdowns={playerSkillBreakdowns}
-                            classSkillBreakdowns={classSkillBreakdowns}
-                            activePlayerKey={activePlayerBreakdownKey}
-                            setActivePlayerKey={setActivePlayerBreakdownKey}
-                            expandedPlayerKey={expandedPlayerBreakdownKey}
-                            setExpandedPlayerKey={setExpandedPlayerBreakdownKey}
-                            activePlayerSkillId={activePlayerBreakdownSkillId}
-                            setActivePlayerSkillId={setActivePlayerBreakdownSkillId}
-                            activeClassKey={activeClassBreakdownKey}
-                            setActiveClassKey={setActiveClassBreakdownKey}
-                            expandedClassKey={expandedClassBreakdownKey}
-                            setExpandedClassKey={setExpandedClassBreakdownKey}
-                            activeClassSkillId={activeClassBreakdownSkillId}
-                            setActiveClassSkillId={setActiveClassBreakdownSkillId}
-                            skillSearch={playerBreakdownSkillSearch}
-                            setSkillSearch={setPlayerBreakdownSkillSearch}
-                            activePlayerBreakdown={activePlayerBreakdown}
-                            activePlayerSkill={activePlayerSkill}
-                            activeClassBreakdown={activeClassBreakdown}
-                            activeClassSkill={activeClassSkill}
-                            renderProfessionIcon={renderProfessionIcon}
-                        />
                     </>
                 )}
                 {!embedded && <div className="h-24" aria-hidden="true" />}
+            </div>
             </div>
 
             <StatsMobileNav

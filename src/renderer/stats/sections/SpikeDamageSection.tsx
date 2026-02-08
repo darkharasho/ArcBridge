@@ -178,7 +178,7 @@ export const SpikeDamageSection = ({
                         placeholder="Search player or account"
                         className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-rose-400 focus:outline-none"
                     />
-                    <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
+                    <div className="spike-player-list-container flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
                         {flatSpikePlayers.length === 0 ? (
                             <div className="px-3 py-4 text-xs text-gray-500 italic">
                                 No players match the filter.
@@ -192,7 +192,7 @@ export const SpikeDamageSection = ({
                                             key={player.key}
                                             type="button"
                                             onClick={() => setSelectedSpikePlayerKey(player.key)}
-                                            className={`w-full rounded-md border px-2.5 py-1.5 text-left transition-colors ${isSelected
+                                            className={`spike-player-list-item w-full rounded-md border px-2.5 py-1.5 text-left transition-colors ${isSelected
                                                 ? 'border-rose-300/60 bg-rose-400/10 text-white'
                                                 : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]'
                                                 }`}

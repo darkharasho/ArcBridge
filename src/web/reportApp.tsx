@@ -17,7 +17,7 @@ import {
     Activity,
     Map as MapIcon,
     Sparkles,
-    HelpingHand,
+    Plus,
     HeartPulse,
     Star,
     Skull,
@@ -26,7 +26,8 @@ import {
     ArrowLeft,
     ArrowUp,
     X as CloseIcon,
-    ListTree
+    ListTree,
+    Keyboard
 } from 'lucide-react';
 
 interface ReportMeta {
@@ -462,9 +463,10 @@ export function ReportApp() {
             id: 'offense',
             label: 'Offensive Stats',
             icon: Swords,
-            sectionIds: ['offense-detailed', 'spike-damage', 'conditions-outgoing'],
+            sectionIds: ['offense-detailed', 'player-breakdown', 'spike-damage', 'conditions-outgoing'],
             items: [
                 { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
+                { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
                 { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
                 { id: 'conditions-outgoing', label: 'Conditions', icon: Skull }
             ]
@@ -478,7 +480,7 @@ export function ReportApp() {
                 { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
                 { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
                 { id: 'boon-output', label: 'Boon Output', icon: ShieldCheck },
-                { id: 'support-detailed', label: 'Support Detailed', icon: HelpingHand },
+                { id: 'support-detailed', label: 'Support Detailed', icon: Plus },
                 { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse }
             ]
         },
@@ -486,12 +488,11 @@ export function ReportApp() {
             id: 'other',
             label: 'Other Metrics',
             icon: Sparkles,
-            sectionIds: ['special-buffs', 'skill-usage', 'apm-stats', 'player-breakdown'],
+            sectionIds: ['special-buffs', 'skill-usage', 'apm-stats'],
             items: [
                 { id: 'special-buffs', label: 'Special Buffs', icon: Star },
-                { id: 'skill-usage', label: 'Skill Usage', icon: Zap },
-                { id: 'apm-stats', label: 'APM Breakdown', icon: Activity },
-                { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree }
+                { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
+                { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
             ]
         }
     ]), []);
