@@ -107,7 +107,7 @@ export function Terminal({ isOpen, onClose }: TerminalProps) {
                         ) : (
                             logs.map((log, index) => (
                                 <div key={`${log.timestamp}-${index}`} className="flex gap-3 text-xs md:text-sm group hover:bg-white/5 p-1 -mx-1 rounded px-2">
-                                    <span className="text-gray-600 shrink-0 select-none w-20">
+                                    <span className="text-gray-600 shrink-0 select-none w-28 whitespace-nowrap">
                                         {new Date(log.timestamp).toLocaleTimeString()}
                                     </span>
                                     <div className={`flex-1 break-all whitespace-pre-wrap font-mono ${log.type === 'error' ? 'text-red-400' : 'text-gray-300'

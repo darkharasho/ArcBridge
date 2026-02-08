@@ -1041,6 +1041,13 @@ body.theme-matte .settings-view textarea::placeholder {
     color: rgba(199, 203, 204, 0.6);
 }
 
+/* Settings title is gradient-clipped in JSX; matte removes gradients globally. */
+body.theme-matte .settings-view .settings-title {
+    color: var(--text-primary) !important;
+    background-image: none !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+}
+
 body.theme-matte .settings-view .github-pages-url-card {
     background-color: var(--bg-input) !important;
     border-color: var(--border-subtle) !important;
