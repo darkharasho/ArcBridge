@@ -1,16 +1,17 @@
 # Release Notes
 
-Version v1.25.7 — February 7, 2026
+Version v1.25.8 — February 7, 2026
 
 ## 🌟 Highlights
-- Added the initial HTML structure for ArcBridge, establishing the app’s layout.
-- Refactored the codebase to improve readability and maintainability.
+- Refactor of code structure to improve readability and maintainability
+- Dist-web assets updated to align with the latest build
 
 ## 🛠️ Improvements
-- Reorganized code and project structure for easier future updates and enhancements.
+- Cleaner code organization to simplify future maintenance
+- Updated dist-web assets as part of the latest build rollout
 
 ## 🧯 Fixes
-- None.
+None.
 
 ## ⚠️ Breaking Changes
-- None.
+None.
