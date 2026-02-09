@@ -110,7 +110,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
         const withFallbackObject = (value: any, fallback: any) => (value && typeof value === 'object' ? value : fallback);
         const emptyTopStat = { value: 0, player: '-', profession: 'Unknown', professionList: [], count: 0 };
         const emptyMvp = { account: '-', profession: 'Unknown', professionList: [], reason: '', topStats: [], score: 0 };
-        return {
+        const normalized = {
             ...source,
             total: Number((source as any).total || 0),
             timelineData: asArray((source as any).timelineData),
@@ -150,6 +150,29 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             enemyClassData: asArray((source as any).enemyClassData),
             playerSkillBreakdowns: asArray((source as any).playerSkillBreakdowns)
         };
+
+        const downContribRows = asArray((normalized as any).leaderboards?.downContrib)
+            .map((row: any) => ({
+                ...row,
+                value: Number(row?.value ?? 0)
+            }))
+            .filter((row: any) => Number.isFinite(row.value))
+            .sort((a: any, b: any) => (b.value - a.value) || String(a?.account || '').localeCompare(String(b?.account || '')));
+        const topDownContrib = downContribRows[0];
+        if (topDownContrib) {
+            (normalized as any).maxDownContrib = {
+                ...((normalized as any).maxDownContrib || {}),
+                value: Number(topDownContrib.value || 0),
+                player: String(topDownContrib.account || (normalized as any).maxDownContrib?.player || '-'),
+                count: Number(topDownContrib.count || (normalized as any).maxDownContrib?.count || 0),
+                profession: String(topDownContrib.profession || (normalized as any).maxDownContrib?.profession || 'Unknown'),
+                professionList: Array.isArray(topDownContrib.professionList)
+                    ? topDownContrib.professionList
+                    : ((normalized as any).maxDownContrib?.professionList || [])
+            };
+        }
+
+        return normalized;
     }, [stats]);
 
     useEffect(() => {

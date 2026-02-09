@@ -87,6 +87,27 @@ const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active
     );
 };
 
+const normalizeLeaderboardRows = (rows: any[], higherIsBetter: boolean) => {
+    const normalized = (Array.isArray(rows) ? rows : [])
+        .map((row) => ({ ...row, value: Number(row?.value ?? 0) }))
+        .filter((row) => Number.isFinite(row.value))
+        .sort((a, b) => {
+            const diff = higherIsBetter ? (b.value - a.value) : (a.value - b.value);
+            if (diff !== 0) return diff;
+            return String(a?.account || '').localeCompare(String(b?.account || ''));
+        });
+
+    let lastValue: number | null = null;
+    let lastRank = 0;
+    return normalized.map((row, index) => {
+        if (lastValue === null || row.value !== lastValue) {
+            lastRank = index + 1;
+            lastValue = row.value;
+        }
+        return { ...row, rank: lastRank };
+    });
+};
+
 export const TopPlayersSection = ({
     stats,
     showTopStats,
@@ -251,15 +272,15 @@ export const TopPlayersSection = ({
                 const titlePrefix = isPerSecond ? '' : 'Total ';
                 const titleSuffix = isPerSecond ? ' /s' : '';
                 const leaderCards = [
-                    { icon: HelpingHand, title: `Down Contribution${titleSuffix}`, data: topStatsData.maxDownContrib, color: 'red', statKey: 'downContrib' },
-                    { icon: Shield, title: `${titlePrefix}Barrier${titleSuffix}`, data: topStatsData.maxBarrier, color: 'yellow', statKey: 'barrier' },
-                    { icon: Activity, title: `${titlePrefix}Healing${titleSuffix}`, data: topStatsData.maxHealing, color: 'green', statKey: 'healing' },
-                    { icon: Wind, title: `${titlePrefix}Dodges${titleSuffix}`, data: topStatsData.maxDodges, color: 'cyan', statKey: 'dodges' },
-                    { icon: Zap, title: `${titlePrefix}Strips${titleSuffix}`, data: topStatsData.maxStrips, color: 'purple', statKey: 'strips' },
-                    { icon: Flame, title: `${titlePrefix}Cleanses${titleSuffix}`, data: topStatsData.maxCleanses, color: 'blue', statKey: 'cleanses' },
-                    { icon: Hammer, title: `${titlePrefix}CC${titleSuffix}`, data: topStatsData.maxCC, color: 'pink', statKey: 'cc' },
-                    { icon: ShieldCheck, title: `${titlePrefix}Stab Gen${titleSuffix}`, data: topStatsData.maxStab, color: 'cyan', statKey: 'stability' },
-                    { icon: Crosshair, title: 'Closest to Tag', data: topStatsData.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag' }
+                    { icon: HelpingHand, title: `Down Contribution${titleSuffix}`, data: topStatsData.maxDownContrib, color: 'red', statKey: 'downContrib', higherIsBetter: true },
+                    { icon: Shield, title: `${titlePrefix}Barrier${titleSuffix}`, data: topStatsData.maxBarrier, color: 'yellow', statKey: 'barrier', higherIsBetter: true },
+                    { icon: Activity, title: `${titlePrefix}Healing${titleSuffix}`, data: topStatsData.maxHealing, color: 'green', statKey: 'healing', higherIsBetter: true },
+                    { icon: Wind, title: `${titlePrefix}Dodges${titleSuffix}`, data: topStatsData.maxDodges, color: 'cyan', statKey: 'dodges', higherIsBetter: true },
+                    { icon: Zap, title: `${titlePrefix}Strips${titleSuffix}`, data: topStatsData.maxStrips, color: 'purple', statKey: 'strips', higherIsBetter: true },
+                    { icon: Flame, title: `${titlePrefix}Cleanses${titleSuffix}`, data: topStatsData.maxCleanses, color: 'blue', statKey: 'cleanses', higherIsBetter: true },
+                    { icon: Hammer, title: `${titlePrefix}CC${titleSuffix}`, data: topStatsData.maxCC, color: 'pink', statKey: 'cc', higherIsBetter: true },
+                    { icon: ShieldCheck, title: `${titlePrefix}Stab Gen${titleSuffix}`, data: topStatsData.maxStab, color: 'cyan', statKey: 'stability', higherIsBetter: true },
+                    { icon: Crosshair, title: 'Closest to Tag', data: topStatsData.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag', higherIsBetter: false }
                 ];
                 const formatValue = (value: number) => {
                     if (!isPerSecond || !Number.isFinite(value)) {
@@ -271,11 +292,23 @@ export const TopPlayersSection = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {leaderCards.map((card) => {
                             const isActive = expandedLeader === 'all';
-                            const rows = topStatsLeaderboards?.[card.statKey] || [];
+                            const rows = normalizeLeaderboardRows(topStatsLeaderboards?.[card.statKey] || [], card.higherIsBetter);
+                            const topRow = rows[0];
+                            const cardData = topRow
+                                ? {
+                                    ...card.data,
+                                    value: Number(topRow.value || 0),
+                                    player: topRow.account || card.data?.player || '-',
+                                    count: topRow.count || card.data?.count || 0,
+                                    profession: topRow.profession || card.data?.profession || 'Unknown',
+                                    professionList: topRow.professionList || card.data?.professionList || []
+                                }
+                                : card.data;
                             return (
                                 <LeaderCard
                                     key={card.statKey}
                                     {...card}
+                                    data={cardData}
                                     active={isActive}
                                     onClick={() => setExpandedLeader((prev) => (prev === 'all' ? null : 'all'))}
                                     rows={rows}

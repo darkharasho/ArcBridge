@@ -1733,6 +1733,17 @@ const computeGitBlobSha = (content: Buffer) => {
     return createHash('sha1').update(`blob ${content.length}\0`).update(content).digest('hex');
 };
 
+const normalizeUiThemeChoice = (value: unknown): 'classic' | 'modern' | 'crt' | 'matte' => {
+    if (value === 'modern' || value === 'crt' || value === 'matte') return value;
+    return 'classic';
+};
+
+const resolveWebUiThemeChoice = (appUiTheme: unknown, selectedThemeId: unknown): 'classic' | 'modern' | 'crt' | 'matte' => {
+    if (selectedThemeId === MATTE_WEB_THEME_ID) return 'matte';
+    if (selectedThemeId === CRT_WEB_THEME_ID) return 'crt';
+    return normalizeUiThemeChoice(appUiTheme);
+};
+
 const listGithubRepos = async (token: string) => {
     const repos: Array<{ full_name: string; name: string; owner: string }> = [];
     let page = 1;
@@ -1754,6 +1765,26 @@ const listGithubRepos = async (token: string) => {
         page += 1;
     }
     return repos;
+};
+
+const listGithubOrganizations = async (token: string) => {
+    const orgs: Array<{ login: string }> = [];
+    let page = 1;
+    while (page <= 5) {
+        const resp = await githubApiRequest('GET', `/user/orgs?per_page=100&page=${page}`, token);
+        if (resp.status >= 300) {
+            throw new Error(`GitHub API error (${resp.status}) loading organizations`);
+        }
+        if (!Array.isArray(resp.data) || resp.data.length === 0) break;
+        resp.data.forEach((org: any) => {
+            const login = org?.login;
+            if (!login || typeof login !== 'string') return;
+            orgs.push({ login });
+        });
+        if (resp.data.length < 100) break;
+        page += 1;
+    }
+    return orgs;
 };
 
 const putGithubFile = async (owner: string, repo: string, filePath: string, branch: string, token: string, contentBase64: string, message: string, sha?: string) => {
@@ -1808,11 +1839,15 @@ const ensureGithubRepo = async (owner: string, repo: string, token: string) => {
     return createResp.data;
 };
 
-const createGithubRepo = async (owner: string, repo: string, token: string) => {
+const createGithubRepo = async (owner: string, repo: string, token: string, authenticatedUser?: string) => {
     if (!isValidRepoName(repo)) {
         throw new Error('Invalid repository name.');
     }
-    const resp = await githubApiRequest('POST', '/user/repos', token, {
+    const creatingInOrg = !!authenticatedUser && owner.toLowerCase() !== authenticatedUser.toLowerCase();
+    const apiPath = creatingInOrg
+        ? `/orgs/${encodeGitPath(owner)}/repos`
+        : '/user/repos';
+    const resp = await githubApiRequest('POST', apiPath, token, {
         name: repo,
         private: false,
         auto_init: true,
@@ -3294,6 +3329,19 @@ if (!gotTheLock) {
             }
         });
 
+        ipcMain.handle('get-github-orgs', async () => {
+            try {
+                const token = store.get('githubToken') as string | undefined;
+                if (!token) {
+                    return { success: false, error: 'GitHub not connected.' };
+                }
+                const orgs = await listGithubOrganizations(token);
+                return { success: true, orgs };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to load organizations.' };
+            }
+        });
+
         ipcMain.handle('get-github-reports', async () => {
             try {
                 const token = store.get('githubToken') as string | undefined;
@@ -3415,22 +3463,23 @@ if (!gotTheLock) {
         });
 
 
-        ipcMain.handle('create-github-repo', async (_event, params: { name: string; branch?: string }) => {
+        ipcMain.handle('create-github-repo', async (_event, params: { name: string; branch?: string; owner?: string }) => {
             try {
                 const token = store.get('githubToken') as string | undefined;
                 if (!token) {
                     return { success: false, error: 'GitHub not connected.' };
                 }
                 const user = await getGithubUser(token);
-                const owner = user?.login;
-                if (!owner) {
+                const authenticatedUser = user?.login;
+                if (!authenticatedUser) {
                     return { success: false, error: 'Unable to determine GitHub username.' };
                 }
+                const owner = params.owner?.trim() || authenticatedUser;
                 const repoName = params.name?.trim();
                 if (!repoName) {
                     return { success: false, error: 'Repository name is required.' };
                 }
-                const repo = await createGithubRepo(owner, repoName, token);
+                const repo = await createGithubRepo(owner, repoName, token, authenticatedUser);
                 const branch = params.branch || 'main';
                 const { pagesInfo, pagesPath } = await resolvePagesSource(owner, repoName, branch, token);
                 const pagesUrl = pagesInfo?.html_url || `https://${owner}.github.io/${repoName}`;
@@ -3746,7 +3795,7 @@ if (!gotTheLock) {
                 reportIds.forEach((id) => {
                     queueFile(withPagesPath(pagesPath, `reports/${id}/theme.json`), themeBuffer);
                 });
-                const uiThemeValue = store.get('uiTheme', 'classic') as string;
+                const uiThemeValue = resolveWebUiThemeChoice(uiTheme, selectedTheme?.id);
                 const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiThemeValue }, null, 2));
                 queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
 
@@ -3851,12 +3900,21 @@ if (!gotTheLock) {
                 const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
                 const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : (uiTheme === 'matte' ? MATTE_WEB_THEME_ID : requestedThemeId);
                 const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
+                const uiThemeValue = resolveWebUiThemeChoice(uiTheme, selectedTheme?.id);
+                const reportPayload = {
+                    meta: reportMeta,
+                    stats: {
+                        ...(payload.stats || {}),
+                        uiTheme: uiThemeValue,
+                        webThemeId: selectedTheme?.id || DEFAULT_WEB_THEME_ID
+                    }
+                };
 
                 sendWebUploadStatus('Packaging', 'Preparing report bundle...', 40);
                 const stagingRoot = path.join(app.getPath('userData'), 'web-report-staging', reportMeta.id);
                 fs.rmSync(stagingRoot, { recursive: true, force: true });
                 fs.mkdirSync(stagingRoot, { recursive: true });
-                fs.writeFileSync(path.join(stagingRoot, 'report.json'), JSON.stringify({ meta: reportMeta, stats: payload.stats }, null, 2));
+                fs.writeFileSync(path.join(stagingRoot, 'report.json'), JSON.stringify(reportPayload, null, 2));
                 const redirectHtml = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -3990,7 +4048,6 @@ if (!gotTheLock) {
                     const themeBuffer = Buffer.from(JSON.stringify(selectedTheme, null, 2));
                     queueFile(withPagesPath(pagesPath, 'theme.json'), themeBuffer);
                 }
-                const uiThemeValue = store.get('uiTheme', 'classic') as string;
                 const uiThemeBuffer = Buffer.from(JSON.stringify({ theme: uiThemeValue }, null, 2));
                 queueFile(withPagesPath(pagesPath, 'ui-theme.json'), uiThemeBuffer);
                 const logoPath = store.get('githubLogoPath') as string | undefined;
@@ -4073,6 +4130,14 @@ if (!gotTheLock) {
                         return { success: false, error: built.error || 'Failed to generate the web template automatically.', errorDetail: built.errorDetail };
                     }
                     copyDir(templateDir, webRoot);
+                } else {
+                    // Keep local mock reports on current frontend assets instead of stale bundles.
+                    const templateDir = path.join(appRoot, 'dist-web');
+                    const built = await buildWebTemplate(appRoot);
+                    if (!built.ok || !fs.existsSync(templateDir)) {
+                        return { success: false, error: built.error || 'Failed to generate the web template automatically.', errorDetail: built.errorDetail };
+                    }
+                    copyDir(templateDir, webRoot);
                 }
                 // Always ensure dev index points at the web entry.
                 ensureDevWebIndex(webRoot);
@@ -4085,10 +4150,12 @@ if (!gotTheLock) {
                 const requestedThemeId = (store.get('githubWebTheme', DEFAULT_WEB_THEME_ID) as string) || DEFAULT_WEB_THEME_ID;
                 const themeId = uiTheme === 'crt' ? CRT_WEB_THEME_ID : (uiTheme === 'matte' ? MATTE_WEB_THEME_ID : requestedThemeId);
                 const selectedTheme = availableThemes.find((theme) => theme.id === themeId) || availableThemes[0];
+                const uiThemeValue = resolveWebUiThemeChoice(uiTheme, selectedTheme?.id);
                 const reportPayload = {
                     meta: reportMeta,
                     stats: {
                         ...(payload.stats || {}),
+                        uiTheme: uiThemeValue,
                         webThemeId: selectedTheme?.id || DEFAULT_WEB_THEME_ID
                     }
                 };
@@ -4103,7 +4170,7 @@ if (!gotTheLock) {
                     fs.writeFileSync(path.join(appRoot, 'theme.json'), themePayload);
                     fs.writeFileSync(path.join(webRoot, 'theme.json'), themePayload);
                 }
-                const uiThemePayload = JSON.stringify({ theme: uiTheme }, null, 2);
+                const uiThemePayload = JSON.stringify({ theme: uiThemeValue }, null, 2);
                 fs.writeFileSync(path.join(appRoot, 'ui-theme.json'), uiThemePayload);
                 fs.writeFileSync(path.join(webRoot, 'ui-theme.json'), uiThemePayload);
 

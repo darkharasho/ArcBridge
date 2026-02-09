@@ -613,11 +613,33 @@ export function ReportApp() {
             return payload;
         };
 
+        const normalizeTopDownContribution = (payload: ReportPayload) => {
+            const stats: any = payload?.stats;
+            if (!stats || typeof stats !== 'object') return payload;
+            const rows = Array.isArray(stats?.leaderboards?.downContrib) ? stats.leaderboards.downContrib : [];
+            if (!rows.length) return payload;
+            const sorted = rows
+                .map((row: any) => ({ ...row, value: Number(row?.value ?? 0) }))
+                .filter((row: any) => Number.isFinite(row.value))
+                .sort((a: any, b: any) => (b.value - a.value) || String(a?.account || '').localeCompare(String(b?.account || '')));
+            const top = sorted[0];
+            if (!top) return payload;
+            stats.maxDownContrib = {
+                ...(stats.maxDownContrib || {}),
+                value: Number(top.value || 0),
+                player: String(top.account || stats.maxDownContrib?.player || '-'),
+                count: Number(top.count || stats.maxDownContrib?.count || 0),
+                profession: String(top.profession || stats.maxDownContrib?.profession || 'Unknown'),
+                professionList: Array.isArray(top.professionList) ? top.professionList : (stats.maxDownContrib?.professionList || [])
+            };
+            return payload;
+        };
+
         fetch(reportPath, { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
             .then((data) => {
                 if (!isMounted) return;
-                const normalized = normalizeCommanderDistance(data);
+                const normalized = normalizeTopDownContribution(normalizeCommanderDistance(data));
                 setReport(normalized);
                 const themeChoice = normalized?.stats?.uiTheme;
                 if (themeChoice === 'modern' || themeChoice === 'classic' || themeChoice === 'crt' || themeChoice === 'matte') {
@@ -698,6 +720,16 @@ export function ReportApp() {
     }, [assetBasePath, isDevLocalWeb, report]);
 
     useEffect(() => {
+        const reportThemeId = report?.stats?.webThemeId;
+        const reportUiTheme = report?.stats?.uiTheme;
+        const hasReportUiTheme = reportUiTheme === 'modern' || reportUiTheme === 'classic' || reportUiTheme === 'crt' || reportUiTheme === 'matte';
+        const reportUiThemeLooksStale = (
+            (reportThemeId === MATTE_WEB_THEME_ID && reportUiTheme !== 'matte')
+            || (reportThemeId === 'CRT' && reportUiTheme !== 'crt')
+        );
+        if (hasReportUiTheme && !reportUiThemeLooksStale) {
+            return;
+        }
         let isMounted = true;
         fetch(joinAssetPath(assetBasePath, 'ui-theme.json'), { cache: 'no-store' })
             .then((resp) => (resp.ok ? resp.json() : Promise.reject()))
@@ -715,7 +747,7 @@ export function ReportApp() {
         return () => {
             isMounted = false;
         };
-    }, [assetBasePath]);
+    }, [assetBasePath, report]);
 
     useEffect(() => {
         let isMounted = true;

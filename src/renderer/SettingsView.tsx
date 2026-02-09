@@ -107,6 +107,8 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const [githubUserCode, setGithubUserCode] = useState<string | null>(null);
     const [githubVerificationUri, setGithubVerificationUri] = useState<string | null>(null);
     const [githubRepos, setGithubRepos] = useState<Array<{ full_name: string; name: string; owner: string }>>([]);
+    const [githubOrgs, setGithubOrgs] = useState<Array<{ login: string }>>([]);
+    const [githubCreateOwner, setGithubCreateOwner] = useState('');
     const [githubRepoSearch, setGithubRepoSearch] = useState('');
     const [githubRepoMode, setGithubRepoMode] = useState<'select' | 'create'>('select');
     const [loadingRepos, setLoadingRepos] = useState(false);
@@ -162,6 +164,9 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const lastHelpUpdatesFocusTriggerRef = useRef<number>(0);
     const inferredPagesUrl = githubRepoOwner && githubRepoName
         ? `https://${githubRepoOwner}.github.io/${githubRepoName}`
+        : '';
+    const selectedGithubRepoKey = githubRepoOwner && githubRepoName
+        ? `${githubRepoOwner}/${githubRepoName}`
         : '';
     const lastSavedPagesUrlRef = useRef<string | null>(null);
     const logoSyncInFlightRef = useRef(false);
@@ -394,6 +399,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             setDisruptionMethod(settings.disruptionMethod);
         }
         setGithubRepoOwner(settings.githubRepoOwner || '');
+        setGithubCreateOwner('');
         setGithubRepoName(settings.githubRepoName || '');
         setGithubToken(settings.githubToken || '');
         setGithubWebTheme(settings.githubWebTheme || DEFAULT_WEB_THEME_ID);
@@ -746,11 +752,24 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const refreshGithubRepos = async () => {
         if (!window.electronAPI?.getGithubRepos) return;
         setLoadingRepos(true);
-        const result = await window.electronAPI.getGithubRepos();
-        if (result?.success && result.repos) {
-            setGithubRepos(result.repos);
+        try {
+            const [reposResult, orgsResult] = await Promise.all([
+                window.electronAPI.getGithubRepos(),
+                window.electronAPI.getGithubOrgs ? window.electronAPI.getGithubOrgs() : Promise.resolve(null)
+            ]);
+            if (reposResult?.success && reposResult.repos) {
+                setGithubRepos(reposResult.repos);
+            }
+            const nextOrgs = orgsResult?.success && Array.isArray(orgsResult.orgs) ? orgsResult.orgs : [];
+            setGithubOrgs(nextOrgs);
+            setGithubCreateOwner((prev) => {
+                if (prev && nextOrgs.some((org) => org.login === prev)) return prev;
+                if (githubRepoOwner && nextOrgs.some((org) => org.login === githubRepoOwner)) return githubRepoOwner;
+                return '';
+            });
+        } finally {
+            setLoadingRepos(false);
         }
-        setLoadingRepos(false);
     };
 
     const toggleFavoriteRepo = (fullName: string) => {
@@ -831,15 +850,21 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         setCreatingRepo(true);
         setGithubRepoStatusKind('pending');
         setGithubRepoStatus('Creating repository...');
-        const result = await window.electronAPI.createGithubRepo({ name: githubRepoName, branch: 'main' });
-        if (result?.success && result.repo) {
+        const result = await window.electronAPI.createGithubRepo({
+            name: githubRepoName,
+            branch: 'main',
+            owner: githubCreateOwner || undefined
+        });
+        const createdRepo = result?.repo;
+        if (result?.success && createdRepo) {
             setGithubRepoError(null);
             setGithubRepoMode('select');
-            setGithubRepoOwner(result.repo.owner || '');
+            setGithubRepoOwner(createdRepo.owner || '');
+            setGithubCreateOwner(githubOrgs.some((org) => org.login === createdRepo.owner) ? createdRepo.owner : '');
             // Pages URL inferred from repo settings; no manual override.
             await refreshGithubRepos();
             setGithubRepoStatusKind('success');
-            setGithubRepoStatus(`Created ${result.repo.full_name}`);
+            setGithubRepoStatus(`Created ${createdRepo.full_name}`);
         } else {
             const message = result?.error || 'Failed to create repository.';
             setGithubRepoError(message);
@@ -1464,8 +1489,8 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                                     const aFav = favoriteRepoSet.has(a.full_name);
                                                     const bFav = favoriteRepoSet.has(b.full_name);
                                                     if (aFav !== bFav) return aFav ? -1 : 1;
-                                                    if (a.name === githubRepoName) return -1;
-                                                    if (b.name === githubRepoName) return 1;
+                                                    if (a.full_name === selectedGithubRepoKey) return -1;
+                                                    if (b.full_name === selectedGithubRepoKey) return 1;
                                                     return a.full_name.localeCompare(b.full_name);
                                                 })
                                                 .map((repo, idx) => {
@@ -1478,15 +1503,17 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                                             onClick={() => {
                                                                 setGithubRepoName(repo.name);
                                                                 setGithubRepoOwner(repo.owner || '');
+                                                                setGithubCreateOwner(githubOrgs.some((org) => org.login === repo.owner) ? repo.owner : '');
                                                             }}
                                                             onKeyDown={(event) => {
                                                                 if (event.key === 'Enter' || event.key === ' ') {
                                                                     event.preventDefault();
                                                                     setGithubRepoName(repo.name);
                                                                     setGithubRepoOwner(repo.owner || '');
+                                                                    setGithubCreateOwner(githubOrgs.some((org) => org.login === repo.owner) ? repo.owner : '');
                                                                 }
                                                             }}
-                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex items-center justify-between gap-2 cursor-pointer ${githubRepoName === repo.name
+                                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex items-center justify-between gap-2 cursor-pointer ${selectedGithubRepoKey === repo.full_name
                                                                 ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
                                                                 : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
                                                                 }`}
@@ -1512,6 +1539,22 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                     </>
                                 ) : (
                                     <div className="flex items-center gap-2">
+                                        {githubOrgs.length > 0 && (
+                                            <div className="relative w-52 shrink-0">
+                                                <select
+                                                    value={githubCreateOwner}
+                                                    onChange={(event) => setGithubCreateOwner(event.target.value)}
+                                                    className="w-full h-full appearance-none bg-black/50 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-400/50"
+                                                    aria-label="Repository owner"
+                                                >
+                                                    <option value="">Personal account</option>
+                                                    {githubOrgs.map((org) => (
+                                                        <option key={org.login} value={org.login}>{org.login}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                                            </div>
+                                        )}
                                         <input
                                             type="text"
                                             value={githubRepoName}

@@ -99,10 +99,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return () => ipcRenderer.removeAllListeners('github-auth-complete');
     },
     getGithubRepos: () => ipcRenderer.invoke('get-github-repos'),
+    getGithubOrgs: () => ipcRenderer.invoke('get-github-orgs'),
     getGithubReports: () => ipcRenderer.invoke('get-github-reports'),
     deleteGithubReports: (payload: { ids: string[] }) => ipcRenderer.invoke('delete-github-reports', payload),
     listLogFiles: (payload: { dir: string }) => ipcRenderer.invoke('list-log-files', payload),
-    createGithubRepo: (params: { name: string; branch?: string }) => ipcRenderer.invoke('create-github-repo', params),
+    createGithubRepo: (params: { name: string; branch?: string; owner?: string }) => ipcRenderer.invoke('create-github-repo', params),
     ensureGithubTemplate: () => ipcRenderer.invoke('ensure-github-template'),
     selectGithubLogo: () => ipcRenderer.invoke('select-github-logo'),
     applyGithubLogo: (payload?: { logoPath?: string }) => ipcRenderer.invoke('apply-github-logo', payload),

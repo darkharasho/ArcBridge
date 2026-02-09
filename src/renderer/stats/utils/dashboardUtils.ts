@@ -121,7 +121,7 @@ const formatCompactNumber = (value: number) => {
     }
     if (absValue >= 10_000) {
         const compact = (absValue / 1000);
-        const formatted = compact.toFixed(0).replace(/\.?0+$/, '');
+        const formatted = compact.toFixed(0);
         return `${sign}${formatted}k`;
     }
     return `${value.toLocaleString()}`;
