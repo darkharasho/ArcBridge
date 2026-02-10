@@ -47,6 +47,7 @@ type SpikeDamageSectionProps = {
     subtitle?: string;
     listTitle?: string;
     searchPlaceholder?: string;
+    titleIconClassName?: string;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
     openExpandedSection: (id: string) => void;
@@ -82,6 +83,7 @@ export const SpikeDamageSection = ({
     subtitle = 'Select one player to chart their highest damage burst per fight.',
     listTitle = 'Squad Players',
     searchPlaceholder = 'Search player or account',
+    titleIconClassName = 'text-rose-300',
     expandedSection,
     expandedSectionClosing,
     openExpandedSection,
@@ -211,7 +213,7 @@ export const SpikeDamageSection = ({
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4 relative">
                 <div className={isExpanded ? 'pr-10 md:pr-0' : ''}>
                     <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-rose-300" />
+                        <Zap className={`w-5 h-5 ${titleIconClassName}`} />
                         {title}
                     </h3>
                     <p className="text-xs text-gray-400">
