@@ -1,6 +1,6 @@
 import { CSSProperties, useEffect, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { getProfessionIconPath } from '../../../shared/professionUtils';
+import { getProfessionColor, getProfessionIconPath } from '../../../shared/professionUtils';
 
 const TRANSPARENT_ICON = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 const iconDataUrlCache = new Map<string, string>();
@@ -220,6 +220,10 @@ const ProfessionIcon = ({
     const tooltipRef = useRef<HTMLDivElement | null>(null);
     const safeClassName = `${className} object-contain`;
     const { placement, shiftX } = useSmartTooltipPlacement(open, [list.length, safeClassName], wrapperRef, tooltipRef);
+    const multiColors = Array.from(new Set(list.map((prof) => getProfessionColor(prof || 'Unknown')))).slice(0, 4);
+    const multiBadgeBackground = multiColors.length > 1
+        ? `conic-gradient(${multiColors.map((color, idx) => `${color} ${(idx * 360) / multiColors.length}deg ${((idx + 1) * 360) / multiColors.length}deg`).join(', ')})`
+        : (multiColors[0] || '#9ca3af');
 
     if (!iconPath) return null;
 
@@ -236,7 +240,13 @@ const ProfessionIcon = ({
             <img src={iconPath} alt={resolvedProfession || 'Unknown'} className={`${safeClassName} shrink-0`} />
             {showMulti && (
                 <>
-                    <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-300 ring-1 ring-[#10141b]" />
+                    <span
+                        aria-hidden="true"
+                        className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-1 ring-[#10141b] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+                        style={{ background: multiBadgeBackground }}
+                    >
+                        <span className="absolute inset-[0.7px] rounded-full bg-[#0f141c]/90" />
+                    </span>
                     <div
                         ref={tooltipRef}
                         style={tooltipStyle}

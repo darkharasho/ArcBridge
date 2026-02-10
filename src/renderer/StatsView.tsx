@@ -40,7 +40,7 @@ import { StatsHeader } from './stats/ui/StatsHeader';
 import { WebUploadBanner } from './stats/ui/WebUploadBanner';
 import { DevMockBanner } from './stats/ui/DevMockBanner';
 import { StatsMobileNav } from './stats/ui/StatsMobileNav';
-import { prefetchIconUrls } from './stats/ui/StatsViewShared';
+import { prefetchIconUrls, renderProfessionIcon as renderProfessionIconShared } from './stats/ui/StatsViewShared';
 
 interface StatsViewProps {
     logs: ILogData[];
@@ -1725,12 +1725,7 @@ type SpikeFight = {
         return '0.0';
     };
 
-    const renderProfessionIcon = useCallback((profession?: string, _professionList?: string[], className?: string) => {
-        const iconPath = getProfessionIconPath(profession || '');
-        if (!iconPath) return null;
-        const iconClass = className ? `${className} object-contain` : 'w-5 h-5 object-contain';
-        return <img src={iconPath} alt={profession} className={iconClass} />;
-    }, []);
+    const renderProfessionIcon = renderProfessionIconShared;
 
     return (
         <div className={containerClass}>
