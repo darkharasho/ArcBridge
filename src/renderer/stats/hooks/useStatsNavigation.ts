@@ -18,6 +18,7 @@ export const useStatsNavigation = (embedded: boolean) => {
         { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
         { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
         { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
+        { id: 'incoming-strike-damage', label: 'Incoming Strike Damage', icon: ShieldAlert },
         { id: 'conditions-outgoing', label: 'Conditions', icon: Skull },
         { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
         { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },

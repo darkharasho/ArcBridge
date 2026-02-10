@@ -1430,6 +1430,11 @@ body.theme-matte .stats-view .spike-player-list-container {
     box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
 }
 
+body.theme-matte .stats-view .incoming-skill-table-container {
+    background-color: var(--bg-input) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
 body.theme-matte .stats-view .spike-player-list-item,
 body.theme-matte .stats-view .spike-player-list-item:hover,
 body.theme-matte .stats-view .spike-player-list-item:active,

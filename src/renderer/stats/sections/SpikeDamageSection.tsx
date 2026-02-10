@@ -34,8 +34,19 @@ type SpikeDrilldownPoint = {
     label: string;
     value: number;
 };
+type SpikeSkillRow = {
+    skillName: string;
+    damage: number;
+    hits: number;
+    icon?: string;
+};
 
 type SpikeDamageSectionProps = {
+    sectionId?: string;
+    title?: string;
+    subtitle?: string;
+    listTitle?: string;
+    searchPlaceholder?: string;
     expandedSection: string | null;
     expandedSectionClosing: boolean;
     openExpandedSection: (id: string) => void;
@@ -59,11 +70,18 @@ type SpikeDamageSectionProps = {
     spikeDrilldownData: SpikeDrilldownPoint[];
     spikeDrilldownDownIndices: number[];
     spikeDrilldownDeathIndices: number[];
+    spikeFightSkillRows?: SpikeSkillRow[];
+    spikeFightSkillTitle?: string;
     formatWithCommas: (value: number, decimals: number) => string;
     renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const SpikeDamageSection = ({
+    sectionId = 'spike-damage',
+    title = 'Spike Damage',
+    subtitle = 'Select one player to chart their highest damage burst per fight.',
+    listTitle = 'Squad Players',
+    searchPlaceholder = 'Search player or account',
     expandedSection,
     expandedSectionClosing,
     openExpandedSection,
@@ -87,6 +105,8 @@ export const SpikeDamageSection = ({
     spikeDrilldownData,
     spikeDrilldownDownIndices,
     spikeDrilldownDeathIndices,
+    spikeFightSkillRows = [],
+    spikeFightSkillTitle = 'Skill Damage (Selected Fight)',
     formatWithCommas,
     renderProfessionIcon
 }: SpikeDamageSectionProps) => {
@@ -102,7 +122,7 @@ export const SpikeDamageSection = ({
         .replace(/^World\s*vs\s*World\s*-\s*/i, '')
         .replace(/^WvW\s*-\s*/i, '')
         .trim();
-    const isExpanded = expandedSection === 'spike-damage';
+    const isExpanded = expandedSection === sectionId;
     const selectedLineColor = selectedSpikePlayer
         ? (getProfessionColor(selectedSpikePlayer.profession) || '#fda4af')
         : '#fda4af';
@@ -180,10 +200,10 @@ export const SpikeDamageSection = ({
 
     return (
         <div
-            id="spike-damage"
-            data-section-visible={isSectionVisible('spike-damage')}
-            data-section-first={isFirstVisibleSection('spike-damage')}
-            className={sectionClass('spike-damage', `bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${isExpanded
+            id={sectionId}
+            data-section-visible={isSectionVisible(sectionId)}
+            data-section-first={isFirstVisibleSection(sectionId)}
+            className={sectionClass(sectionId, `bg-white/5 border border-white/10 rounded-2xl p-6 page-break-avoid stats-share-exclude scroll-mt-24 ${isExpanded
                 ? `fixed inset-0 z-50 overflow-y-auto h-screen shadow-2xl rounded-none modal-pane pb-10 ${expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'}`
                 : 'overflow-hidden'
                 }`)}
@@ -192,10 +212,10 @@ export const SpikeDamageSection = ({
                 <div className={isExpanded ? 'pr-10 md:pr-0' : ''}>
                     <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
                         <Zap className="w-5 h-5 text-rose-300" />
-                        Spike Damage
+                        {title}
                     </h3>
                     <p className="text-xs text-gray-400">
-                        Select one player to chart their highest damage burst per fight.
+                        {subtitle}
                     </p>
                 </div>
                 <div className={`flex items-center gap-3 ${isExpanded ? 'pr-10 md:pr-0' : ''}`}>
@@ -213,9 +233,9 @@ export const SpikeDamageSection = ({
                     />
                     <button
                         type="button"
-                        onClick={() => (isExpanded ? closeExpandedSection() : openExpandedSection('spike-damage'))}
+                        onClick={() => (isExpanded ? closeExpandedSection() : openExpandedSection(sectionId))}
                         className={`p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors ${isExpanded ? 'absolute top-2 right-2 md:static' : ''}`}
-                        aria-label={isExpanded ? 'Close Spike Damage' : 'Expand Spike Damage'}
+                        aria-label={isExpanded ? `Close ${title}` : `Expand ${title}`}
                         title={isExpanded ? 'Close' : 'Expand'}
                     >
                         {isExpanded ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -226,13 +246,13 @@ export const SpikeDamageSection = ({
             <div className="grid gap-4 lg:grid-cols-2 items-stretch">
                 <div className="space-y-2 flex flex-col h-[320px]">
                     <div className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">
-                        Squad Players
+                        {listTitle}
                     </div>
                     <input
                         type="search"
                         value={spikePlayerFilter}
                         onChange={(event) => setSpikePlayerFilter(event.target.value)}
-                        placeholder="Search player or account"
+                        placeholder={searchPlaceholder}
                         className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-rose-400 focus:outline-none"
                     />
                     <div className="spike-player-list-container flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
@@ -500,6 +520,53 @@ export const SpikeDamageSection = ({
                             </>
                         )}
                     </div>
+                </div>
+            )}
+            {selectedSpikePlayer && selectedSpikeFightIndex !== null && (
+                <div className={`mt-4 transition-all duration-300 ${spikeFightSkillRows.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-90'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-gray-500">{spikeFightSkillTitle}</div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
+                            {spikeFightSkillRows.length} {spikeFightSkillRows.length === 1 ? 'skill' : 'skills'}
+                        </div>
+                    </div>
+                    {spikeFightSkillRows.length === 0 ? (
+                        <div className="text-xs text-gray-500 italic py-4">
+                            No skill-level breakdown available for this fight.
+                        </div>
+                    ) : (
+                        <div className="incoming-skill-table-container rounded-lg border border-white/10 bg-black/35 overflow-hidden">
+                            <div className="grid grid-cols-[2fr_0.8fr_0.8fr] gap-2 px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-gray-400 border-b border-white/10">
+                                <div>Skill</div>
+                                <div className="text-right">Damage</div>
+                                <div className="text-right">Hits</div>
+                            </div>
+                            <div className="max-h-[260px] overflow-y-auto">
+                                {spikeFightSkillRows.map((row, idx) => (
+                                    <div
+                                        key={`${row.skillName}-${idx}`}
+                                        className="grid grid-cols-[2fr_0.8fr_0.8fr] gap-2 px-3 py-2 text-sm text-gray-200 border-b border-white/[0.05] last:border-b-0"
+                                    >
+                                        <div className="min-w-0 flex items-center gap-2">
+                                            {row.icon ? (
+                                                <img
+                                                    src={row.icon}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    className="w-4 h-4 rounded-sm border border-white/[0.16] bg-black/40 flex-shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="w-4 h-4 rounded-sm border border-white/[0.14] bg-white/[0.06] flex-shrink-0" />
+                                            )}
+                                            <div className="truncate" title={row.skillName}>{row.skillName}</div>
+                                        </div>
+                                        <div className="text-right font-mono text-rose-200">{formatWithCommas(Number(row.damage || 0), 0)}</div>
+                                        <div className="text-right font-mono text-gray-300">{formatWithCommas(Number(row.hits || 0), 0)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

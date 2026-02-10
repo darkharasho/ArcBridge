@@ -74,6 +74,7 @@ const ORDERED_SECTION_IDS = [
     'spike-damage',
     'conditions-outgoing',
     'defense-detailed',
+    'incoming-strike-damage',
     'support-detailed',
     'healing-stats',
     'special-buffs',
@@ -293,6 +294,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [damageMitigationSearch, setDamageMitigationSearch] = useState('');
     const [conditionSearch, setConditionSearch] = useState('');
     const [spikePlayerFilter, setSpikePlayerFilter] = useState('');
+    const [incomingStrikePlayerFilter, setIncomingStrikePlayerFilter] = useState('');
     const [conditionDirection, setConditionDirection] = useState<'outgoing' | 'incoming'>('outgoing');
     const [supportSearch, setSupportSearch] = useState('');
     const [activeOffenseStat, setActiveOffenseStat] = useState<string>('damage');
@@ -332,6 +334,9 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [selectedSpikePlayerKey, setSelectedSpikePlayerKey] = useState<string | null>(null);
     const [selectedSpikeFightIndex, setSelectedSpikeFightIndex] = useState<number | null>(null);
     const [spikeMode, setSpikeMode] = useState<'hit' | '1s' | '5s' | '30s'>('hit');
+    const [selectedIncomingStrikePlayerKey, setSelectedIncomingStrikePlayerKey] = useState<string | null>(null);
+    const [selectedIncomingStrikeFightIndex, setSelectedIncomingStrikeFightIndex] = useState<number | null>(null);
+    const [incomingStrikeMode, setIncomingStrikeMode] = useState<'hit' | '1s' | '5s' | '30s'>('hit');
     const [hoveredSkillPlayer, setHoveredSkillPlayer] = useState<string[]>([]);
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
     const [expandedSectionClosing, setExpandedSectionClosing] = useState(false);
@@ -429,6 +434,7 @@ type SpikeFight = {
         buckets5s?: number[];
         downIndices5s?: number[];
         deathIndices5s?: number[];
+        skillRows?: Array<{ skillName: string; damage: number; hits: number; icon?: string }>;
     }>;
     maxHit: number;
     max1s: number;
@@ -536,6 +542,7 @@ type SpikeFight = {
                     buckets5s?: number[];
                     downIndices5s?: number[];
                     deathIndices5s?: number[];
+                    skillRows?: Array<{ skillName: string; damage: number; hits: number; icon?: string }>;
                 }> = {};
                 Object.entries(rawValues).forEach(([key, value]: any) => {
                     if (value && typeof value === 'object') {
@@ -554,6 +561,16 @@ type SpikeFight = {
                                 : undefined,
                             deathIndices5s: Array.isArray((value as any).deathIndices5s)
                                 ? (value as any).deathIndices5s.map((entry: any) => Number(entry)).filter((entry: number) => Number.isFinite(entry) && entry >= 0)
+                                : undefined,
+                            skillRows: Array.isArray((value as any).skillRows)
+                                ? (value as any).skillRows
+                                    .map((entry: any) => ({
+                                        skillName: String(entry?.skillName || entry?.name || 'Unknown Skill'),
+                                        damage: Number(entry?.damage || 0),
+                                        hits: Number(entry?.hits || 0),
+                                        icon: typeof entry?.icon === 'string' ? entry.icon : undefined
+                                    }))
+                                    .filter((entry: any) => Number.isFinite(entry.damage) && entry.damage > 0)
                                 : undefined
                         };
                         return;
@@ -801,6 +818,103 @@ type SpikeFight = {
 
         return { fights, players };
     }, [logs, safeStats]);
+
+    const incomingStrikeDamageData = useMemo<{ fights: SpikeFight[]; players: SpikePlayer[] }>(() => {
+        const sanitizeWvwLabel = (value: any) => String(value || '')
+            .replace(/^Detailed\s*WvW\s*-\s*/i, '')
+            .replace(/^World\s*vs\s*World\s*-\s*/i, '')
+            .replace(/^WvW\s*-\s*/i, '')
+            .trim();
+        const precomputedIncoming = (safeStats as any)?.incomingStrikeDamage;
+        const precomputedFights = Array.isArray(precomputedIncoming?.fights) ? precomputedIncoming.fights : [];
+        const precomputedPlayers = Array.isArray(precomputedIncoming?.players) ? precomputedIncoming.players : [];
+        if (precomputedFights.length === 0 && precomputedPlayers.length === 0) {
+            return { fights: [], players: [] };
+        }
+
+        const fights: SpikeFight[] = precomputedFights.map((fight: any, index: number) => {
+            const rawValues = fight?.values && typeof fight.values === 'object' ? fight.values : {};
+            const values: Record<string, {
+                hit: number;
+                burst1s: number;
+                burst5s: number;
+                burst30s: number;
+                skillName: string;
+                buckets5s?: number[];
+                downIndices5s?: number[];
+                deathIndices5s?: number[];
+                skillRows?: Array<{ skillName: string; damage: number; hits: number; icon?: string }>;
+            }> = {};
+            Object.entries(rawValues).forEach(([key, value]: any) => {
+                if (value && typeof value === 'object') {
+                    const legacyDamage = Number((value as any).damage || 0);
+                    values[key] = {
+                        hit: Number((value as any).hit ?? legacyDamage),
+                        burst1s: Number((value as any).burst1s || 0),
+                        burst5s: Number((value as any).burst5s || 0),
+                        burst30s: Number((value as any).burst30s || 0),
+                        skillName: String((value as any).skillName || ''),
+                        buckets5s: Array.isArray((value as any).buckets5s)
+                            ? (value as any).buckets5s.map((entry: any) => Number(entry || 0))
+                            : undefined,
+                        downIndices5s: Array.isArray((value as any).downIndices5s)
+                            ? (value as any).downIndices5s.map((entry: any) => Number(entry)).filter((entry: number) => Number.isFinite(entry) && entry >= 0)
+                            : undefined,
+                        deathIndices5s: Array.isArray((value as any).deathIndices5s)
+                            ? (value as any).deathIndices5s.map((entry: any) => Number(entry)).filter((entry: number) => Number.isFinite(entry) && entry >= 0)
+                            : undefined,
+                        skillRows: Array.isArray((value as any).skillRows)
+                            ? (value as any).skillRows
+                                .map((entry: any) => ({
+                                    skillName: String(entry?.skillName || entry?.name || 'Unknown Skill'),
+                                    damage: Number(entry?.damage || 0),
+                                    hits: Number(entry?.hits || 0),
+                                    icon: typeof entry?.icon === 'string' ? entry.icon : undefined
+                                }))
+                                .filter((entry: any) => Number.isFinite(entry.damage) && entry.damage > 0)
+                            : undefined
+                    };
+                    return;
+                }
+                values[key] = {
+                    hit: Number(value || 0),
+                    burst1s: 0,
+                    burst5s: 0,
+                    burst30s: 0,
+                    skillName: ''
+                };
+            });
+            return {
+                id: String(fight?.id || `fight-${index + 1}`),
+                shortLabel: String(fight?.shortLabel || `F${index + 1}`),
+                fullLabel: sanitizeWvwLabel(fight?.fullLabel || `Fight ${index + 1}`),
+                timestamp: Number(fight?.timestamp || 0),
+                values,
+                maxHit: Number(fight?.maxHit ?? fight?.maxDamage ?? 0),
+                max1s: Number(fight?.max1s || 0),
+                max5s: Number(fight?.max5s || 0),
+                max30s: Number(fight?.max30s || 0)
+            };
+        });
+
+        const players: SpikePlayer[] = precomputedPlayers.map((player: any) => ({
+            key: String(player?.key || ''),
+            account: String(player?.account || 'Unknown'),
+            displayName: String(player?.displayName || player?.account || 'Unknown'),
+            characterName: String(player?.characterName || player?.name || player?.character_name || player?.display_name || ''),
+            profession: String(player?.profession || 'Unknown'),
+            professionList: Array.isArray(player?.professionList) ? player.professionList.map((value: any) => String(value)) : [],
+            logs: Number(player?.logs || 0),
+            peakHit: Number(player?.peakHit || 0),
+            peak1s: Number(player?.peak1s || 0),
+            peak5s: Number(player?.peak5s || 0),
+            peak30s: Number(player?.peak30s || 0),
+            peakFightLabel: sanitizeWvwLabel(player?.peakFightLabel || ''),
+            peakSkillName: String(player?.peakSkillName || '')
+        }));
+
+        return { fights, players };
+    }, [safeStats]);
 
     const spikePlayerMap = useMemo(() => {
         const map = new Map<string, (typeof spikeDamageData.players)[number]>();
@@ -1170,6 +1284,146 @@ type SpikeFight = {
         };
     }, [selectedSpikeFightIndex, spikeChartData, selectedSpikePlayerKey, logs, spikeDamageData.fights, spikePlayerMap]);
 
+    const incomingStrikePlayerMap = useMemo(() => {
+        const map = new Map<string, (typeof incomingStrikeDamageData.players)[number]>();
+        incomingStrikeDamageData.players.forEach((player) => map.set(player.key, player));
+        return map;
+    }, [incomingStrikeDamageData.players]);
+
+    const groupedIncomingStrikePlayers = useMemo(() => {
+        const modeValue = (player: SpikePlayer) => (
+            incomingStrikeMode === 'hit' ? player.peakHit : incomingStrikeMode === '1s' ? player.peak1s : incomingStrikeMode === '5s' ? player.peak5s : player.peak30s
+        );
+        const term = incomingStrikePlayerFilter.trim().toLowerCase();
+        const filtered = !term
+            ? incomingStrikeDamageData.players
+            : incomingStrikeDamageData.players.filter((player) =>
+                player.displayName.toLowerCase().includes(term)
+                || player.account.toLowerCase().includes(term)
+                || player.profession.toLowerCase().includes(term)
+            );
+        const groups = new Map<string, (typeof filtered)>();
+        filtered.forEach((player) => {
+            const profession = player.profession || 'Unknown';
+            const list = groups.get(profession) || [];
+            list.push(player);
+            groups.set(profession, list);
+        });
+        return Array.from(groups.entries())
+            .map(([profession, players]) => ({
+                profession,
+                players: [...players].sort((a, b) => modeValue(b) - modeValue(a) || a.displayName.localeCompare(b.displayName))
+            }))
+            .sort((a, b) => a.profession.localeCompare(b.profession));
+    }, [incomingStrikeDamageData.players, incomingStrikePlayerFilter, incomingStrikeMode]);
+
+    const selectedIncomingStrikePlayer = selectedIncomingStrikePlayerKey
+        ? incomingStrikePlayerMap.get(selectedIncomingStrikePlayerKey) || null
+        : null;
+
+    const incomingStrikeChartData = useMemo(() => {
+        if (!selectedIncomingStrikePlayerKey) return [];
+        const getValue = (entry: { hit: number; burst1s: number; burst5s: number; burst30s: number } | undefined) => {
+            if (!entry) return 0;
+            if (incomingStrikeMode === 'hit') return Number(entry.hit || 0);
+            if (incomingStrikeMode === '1s') return Number(entry.burst1s || 0);
+            if (incomingStrikeMode === '5s') return Number(entry.burst5s || 0);
+            return Number(entry.burst30s || 0);
+        };
+        const getReference = (fight: SpikeFight) => {
+            if (incomingStrikeMode === 'hit') return Number(fight.maxHit || 0);
+            if (incomingStrikeMode === '1s') return Number(fight.max1s || 0);
+            if (incomingStrikeMode === '5s') return Number(fight.max5s || 0);
+            return Number(fight.max30s || 0);
+        };
+        return incomingStrikeDamageData.fights.map((fight, index) => ({
+            index,
+            fightId: fight.id,
+            shortLabel: fight.shortLabel,
+            fullLabel: fight.fullLabel,
+            timestamp: Number(fight.timestamp || 0),
+            damage: getValue(fight.values[selectedIncomingStrikePlayerKey]),
+            maxDamage: getReference(fight),
+            skillName: String(fight.values[selectedIncomingStrikePlayerKey]?.skillName || '')
+        }));
+    }, [incomingStrikeDamageData.fights, selectedIncomingStrikePlayerKey, incomingStrikeMode]);
+
+    const incomingStrikeChartMaxY = useMemo(() => {
+        const selectedPeak = incomingStrikeChartData.reduce((best, entry) => Math.max(best, Number(entry.damage || 0)), 0);
+        const fightPeak = incomingStrikeChartData.reduce((best, entry) => Math.max(best, Number(entry.maxDamage || 0)), 0);
+        return Math.max(1, selectedPeak, fightPeak);
+    }, [incomingStrikeChartData]);
+
+    const incomingStrikeDrilldown = useMemo(() => {
+        const selectedPoint = selectedIncomingStrikeFightIndex === null
+            ? null
+            : incomingStrikeChartData.find((point) => point.index === selectedIncomingStrikeFightIndex) || null;
+        if (!selectedPoint || !selectedIncomingStrikePlayerKey) {
+            return {
+                title: 'Fight Breakdown',
+                data: [] as Array<{ label: string; value: number }>,
+                downLabels: [] as string[],
+                deathLabels: [] as string[],
+                downIndices: [] as number[],
+                deathIndices: [] as number[]
+            };
+        }
+        const selectedFight = incomingStrikeDamageData.fights.find((fight, index) => (
+            String(fight.id || '') === String(selectedPoint.fightId || '')
+            || index === selectedPoint.index
+        )) || null;
+        const precomputedBuckets = Array.isArray(selectedFight?.values?.[selectedIncomingStrikePlayerKey]?.buckets5s)
+            ? selectedFight?.values?.[selectedIncomingStrikePlayerKey]?.buckets5s || []
+            : [];
+        const precomputedDownIndices = Array.isArray((selectedFight as any)?.values?.[selectedIncomingStrikePlayerKey]?.downIndices5s)
+            ? ((selectedFight as any).values[selectedIncomingStrikePlayerKey].downIndices5s as any[])
+                .map((value: any) => Number(value))
+                .filter((value: number) => Number.isFinite(value) && value >= 0)
+            : [];
+        const precomputedDeathIndices = Array.isArray((selectedFight as any)?.values?.[selectedIncomingStrikePlayerKey]?.deathIndices5s)
+            ? ((selectedFight as any).values[selectedIncomingStrikePlayerKey].deathIndices5s as any[])
+                .map((value: any) => Number(value))
+                .filter((value: number) => Number.isFinite(value) && value >= 0)
+            : [];
+        if (precomputedBuckets.length > 0) {
+            const data = precomputedBuckets.map((value: number, idx: number) => ({
+                label: `${idx * 5}s-${(idx + 1) * 5}s`,
+                value: Number(value || 0)
+            }));
+            return {
+                title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Damage Buckets)`,
+                data,
+                downLabels: [] as string[],
+                deathLabels: [] as string[],
+                downIndices: precomputedDownIndices.filter((idx) => idx < data.length),
+                deathIndices: precomputedDeathIndices.filter((idx) => idx < data.length)
+            };
+        }
+        return {
+            title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'}`,
+            data: [] as Array<{ label: string; value: number }>,
+            downLabels: [] as string[],
+            deathLabels: [] as string[],
+            downIndices: [] as number[],
+            deathIndices: [] as number[]
+        };
+    }, [selectedIncomingStrikeFightIndex, incomingStrikeChartData, selectedIncomingStrikePlayerKey, incomingStrikeDamageData.fights]);
+
+    const incomingStrikeFightSkillRows = useMemo(() => {
+        if (selectedIncomingStrikeFightIndex === null || !selectedIncomingStrikePlayerKey) return [];
+        const selectedPoint = incomingStrikeChartData.find((point) => point.index === selectedIncomingStrikeFightIndex);
+        if (!selectedPoint) return [];
+        const selectedFight = incomingStrikeDamageData.fights.find((fight, index) => (
+            String(fight.id || '') === String(selectedPoint.fightId || '')
+            || index === selectedPoint.index
+        ));
+        const rows = selectedFight?.values?.[selectedIncomingStrikePlayerKey]?.skillRows || [];
+        return [...rows]
+            .filter((row) => Number(row?.damage || 0) > 0)
+            .sort((a, b) => Number(b.damage || 0) - Number(a.damage || 0))
+            .slice(0, 30);
+    }, [selectedIncomingStrikeFightIndex, selectedIncomingStrikePlayerKey, incomingStrikeChartData, incomingStrikeDamageData.fights]);
+
     useEffect(() => {
         if (playerSkillBreakdowns.length === 0) {
             if (activePlayerBreakdownKey !== null) setActivePlayerBreakdownKey(null);
@@ -1247,6 +1501,26 @@ type SpikeFight = {
         const exists = spikeChartData.some((point) => point.index === selectedSpikeFightIndex);
         if (!exists) setSelectedSpikeFightIndex(null);
     }, [spikeChartData, selectedSpikeFightIndex]);
+
+    useEffect(() => {
+        if (incomingStrikeDamageData.players.length === 0) {
+            if (selectedIncomingStrikePlayerKey !== null) setSelectedIncomingStrikePlayerKey(null);
+            return;
+        }
+        if (!selectedIncomingStrikePlayerKey || !incomingStrikePlayerMap.has(selectedIncomingStrikePlayerKey)) {
+            if (selectedIncomingStrikePlayerKey !== null) setSelectedIncomingStrikePlayerKey(null);
+        }
+    }, [incomingStrikeDamageData.players, incomingStrikePlayerMap, selectedIncomingStrikePlayerKey]);
+
+    useEffect(() => {
+        setSelectedIncomingStrikeFightIndex(null);
+    }, [selectedIncomingStrikePlayerKey, incomingStrikeMode]);
+
+    useEffect(() => {
+        if (selectedIncomingStrikeFightIndex === null) return;
+        const exists = incomingStrikeChartData.some((point) => point.index === selectedIncomingStrikeFightIndex);
+        if (!exists) setSelectedIncomingStrikeFightIndex(null);
+    }, [incomingStrikeChartData, selectedIncomingStrikeFightIndex]);
 
     const selectedPlayersSet = useMemo(() => new Set(selectedPlayers), [selectedPlayers]);
 
@@ -1975,6 +2249,41 @@ type SpikeFight = {
                                 sidebarListClass={sidebarListClass}
                             />
 
+                            <SpikeDamageSection
+                                sectionId="incoming-strike-damage"
+                                title="Incoming Strike Damage"
+                                subtitle="Select one enemy class to chart incoming strike pressure per fight."
+                                listTitle="Enemy Classes"
+                                searchPlaceholder="Search enemy class"
+                                expandedSection={expandedSection}
+                                expandedSectionClosing={expandedSectionClosing}
+                                openExpandedSection={openExpandedSection}
+                                closeExpandedSection={closeExpandedSection}
+                                isSectionVisible={isSectionVisible}
+                                isFirstVisibleSection={isFirstVisibleSection}
+                                sectionClass={sectionClass}
+                                spikePlayerFilter={incomingStrikePlayerFilter}
+                                setSpikePlayerFilter={setIncomingStrikePlayerFilter}
+                                groupedSpikePlayers={groupedIncomingStrikePlayers}
+                                spikeMode={incomingStrikeMode}
+                                setSpikeMode={setIncomingStrikeMode}
+                                selectedSpikePlayerKey={selectedIncomingStrikePlayerKey}
+                                setSelectedSpikePlayerKey={setSelectedIncomingStrikePlayerKey}
+                                selectedSpikePlayer={selectedIncomingStrikePlayer}
+                                spikeChartData={incomingStrikeChartData}
+                                spikeChartMaxY={incomingStrikeChartMaxY}
+                                selectedSpikeFightIndex={selectedIncomingStrikeFightIndex}
+                                setSelectedSpikeFightIndex={setSelectedIncomingStrikeFightIndex}
+                                spikeDrilldownTitle={incomingStrikeDrilldown.title}
+                                spikeDrilldownData={incomingStrikeDrilldown.data}
+                                spikeDrilldownDownIndices={incomingStrikeDrilldown.downIndices}
+                                spikeDrilldownDeathIndices={incomingStrikeDrilldown.deathIndices}
+                                spikeFightSkillRows={incomingStrikeFightSkillRows}
+                                spikeFightSkillTitle="Incoming Skill Damage (Selected Fight)"
+                                formatWithCommas={formatWithCommas}
+                                renderProfessionIcon={renderProfessionIcon}
+                            />
+
                             <DamageMitigationSection
                                 stats={safeStats}
                                 DAMAGE_MITIGATION_METRICS={DAMAGE_MITIGATION_METRICS}
@@ -2363,6 +2672,41 @@ type SpikeFight = {
                             isFirstVisibleSection={isFirstVisibleSection}
                             sectionClass={sectionClass}
                             sidebarListClass={sidebarListClass}
+                        />
+
+                        <SpikeDamageSection
+                            sectionId="incoming-strike-damage"
+                            title="Incoming Strike Damage"
+                            subtitle="Select one enemy class to chart incoming strike pressure per fight."
+                            listTitle="Enemy Classes"
+                            searchPlaceholder="Search enemy class"
+                            expandedSection={expandedSection}
+                            expandedSectionClosing={expandedSectionClosing}
+                            openExpandedSection={openExpandedSection}
+                            closeExpandedSection={closeExpandedSection}
+                            isSectionVisible={isSectionVisible}
+                            isFirstVisibleSection={isFirstVisibleSection}
+                            sectionClass={sectionClass}
+                            spikePlayerFilter={incomingStrikePlayerFilter}
+                            setSpikePlayerFilter={setIncomingStrikePlayerFilter}
+                            groupedSpikePlayers={groupedIncomingStrikePlayers}
+                            spikeMode={incomingStrikeMode}
+                            setSpikeMode={setIncomingStrikeMode}
+                            selectedSpikePlayerKey={selectedIncomingStrikePlayerKey}
+                            setSelectedSpikePlayerKey={setSelectedIncomingStrikePlayerKey}
+                            selectedSpikePlayer={selectedIncomingStrikePlayer}
+                            spikeChartData={incomingStrikeChartData}
+                            spikeChartMaxY={incomingStrikeChartMaxY}
+                            selectedSpikeFightIndex={selectedIncomingStrikeFightIndex}
+                            setSelectedSpikeFightIndex={setSelectedIncomingStrikeFightIndex}
+                            spikeDrilldownTitle={incomingStrikeDrilldown.title}
+                            spikeDrilldownData={incomingStrikeDrilldown.data}
+                            spikeDrilldownDownIndices={incomingStrikeDrilldown.downIndices}
+                            spikeDrilldownDeathIndices={incomingStrikeDrilldown.deathIndices}
+                            spikeFightSkillRows={incomingStrikeFightSkillRows}
+                            spikeFightSkillTitle="Incoming Skill Damage (Selected Fight)"
+                            formatWithCommas={formatWithCommas}
+                            renderProfessionIcon={renderProfessionIcon}
                         />
 
                         <DamageMitigationSection

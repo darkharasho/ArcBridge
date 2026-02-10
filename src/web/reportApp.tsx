@@ -477,9 +477,10 @@ export function ReportApp() {
             id: 'defense',
             label: 'Defensive Stats',
             icon: Shield,
-            sectionIds: ['defense-detailed', 'defense-mitigation', 'boon-output', 'support-detailed', 'healing-stats'],
+            sectionIds: ['defense-detailed', 'incoming-strike-damage', 'defense-mitigation', 'boon-output', 'support-detailed', 'healing-stats'],
             items: [
                 { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
+                { id: 'incoming-strike-damage', label: 'Incoming Strike Damage', icon: Zap },
                 { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
                 { id: 'boon-output', label: 'Boon Output', icon: ShieldCheck },
                 { id: 'support-detailed', label: 'Support Detailed', icon: Plus },

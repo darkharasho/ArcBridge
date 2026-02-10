@@ -730,6 +730,8 @@ const pruneDetailsForStats = (details: any) => {
                 'targetDamageDist',
                 'damage1S',
                 'targetDamage1S',
+                'powerDamageTaken1S',
+                'targetPowerDamage1S',
                 'totalDamageTaken',
                 'totalDamageTakenDist',
                 'minions',
@@ -754,7 +756,9 @@ const pruneDetailsForStats = (details: any) => {
                 'totalHealth',
                 'healthPercentBurned',
                 'enemyPlayer',
-                'totalDamageDist'
+                'totalDamageDist',
+                'powerDamage1S',
+                'damage1S'
             ])
         );
     }
