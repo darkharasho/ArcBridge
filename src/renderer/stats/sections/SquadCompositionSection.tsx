@@ -53,10 +53,10 @@ export const SquadCompositionSection = ({
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
-                    <div className="space-y-1.5 text-[11px] mx-auto pb-2">
+                <div className="w-full sm:h-full overflow-y-auto pr-1">
+                    <div className="w-full min-w-0 space-y-1.5 text-[11px] pb-2">
                         {sortedSquadClassData.map((entry: any) => (
-                            <div key={entry.name} className="flex items-center gap-2 text-gray-300">
+                            <div key={entry.name} className="grid grid-cols-[12px_16px_minmax(0,1fr)_auto] items-center gap-2 text-gray-300">
                                 <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
                                 {getProfessionIconPath(entry.name) ? (
                                     <img
@@ -67,8 +67,8 @@ export const SquadCompositionSection = ({
                                 ) : (
                                     <span className="inline-block w-4 h-4 rounded-sm border border-white/10" />
                                 )}
-                                <span className="truncate">{entry.name}</span>
-                                <span className="text-gray-500">({entry.value})</span>
+                                <span className="min-w-0 truncate">{entry.name}</span>
+                                <span className="shrink-0 text-gray-500">({entry.value})</span>
                             </div>
                         ))}
                     </div>
@@ -105,10 +105,10 @@ export const SquadCompositionSection = ({
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="w-full sm:h-full overflow-y-auto pr-1 flex items-center">
-                    <div className="space-y-1.5 text-[11px] mx-auto pb-2">
+                <div className="w-full sm:h-full overflow-y-auto pr-1">
+                    <div className="w-full min-w-0 space-y-1.5 text-[11px] pb-2">
                         {sortedEnemyClassData.map((entry: any) => (
-                            <div key={entry.name} className="flex items-center gap-2 text-gray-300">
+                            <div key={entry.name} className="grid grid-cols-[12px_16px_minmax(0,1fr)_auto] items-center gap-2 text-gray-300">
                                 <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
                                 {getProfessionIconPath(entry.name) ? (
                                     <img
@@ -119,8 +119,8 @@ export const SquadCompositionSection = ({
                                 ) : (
                                     <span className="inline-block w-4 h-4 rounded-sm border border-white/10" />
                                 )}
-                                <span className="truncate">{entry.name}</span>
-                                <span className="text-gray-500">({entry.value})</span>
+                                <span className="min-w-0 truncate">{entry.name}</span>
+                                <span className="shrink-0 text-gray-500">({entry.value})</span>
                             </div>
                         ))}
                     </div>
