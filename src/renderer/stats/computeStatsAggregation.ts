@@ -2613,6 +2613,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         buckets5s: number[];
                         downIndices5s: number[];
                         deathIndices5s: number[];
+                        skillRows?: Array<{ skillName: string; damage: number; hits: number; icon?: string }>;
                     }> = {};
                     const allPlayers = Array.isArray(details.players) ? details.players : [];
                     const squadPlayers = allPlayers.filter((entry: any) => !entry?.notInSquad);
