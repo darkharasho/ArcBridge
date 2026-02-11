@@ -1,4 +1,4 @@
-import { Shield, Swords } from 'lucide-react';
+import { ArrowBigDown, ArrowBigUp } from 'lucide-react';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 
 type TopSkillsSectionProps = {
@@ -46,7 +46,7 @@ export const TopSkillsSection = ({
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                        <Swords className="w-5 h-5 text-orange-400" />
+                        <ArrowBigUp className="w-5 h-5 text-orange-400" />
                         Top Outgoing Skills
                     </h3>
                     <div className="text-xs text-gray-500 mt-1">{metricLabel}</div>
@@ -119,7 +119,7 @@ export const TopSkillsSection = ({
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-red-500" />
+                        <ArrowBigDown className="w-5 h-5 text-red-500" />
                         Top Incoming Skills
                     </h3>
                     <div className="text-xs text-gray-500 mt-1">Damage</div>

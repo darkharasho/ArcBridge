@@ -28,6 +28,7 @@ import {
     Zap,
     ArrowLeft,
     ArrowUp,
+    ArrowBigUp,
     ListTree,
     Keyboard
 } from 'lucide-react';
@@ -538,7 +539,7 @@ export function ReportApp() {
                 { id: 'kdr', label: 'KDR', icon: Trophy },
                 { id: 'fight-breakdown', label: 'Fight Breakdown', icon: Swords },
                 { id: 'top-players', label: 'Top Players', icon: Trophy },
-                { id: 'top-skills-outgoing', label: 'Top Skills', icon: Swords },
+                { id: 'top-skills-outgoing', label: 'Top Skills', icon: ArrowBigUp },
                 { id: 'squad-composition', label: 'Squad Composition', icon: Users },
                 { id: 'timeline', label: 'Squad vs Enemy Size', icon: Users },
                 { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon }
