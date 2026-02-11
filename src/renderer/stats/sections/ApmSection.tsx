@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Activity, Maximize2, X, Columns, Users } from 'lucide-react';
+import { Maximize2, X, Columns, Users } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { InlineIconLabel } from '../ui/StatsViewShared';
+import { Gw2ApmIcon } from '../../ui/Gw2ApmIcon';
 import type { ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
 
 type ApmSectionProps = {
@@ -114,7 +115,7 @@ export const ApmSection = ({
     >
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-300" />
+                <Gw2ApmIcon className="w-5 h-5 text-emerald-300" />
                 APM Breakdown
             </h3>
             <div className="flex items-center gap-3 relative">

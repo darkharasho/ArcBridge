@@ -5,6 +5,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
 import { ProofOfWorkModal } from '../renderer/ui/ProofOfWorkModal';
+import { SupportPlusIcon } from '../renderer/ui/SupportPlusIcon';
+import { OffenseSwordIcon } from '../renderer/ui/OffenseSwordIcon';
+import { Gw2ApmIcon } from '../renderer/ui/Gw2ApmIcon';
 import { Gw2BoonIcon } from '../renderer/ui/Gw2BoonIcon';
 import { Gw2SigilIcon } from '../renderer/ui/Gw2SigilIcon';
 import {
@@ -17,10 +20,8 @@ import {
     LayoutDashboard,
     Trophy,
     Swords,
-    Activity,
     Map as MapIcon,
     Sparkles,
-    Plus,
     HeartPulse,
     Star,
     Skull,
@@ -551,7 +552,7 @@ export function ReportApp() {
             icon: Swords,
             sectionIds: ['offense-detailed', 'player-breakdown', 'spike-damage', 'conditions-outgoing'],
             items: [
-                { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
+                { id: 'offense-detailed', label: 'Offense Detailed', icon: OffenseSwordIcon },
                 { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
                 { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
                 { id: 'conditions-outgoing', label: 'Conditions', icon: Skull }
@@ -567,7 +568,7 @@ export function ReportApp() {
                 { id: 'incoming-strike-damage', label: 'Incoming Strike Damage', icon: Zap },
                 { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
                 { id: 'boon-output', label: 'Boon Output', icon: Gw2BoonIcon },
-                { id: 'support-detailed', label: 'Support Detailed', icon: Plus },
+                { id: 'support-detailed', label: 'Support Detailed', icon: SupportPlusIcon },
                 { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse }
             ]
         },
@@ -580,7 +581,7 @@ export function ReportApp() {
                 { id: 'special-buffs', label: 'Special Buffs', icon: Star },
                 { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gw2SigilIcon },
                 { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
-                { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
+                { id: 'apm-stats', label: 'APM Breakdown', icon: Gw2ApmIcon }
             ]
         }
     ]), []);

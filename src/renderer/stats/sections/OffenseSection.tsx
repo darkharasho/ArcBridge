@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Maximize2, Swords, X, Columns, Users } from 'lucide-react';
+import { Maximize2, X, Columns, Users } from 'lucide-react';
+import { OffenseSwordIcon } from '../../ui/OffenseSwordIcon';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
@@ -106,7 +107,7 @@ export const OffenseSection = ({
     >
         <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                <Swords className="w-5 h-5 text-rose-300" />
+                <OffenseSwordIcon className="w-5 h-5 text-rose-300" />
                 Offenses - Detailed
             </h3>
             <button

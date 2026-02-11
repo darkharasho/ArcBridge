@@ -1,5 +1,8 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Swords, Shield, ShieldAlert, Zap, Activity, Plus, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, ArrowBigUp } from 'lucide-react';
+import { Trophy, Swords, Shield, ShieldAlert, Zap, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, ArrowBigUp } from 'lucide-react';
+import { SupportPlusIcon } from '../../ui/SupportPlusIcon';
+import { OffenseSwordIcon } from '../../ui/OffenseSwordIcon';
+import { Gw2ApmIcon } from '../../ui/Gw2ApmIcon';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
 import { Gw2SigilIcon } from '../../ui/Gw2SigilIcon';
 
@@ -17,19 +20,19 @@ export const useStatsNavigation = (embedded: boolean) => {
         { id: 'timeline', label: 'Squad vs Enemy', icon: Users },
         { id: 'map-distribution', label: 'Map Distribution', icon: MapIcon },
         { id: 'boon-output', label: 'Boon Output', icon: Gw2BoonIcon },
-        { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
+        { id: 'offense-detailed', label: 'Offense Detailed', icon: OffenseSwordIcon },
         { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
         { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
         { id: 'incoming-strike-damage', label: 'Incoming Strike Damage', icon: ShieldAlert },
         { id: 'conditions-outgoing', label: 'Conditions', icon: Skull },
         { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
         { id: 'defense-mitigation', label: 'Damage Mitigation', icon: ShieldAlert },
-        { id: 'support-detailed', label: 'Support Detailed', icon: Plus },
+        { id: 'support-detailed', label: 'Support Detailed', icon: SupportPlusIcon },
         { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
         { id: 'special-buffs', label: 'Special Buffs', icon: Star },
         { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gw2SigilIcon },
         { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
-        { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
+        { id: 'apm-stats', label: 'APM Breakdown', icon: Gw2ApmIcon }
     ]), []);
 
     const scrollToSection = (id: string) => {
