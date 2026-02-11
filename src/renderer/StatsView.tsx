@@ -28,6 +28,7 @@ import { DamageMitigationSection } from './stats/sections/DamageMitigationSectio
 import { SupportSection } from './stats/sections/SupportSection';
 import { HealingSection } from './stats/sections/HealingSection';
 import { SpecialBuffsSection } from './stats/sections/SpecialBuffsSection';
+import { SigilRelicUptimeSection } from './stats/sections/SigilRelicUptimeSection';
 import { OverviewSection } from './stats/sections/OverviewSection';
 import { FightBreakdownSection } from './stats/sections/FightBreakdownSection';
 import { TopPlayersSection } from './stats/sections/TopPlayersSection';
@@ -78,6 +79,7 @@ const ORDERED_SECTION_IDS = [
     'support-detailed',
     'healing-stats',
     'special-buffs',
+    'sigil-relic-uptime',
     'skill-usage',
     'apm-stats'
 ] as const;
@@ -289,6 +291,8 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [boonSearch, setBoonSearch] = useState('');
     const [activeSpecialTab, setActiveSpecialTab] = useState<string | null>(null);
     const [specialSearch, setSpecialSearch] = useState('');
+    const [activeSigilRelicTab, setActiveSigilRelicTab] = useState<string | null>(null);
+    const [sigilRelicSearch, setSigilRelicSearch] = useState('');
     const [offenseSearch, setOffenseSearch] = useState('');
     const [defenseSearch, setDefenseSearch] = useState('');
     const [damageMitigationSearch, setDamageMitigationSearch] = useState('');
@@ -1886,10 +1890,25 @@ type SpikeFight = {
         if (!term) return sorted;
         return sorted.filter((buff: any) => buff.name.toLowerCase().includes(term));
     }, [safeStats.specialTables, specialSearch]);
+    const sigilRelicTables = useMemo(() => {
+        const tables = safeStats.specialTables || [];
+        return [...tables]
+            .filter((buff: any) => /\b(sigil|relic)\b/i.test(String(buff?.name || '')))
+            .sort((a: any, b: any) => a.name.localeCompare(b.name));
+    }, [safeStats.specialTables]);
+    const filteredSigilRelicTables = useMemo(() => {
+        const term = sigilRelicSearch.trim().toLowerCase();
+        if (!term) return sigilRelicTables;
+        return sigilRelicTables.filter((buff: any) => buff.name.toLowerCase().includes(term));
+    }, [sigilRelicTables, sigilRelicSearch]);
     const activeSpecialTable = useMemo(() => {
         if (!activeSpecialTab) return null;
         return (safeStats.specialTables || []).find((buff: any) => buff.id === activeSpecialTab) ?? null;
     }, [safeStats.specialTables, activeSpecialTab]);
+    const activeSigilRelicTable = useMemo(() => {
+        if (!activeSigilRelicTab) return null;
+        return sigilRelicTables.find((buff: any) => buff.id === activeSigilRelicTab) ?? null;
+    }, [sigilRelicTables, activeSigilRelicTab]);
 
     useEffect(() => {
         if (!safeStats.boonTables || safeStats.boonTables.length === 0) return;
@@ -1904,6 +1923,15 @@ type SpikeFight = {
             setActiveSpecialTab(safeStats.specialTables[0].id);
         }
     }, [safeStats.specialTables, activeSpecialTab]);
+    useEffect(() => {
+        if (!sigilRelicTables || sigilRelicTables.length === 0) {
+            if (activeSigilRelicTab !== null) setActiveSigilRelicTab(null);
+            return;
+        }
+        if (!activeSigilRelicTab || !sigilRelicTables.some((tab: any) => tab.id === activeSigilRelicTab)) {
+            setActiveSigilRelicTab(sigilRelicTables[0].id);
+        }
+    }, [sigilRelicTables, activeSigilRelicTab]);
 
     useEffect(() => {
         const clearSelection = () => {
@@ -2390,6 +2418,26 @@ type SpikeFight = {
                                 sidebarListClass={sidebarListClass}
                             />
 
+                            <SigilRelicUptimeSection
+                                hasSigilRelicTables={sigilRelicTables.length > 0}
+                                sigilRelicSearch={sigilRelicSearch}
+                                setSigilRelicSearch={setSigilRelicSearch}
+                                filteredSigilRelicTables={filteredSigilRelicTables}
+                                activeSigilRelicTab={activeSigilRelicTab}
+                                setActiveSigilRelicTab={setActiveSigilRelicTab}
+                                activeSigilRelicTable={activeSigilRelicTable}
+                                formatWithCommas={formatWithCommas}
+                                renderProfessionIcon={renderProfessionIcon}
+                                expandedSection={expandedSection}
+                                expandedSectionClosing={expandedSectionClosing}
+                                openExpandedSection={openExpandedSection}
+                                closeExpandedSection={closeExpandedSection}
+                                isSectionVisible={isSectionVisible}
+                                isFirstVisibleSection={isFirstVisibleSection}
+                                sectionClass={sectionClass}
+                                sidebarListClass={sidebarListClass}
+                            />
+
                             <SkillUsageSection
                                 expandedSection={expandedSection}
                                 expandedSectionClosing={expandedSectionClosing}
@@ -2832,6 +2880,26 @@ type SpikeFight = {
                             activeSpecialTab={activeSpecialTab}
                             setActiveSpecialTab={setActiveSpecialTab}
                             activeSpecialTable={activeSpecialTable}
+                            formatWithCommas={formatWithCommas}
+                            renderProfessionIcon={renderProfessionIcon}
+                            expandedSection={expandedSection}
+                            expandedSectionClosing={expandedSectionClosing}
+                            openExpandedSection={openExpandedSection}
+                            closeExpandedSection={closeExpandedSection}
+                            isSectionVisible={isSectionVisible}
+                            isFirstVisibleSection={isFirstVisibleSection}
+                            sectionClass={sectionClass}
+                            sidebarListClass={sidebarListClass}
+                        />
+
+                        <SigilRelicUptimeSection
+                            hasSigilRelicTables={sigilRelicTables.length > 0}
+                            sigilRelicSearch={sigilRelicSearch}
+                            setSigilRelicSearch={setSigilRelicSearch}
+                            filteredSigilRelicTables={filteredSigilRelicTables}
+                            activeSigilRelicTab={activeSigilRelicTab}
+                            setActiveSigilRelicTab={setActiveSigilRelicTab}
+                            activeSigilRelicTable={activeSigilRelicTable}
                             formatWithCommas={formatWithCommas}
                             renderProfessionIcon={renderProfessionIcon}
                             expandedSection={expandedSection}

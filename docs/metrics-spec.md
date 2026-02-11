@@ -462,6 +462,71 @@ Special (non-boon) buff tables are computed from `buffUptimes` using
 
 Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
 
+### Sigil/Relic Uptime (Other Metrics)
+
+The `Sigil/Relic Uptime` section is derived from `specialTables` and filtered
+to entries whose buff name matches `sigil` or `relic` (case-insensitive).
+
+#### Data source and eligibility
+
+For each squad player and each non-boon buff in `players[*].buffUptimes`:
+
+- Buff metadata source:
+  - `details.buffMap[b{id}]` (fallback `details.buffMap[id]`)
+- Include only:
+  - non-boons (`classification !== "Boon"`)
+  - rows with valid positive uptime signal:
+    - `buffData[0].uptime > 0` or `buffData[0].presence > 0`
+
+#### Two parallel measures stored for each row
+
+1. **Stack/Intensity measure** (`total`, `perSecond`)
+   - used by the generic Special Buffs table
+   - formula:
+     - if stacking buff: `uptimeFactor = uptimeRaw`
+     - else: `uptimeFactor = uptimeRaw / 100`
+     - `totalMs += uptimeFactor * activeMs`
+   - output:
+     - `total = totalMs / 1000`
+     - `perSecond = totalMs / durationMs`
+
+2. **True uptime percentage measure** (`uptimePerSecond`)
+   - used by `Sigil/Relic Uptime`
+   - formula:
+     - non-stacking buff:
+       - `uptimePctRaw = uptimeRaw`
+     - stacking buff:
+       - `uptimePctRaw = presenceRaw`
+     - clamp to percentage domain:
+       - `uptimePct = clamp(uptimePctRaw, 0, 100) / 100`
+     - accumulate:
+       - `uptimeMs += uptimePct * activeMs`
+   - final denominator:
+     - `fullPlayerDurationMs = player.supportActiveMs`
+     - `uptimePerSecond = uptimeMs / fullPlayerDurationMs`
+   - rendered as:
+     - `Uptime% = uptimePerSecond * 100`
+
+#### Why this is the accuracy model
+
+This method intentionally uses the **same activity window in numerator and
+denominator** (player active time):
+
+- Numerator:
+  - uptime milliseconds accumulated from each fight over player active time
+- Denominator:
+  - total player active time across selected fights
+
+That produces a direct interpretation:
+
+- "Percent of the time this player was active that this sigil/relic effect was
+  present."
+
+For stacking gear buffs, `presence` is used for percent uptime because
+`uptime` on stacking buffs represents average stack intensity, not time-up
+percentage. This avoids under/over-reporting caused by treating stack-average
+as uptime%.
+
 ## Offense / Defense / Support / Healing Tables
 
 Detailed tables aggregate the per-player totals defined in:

@@ -618,11 +618,17 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         const meta = details.buffMap?.[buffId] || details.buffMap?.[String(buff.id)];
                         if (!meta || isBoon(meta)) return;
                         const uptime = Number(buff.buffData?.[0]?.uptime ?? 0);
-                        if (!Number.isFinite(uptime) || uptime <= 0) return;
+                        const presence = Number(buff.buffData?.[0]?.presence ?? 0);
+                        if ((!Number.isFinite(uptime) || uptime <= 0) && (!Number.isFinite(presence) || presence <= 0)) return;
                         const stacking = meta?.stacking ?? false;
-                        const uptimeFactor = stacking ? uptime : uptime / 100;
+                        const uptimeFactor = stacking ? (Number.isFinite(uptime) ? uptime : 0) : (Number.isFinite(uptime) ? uptime / 100 : 0);
                         const totalMs = uptimeFactor * activeMs;
-                        if (!Number.isFinite(totalMs) || totalMs <= 0) return;
+                        const uptimePercentRaw = stacking ? presence : uptime;
+                        const uptimePercentFactor = Math.min(Math.max(Number.isFinite(uptimePercentRaw) ? uptimePercentRaw : 0, 0), 100) / 100;
+                        const uptimeMs = uptimePercentFactor * activeMs;
+                        const hasTotalMs = Number.isFinite(totalMs) && totalMs > 0;
+                        const hasUptimeMs = Number.isFinite(uptimeMs) && uptimeMs > 0;
+                        if (!hasTotalMs && !hasUptimeMs) return;
 
                         const conditionName = normalizeConditionLabel(meta?.name);
                         if (conditionName && NON_DAMAGING_CONDITIONS.has(conditionName) && (!meta?.classification || meta.classification === 'Condition')) {
@@ -686,6 +692,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                                 professions: new Set<string>(),
                                 professionTimeMs: {},
                                 totalMs: 0,
+                                uptimeMs: 0,
                                 durationMs: 0
                             };
                             bucket.set(account, agg);
@@ -696,7 +703,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             agg.professionTimeMs[prof] = (agg.professionTimeMs[prof] || 0) + activeMs;
                             agg.profession = prof;
                         }
-                        agg.totalMs += totalMs;
+                        agg.totalMs += hasTotalMs ? totalMs : 0;
+                        agg.uptimeMs += hasUptimeMs ? uptimeMs : 0;
                         agg.durationMs += activeMs;
                     });
                 }
@@ -2810,12 +2818,15 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const durationMs = entry.durationMs || 0;
                 const total = entry.totalMs / 1000;
                 const perSecond = durationMs > 0 ? (entry.totalMs / durationMs) : 0;
+                const fullPlayerDurationMs = playerStats.get(entry.account)?.supportActiveMs || durationMs;
+                const uptimePerSecond = fullPlayerDurationMs > 0 ? (entry.uptimeMs / fullPlayerDurationMs) : 0;
                 return {
                     account: entry.account,
                     profession: primaryProfession,
                     professionList,
                     total,
                     perSecond,
+                    uptimePerSecond,
                     duration: durationMs / 1000
                 };
             }).filter((row) => row.total > 0 || row.perSecond > 0);

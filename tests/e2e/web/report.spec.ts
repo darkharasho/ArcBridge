@@ -30,6 +30,7 @@ test('web report renders and navigates', async ({ page }) => {
 
     await page.getByRole('button', { name: /Other Metrics/i }).click();
     await page.waitForTimeout(200);
+    await expect(page.getByRole('heading', { name: /Sigil\/Relic Uptime/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Skill Usage Tracker/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /APM Breakdown/i })).toBeVisible();
 
@@ -37,4 +38,18 @@ test('web report renders and navigates', async ({ page }) => {
     await page.waitForTimeout(200);
     await expect(page.getByRole('heading', { name: /Statistics Dashboard - Overview/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Fight Breakdown/i })).toBeVisible();
+
+    await page.locator('a[href="#proof-of-work"]').first().click();
+    await expect(page.getByText(/Metrics Specification/i)).toBeVisible();
+
+    const sigilRelicSpecHeading = page.getByText(/Sigil\/Relic Uptime \(Other Metrics\)/i).first();
+    await expect(sigilRelicSpecHeading).toBeVisible();
+
+    const sigilRelicTocItem = page
+        .locator('.proof-of-work-sidebar')
+        .getByRole('button', { name: /Sigil\/Relic Uptime \(Other Metrics\)/i });
+    await expect(sigilRelicTocItem).toBeVisible();
+    await sigilRelicTocItem.click();
+    await expect(sigilRelicTocItem).toHaveAttribute('data-toc-active', 'true');
+    await expect(sigilRelicSpecHeading).toBeVisible();
 });
