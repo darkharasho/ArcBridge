@@ -374,10 +374,11 @@ export function ReportApp() {
             }
         }
         if (!node) return;
-        const scrollOffset = Math.max(0, node.offsetTop - 12);
         requestAnimationFrame(() => {
-            container.scrollTop = scrollOffset;
-            node.scrollIntoView({ block: 'center' });
+            const containerRect = container.getBoundingClientRect();
+            const nodeRect = node.getBoundingClientRect();
+            const scrollOffset = Math.max(0, container.scrollTop + (nodeRect.top - containerRect.top) - 12);
+            container.scrollTo({ top: scrollOffset, behavior: 'smooth' });
             node.classList.add('ring-2', 'ring-cyan-400/70', 'bg-cyan-500/10');
             if (metricsSpecHighlightRef.current) {
                 window.clearTimeout(metricsSpecHighlightRef.current);
@@ -1089,7 +1090,6 @@ export function ReportApp() {
                 if (!target) return;
                 setActiveProofOfWorkHeadingId(item.id);
                 requestAnimationFrame(() => {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
                     const containerRect = container.getBoundingClientRect();
                     const targetRect = target.getBoundingClientRect();
                     const scrollOffset = container.scrollTop + (targetRect.top - containerRect.top) - 12;
