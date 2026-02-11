@@ -14,7 +14,6 @@ import { Gw2SigilIcon } from '../renderer/ui/Gw2SigilIcon';
 import {
     ShieldCheck,
     Shield,
-    ShieldAlert,
     CalendarDays,
     Users,
     ExternalLink,

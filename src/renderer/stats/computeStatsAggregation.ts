@@ -222,6 +222,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             professions: Set<string>;
             professionTimeMs: Record<string, number>;
             totalMs: number;
+            uptimeMs: number;
             durationMs: number;
         }>>();
         const knownProfessionNames = new Set(Object.keys(PROFESSION_COLORS));
