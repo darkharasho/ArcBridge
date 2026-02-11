@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Swords, Shield, ShieldAlert, Zap, Activity, Plus, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, Sparkles } from 'lucide-react';
+import { Trophy, Swords, Shield, ShieldAlert, Zap, Activity, Plus, ShieldCheck, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, Gem } from 'lucide-react';
 
 export const useStatsNavigation = (embedded: boolean) => {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -25,7 +25,7 @@ export const useStatsNavigation = (embedded: boolean) => {
         { id: 'support-detailed', label: 'Support Detailed', icon: Plus },
         { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
         { id: 'special-buffs', label: 'Special Buffs', icon: Star },
-        { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Sparkles },
+        { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gem },
         { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
         { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
     ]), []);

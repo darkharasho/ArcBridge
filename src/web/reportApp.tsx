@@ -18,6 +18,7 @@ import {
     Activity,
     Map as MapIcon,
     Sparkles,
+    Gem,
     Plus,
     HeartPulse,
     Star,
@@ -575,7 +576,7 @@ export function ReportApp() {
             sectionIds: ['special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats'],
             items: [
                 { id: 'special-buffs', label: 'Special Buffs', icon: Star },
-                { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Sparkles },
+                { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gem },
                 { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
                 { id: 'apm-stats', label: 'APM Breakdown', icon: Activity }
             ]
