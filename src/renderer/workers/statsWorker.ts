@@ -85,7 +85,12 @@ const pruneDetailsForStats = (details: any) => {
             'hasCommanderTag',
             'notInSquad',
             'account',
-            'activeTimes'
+            'activeTimes',
+            'teamID',
+            'teamId',
+            'team',
+            'teamColor',
+            'team_color'
         ]));
     }
     if (Array.isArray(pruned.targets)) {
@@ -102,7 +107,13 @@ const pruneDetailsForStats = (details: any) => {
                 'enemyPlayer',
                 'totalDamageDist',
                 'powerDamage1S',
-                'damage1S'
+                'damage1S',
+                'profession',
+                'teamID',
+                'teamId',
+                'team',
+                'teamColor',
+                'team_color'
             ])
         );
     }

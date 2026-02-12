@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { CountClassTooltip } from '../ui/StatsViewShared';
 
@@ -18,6 +19,27 @@ export const FightBreakdownSection = ({
     isFirstVisibleSection,
     sectionClass
 }: FightBreakdownSectionProps) => {
+    const teamColumnIds = useMemo(() => {
+        const totals = new Map<string, number>();
+        const fights = Array.isArray(stats?.fightBreakdown) ? stats.fightBreakdown : [];
+        fights.forEach((fight: any) => {
+            const rows = Array.isArray(fight?.teamBreakdown) ? fight.teamBreakdown : [];
+            rows.forEach((entry: any) => {
+                const id = String(entry?.teamId ?? '').trim();
+                const count = Number(entry?.count || 0);
+                if (!id || !Number.isFinite(count) || count <= 0) return;
+                totals.set(id, (totals.get(id) || 0) + count);
+            });
+        });
+        return Array.from(totals.entries())
+            .sort((a, b) => {
+                const countDelta = b[1] - a[1];
+                if (countDelta !== 0) return countDelta;
+                return a[0].localeCompare(b[0], undefined, { numeric: true });
+            })
+            .map(([id]) => id);
+    }, [stats?.fightBreakdown]);
+
     const formatReportLabel = (fight: any) => {
         const rawTs = fight?.timestamp;
         let tsMs = 0;
@@ -94,9 +116,13 @@ export const FightBreakdownSection = ({
                                             <th className="text-right py-2 px-3">Squad</th>
                                             <th className="text-right py-2 px-3">Allies</th>
                                             <th className="text-right py-2 px-3">Enemies</th>
-                                            <th className="text-right py-2 px-3">Red</th>
-                                            <th className="text-right py-2 px-3">Green</th>
-                                            <th className="text-right py-2 px-3">Blue</th>
+                                            {teamColumnIds.length === 0 ? (
+                                                <th className="text-right py-2 px-3">Teams</th>
+                                            ) : (
+                                                teamColumnIds.map((teamId) => (
+                                                    <th key={teamId} className="text-right py-2 px-3">{`Team ${teamId}`}</th>
+                                                ))
+                                            )}
                                         </>
                                     )}
                                     {fightBreakdownTab === 'outcomes' && (
@@ -187,9 +213,19 @@ export const FightBreakdownSection = ({
                                                         className="text-gray-200"
                                                     />
                                                 </td>
-                                                <td className="py-2 px-3 text-right font-mono text-red-300">{fight.teamCounts?.red ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono text-green-300">{fight.teamCounts?.green ?? 0}</td>
-                                                <td className="py-2 px-3 text-right font-mono text-blue-300">{fight.teamCounts?.blue ?? 0}</td>
+                                                {teamColumnIds.length === 0 ? (
+                                                    <td className="py-2 px-3 text-right font-mono text-gray-200">0</td>
+                                                ) : (
+                                                    teamColumnIds.map((teamId) => {
+                                                        const rows = Array.isArray(fight.teamBreakdown) ? fight.teamBreakdown : [];
+                                                        const entry = rows.find((row: any) => String(row?.teamId ?? '') === teamId);
+                                                        return (
+                                                            <td key={teamId} className="py-2 px-3 text-right font-mono text-gray-200">
+                                                                {Number(entry?.count || 0)}
+                                                            </td>
+                                                        );
+                                                    })
+                                                )}
                                             </>
                                         )}
                                         {fightBreakdownTab === 'outcomes' && (

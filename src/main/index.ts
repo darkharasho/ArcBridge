@@ -739,7 +739,12 @@ const pruneDetailsForStats = (details: any) => {
                 'hasCommanderTag',
                 'notInSquad',
                 'account',
-                'activeTimes'
+                'activeTimes',
+                'teamID',
+                'teamId',
+                'team',
+                'teamColor',
+                'team_color'
             ]);
             return base;
         });
@@ -758,7 +763,13 @@ const pruneDetailsForStats = (details: any) => {
                 'enemyPlayer',
                 'totalDamageDist',
                 'powerDamage1S',
-                'damage1S'
+                'damage1S',
+                'profession',
+                'teamID',
+                'teamId',
+                'team',
+                'teamColor',
+                'team_color'
             ])
         );
     }
@@ -1141,15 +1152,15 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                 }
             }
 
+            if (jsonDetails && !jsonDetails.error) {
+                jsonDetails = attachConditionMetrics(jsonDetails);
+            }
+
             const cacheableDetails = jsonDetails && !jsonDetails.error ? jsonDetails : null;
             if (cacheKey && !cached?.entry?.result) {
                 await saveDpsReportCacheEntry(cacheKey, result, cacheableDetails);
-            } else if (cacheKey && cached?.entry?.result && cacheableDetails && !cached?.jsonDetails) {
+            } else if (cacheKey && cached?.entry?.result && cacheableDetails) {
                 await updateDpsReportCacheDetails(cacheKey, cacheableDetails);
-            }
-
-            if (jsonDetails && !jsonDetails.error) {
-                jsonDetails = attachConditionMetrics(jsonDetails);
             }
 
             markUploadRetryResolved(filePath);
@@ -2745,16 +2756,20 @@ if (!gotTheLock) {
                 const logs = Array.isArray(payload.logs) ? payload.logs : [];
                 const manifestEntries: any[] = [];
                 const entries = logs.map((log, index) => {
+                    return { log, index };
+                });
+                const materializedEntries: Array<{ path: string; data: any }> = [];
+                for (const { log, index } of entries) {
                     const details = log?.details ?? log;
                     const pruned = pruneDetailsForStats(details);
                     manifestEntries.push(buildManifestEntry(pruned, getDatasetRelativeLogPath(index), index));
-                    return {
+                    materializedEntries.push({
                         path: path.join(logsDir, `log-${index + 1}.json`),
                         data: pruned
-                    };
-                });
-                if (entries.length > 0) {
-                    await writeJsonFilesWithLimit(entries, 8, (written, total) => {
+                    });
+                }
+                if (materializedEntries.length > 0) {
+                    await writeJsonFilesWithLimit(materializedEntries, 8, (written, total) => {
                         event.sender.send('dev-dataset-save-progress', { id, stage: 'logs', written, total });
                     });
                 }
@@ -2824,18 +2839,20 @@ if (!gotTheLock) {
                 }
                 const logsDir = path.join(datasetDir, 'logs');
                 const logs = Array.isArray(payload.logs) ? payload.logs : [];
-                const entries = logs.map((log, index) => {
+                const entries: Array<{ path: string; data: any }> = [];
+                for (let index = 0; index < logs.length; index += 1) {
+                    const log = logs[index];
                     const details = log?.details ?? log;
                     const pruned = pruneDetailsForStats(details);
                     const manifest = devDatasetManifestCache.get(id);
                     if (manifest) {
                         manifest.logs.push(buildManifestEntry(pruned, getDatasetRelativeLogPath(payload.startIndex + index), payload.startIndex + index));
                     }
-                    return {
+                    entries.push({
                         path: path.join(logsDir, `log-${payload.startIndex + index + 1}.json`),
                         data: pruned
-                    };
-                });
+                    });
+                }
                 if (entries.length > 0) {
                     await writeJsonFilesWithLimit(entries, 8);
                 }

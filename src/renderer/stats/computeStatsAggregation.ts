@@ -72,6 +72,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         if (!input || typeof input !== 'object') return input;
         const fights = Array.isArray(input.fightBreakdown) ? input.fightBreakdown : null;
         if (!fights || fights.length === 0) return input;
+        const hasTeamBreakdown = (value: any) =>
+            Array.isArray(value) && value.some((entry) => entry && Number(entry.count) > 0);
 
         const byId = new Map<string, any>();
         const byPermalink = new Map<string, any>();
@@ -86,17 +88,21 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
 
         const normalizedFights = fights.map((fight: any) => {
             if (!fight || typeof fight !== 'object') return fight;
-            const hasTimestamp = Number(fight.timestamp) > 0;
-            if (hasTimestamp) return fight;
-
             const keyId = fight.id ? String(fight.id) : '';
             const keyPermalink = typeof fight.permalink === 'string' ? fight.permalink.trim() : '';
             const matchedLog = (keyId ? byId.get(keyId) : undefined) || (keyPermalink ? byPermalink.get(keyPermalink) : undefined);
             if (!matchedLog) return fight;
 
-            const resolved = resolveFightTimestamp(matchedLog?.details, matchedLog);
-            if (!resolved) return fight;
-            return { ...fight, timestamp: resolved };
+            let nextFight = fight;
+            if (Number(fight.timestamp) <= 0) {
+                const resolved = resolveFightTimestamp(matchedLog?.details, matchedLog);
+                if (resolved) nextFight = { ...nextFight, timestamp: resolved };
+            }
+            const detailsTeamBreakdown = matchedLog?.details?.teamBreakdown;
+            if (hasTeamBreakdown(detailsTeamBreakdown)) {
+                nextFight = { ...nextFight, teamBreakdown: detailsTeamBreakdown };
+            }
+            return nextFight;
         });
 
         return { ...input, fightBreakdown: normalizedFights };
@@ -1818,42 +1824,12 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const isWin = getFightOutcome(details);
                 const timestamp = resolveFightTimestamp(details, log);
                 const mapName = resolveMapName(details, log);
-                const teamCounts = { red: 0, green: 0, blue: 0 };
-                const toFiniteNumber = (value: any) => {
-                    const n = Number(value);
-                    return Number.isFinite(n) ? n : 0;
-                };
                 const getTeamValue = (entity: any) => {
                     if (!entity || typeof entity !== 'object') return undefined;
                     const direct = entity.teamID ?? entity.teamId ?? entity.team ?? entity.teamColor ?? entity.team_color;
                     if (direct !== undefined && direct !== null) return direct;
                     const key = Object.keys(entity).find((k) => /^team/i.test(k));
                     return key ? entity[key] : undefined;
-                };
-                const normalizeTeam = (value: any, mode: 'zeroBased' | 'oneBased'): 'red' | 'green' | 'blue' | null => {
-                    if (value === undefined || value === null) return null;
-                    if (typeof value === 'string') {
-                        const lower = value.toLowerCase();
-                        if (lower.includes('red')) return 'red';
-                        if (lower.includes('green')) return 'green';
-                        if (lower.includes('blue')) return 'blue';
-                        if (lower === 'r') return 'red';
-                        if (lower === 'g') return 'green';
-                        if (lower === 'b') return 'blue';
-                        return null;
-                    }
-                    if (typeof value === 'number') {
-                        if (mode === 'zeroBased') {
-                            if (value === 0) return 'red';
-                            if (value === 1) return 'green';
-                            if (value === 2) return 'blue';
-                        } else {
-                            if (value === 1) return 'red';
-                            if (value === 2) return 'green';
-                            if (value === 3) return 'blue';
-                        }
-                    }
-                    return null;
                 };
                 const countProfessions = (entries: any[], getRaw: (entry: any) => string | undefined) => {
                     const counts: Record<string, number> = {};
@@ -1868,62 +1844,30 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const squadClassCountsFight = countProfessions(squadPlayers, (p) => p?.profession || p?.name);
                 const allyClassCountsFight = countProfessions(allies, (p) => p?.profession || p?.name);
                 const enemyClassCounts = countProfessions(enemyTargets, (t) => t?.profession || t?.name || t?.id);
-                if (details.teamCounts && typeof details.teamCounts === 'object') {
-                    const src: any = details.teamCounts;
-                    teamCounts.red = toFiniteNumber(src.red ?? src.r ?? src[0] ?? src[1]);
-                    teamCounts.green = toFiniteNumber(src.green ?? src.g ?? src[1] ?? src[2]);
-                    teamCounts.blue = toFiniteNumber(src.blue ?? src.b ?? src[2] ?? src[3]);
-                } else {
-                    const teamValues: any[] = [];
-                    targets.forEach((t: any) => {
-                        if (t?.isFake) return;
-                        const value = getTeamValue(t);
-                        if (value !== undefined && value !== null) teamValues.push(value);
-                    });
-                    players.forEach((p: any) => {
-                        if (!p?.notInSquad) return;
-                        const value = getTeamValue(p);
-                        if (value !== undefined && value !== null) teamValues.push(value);
-                    });
-                    // Fallback: some logs only expose team info on squad players.
-                    if (teamValues.length === 0) {
-                        players.forEach((p: any) => {
-                            const value = getTeamValue(p);
-                            if (value !== undefined && value !== null) teamValues.push(value);
-                        });
-                    }
-                    const teamIdValues = new Set<number>();
-                    teamValues.forEach((value) => {
-                        if (typeof value === 'number') teamIdValues.add(value);
-                    });
-                    const mode: 'zeroBased' | 'oneBased' = teamIdValues.has(0)
-                        ? 'zeroBased'
-                        : (teamIdValues.has(3) ? 'oneBased' : 'zeroBased');
-                    teamValues.forEach((value) => {
-                        const key = normalizeTeam(value, mode);
-                        if (!key) return;
-                        teamCounts[key] += 1;
-                    });
-                    const totalNamedTeams = teamCounts.red + teamCounts.green + teamCounts.blue;
-                    if (totalNamedTeams === 0 && teamValues.length > 0) {
-                        const valueCounts = new Map<string, number>();
-                        teamValues.forEach((value) => {
-                            const key = String(value);
-                            valueCounts.set(key, (valueCounts.get(key) || 0) + 1);
-                        });
-                        const ordered = Array.from(valueCounts.values()).sort((a, b) => b - a);
-                        teamCounts.red = ordered[0] || 0;
-                        teamCounts.green = ordered[1] || 0;
-                        teamCounts.blue = ordered[2] || 0;
-                    }
-                    if (teamCounts.red + teamCounts.green + teamCounts.blue === 0) {
-                        // Last resort: keep table non-empty when enemy-side team metadata is missing.
-                        teamCounts.red = Math.max(
-                            enemyTargets.length,
-                            players.filter((p: any) => p?.notInSquad).length
-                        );
-                    }
-                }
+                const alliedTeamIds = new Set<string>();
+                squadPlayers.forEach((player: any) => {
+                    const value = getTeamValue(player);
+                    if (value === undefined || value === null) return;
+                    alliedTeamIds.add(String(value));
+                });
+                const enemyTeamCounts = new Map<string, number>();
+                enemyTargets.forEach((target: any) => {
+                    if (target?.enemyPlayer === false) return;
+                    const value = getTeamValue(target);
+                    if (value === undefined || value === null) return;
+                    const key = String(value);
+                    // Allied IDs should not be included in enemy team columns.
+                    if (alliedTeamIds.has(key)) return;
+                    enemyTeamCounts.set(key, (enemyTeamCounts.get(key) || 0) + 1);
+                });
+                const teamBreakdown = Array.from(enemyTeamCounts.entries())
+                    .sort((a, b) => {
+                        const countDelta = b[1] - a[1];
+                        if (countDelta !== 0) return countDelta;
+                        return a[0].localeCompare(b[0], undefined, { numeric: true });
+                    })
+                    .slice(0, 3)
+                    .map(([teamId, count]) => ({ teamId, count }));
 
                 return {
                     id: log.filePath || `fight-${idx}`,
@@ -1936,7 +1880,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     squadCount: squadPlayers.length,
                     allyCount: allies.length,
                     enemyCount: enemyTargets.length,
-                    teamCounts,
+                    teamBreakdown,
                     alliesDown: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.downCount || 0), 0),
                     alliesDead: squadPlayers.reduce((sum: number, p: any) => sum + (p.defenses?.[0]?.deadCount || 0), 0),
                     // Number of distinct allied players who were revived at least once (not total revive events).
