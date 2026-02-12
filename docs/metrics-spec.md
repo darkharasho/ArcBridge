@@ -6,7 +6,7 @@ independently from any third-party implementation while staying consistent
 with EI JSON inputs. It also records the exact fields and aggregation rules
 so the stats dashboard, Discord, and cards produce identical values.
 
-Spec version: `v4` (see `src/shared/metrics-methods.json`).
+Spec version: `v5` (see `src/shared/metrics-methods.json`).
 
 ## Input Contract (EI JSON)
 
@@ -439,6 +439,14 @@ Top Outgoing Skills are derived from the squad-wide aggregation of
 - `hits = sum(entry.connectedHits)`
 - `downContribution = sum(entry.downContribution)`
 
+When using target-based outgoing aggregation, total-distribution supplementation
+is mode-sensitive:
+- non-detailed logs (`detailedWvW !== true`): missing/under-reported target
+  skill ids may be supplemented from `totalDamageDist` deltas
+- detailed WvW logs (`detailedWvW === true`): supplementation from
+  `totalDamageDist` is disabled to avoid known outlier max/damage artifacts
+  observed in some EI exports
+
 Top Incoming Skills are derived from `totalDamageTaken`:
 - `damage = sum(entry.totalDamage)`
 - `hits = sum(entry.hits)`
@@ -557,12 +565,26 @@ This same key is used to join:
 ### Highest Single Hit (`hit`)
 
 For each squad player (`!notInSquad`), the highest single-hit value is scanned
-from damage distributions (skill maps used for names):
-- `totalDamageDist`
-- `targetDamageDist`
+from damage distributions (skill maps used for names).
 
 Value:
-- `hit = max(entry.max)` across scanned entries
+- candidate fields per entry:
+  - `entry.max`
+  - `entry.maxDamage`
+  - `entry.maxHit`
+- no inferred single-hit estimate is used (for example,
+  `totalDamage / connectedHits` is intentionally excluded)
+
+Source priority:
+- primary: `targetDamageDist`
+- fallback: `totalDamageDist` only when no target entries are present (or no
+  positive peak was found from target entries)
+
+Detailed WvW safeguard:
+- for logs with `detailedWvW === true`, target-side data is treated as the
+  authoritative source for spike-hit computations whenever present, because
+  some logs can contain total-distribution outlier maxima that are inconsistent
+  with target-distribution entries.
 
 Skill label:
 - `skillName` from `skillMap`/`buffMap` by id fallback (`Unknown Skill` if missing)
@@ -674,7 +696,6 @@ Modes are defined the same way as Spike Damage:
   - `entry.max`
   - `entry.maxDamage`
   - `entry.maxHit`
-  - fallback estimate: `entry.totalDamage / entry.connectedHits` when valid
 - ignore `indirectDamage` entries
 
 ### Incoming Timeline Construction
@@ -809,6 +830,9 @@ Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
 - Stability generation depends on buff metadata presence (`buffMap`) and correct `durationMS`.
 - Damage uses `dpsAll[0].damage` (player total) rather than summing per-target totals, which may differ when targets are filtered or merged.
 - Skill usage totals are raw cast counts unless the per-second view is selected; missing `activeTimes` falls back to log duration for rate calculations.
+- Some detailed WvW EI exports may contain outlier values in `totalDamageDist`
+  (notably `max` on specific skill rows). Spike-hit and target-mode outgoing
+  aggregations prefer/anchor to `targetDamageDist` to reduce false outliers.
 
 ## Manifest & Field Usage
 

@@ -885,14 +885,54 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         });
                     });
                 } else {
+                    const targetSkillTotals = new Map<number, { damage: number; hits: number; downContribution: number }>();
                     p.targetDamageDist?.forEach((targetGroup: any) => {
                         targetGroup?.forEach((list: any) => {
                             list?.forEach((entry: any) => {
+                                const skillId = Number(entry?.id);
+                                if (Number.isFinite(skillId)) {
+                                    const existing = targetSkillTotals.get(skillId) || { damage: 0, hits: 0, downContribution: 0 };
+                                    existing.damage += Number(entry?.totalDamage || 0);
+                                    existing.hits += Number(entry?.connectedHits || 0);
+                                    existing.downContribution += Number(entry?.downContribution || 0);
+                                    targetSkillTotals.set(skillId, existing);
+                                }
                                 pushSkillDamageEntry(entry);
                                 pushPlayerSkillEntry(entry);
                             });
                         });
                     });
+                    const allowTotalSupplement = !Boolean(details?.detailedWvW);
+                    if (allowTotalSupplement) {
+                        // Some logs under-report or omit entries in targetDamageDist; supplement from totalDamageDist.
+                        p.totalDamageDist?.forEach((list: any) => {
+                            list?.forEach((entry: any) => {
+                                const skillId = Number(entry?.id);
+                                if (!Number.isFinite(skillId)) return;
+                                const target = targetSkillTotals.get(skillId);
+                                if (!target) {
+                                    pushSkillDamageEntry(entry);
+                                    pushPlayerSkillEntry(entry);
+                                    return;
+                                }
+                                const totalDamage = Number(entry?.totalDamage || 0);
+                                const totalHits = Number(entry?.connectedHits || 0);
+                                const totalDownContribution = Number(entry?.downContribution || 0);
+                                const deltaDamage = totalDamage - Number(target.damage || 0);
+                                const deltaHits = totalHits - Number(target.hits || 0);
+                                const deltaDownContribution = totalDownContribution - Number(target.downContribution || 0);
+                                if (deltaDamage <= 0 && deltaHits <= 0 && deltaDownContribution <= 0) return;
+                                const reconciledEntry = {
+                                    ...entry,
+                                    totalDamage: Math.max(0, deltaDamage),
+                                    connectedHits: Math.max(0, deltaHits),
+                                    downContribution: Math.max(0, deltaDownContribution)
+                                };
+                                pushSkillDamageEntry(reconciledEntry);
+                                pushPlayerSkillEntry(reconciledEntry);
+                            });
+                        });
+                    }
                 }
                 if (p.totalDamageTaken) {
                     p.totalDamageTaken.forEach((list: any) => {
@@ -1950,10 +1990,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const candidates = [
                     Number(entry.max),
                     Number(entry.maxDamage),
-                    Number(entry.maxHit),
-                    Number(entry.totalDamage) > 0 && Number(entry.connectedHits) > 0
-                        ? Number(entry.totalDamage) / Number(entry.connectedHits)
-                        : 0
+                    Number(entry.maxHit)
                 ].filter((n) => Number.isFinite(n));
                 const peak = candidates.length > 0 ? Math.max(...candidates) : 0;
                 if (peak > bestValue) {
@@ -1961,19 +1998,23 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     bestName = resolveSkillName(entry.id);
                 }
             };
-            if (Array.isArray(player?.totalDamageDist)) {
-                player.totalDamageDist.forEach((list: any) => {
-                    if (!Array.isArray(list)) return;
-                    list.forEach((entry: any) => readEntryPeak(entry));
-                });
-            }
+            let sawTargetEntry = false;
             if (Array.isArray(player?.targetDamageDist)) {
                 player.targetDamageDist.forEach((targetGroup: any) => {
                     if (!Array.isArray(targetGroup)) return;
                     targetGroup.forEach((list: any) => {
                         if (!Array.isArray(list)) return;
-                        list.forEach((entry: any) => readEntryPeak(entry));
+                        list.forEach((entry: any) => {
+                            sawTargetEntry = true;
+                            readEntryPeak(entry);
+                        });
                     });
+                });
+            }
+            if ((!sawTargetEntry || bestValue <= 0) && Array.isArray(player?.totalDamageDist)) {
+                player.totalDamageDist.forEach((list: any) => {
+                    if (!Array.isArray(list)) return;
+                    list.forEach((entry: any) => readEntryPeak(entry));
                 });
             }
             return { peak: bestValue, skillName: bestName || 'Unknown Skill' };
@@ -2248,19 +2289,53 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             if (!row.icon && skillMeta.icon) row.icon = skillMeta.icon;
                             skillRowsMap.set(skillName, row);
                         };
+                        const targetSkillTotals = new Map<number, { damage: number; hits: number }>();
                         if (Array.isArray(player?.targetDamageDist)) {
                             player.targetDamageDist.forEach((targetGroup: any) => {
                                 if (!Array.isArray(targetGroup)) return;
                                 targetGroup.forEach((list: any) => {
                                     if (!Array.isArray(list)) return;
-                                    list.forEach((entry: any) => consumeDamageEntry(entry));
+                                    list.forEach((entry: any) => {
+                                        const skillId = Number(entry?.id);
+                                        const damage = Number(entry?.totalDamage || 0);
+                                        if (Number.isFinite(skillId)) {
+                                            const existing = targetSkillTotals.get(skillId) || { damage: 0, hits: 0 };
+                                            existing.damage += Number.isFinite(damage) ? damage : 0;
+                                            existing.hits += Number(entry?.connectedHits || entry?.hits || 0);
+                                            targetSkillTotals.set(skillId, existing);
+                                        }
+                                        consumeDamageEntry(entry);
+                                    });
                                 });
                             });
                         }
-                        if (skillRowsMap.size === 0 && Array.isArray(player?.totalDamageDist)) {
+                        const allowTotalSupplement = !Boolean(details?.detailedWvW);
+                        if (allowTotalSupplement && Array.isArray(player?.totalDamageDist)) {
                             player.totalDamageDist.forEach((list: any) => {
                                 if (!Array.isArray(list)) return;
-                                list.forEach((entry: any) => consumeDamageEntry(entry));
+                                list.forEach((entry: any) => {
+                                    const skillId = Number(entry?.id);
+                                    if (!Number.isFinite(skillId)) {
+                                        consumeDamageEntry(entry);
+                                        return;
+                                    }
+                                    const target = targetSkillTotals.get(skillId);
+                                    if (!target) {
+                                        consumeDamageEntry(entry);
+                                        return;
+                                    }
+                                    const totalDamage = Number(entry?.totalDamage || 0);
+                                    const totalHits = Number(entry?.connectedHits || entry?.hits || 0);
+                                    const deltaDamage = totalDamage - Number(target.damage || 0);
+                                    const deltaHits = totalHits - Number(target.hits || 0);
+                                    if (deltaDamage <= 0 && deltaHits <= 0) return;
+                                    consumeDamageEntry({
+                                        ...entry,
+                                        totalDamage: Math.max(0, deltaDamage),
+                                        connectedHits: Math.max(0, deltaHits),
+                                        hits: Math.max(0, deltaHits)
+                                    });
+                                });
                             });
                         }
                         const replayEntries = (() => {
@@ -2427,10 +2502,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     const candidates = [
                         Number(entry.max),
                         Number(entry.maxDamage),
-                        Number(entry.maxHit),
-                        Number(entry.totalDamage) > 0 && Number(entry.connectedHits) > 0
-                            ? Number(entry.totalDamage) / Number(entry.connectedHits)
-                            : 0
+                        Number(entry.maxHit)
                     ].filter((n) => Number.isFinite(n));
                     const peak = candidates.length > 0 ? Math.max(...candidates) : 0;
                     if (peak > bestValue) {

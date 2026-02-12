@@ -638,10 +638,7 @@ type SpikeFight = {
                 const candidates = [
                     Number(entry.max),
                     Number(entry.maxDamage),
-                    Number(entry.maxHit),
-                    Number(entry.totalDamage) > 0 && Number(entry.connectedHits) > 0
-                        ? Number(entry.totalDamage) / Number(entry.connectedHits)
-                        : 0
+                    Number(entry.maxHit)
                 ].filter((n) => Number.isFinite(n));
                 const peak = candidates.length > 0 ? Math.max(...candidates) : 0;
                 if (peak > bestValue) {
@@ -650,19 +647,23 @@ type SpikeFight = {
                 }
             };
 
-            if (Array.isArray(player?.totalDamageDist)) {
-                player.totalDamageDist.forEach((list: any) => {
-                    if (!Array.isArray(list)) return;
-                    list.forEach((entry: any) => readEntryPeak(entry));
-                });
-            }
+            let sawTargetEntry = false;
             if (Array.isArray(player?.targetDamageDist)) {
                 player.targetDamageDist.forEach((targetGroup: any) => {
                     if (!Array.isArray(targetGroup)) return;
                     targetGroup.forEach((list: any) => {
                         if (!Array.isArray(list)) return;
-                        list.forEach((entry: any) => readEntryPeak(entry));
+                        list.forEach((entry: any) => {
+                            sawTargetEntry = true;
+                            readEntryPeak(entry);
+                        });
                     });
+                });
+            }
+            if ((!sawTargetEntry || bestValue <= 0) && Array.isArray(player?.totalDamageDist)) {
+                player.totalDamageDist.forEach((list: any) => {
+                    if (!Array.isArray(list)) return;
+                    list.forEach((entry: any) => readEntryPeak(entry));
                 });
             }
             return { peak: bestValue, skillName: bestName || 'Unknown Skill' };

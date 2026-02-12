@@ -1,5 +1,5 @@
 {
-  "specVersion": "v3",
+  "specVersion": "v5",
   "methods": {
     "count": {
       "label": "Count Events",
