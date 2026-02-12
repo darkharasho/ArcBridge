@@ -27,7 +27,7 @@ const STEPS = [
 
 export function WalkthroughModal({ isOpen, onClose, onLearnMore }: WalkthroughModalProps) {
     if (!isOpen) return null;
-    const appIconPath = `${import.meta.env.BASE_URL || './'}img/ArcBridge.svg`;
+    const appIconPath = `${import.meta.env.BASE_URL || './'}svg/ArcBridge.svg`;
     const arcbridgeLogoStyle = { WebkitMaskImage: `url(${appIconPath})`, maskImage: `url(${appIconPath})` } as const;
 
     return (

@@ -1986,6 +1986,7 @@ const ensureWebRootIndex = (templateDir: string) => {
         let html = fs.readFileSync(webIndex, 'utf8');
         html = html.replace(/\.\.\/assets\//g, './assets/');
         html = html.replace(/\.\.\/img\//g, './img/');
+        html = html.replace(/\.\.\/svg\//g, './svg/');
         if (fs.existsSync(rootIndex)) {
             const current = fs.readFileSync(rootIndex, 'utf8');
             if (current === html) return;
@@ -2003,6 +2004,7 @@ const getWebRootIndexBuffer = (templateDir: string) => {
         let html = fs.readFileSync(webIndex, 'utf8');
         html = html.replace(/\.\.\/assets\//g, './assets/');
         html = html.replace(/\.\.\/img\//g, './img/');
+        html = html.replace(/\.\.\/svg\//g, './svg/');
         return Buffer.from(html);
     } catch {
         return null;
@@ -3573,7 +3575,7 @@ if (!gotTheLock) {
                         treeMap.set(entry.path, entry.sha);
                         if (entry.path === `${pagesPrefix}index.html`) hasIndex = true;
                         if (entry.path.startsWith(`${pagesPrefix}assets/`)) hasAssets = true;
-                        if (entry.path.startsWith(`${pagesPrefix}img/class-icons/`)) hasClassIcons = true;
+                        if (entry.path.startsWith(`${pagesPrefix}svg/class-icons/`)) hasClassIcons = true;
                     }
                 });
 
@@ -4007,7 +4009,7 @@ if (!gotTheLock) {
                         treeMap.set(entry.path, entry.sha);
                         if (entry.path === withPagesPath(pagesPath, 'index.html')) hasIndex = true;
                         if (entry.path.startsWith(withPagesPath(pagesPath, 'assets/'))) hasAssets = true;
-                        if (entry.path.startsWith(withPagesPath(pagesPath, 'img/class-icons/'))) hasClassIcons = true;
+                        if (entry.path.startsWith(withPagesPath(pagesPath, 'svg/class-icons/'))) hasClassIcons = true;
                     }
                 });
                 const needsBaseTemplate = !hasIndex || !hasAssets || !hasClassIcons;

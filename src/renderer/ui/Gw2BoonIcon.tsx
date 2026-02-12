@@ -8,8 +8,8 @@ export const Gw2BoonIcon = ({ className = '' }: Gw2BoonIconProps) => (
         className={`inline-block shrink-0 ${className}`.trim()}
         style={{
             backgroundColor: 'currentColor',
-            maskImage: 'url(/img/gw2_boon.svg)',
-            WebkitMaskImage: 'url(/img/gw2_boon.svg)',
+            maskImage: 'url(/svg/custom-icons/gw2_boon.svg)',
+            WebkitMaskImage: 'url(/svg/custom-icons/gw2_boon.svg)',
             maskRepeat: 'no-repeat',
             WebkitMaskRepeat: 'no-repeat',
             maskPosition: 'center',

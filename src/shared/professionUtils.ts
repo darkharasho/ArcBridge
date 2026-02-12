@@ -192,14 +192,14 @@ export function getProfessionIconPath(profession: string): string | null {
     const useDevRoot = typeof window !== 'undefined'
         && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host)
         && window.location.pathname.startsWith('/web/');
-    const basePath = useDevRoot ? '/img/class-icons' : './img/class-icons';
+    const basePath = useDevRoot ? '/svg/class-icons' : './svg/class-icons';
     const direct = PROFESSION_COLORS[profession] ? profession : null;
     if (direct && direct !== 'Unknown') {
-        return `${basePath}/${direct}.png`;
+        return `${basePath}/${direct}.svg`;
     }
     const base = getProfessionBase(profession);
     if (base && base !== 'Unknown') {
-        return `${basePath}/${base}.png`;
+        return `${basePath}/${base}.svg`;
     }
     return null;
 }

@@ -1069,7 +1069,7 @@ function App() {
 
     const isModernTheme = uiTheme === 'modern';
     const isCrtTheme = uiTheme === 'crt';
-    const appIconPath = `${import.meta.env.BASE_URL || './'}img/ArcBridge.svg`;
+    const appIconPath = `${import.meta.env.BASE_URL || './'}svg/ArcBridge.svg`;
     const arcbridgeLogoStyle = { WebkitMaskImage: `url(${appIconPath})`, maskImage: `url(${appIconPath})` } as const;
     const isDev = import.meta.env.DEV;
     const shellClassName = isModernTheme

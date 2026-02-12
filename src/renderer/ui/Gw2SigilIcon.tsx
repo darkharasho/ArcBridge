@@ -8,8 +8,8 @@ export const Gw2SigilIcon = ({ className = '' }: Gw2SigilIconProps) => (
         className={`inline-block shrink-0 ${className}`.trim()}
         style={{
             backgroundColor: 'currentColor',
-            maskImage: 'url(/img/gw2_sigil.svg)',
-            WebkitMaskImage: 'url(/img/gw2_sigil.svg)',
+            maskImage: 'url(/svg/custom-icons/gw2_sigil.svg)',
+            WebkitMaskImage: 'url(/svg/custom-icons/gw2_sigil.svg)',
             maskRepeat: 'no-repeat',
             WebkitMaskRepeat: 'no-repeat',
             maskPosition: 'center',

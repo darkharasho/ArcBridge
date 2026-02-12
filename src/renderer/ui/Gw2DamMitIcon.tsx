@@ -8,8 +8,8 @@ export const Gw2DamMitIcon = ({ className = '' }: Gw2DamMitIconProps) => (
         className={`inline-block shrink-0 ${className}`.trim()}
         style={{
             backgroundColor: 'currentColor',
-            maskImage: 'url(/img/dam_mit.svg)',
-            WebkitMaskImage: 'url(/img/dam_mit.svg)',
+            maskImage: 'url(/svg/custom-icons/dam_mit.svg)',
+            WebkitMaskImage: 'url(/svg/custom-icons/dam_mit.svg)',
             maskRepeat: 'no-repeat',
             WebkitMaskRepeat: 'no-repeat',
             maskPosition: 'center',

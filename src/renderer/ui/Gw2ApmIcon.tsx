@@ -8,8 +8,8 @@ export const Gw2ApmIcon = ({ className = '' }: Gw2ApmIconProps) => (
         className={`inline-block shrink-0 ${className}`.trim()}
         style={{
             backgroundColor: 'currentColor',
-            maskImage: 'url(/img/mouse.svg)',
-            WebkitMaskImage: 'url(/img/mouse.svg)',
+            maskImage: 'url(/svg/custom-icons/mouse.svg)',
+            WebkitMaskImage: 'url(/svg/custom-icons/mouse.svg)',
             maskRepeat: 'no-repeat',
             WebkitMaskRepeat: 'no-repeat',
             maskPosition: 'center',
