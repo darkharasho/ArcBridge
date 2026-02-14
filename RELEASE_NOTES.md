@@ -1,18 +1,21 @@
 # Release Notes
 
-Version v1.29.0 — February 12, 2026
+Version v1.29.1 — February 13, 2026
 
 ## 🌟 Highlights
-- Documentation updated to mention the new Discord "Split Enemies by Team" setting in the Settings guide.
-- Replaced fight color split with dynamic enemy TeamID columns; GW2 world-color mapping is removed.
+- Compatibility patch to fix legacy custom icon URLs when hosting under subpaths (e.g., GitHub Pages).
+- Icon components refactored to load assets from dynamic paths for more robust rendering.
+- Class icons are shown by default in the UI for clearer visuals.
+- Subtle visual/style polish across the app.
 
 ## 🛠️ Improvements
-- Added the option to Split Enemies by Team in Discord Embed - Summary Sections (Settings -> Discord Embed - Summary Sections) to separate enemy summaries and class breakdowns by enemy Team ID (excluding ally team) across Embed, Image, and Tiled notifications.
-- Replaced the previous fight color split with dynamic enemy TeamID columns for enemy breakdown.
-- Removed GW2 world-color mapping (internal cleanup).
+- Icons now resolve via dynamic asset paths, improving reliability across hosting setups.
+- Rendering logic updated to show icons and detailed class info in more views.
+- Styling tweaks to the CRT-themed visuals for a smoother look.
 
 ## 🧯 Fixes
-None.
+- Build/upload patch rewrites legacy icon URLs from /svg/custom-icons/ to ./svg/custom-icons/ so icons render when reports are hosted under subpaths.
+- General asset path resolution updates to prevent broken icons in older templates.
 
 ## ⚠️ Breaking Changes
-None.
+- None.
