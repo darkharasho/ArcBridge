@@ -2365,6 +2365,16 @@ body.theme-modern .app-shell .stats-table-shell__rows > .grid {
     background: transparent !important;
 }
 
+/* Attendance Ledger sortable headers should remain flat in-app (match web report behavior). */
+.app-shell #attendance-ledger thead button,
+.app-shell #attendance-ledger thead button:hover,
+.app-shell #attendance-ledger thead button:active,
+.app-shell #attendance-ledger thead button:focus {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
 /* Add subtle separation depth under the table column header row in app + web report. */
 .app-shell .stats-table-shell__columns > .grid.bg-white\/5,
 body.web-report .stats-table-shell__columns > .grid.bg-white\/5 {
