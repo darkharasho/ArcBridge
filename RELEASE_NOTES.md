@@ -1,21 +1,21 @@
 # Release Notes
 
-Version v1.29.1 — February 13, 2026
+Version v1.30.0 — February 14, 2026
 
 ## 🌟 Highlights
-- Compatibility patch to fix legacy custom icon URLs when hosting under subpaths (e.g., GitHub Pages).
-- Icon components refactored to load assets from dynamic paths for more robust rendering.
-- Class icons are shown by default in the UI for clearer visuals.
-- Subtle visual/style polish across the app.
+- A more compact roster view with Fight Comp and commander-aware squad building for easier planning.
+- Roster intel now includes an attendance ledger and a themed squad comp board for quick insights.
+- The web report now features a polished, collapsible section navigation with smooth, adaptive animations and hash-aware defaults.
+- Asset loading is more reliable thanks to consistent asset paths across the web build.
 
 ## 🛠️ Improvements
-- Icons now resolve via dynamic asset paths, improving reliability across hosting setups.
-- Rendering logic updated to show icons and detailed class info in more views.
-- Styling tweaks to the CRT-themed visuals for a smoother look.
+- The roster now includes a compact Fight Comp view and commander-aware squad building, plus themed navigation parity.
+- Stats bring roster intel sections with an attendance ledger and a themed squad comp board.
+- The web report gains a polished collapsible navigation with adaptive, smooth animations and hash-aware defaults.
+- Web assets are updated for cleaner paths and more reliable loading across builds.
 
 ## 🧯 Fixes
-- Build/upload patch rewrites legacy icon URLs from /svg/custom-icons/ to ./svg/custom-icons/ so icons render when reports are hosted under subpaths.
-- General asset path resolution updates to prevent broken icons in older templates.
+None.
 
 ## ⚠️ Breaking Changes
-- None.
+None.
