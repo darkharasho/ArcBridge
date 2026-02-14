@@ -2821,6 +2821,14 @@ body.web-report.theme-matte .stats-view .fight-comp-class-icon {
     box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.5), inset -2px -2px 4px var(--matte-light) !important;
 }
 
+/* Squad-side class icons should stay flat in web report fight comp. */
+body.web-report .stats-view .fight-comp-class-icon--squad,
+body.web-report.theme-matte .stats-view .fight-comp-class-icon--squad {
+    box-shadow: none !important;
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
 /* =========================================
    Theme: Matte Slate - Web Reports Modal
    ========================================= */

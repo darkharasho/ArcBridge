@@ -104,13 +104,13 @@ export const AttendanceSection = ({
                     <div className="text-center text-gray-500 italic py-6">No attendance data available.</div>
                 ) : (
                     <div className={`bg-black/30 border border-white/5 rounded-xl overflow-hidden ${shouldScrollLedger ? 'max-h-[30rem] overflow-y-auto' : ''}`}>
-                        <table className="w-full text-xs table-auto min-w-[900px]">
+                        <table className="w-full text-xs table-auto min-w-[900px] border-separate border-spacing-0">
                             <thead>
-                                <tr className="text-gray-400 uppercase tracking-widest text-[10px] bg-white/5">
-                                    <th className="text-left py-2 px-4">Account</th>
-                                    <th className="text-left py-2 px-4">Character(s)</th>
-                                    <th className="text-left py-2 px-4">Classes Played</th>
-                                    <th className="text-right py-2 px-4">
+                                <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
+                                    <th className="text-left py-2 px-4 sticky top-0 z-20 bg-[color:var(--bg-elevated)]">Account</th>
+                                    <th className="text-left py-2 px-4 sticky top-0 z-20 bg-[color:var(--bg-elevated)]">Character(s)</th>
+                                    <th className="text-left py-2 px-4 sticky top-0 z-20 bg-[color:var(--bg-elevated)]">Classes Played</th>
+                                    <th className="text-right py-2 px-4 sticky top-0 z-20 bg-[color:var(--bg-elevated)]">
                                         <button
                                             type="button"
                                             onClick={() => updateSort('fight')}
@@ -119,7 +119,7 @@ export const AttendanceSection = ({
                                             Total Fight Time{sortKey === 'fight' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
                                         </button>
                                     </th>
-                                    <th className="text-right py-2 px-4">
+                                    <th className="text-right py-2 px-4 sticky top-0 z-20 bg-[color:var(--bg-elevated)]">
                                         <button
                                             type="button"
                                             onClick={() => updateSort('squad')}

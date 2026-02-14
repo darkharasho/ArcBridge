@@ -149,7 +149,7 @@ export const FightCompSection = ({
                                                                     title={entry.characterName || entry.account
                                                                         ? `${entry.profession} — ${entry.characterName || 'Unknown'} (${entry.account || 'Unknown'})`
                                                                         : entry.profession}
-                                                                    className="fight-comp-class-icon inline-flex items-center justify-center"
+                                                                    className="fight-comp-class-icon fight-comp-class-icon--squad inline-flex items-center justify-center"
                                                                 >
                                                                     {getProfessionIconPath(entry.profession) ? (
                                                                         <img
