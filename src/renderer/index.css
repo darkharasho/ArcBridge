@@ -2631,6 +2631,25 @@ body.web-report.theme-classic .stats-view .squad-comp-player-tile {
     border-color: rgba(110, 231, 183, 0.34);
 }
 
+body.theme-classic .stats-view .squad-comp-board,
+body.web-report.theme-classic .stats-view .squad-comp-board {
+    background-image: none !important;
+    background-color: rgba(0, 0, 0, 0.32) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-classic .stats-view .squad-comp-party-row,
+body.web-report.theme-classic .stats-view .squad-comp-party-row {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-classic .stats-view .squad-comp-party-badge,
+body.web-report.theme-classic .stats-view .squad-comp-party-badge {
+    background-color: rgba(0, 0, 0, 0.45) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
 body.theme-modern .stats-view .squad-comp-board,
 body.web-report.theme-modern .stats-view .squad-comp-board {
     background-image: none !important;
