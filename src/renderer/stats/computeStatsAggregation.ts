@@ -1712,13 +1712,13 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 : 0;
         }
 
-        const topSkills = Object.values(skillDamageMap)
-            .sort((a, b) => {
-                const aVal = topSkillsMetric === 'downContribution' ? a.downContribution : a.damage;
-                const bVal = topSkillsMetric === 'downContribution' ? b.downContribution : b.damage;
-                return bVal - aVal;
-            })
+        const topSkillsByDamage = Object.values(skillDamageMap)
+            .sort((a, b) => b.damage - a.damage || b.hits - a.hits || String(a.name || '').localeCompare(String(b.name || '')))
             .slice(0, 25);
+        const topSkillsByDownContribution = Object.values(skillDamageMap)
+            .sort((a, b) => b.downContribution - a.downContribution || b.hits - a.hits || String(a.name || '').localeCompare(String(b.name || '')))
+            .slice(0, 25);
+        const topSkills = topSkillsMetric === 'downContribution' ? topSkillsByDownContribution : topSkillsByDamage;
         const topIncomingSkills = Object.values(incomingSkillDamageMap).sort((a, b) => b.damage - a.damage).slice(0, 25);
 
         // Map Data
@@ -2996,6 +2996,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 conditions: s.incomingConditions
             })),
             topSkills, topIncomingSkills,
+            topSkillsByDamage,
+            topSkillsByDownContribution,
             playerSkillBreakdowns,
             topSkillsMetric,
             mapData, timelineData, boonTables,

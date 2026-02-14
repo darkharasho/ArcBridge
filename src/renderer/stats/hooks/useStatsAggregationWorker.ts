@@ -25,10 +25,28 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     const streamTimerRef = useRef<number | null>(null);
     const workerLogLimit = 8;
     const shouldUseWorker = logs.length <= workerLogLimit;
+    const aggregationSettingsKeyRef = useRef<string>('');
+    const aggregationSettingsRef = useRef<IStatsViewSettings | undefined>(undefined);
+
+    const aggregationStatsViewSettings = useMemo(() => {
+        if (!statsViewSettings) {
+            aggregationSettingsKeyRef.current = '';
+            aggregationSettingsRef.current = undefined;
+            return undefined;
+        }
+        const stripped: any = { ...statsViewSettings };
+        delete stripped.topSkillsMetric;
+        const nextKey = JSON.stringify(stripped);
+        if (aggregationSettingsKeyRef.current !== nextKey) {
+            aggregationSettingsKeyRef.current = nextKey;
+            aggregationSettingsRef.current = stripped as IStatsViewSettings;
+        }
+        return aggregationSettingsRef.current;
+    }, [statsViewSettings]);
 
     const payload = useMemo(
-        () => ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }),
-        [logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod]
+        () => ({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod }),
+        [logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod]
     );
 
     useEffect(() => {
@@ -92,7 +110,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                 payload: {
                     precomputedStats,
                     mvpWeights,
-                    statsViewSettings,
+                    statsViewSettings: aggregationStatsViewSettings,
                     disruptionMethod
                 }
             });
@@ -121,12 +139,12 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
             workerRef.current = null;
             setWorkerFailed(true);
         }
-    }, [payload, logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod, shouldUseWorker]);
+    }, [payload, logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod, shouldUseWorker]);
 
     const fallback = useMemo(() => {
         if (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker) return null;
-        return computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod });
-    }, [workerFailed, logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod, shouldUseWorker]);
+        return computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+    }, [workerFailed, logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod, shouldUseWorker]);
 
     useEffect(() => {
         if (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker) return;
@@ -137,7 +155,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     }, [fallback, workerFailed, logs.length, shouldUseWorker]);
 
     const resolvedResult = (workerFailed || typeof Worker === 'undefined' || !shouldUseWorker)
-        ? (fallback ?? computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }))
+        ? (fallback ?? computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod }))
         : result;
 
     return {

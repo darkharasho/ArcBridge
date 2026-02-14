@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ArrowBigDown, ArrowBigUp } from 'lucide-react';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 
@@ -18,17 +19,27 @@ export const TopSkillsSection = ({
     isFirstVisibleSection,
     sectionClass
 }: TopSkillsSectionProps) => {
-    const isDownContrib = (topSkillsMetric || stats.topSkillsMetric) === 'downContribution';
+    const resolvedMetric = (topSkillsMetric || stats.topSkillsMetric) === 'downContribution' ? 'downContribution' : 'damage';
+    const isDownContrib = resolvedMetric === 'downContribution';
     const metricLabel = isDownContrib ? 'Down Contrib' : 'Damage';
-    const metricKey = isDownContrib ? 'downContribution' : 'damage';
-    const sortedTopSkills = [...(stats.topSkills || [])].sort((a: any, b: any) => {
-        const aVal = Number(a?.[metricKey] || 0);
-        const bVal = Number(b?.[metricKey] || 0);
-        return bVal - aVal || Number(b?.hits || 0) - Number(a?.hits || 0) || String(a?.name || '').localeCompare(String(b?.name || ''));
-    });
-    const topSkillsPeak = Math.max(
-        1,
-        ...sortedTopSkills.map((skill: any) => Number(skill?.[metricKey] || 0))
+    const metricKey = resolvedMetric;
+    const precomputedByDamage = Array.isArray(stats.topSkillsByDamage) ? stats.topSkillsByDamage : null;
+    const precomputedByDownContribution = Array.isArray(stats.topSkillsByDownContribution) ? stats.topSkillsByDownContribution : null;
+    const sortedTopSkills = useMemo(
+        () => {
+            if (isDownContrib && precomputedByDownContribution) return precomputedByDownContribution;
+            if (!isDownContrib && precomputedByDamage) return precomputedByDamage;
+            return [...(Array.isArray(stats.topSkills) ? stats.topSkills : [])].sort((a: any, b: any) => {
+            const aVal = Number(a?.[metricKey] || 0);
+            const bVal = Number(b?.[metricKey] || 0);
+            return bVal - aVal || Number(b?.hits || 0) - Number(a?.hits || 0) || String(a?.name || '').localeCompare(String(b?.name || ''));
+            });
+        },
+        [isDownContrib, precomputedByDamage, precomputedByDownContribution, stats.topSkills, metricKey]
+    );
+    const topSkillsPeak = useMemo(
+        () => Math.max(1, ...sortedTopSkills.map((skill: any) => Number(skill?.[metricKey] || 0))),
+        [sortedTopSkills, metricKey]
     );
     const showMetricToggle = typeof onTopSkillsMetricChange === 'function';
 
@@ -78,7 +89,7 @@ export const TopSkillsSection = ({
             </div>
             <div className="max-h-80 overflow-y-auto space-y-4">
                 {sortedTopSkills.map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
-                    <div key={i} className="flex items-center gap-4">
+                    <div key={`outgoing-${skill.name || 'unknown'}-${i}`} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
                             <div className="flex justify-between items-center text-sm mb-1 leading-tight h-8">
@@ -126,8 +137,8 @@ export const TopSkillsSection = ({
                 </div>
             </div>
             <div className="max-h-80 overflow-y-auto space-y-4">
-                {stats.topIncomingSkills.map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
-                    <div key={i} className="flex items-center gap-4">
+                {(stats.topIncomingSkills || []).map((skill: { name: string; icon?: string; damage: number; hits: number }, i: number) => (
+                    <div key={`incoming-${skill.name || 'unknown'}-${i}`} className="flex items-center gap-4">
                         <div className="w-8 text-center text-xl font-bold text-gray-600">#{i + 1}</div>
                         <div className="flex-1">
                             <div className="flex justify-between items-center text-sm mb-1 leading-tight h-8">
