@@ -358,8 +358,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
                 {view === 'stats' && statsViewMounted && (
                     <div className="flex flex-1 min-h-0">
                         <div className="flex-1 min-h-0 flex gap-3">
-                            <aside className="relative w-[248px] -mr-[176px] shrink-0 self-stretch min-h-0 overflow-visible group/statsnav">
-                                <div className={`absolute inset-y-0 left-0 z-30 min-h-0 w-[72px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden`}>
+                            <aside className="relative w-[248px] -mr-[176px] shrink-0 self-stretch min-h-0 overflow-visible">
+                                <div className={`peer/statsnavtrigger absolute inset-y-0 left-0 z-30 min-h-0 w-[72px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden`}>
                                     <div className="h-full min-h-0 overflow-y-auto py-3 px-2 space-y-2">
                                         {STATS_TOC_GROUPS.map((group) => {
                                             const GroupIcon = group.icon as any;
@@ -378,9 +378,9 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                         })}
                                     </div>
                                 </div>
-                                <div className={`absolute inset-y-0 left-0 z-40 min-h-0 w-[248px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden opacity-0 -translate-x-1 pointer-events-none will-change-[transform,opacity] transition-[transform,opacity] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/statsnav:opacity-100 group-hover/statsnav:translate-x-0 group-hover/statsnav:pointer-events-auto hover:opacity-100 hover:translate-x-0 hover:pointer-events-auto`}>
+                                <div className={`group/statsnavpanel absolute inset-y-0 left-0 z-40 min-h-0 w-[248px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden opacity-0 -translate-x-1 pointer-events-none will-change-[transform,opacity] transition-[transform,opacity] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover/statsnavtrigger:opacity-100 peer-hover/statsnavtrigger:translate-x-0 peer-hover/statsnavtrigger:pointer-events-auto hover:opacity-100 hover:translate-x-0 hover:pointer-events-auto`}>
                                     <div className="h-full min-h-0 overflow-y-auto py-3 px-2 space-y-1.5">
-                                        <div className="px-2 h-5 text-[10px] uppercase tracking-[0.28em] text-gray-400 opacity-0 group-hover/statsnav:opacity-100 transition-opacity duration-150">
+                                        <div className="px-2 h-5 text-[10px] uppercase tracking-[0.28em] text-gray-400 opacity-0 transition-opacity duration-150 peer-hover/statsnavtrigger:opacity-100 group-hover/statsnavpanel:opacity-100">
                                             Jump to
                                         </div>
                                         {STATS_TOC_GROUPS.map((group) => {
@@ -395,7 +395,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                                             if (isExpanded) return;
                                                             handleStatsNavItemClick(group.id, group.items[0]?.id || 'overview');
                                                         }}
-                                                        className={`w-full h-9 flex items-center justify-center group-hover/statsnav:justify-start gap-0 group-hover/statsnav:gap-2 px-2 group-hover/statsnav:px-3 text-left transition-colors ${isActiveGroup ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
+                                                        className={`w-full h-9 flex items-center justify-center gap-0 px-2 text-left transition-colors peer-hover/statsnavtrigger:justify-start peer-hover/statsnavtrigger:gap-2 peer-hover/statsnavtrigger:px-3 group-hover/statsnavpanel:justify-start group-hover/statsnavpanel:gap-2 group-hover/statsnavpanel:px-3 ${isActiveGroup ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
                                                     >
                                                         <GroupIcon className="w-3.5 h-3.5 text-[color:var(--accent)] shrink-0" />
                                                         <span className="text-[11px] leading-none font-semibold uppercase tracking-[0.18em] truncate">{group.label}</span>
@@ -404,7 +404,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                                         </span>
                                                     </button>
                                                     <div className={`${isExpanded ? 'max-h-[520px]' : 'max-h-0'} overflow-hidden`}>
-                                                        <div className={`pt-1.5 pb-1.5 px-2 space-y-0.5 will-change-[opacity,transform] transition-[opacity,transform] duration-180 ease-[cubic-bezier(0.2,0.9,0.25,1)] ${statsSubnavItemsClass} ${isExpanded ? 'opacity-0 -translate-x-1 group-hover/statsnav:opacity-100 group-hover/statsnav:translate-x-0' : 'opacity-0 -translate-x-1'}`}>
+                                                        <div className={`pt-1.5 pb-1.5 px-2 space-y-0.5 will-change-[opacity,transform] transition-[opacity,transform] duration-180 ease-[cubic-bezier(0.2,0.9,0.25,1)] ${statsSubnavItemsClass} ${isExpanded ? 'opacity-0 -translate-x-1 peer-hover/statsnavtrigger:opacity-100 peer-hover/statsnavtrigger:translate-x-0 group-hover/statsnavpanel:opacity-100 group-hover/statsnavpanel:translate-x-0' : 'opacity-0 -translate-x-1'}`}>
                                                             {group.items.map((item) => {
                                                                 const ItemIcon = item.icon;
                                                                 const isActiveItem = statsActiveNavId === item.id;
