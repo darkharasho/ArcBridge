@@ -408,7 +408,9 @@ export const SkillUsageSection = ({
                                             strokeDasharray={dash}
                                             opacity={isDimmed ? 0.6 : 1}
                                             dot={false}
-                                            isAnimationActive={false}
+                                            isAnimationActive={selectedPlayers.length <= 16}
+                                            animationDuration={420}
+                                            animationEasing="ease-out"
                                         />
                                     );
                                 })}
