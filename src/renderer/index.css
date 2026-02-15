@@ -671,6 +671,27 @@ body.web-report.theme-crt .stats-view .fight-diff-select option {
     color: #9cffc6;
 }
 
+body.theme-kinetic .stats-view .fight-diff-select,
+body.web-report.theme-kinetic .stats-view .fight-diff-select {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-default) !important;
+    color: #3f372f !important;
+    box-shadow: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23756552' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+}
+
+body.theme-kinetic .stats-view .fight-diff-select:focus,
+body.web-report.theme-kinetic .stats-view .fight-diff-select:focus {
+    border-color: #b7aa96 !important;
+    box-shadow: 0 0 0 1px rgba(129, 114, 92, 0.28) !important;
+}
+
+body.theme-kinetic .stats-view .fight-diff-select option,
+body.web-report.theme-kinetic .stats-view .fight-diff-select option {
+    background-color: #e3dccf !important;
+    color: #433b32 !important;
+}
+
 body.web-report .stats-sections>[data-section-visible="true"]+[data-section-visible="true"] {
     margin-top: 1.5rem;
 }
@@ -1442,6 +1463,14 @@ body.web-report.theme-matte #report-list-container {
     background-image: none !important;
     border: none !important;
     box-shadow: -6px -6px 12px var(--matte-light), 8px 8px 14px var(--matte-dark) !important;
+}
+
+body.web-report.theme-kinetic #stats-dashboard-container,
+body.web-report.theme-kinetic #report-list-container {
+    background-color: var(--bg-elevated) !important;
+    background-image: none !important;
+    border-color: var(--border-default) !important;
+    box-shadow: none !important;
 }
 
 body.web-report.theme-matte .backdrop-blur-xl,
@@ -2588,6 +2617,12 @@ body.web-report .stats-table-shell__columns > .grid.bg-white\/5 {
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10), 0 12px 16px -10px rgba(0, 0, 0, 0.58) !important;
 }
 
+body.theme-kinetic .app-shell .stats-table-shell__columns > .grid.bg-white\/5,
+body.web-report.theme-kinetic .stats-table-shell__columns > .grid.bg-white\/5 {
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
 /* =========================================
    Theme: Matte Slate - Overview & MVP extensions
    ========================================= */
@@ -2966,6 +3001,117 @@ body.web-report.theme-matte .stats-view .squad-comp-player-account {
 body.theme-matte .stats-view .squad-comp-player-character,
 body.web-report.theme-matte .stats-view .squad-comp-player-character {
     color: rgba(196, 208, 199, 0.78) !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-shell,
+body.web-report.theme-kinetic .stats-view .squad-comp-shell {
+    background: #e9e2d6 !important;
+    border-color: var(--border-default) !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-shell h3,
+body.web-report.theme-kinetic .stats-view .squad-comp-shell h3 {
+    color: #3f372f !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-shell h3 svg,
+body.web-report.theme-kinetic .stats-view .squad-comp-shell h3 svg {
+    color: #7a6853 !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-shell input,
+body.web-report.theme-kinetic .stats-view .squad-comp-shell input {
+    background: #e4dccf !important;
+    border-color: var(--border-default) !important;
+    color: #453d34 !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-shell input::placeholder,
+body.web-report.theme-kinetic .stats-view .squad-comp-shell input::placeholder {
+    color: #867b6d !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-fight-nav,
+body.web-report.theme-kinetic .stats-view .squad-comp-fight-nav {
+    background: #e3dccf !important;
+    border-color: var(--border-default) !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-fight-nav-item,
+body.web-report.theme-kinetic .stats-view .squad-comp-fight-nav-item {
+    background-image: none !important;
+    background-color: #e8e1d5 !important;
+    border-color: var(--border-default) !important;
+    color: #4b4338 !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-fight-nav-item .text-gray-400,
+body.theme-kinetic .stats-view .squad-comp-fight-nav-item .text-gray-500,
+body.web-report.theme-kinetic .stats-view .squad-comp-fight-nav-item .text-gray-400,
+body.web-report.theme-kinetic .stats-view .squad-comp-fight-nav-item .text-gray-500 {
+    color: #7b6f60 !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-fight-nav-item--active,
+body.web-report.theme-kinetic .stats-view .squad-comp-fight-nav-item--active {
+    background: #ddd4c5 !important;
+    border-color: #b8a994 !important;
+    color: #3f372f !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-board,
+body.web-report.theme-kinetic .stats-view .squad-comp-board {
+    background-image: none !important;
+    background-color: #e2dbce !important;
+    border-color: var(--border-default) !important;
+    box-shadow: none !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-party-row,
+body.web-report.theme-kinetic .stats-view .squad-comp-party-row {
+    background: #e8e1d5 !important;
+    border-color: var(--border-default) !important;
+    box-shadow: none !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-party-badge,
+body.web-report.theme-kinetic .stats-view .squad-comp-party-badge {
+    background: #dfd7ca !important;
+    border-color: var(--border-default) !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-party-badge .text-gray-500,
+body.web-report.theme-kinetic .stats-view .squad-comp-party-badge .text-gray-500 {
+    color: #7d7162 !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-party-badge .text-gray-100,
+body.web-report.theme-kinetic .stats-view .squad-comp-party-badge .text-gray-100 {
+    color: #403830 !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-player-tile,
+body.web-report.theme-kinetic .stats-view .squad-comp-player-tile {
+    background-image: none !important;
+    background-color: rgba(130, 147, 122, 0.2) !important;
+    border-color: rgba(111, 123, 103, 0.46) !important;
+    box-shadow: none !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-player-tile.ring-2,
+body.web-report.theme-kinetic .stats-view .squad-comp-player-tile.ring-2 {
+    box-shadow: 0 0 0 1px rgba(128, 114, 95, 0.46) !important;
+    border-color: rgba(128, 114, 95, 0.56) !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-player-account,
+body.web-report.theme-kinetic .stats-view .squad-comp-player-account {
+    color: #3e372f !important;
+}
+
+body.theme-kinetic .stats-view .squad-comp-player-character,
+body.web-report.theme-kinetic .stats-view .squad-comp-player-character {
+    color: #6a6054 !important;
 }
 
 /* Fight Comp theme variants (keep app + web report visually aligned) */
@@ -3468,6 +3614,7 @@ body.web-report.theme-kinetic input[type="range"] {
     height: 16px;
     background: transparent;
     overflow: hidden;
+    border-radius: 4px;
     accent-color: #8f9b86;
 }
 
@@ -3475,7 +3622,7 @@ body.theme-kinetic input[type="range"]::-webkit-slider-runnable-track,
 body.web-report.theme-kinetic input[type="range"]::-webkit-slider-runnable-track {
     height: 5px;
     background: #c4bcaf;
-    border-radius: 9999px;
+    border-radius: 4px;
     border: 0;
 }
 
@@ -3486,7 +3633,7 @@ body.web-report.theme-kinetic input[type="range"]::-webkit-slider-thumb {
     width: 12px;
     height: 12px;
     margin-top: -4px;
-    border-radius: 3px;
+    border-radius: 4px;
     border: 1px solid rgba(112, 121, 104, 0.34);
     background: #d8ddd2;
     box-shadow: -2000px 0 0 2000px #9ea995;
@@ -3496,7 +3643,7 @@ body.theme-kinetic input[type="range"]::-moz-range-track,
 body.web-report.theme-kinetic input[type="range"]::-moz-range-track {
     height: 5px;
     background: #c4bcaf;
-    border-radius: 9999px;
+    border-radius: 4px;
     border: 0;
 }
 
@@ -3504,7 +3651,7 @@ body.theme-kinetic input[type="range"]::-moz-range-progress,
 body.web-report.theme-kinetic input[type="range"]::-moz-range-progress {
     height: 5px;
     background: #9ea995;
-    border-radius: 9999px;
+    border-radius: 4px;
     border: 0;
 }
 
@@ -3512,7 +3659,7 @@ body.theme-kinetic input[type="range"]::-moz-range-thumb,
 body.web-report.theme-kinetic input[type="range"]::-moz-range-thumb {
     width: 12px;
     height: 12px;
-    border-radius: 3px;
+    border-radius: 4px;
     border: 1px solid rgba(112, 121, 104, 0.34);
     background: #d8ddd2;
     box-shadow: none;
@@ -3891,6 +4038,10 @@ body.web-report.theme-kinetic .text-gray-300 {
 body.web-report.theme-kinetic .text-gray-400,
 body.web-report.theme-kinetic .text-gray-500 {
     color: var(--text-muted) !important;
+}
+
+body.web-report.theme-kinetic .report-brand-label {
+    color: #4b3f33 !important;
 }
 
 body.web-report.theme-kinetic [class*="text-emerald-"],
@@ -4274,6 +4425,14 @@ body.web-report.theme-kinetic .github-connect-btn:hover {
     background-color: rgba(109, 126, 138, 0.32) !important;
     border-color: rgba(79, 95, 106, 0.48) !important;
     color: #293944 !important;
+}
+
+body.theme-kinetic .stats-share-tooltip,
+body.web-report.theme-kinetic .stats-share-tooltip {
+    background: #e3dccf !important;
+    border-color: var(--border-default) !important;
+    color: #403830 !important;
+    box-shadow: none !important;
 }
 
 body.theme-kinetic .whats-new-modal__scroll table,

@@ -1,6 +1,6 @@
 import { CSSProperties, useEffect, useMemo, useState, useRef } from 'react';
 import { StatsView } from '../renderer/StatsView';
-import { DEFAULT_WEB_THEME, MATTE_WEB_THEME_ID, WebTheme, WEB_THEMES } from '../shared/webThemes';
+import { DEFAULT_WEB_THEME, KINETIC_WEB_THEME_ID, MATTE_WEB_THEME_ID, WebTheme, WEB_THEMES } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
@@ -350,6 +350,10 @@ export function ReportApp() {
         }
         if (themeIdOverride === MATTE_WEB_THEME_ID) {
             setUiTheme('matte');
+            return;
+        }
+        if (themeIdOverride === KINETIC_WEB_THEME_ID) {
+            setUiTheme('kinetic');
             return;
         }
         if (themeIdOverride === 'CRT') {
@@ -843,6 +847,8 @@ export function ReportApp() {
                     setDefaultUiTheme(themeChoice);
                 } else if (normalized?.stats?.webThemeId === MATTE_WEB_THEME_ID) {
                     setDefaultUiTheme('matte');
+                } else if (normalized?.stats?.webThemeId === KINETIC_WEB_THEME_ID) {
+                    setDefaultUiTheme('kinetic');
                 }
                 if (typeof normalized?.stats?.webThemeId === 'string' && normalized.stats.webThemeId) {
                     setDefaultThemeId(normalized.stats.webThemeId);
@@ -923,6 +929,7 @@ export function ReportApp() {
         const hasReportUiTheme = reportUiTheme === 'modern' || reportUiTheme === 'classic' || reportUiTheme === 'crt' || reportUiTheme === 'matte' || reportUiTheme === 'kinetic';
         const reportUiThemeLooksStale = (
             (reportThemeId === MATTE_WEB_THEME_ID && reportUiTheme !== 'matte')
+            || (reportThemeId === KINETIC_WEB_THEME_ID && reportUiTheme !== 'kinetic')
             || (reportThemeId === 'CRT' && reportUiTheme !== 'crt')
         );
         if (hasReportUiTheme && !reportUiThemeLooksStale) {
@@ -1704,7 +1711,7 @@ export function ReportApp() {
                                     )
                                 )}
                                 <div className="min-w-0">
-                                    <div className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge Log Report</div>
+                                    <div className="report-brand-label text-xs uppercase tracking-[0.3em] text-[color:var(--accent-soft)]">ArcBridge Log Report</div>
                                     <h1 className="text-2xl sm:text-3xl font-bold mt-1">{report.meta.title}</h1>
                                     <div className="text-xs sm:text-sm text-gray-400 mt-2">{report.meta.dateLabel || formatLocalRange(report.meta.dateStart, report.meta.dateEnd)}</div>
                                 </div>

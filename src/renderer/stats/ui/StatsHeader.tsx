@@ -84,7 +84,7 @@ export const StatsHeader = ({
                         {sharing ? 'Sharing...' : 'Share to Discord'}
                     </button>
                     {!canShareDiscord && (
-                        <div className="pointer-events-none absolute right-0 top-full mt-2 w-56 rounded-md border border-white/10 bg-black/90 px-2 py-1 text-[11px] text-gray-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+                        <div className="stats-share-tooltip pointer-events-none absolute right-0 top-full mt-2 w-56 rounded-md border border-white/10 bg-black/90 px-2 py-1 text-[11px] text-gray-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
                             Select a Discord webhook to enable sharing.
                         </div>
                     )}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload, ChevronDown } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
-import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, MATTE_WEB_THEME, MATTE_WEB_THEME_ID } from '../shared/webThemes';
+import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, KINETIC_WEB_THEME, KINETIC_WEB_THEME_ID, MATTE_WEB_THEME, MATTE_WEB_THEME_ID } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
@@ -177,6 +177,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
     const availableWebThemes = useMemo(() => {
         if (uiTheme === 'crt') return [CRT_WEB_THEME];
         if (uiTheme === 'matte') return [MATTE_WEB_THEME];
+        if (uiTheme === 'kinetic') return [KINETIC_WEB_THEME];
         return BASE_WEB_THEMES;
     }, [uiTheme]);
     const orderedThemes = useMemo(() => {
@@ -415,7 +416,13 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
             }
             return;
         }
-        if (githubWebTheme === CRT_WEB_THEME_ID || githubWebTheme === MATTE_WEB_THEME_ID) {
+        if (uiTheme === 'kinetic') {
+            if (githubWebTheme !== KINETIC_WEB_THEME_ID) {
+                setGithubWebTheme(KINETIC_WEB_THEME_ID);
+            }
+            return;
+        }
+        if (githubWebTheme === CRT_WEB_THEME_ID || githubWebTheme === MATTE_WEB_THEME_ID || githubWebTheme === KINETIC_WEB_THEME_ID) {
             setGithubWebTheme(DEFAULT_WEB_THEME_ID);
         }
     }, [uiTheme, githubWebTheme]);
@@ -702,7 +709,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
         { key: 'webhooks', label: 'Webhook List', description: 'Saved webhook entries.', section: 'Discord' },
         { key: 'selectedWebhookId', label: 'Selected Webhook', description: 'Active webhook entry.', section: 'Discord' },
         { key: 'closeBehavior', label: 'Close Behavior', description: 'Minimize vs quit on close.', section: 'App' },
-        { key: 'uiTheme', label: 'UI Theme', description: 'Classic, Modern Slate, Matte Slate, Kinetic, or CRT Hacker theme.', section: 'App' },
+        { key: 'uiTheme', label: 'UI Theme', description: 'Classic, Modern Slate, Matte Slate, Kinetic Paper, or CRT Hacker theme.', section: 'App' },
         { key: 'embedStatSettings', label: 'Embed Stat Toggles', description: 'Discord embed sections and lists.', section: 'Stats' },
         { key: 'mvpWeights', label: 'MVP Weights', description: 'Score weighting for MVP.', section: 'Stats' },
         { key: 'statsViewSettings', label: 'Stats View Settings', description: 'Dashboard stats configuration.', section: 'Stats' },
@@ -1319,7 +1326,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                 <div ref={settingsScrollRef} className={`${isModernLayout ? 'min-h-0 overflow-y-auto pr-2 space-y-4' : 'flex-1 min-h-0 overflow-y-auto pr-2 space-y-4'}`}>
                     <SettingsSection title="Appearance" icon={Sparkles} delay={0.02} sectionId="appearance">
                         <p className="text-sm text-gray-400 mb-4">
-                            Switch between Classic, Modern Slate, Matte Slate, Kinetic, or CRT Hacker.
+                            Switch between Classic, Modern Slate, Matte Slate, Kinetic Paper, or CRT Hacker.
                         </p>
                         <div className="flex flex-wrap gap-3">
                             <button
@@ -1360,7 +1367,7 @@ export function SettingsView({ onBack, onEmbedStatSettingsSaved, onOpenWhatsNew,
                                     : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:border-white/30'
                                     }`}
                             >
-                                Kinetic
+                                Kinetic Paper
                             </button>
                             <button
                                 type="button"
