@@ -535,9 +535,9 @@ For stacking gear buffs, `presence` is used for percent uptime because
 percentage. This avoids under/over-reporting caused by treating stack-average
 as uptime%.
 
-### Fight Diff Mode (Other Metrics)
+### Fight Comparison (Other Metrics)
 
-`Fight Diff Mode` compares two selected fights using two focused views:
+`Fight Comparison` compares two selected fights using two focused views:
 
 1. `Target Focus Comparison`
 - Aggregates squad outgoing damage into enemy profession buckets using

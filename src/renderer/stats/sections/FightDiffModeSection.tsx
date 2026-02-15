@@ -171,13 +171,13 @@ export const FightDiffModeSection = ({
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
                     <GitCompareArrows className="w-5 h-5 text-indigo-300" />
-                    Fight Diff Mode
+                    Fight Comparison
                 </h3>
                 <button
                     type="button"
                     onClick={() => (expandedSection === 'fight-diff-mode' ? closeExpandedSection() : openExpandedSection('fight-diff-mode'))}
                     className="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-colors"
-                    aria-label={expandedSection === 'fight-diff-mode' ? 'Close Fight Diff Mode' : 'Expand Fight Diff Mode'}
+                    aria-label={expandedSection === 'fight-diff-mode' ? 'Close Fight Comparison' : 'Expand Fight Comparison'}
                     title={expandedSection === 'fight-diff-mode' ? 'Close' : 'Expand'}
                 >
                     {expandedSection === 'fight-diff-mode' ? <X className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -186,9 +186,9 @@ export const FightDiffModeSection = ({
 
             {fightDiffMissingFromDataset ? (
                 <div className="text-center text-gray-400 py-8 space-y-1">
-                    <div className="font-semibold text-gray-200">Fight Diff data is missing in this dataset.</div>
+                    <div className="font-semibold text-gray-200">Fight Comparison data is missing in this dataset.</div>
                     <div className="text-sm text-gray-500">
-                        Regenerate the stats/report with a build that includes Fight Diff Mode.
+                        Regenerate the stats/report with a build that includes Fight Comparison.
                     </div>
                 </div>
             ) : fights.length < 2 ? (
