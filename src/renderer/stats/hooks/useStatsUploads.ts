@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { computeStatsAggregation } from '../computeStatsAggregation';
 
 interface UseStatsUploadsProps {
     logs: any[];
@@ -76,19 +77,46 @@ export const useStatsUploads = ({
         };
     };
 
+    const buildReportStats = () => {
+        const baseStats = {
+            ...stats,
+            skillUsageData,
+            statsViewSettings: activeStatsViewSettings,
+            uiTheme: uiTheme || 'classic'
+        };
+        if (Array.isArray(baseStats.fightDiffMode) && baseStats.fightDiffMode.length > 0) {
+            return baseStats;
+        }
+        if (!Array.isArray(logs) || logs.length === 0) {
+            return baseStats;
+        }
+        try {
+            const computed = computeStatsAggregation({
+                logs,
+                statsViewSettings: activeStatsViewSettings
+            });
+            const fightDiffMode = computed?.stats?.fightDiffMode;
+            if (Array.isArray(fightDiffMode) && fightDiffMode.length > 0) {
+                return {
+                    ...baseStats,
+                    fightDiffMode
+                };
+            }
+        } catch {
+            // Keep upload non-blocking if fallback computation fails.
+        }
+        return baseStats;
+    };
+
     const handleWebUpload = async () => {
         if (embedded) return;
         if (!onWebUpload) return;
         try {
             const meta = buildReportMeta();
+            const uploadStats = buildReportStats();
             await onWebUpload({
                 meta,
-                stats: {
-                    ...stats,
-                    skillUsageData,
-                    statsViewSettings: activeStatsViewSettings,
-                    uiTheme: uiTheme || 'classic'
-                }
+                stats: uploadStats
             });
         } catch (err) {
             console.error('[StatsView] Web upload failed:', err);
@@ -101,15 +129,11 @@ export const useStatsUploads = ({
         setDevMockUploadState({ uploading: true, message: 'Preparing local report...', url: null });
         try {
             const meta = buildReportMeta();
+            const uploadStats = buildReportStats();
             // @ts-ignore
             const result = await window.electronAPI.mockWebReport({
                 meta,
-                stats: {
-                    ...stats,
-                    skillUsageData,
-                    statsViewSettings: activeStatsViewSettings,
-                    uiTheme: uiTheme || 'classic'
-                }
+                stats: uploadStats
             });
             if (result?.success) {
                 setDevMockUploadState({

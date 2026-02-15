@@ -535,6 +535,38 @@ For stacking gear buffs, `presence` is used for percent uptime because
 percentage. This avoids under/over-reporting caused by treating stack-average
 as uptime%.
 
+### Fight Diff Mode (Other Metrics)
+
+`Fight Diff Mode` compares two selected fights using two focused views:
+
+1. `Target Focus Comparison`
+- Aggregates squad outgoing damage into enemy profession buckets using
+  `players[*].statsTargets[targetIndex][0].damage`.
+- Target labels are resolved from `targets[targetIndex]` with profession-first
+  fallback (`profession -> name -> id`).
+- Per fight, each target bucket includes:
+  - `damage`
+  - `hits`
+  - `share = damage / totalTargetDamage`
+- Comparison table uses the union of target buckets and highlights
+  `shareDelta = fightB.share - fightA.share`.
+
+2. `Squad Metric Comparison`
+- Compares squad-level fight aggregates instead of individual player leaders.
+- Includes broad outcome/pressure/support metrics, including:
+  - win flag, squad size, enemy count, squad KDR
+  - enemy deaths/downs, squad deaths/downs
+  - outgoing/incoming damage and damage delta
+  - cleanses, strips, stability, healing, barrier out
+  - incoming barrier absorption, enemy barrier absorption
+  - squad CC, down contribution, revived players
+- Delta shown is `fightB.value - fightA.value`; color semantics account for
+  metric direction (`higherIsBetter`).
+
+Implementation:
+- aggregation payload build: `src/renderer/stats/computeStatsAggregation.ts` (`fightDiffMode`)
+- section rendering: `src/renderer/stats/sections/FightDiffModeSection.tsx`
+
 ## Offense / Defense / Support / Healing Tables
 
 Detailed tables aggregate the per-player totals defined in:

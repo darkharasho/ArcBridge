@@ -87,7 +87,8 @@ Direction:
 
 MVP scope:
 - Side-by-side compare with delta columns for comp, boon uptime, damage, downs/deaths.
-- Target focus comparison and top performer deltas.
+- Target focus comparison and broad squad-level metric deltas.
+- Add an `Other Metrics > Fight Diff Mode` section in all nav contexts (app + web report).
 
 Expansion:
 - Visual trend spark lines and significance highlighting.

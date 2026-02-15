@@ -566,6 +566,110 @@ body.theme-classic .stats-view .mvp-card--bronze {
     background-image: linear-gradient(90deg, rgba(234, 88, 12, 0.25), rgba(120, 53, 15, 0.15));
 }
 
+/* Fight Diff Mode selectors by theme */
+.stats-view .fight-diff-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2rem !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.65rem center !important;
+    background-size: 0.8rem 0.8rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+}
+
+body.theme-crt .stats-view .fight-diff-select,
+body.web-report.theme-crt .stats-view .fight-diff-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239cffc6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+}
+
+body.theme-classic .stats-view .fight-diff-select,
+body.web-report.theme-classic .stats-view .fight-diff-select {
+    background-color: rgba(7, 16, 28, 0.82) !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+    color: rgb(226, 232, 240) !important;
+    box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.45);
+}
+
+body.theme-classic .stats-view .fight-diff-select:focus,
+body.web-report.theme-classic .stats-view .fight-diff-select:focus {
+    border-color: rgba(56, 189, 248, 0.5) !important;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35), inset 0 1px 1px rgba(15, 23, 42, 0.45) !important;
+}
+
+body.theme-modern .stats-view .fight-diff-select,
+body.web-report.theme-modern .stats-view .fight-diff-select {
+    background: linear-gradient(180deg, rgba(20, 30, 44, 0.86), rgba(15, 24, 36, 0.94)) !important;
+    border-color: rgba(96, 165, 250, 0.32) !important;
+    color: rgb(235, 241, 248) !important;
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+body.theme-modern .stats-view .fight-diff-select:focus,
+body.web-report.theme-modern .stats-view .fight-diff-select:focus {
+    border-color: rgba(125, 211, 252, 0.5) !important;
+    box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.32), 0 8px 20px rgba(2, 6, 23, 0.28) !important;
+}
+
+body.theme-matte .stats-view .fight-diff-select,
+body.web-report.theme-matte .stats-view .fight-diff-select {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 3px rgba(255, 255, 255, 0.05) !important;
+}
+
+body.theme-matte .stats-view .fight-diff-select:focus,
+body.web-report.theme-matte .stats-view .fight-diff-select:focus {
+    border-color: rgba(147, 197, 253, 0.45) !important;
+    box-shadow:
+        inset 2px 2px 5px rgba(0, 0, 0, 0.7),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.05),
+        0 0 0 1px rgba(147, 197, 253, 0.3) !important;
+}
+
+body.theme-crt .stats-view .fight-diff-select,
+body.web-report.theme-crt .stats-view .fight-diff-select {
+    background-color: rgba(2, 10, 3, 0.88) !important;
+    border-color: rgba(87, 255, 154, 0.42) !important;
+    color: #9cffc6 !important;
+    text-shadow: 0 0 6px rgba(87, 255, 154, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(8, 28, 13, 0.9), 0 0 10px rgba(47, 207, 116, 0.16) !important;
+}
+
+body.theme-crt .stats-view .fight-diff-select:focus,
+body.web-report.theme-crt .stats-view .fight-diff-select:focus {
+    border-color: rgba(135, 255, 181, 0.65) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(8, 28, 13, 0.95),
+        0 0 0 1px rgba(135, 255, 181, 0.4),
+        0 0 12px rgba(47, 207, 116, 0.28) !important;
+}
+
+body.theme-classic .stats-view .fight-diff-select option,
+body.web-report.theme-classic .stats-view .fight-diff-select option {
+    background-color: rgb(12, 20, 32);
+    color: rgb(226, 232, 240);
+}
+
+body.theme-modern .stats-view .fight-diff-select option,
+body.web-report.theme-modern .stats-view .fight-diff-select option {
+    background-color: rgb(16, 25, 36);
+    color: rgb(235, 241, 248);
+}
+
+body.theme-matte .stats-view .fight-diff-select option,
+body.web-report.theme-matte .stats-view .fight-diff-select option {
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+}
+
+body.theme-crt .stats-view .fight-diff-select option,
+body.web-report.theme-crt .stats-view .fight-diff-select option {
+    background-color: rgb(3, 12, 5);
+    color: #9cffc6;
+}
+
 body.web-report .stats-sections>[data-section-visible="true"]+[data-section-visible="true"] {
     margin-top: 1.5rem;
 }
@@ -2333,17 +2437,12 @@ body.theme-modern .arcbridge-logo {
 .app-shell .stats-table-shell__head-stack {
     background-image: none !important;
     background-color: rgba(255, 255, 255, 0.05) !important;
-    box-shadow:
-        -3px -3px 6px rgba(255, 255, 255, 0.04),
-        4px 4px 10px rgba(0, 0, 0, 0.42) !important;
+    box-shadow: 0 8px 12px -10px rgba(0, 0, 0, 0.52) !important;
 }
 
 body.theme-matte .app-shell .stats-table-shell__head-stack {
     background-color: var(--bg-card) !important;
-    box-shadow:
-        -5px -5px 10px var(--matte-light),
-        7px 7px 13px var(--matte-dark),
-        inset 0 1px 2px rgba(255, 255, 255, 0.03) !important;
+    box-shadow: 0 8px 12px -10px var(--matte-dark) !important;
 }
 
 .app-shell .stats-table-shell__header > .bg-white\/5,
@@ -2366,31 +2465,24 @@ body.web-report .stats-table-shell__head-stack {
     position: relative;
     z-index: 1;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.14),
         inset 0 -1px 0 rgba(0, 0, 0, 0.35),
         inset 6px 0 10px -10px rgba(255, 255, 255, 0.22),
         inset -10px 0 14px -12px rgba(0, 0, 0, 0.5),
-        -3px -3px 6px rgba(255, 255, 255, 0.04),
-        4px 4px 10px rgba(0, 0, 0, 0.42) !important;
+        0 8px 12px -10px rgba(0, 0, 0, 0.52) !important;
 }
 
 body.web-report.theme-modern .stats-table-shell__head-stack {
     background-color: rgba(255, 255, 255, 0.05) !important;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.16),
         inset 0 -1px 0 rgba(0, 0, 0, 0.42),
         inset 8px 0 12px -12px rgba(255, 255, 255, 0.25),
         inset -12px 0 16px -14px rgba(0, 0, 0, 0.55),
-        -4px -4px 8px rgba(255, 255, 255, 0.05),
-        5px 5px 12px rgba(0, 0, 0, 0.5) !important;
+        0 8px 12px -10px rgba(0, 0, 0, 0.54) !important;
 }
 
 body.web-report.theme-matte .stats-table-shell__head-stack {
     background-color: var(--bg-card) !important;
-    box-shadow:
-        -5px -5px 10px var(--matte-light),
-        7px 7px 13px var(--matte-dark),
-        inset 0 1px 2px rgba(255, 255, 255, 0.03) !important;
+    box-shadow: 0 8px 12px -10px var(--matte-dark) !important;
 }
 
 body.web-report .stats-table-shell__header > .bg-white\/5,
@@ -2404,7 +2496,7 @@ body.web-report .stats-table-shell__columns > .bg-white\/5 {
 .stats-table-column-header {
     background-image: none !important;
     background-color: inherit !important;
-    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10), 0 12px 16px -10px rgba(0, 0, 0, 0.58) !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
 }
 
 /* Match Offense-style sortable header buttons for custom header rows in app/web. */
@@ -2420,7 +2512,7 @@ body.web-report .stats-table-shell__columns > .bg-white\/5 {
 /* Keep app matte custom header rows visually consistent with the shared table header stack. */
 body.theme-matte .app-shell .stats-table-column-header {
     background-color: var(--bg-card) !important;
-    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10), 0 12px 16px -10px rgba(0, 0, 0, 0.58) !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
 }
 
 /* Row region stays inset to contrast with the outset header. */
@@ -2442,6 +2534,22 @@ body.theme-modern .app-shell .stats-table-shell__rows > .grid {
 
 /* Keep sortable column header buttons as plain text in app stats dashboard. */
 .app-shell .stats-table-shell__columns > .grid button {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Table-based sortable headers (e.g. Fight Diff) should also stay plain text. */
+.app-shell .stats-table-shell__columns thead button,
+.app-shell .stats-table-shell__columns thead button:hover,
+.app-shell .stats-table-shell__columns thead button:active,
+.app-shell .stats-table-shell__columns thead button:focus,
+.app-shell .stats-table-shell__columns thead button:focus-visible,
+body.web-report .stats-table-shell__columns thead button,
+body.web-report .stats-table-shell__columns thead button:hover,
+body.web-report .stats-table-shell__columns thead button:active,
+body.web-report .stats-table-shell__columns thead button:focus,
+body.web-report .stats-table-shell__columns thead button:focus-visible {
     border: 0 !important;
     box-shadow: none !important;
     background: transparent !important;

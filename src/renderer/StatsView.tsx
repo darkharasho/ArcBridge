@@ -29,6 +29,7 @@ import { SupportSection } from './stats/sections/SupportSection';
 import { HealingSection } from './stats/sections/HealingSection';
 import { SpecialBuffsSection } from './stats/sections/SpecialBuffsSection';
 import { SigilRelicUptimeSection } from './stats/sections/SigilRelicUptimeSection';
+import { FightDiffModeSection } from './stats/sections/FightDiffModeSection';
 import { OverviewSection } from './stats/sections/OverviewSection';
 import { FightBreakdownSection } from './stats/sections/FightBreakdownSection';
 import { TopPlayersSection } from './stats/sections/TopPlayersSection';
@@ -87,6 +88,7 @@ const ORDERED_SECTION_IDS = [
     'incoming-strike-damage',
     'support-detailed',
     'healing-stats',
+    'fight-diff-mode',
     'special-buffs',
     'sigil-relic-uptime',
     'skill-usage',
@@ -170,6 +172,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             enemyClassData: asArray((source as any).enemyClassData),
             attendanceData: asArray((source as any).attendanceData),
             squadCompByFight: asArray((source as any).squadCompByFight),
+            fightDiffMode: asArray((source as any).fightDiffMode),
             playerSkillBreakdowns: asArray((source as any).playerSkillBreakdowns)
         };
 
@@ -2432,6 +2435,18 @@ type SpikeFight = {
                                 sectionClass={sectionClass}
                             />
 
+                            <FightDiffModeSection
+                                stats={safeStats}
+                                formatWithCommas={formatWithCommas}
+                                expandedSection={expandedSection}
+                                expandedSectionClosing={expandedSectionClosing}
+                                openExpandedSection={openExpandedSection}
+                                closeExpandedSection={closeExpandedSection}
+                                isSectionVisible={isSectionVisible}
+                                isFirstVisibleSection={isFirstVisibleSection}
+                                sectionClass={sectionClass}
+                            />
+
                             <SpecialBuffsSection
                                 stats={safeStats}
                                 specialSearch={specialSearch}
@@ -2944,6 +2959,18 @@ type SpikeFight = {
                             skillUsageData={skillUsageData}
                             formatWithCommas={formatWithCommas}
                             renderProfessionIcon={renderProfessionIcon}
+                            expandedSection={expandedSection}
+                            expandedSectionClosing={expandedSectionClosing}
+                            openExpandedSection={openExpandedSection}
+                            closeExpandedSection={closeExpandedSection}
+                            isSectionVisible={isSectionVisible}
+                            isFirstVisibleSection={isFirstVisibleSection}
+                            sectionClass={sectionClass}
+                        />}
+
+                        {isSectionVisible('fight-diff-mode') && <FightDiffModeSection
+                            stats={safeStats}
+                            formatWithCommas={formatWithCommas}
                             expandedSection={expandedSection}
                             expandedSectionClosing={expandedSectionClosing}
                             openExpandedSection={openExpandedSection}

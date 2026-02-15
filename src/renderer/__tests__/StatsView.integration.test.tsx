@@ -23,6 +23,7 @@ describe('StatsView (integration)', () => {
 
         expect(screen.getByText(/Statistics Dashboard - Overview/i)).toBeInTheDocument();
         expect(screen.getByText(/Fight Breakdown/i)).toBeInTheDocument();
+        expect(screen.getByText(/Fight Diff Mode/i)).toBeInTheDocument();
         expect(screen.getByText(/Skill Usage Tracker/i)).toBeInTheDocument();
         expect(screen.getByText(/APM Breakdown/i)).toBeInTheDocument();
     });

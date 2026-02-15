@@ -34,7 +34,8 @@ import {
     FileText,
     ListTree,
     Keyboard,
-    ChevronDown
+    ChevronDown,
+    GitCompareArrows
 } from 'lucide-react';
 
 interface ReportMeta {
@@ -598,8 +599,9 @@ export function ReportApp() {
             id: 'other',
             label: 'Other Metrics',
             icon: Sparkles,
-            sectionIds: ['special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats'],
+            sectionIds: ['fight-diff-mode', 'special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats'],
             items: [
+                { id: 'fight-diff-mode', label: 'Fight Diff Mode', icon: GitCompareArrows },
                 { id: 'special-buffs', label: 'Special Buffs', icon: Star },
                 { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gw2SigilIcon },
                 { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },

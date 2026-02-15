@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Shield, ShieldAlert, Zap, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, ArrowBigUp, FileText, Swords } from 'lucide-react';
+import { Trophy, Shield, ShieldAlert, Zap, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, ArrowBigUp, FileText, Swords, GitCompareArrows } from 'lucide-react';
 import { SupportPlusIcon } from '../../ui/SupportPlusIcon';
 import { Gw2ApmIcon } from '../../ui/Gw2ApmIcon';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
@@ -89,8 +89,9 @@ export const STATS_TOC_GROUPS: readonly StatsTocGroup[] = [
         id: 'other',
         label: 'Other Metrics',
         icon: Star,
-        sectionIds: ['special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats'],
+        sectionIds: ['fight-diff-mode', 'special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats'],
         items: [
+            { id: 'fight-diff-mode', label: 'Fight Diff Mode', icon: GitCompareArrows },
             { id: 'special-buffs', label: 'Special Buffs', icon: Star },
             { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gw2SigilIcon },
             { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
