@@ -586,11 +586,13 @@ function App() {
             ? uploadStatusBreakdown
             : [{ key: 'none', label: 'No logs', color: '#334155', count: 1 }];
 
-        const avgSquadSize = logs.length > 0
-            ? Math.round(logs.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logs.length)
+        const logsWithPlayerDetails = logs.filter((log) => Array.isArray(log.details?.players) && log.details.players.length > 0);
+        const logsWithTargetDetails = logs.filter((log) => Array.isArray(log.details?.targets) && log.details.targets.length > 0);
+        const avgSquadSize = logsWithPlayerDetails.length > 0
+            ? Math.round(logsWithPlayerDetails.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logsWithPlayerDetails.length)
             : 0;
-        const avgEnemies = logs.length > 0
-            ? Math.round(logs.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logs.length)
+        const avgEnemies = logsWithTargetDetails.length > 0
+            ? Math.round(logsWithTargetDetails.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logsWithTargetDetails.length)
             : 0;
 
         const getFightDownsDeaths = (details: any) => {
