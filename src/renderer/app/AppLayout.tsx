@@ -98,6 +98,9 @@ export function AppLayout({ ctx }: { ctx: any }) {
     const [statsActiveNavId, setStatsActiveNavId] = useState('overview');
     const [statsActiveGroup, setStatsActiveGroup] = useState('overview');
     const [statsOpenGroup, setStatsOpenGroup] = useState('overview');
+    const [isStatsNavExpanded, setIsStatsNavExpanded] = useState(false);
+    const [isStatsNavSubnavReady, setIsStatsNavSubnavReady] = useState(false);
+    const statsNavExpandDelayRef = useRef<number | null>(null);
 
     useEffect(() => {
         setActiveNavView(view);
@@ -109,7 +112,33 @@ export function AppLayout({ ctx }: { ctx: any }) {
                 window.cancelAnimationFrame(navSwitchRafRef.current);
                 navSwitchRafRef.current = null;
             }
+            if (statsNavExpandDelayRef.current !== null) {
+                window.clearTimeout(statsNavExpandDelayRef.current);
+                statsNavExpandDelayRef.current = null;
+            }
         };
+    }, []);
+
+    const handleStatsNavMouseEnter = useCallback(() => {
+        setIsStatsNavExpanded(true);
+        setIsStatsNavSubnavReady(false);
+        if (statsNavExpandDelayRef.current !== null) {
+            window.clearTimeout(statsNavExpandDelayRef.current);
+            statsNavExpandDelayRef.current = null;
+        }
+        statsNavExpandDelayRef.current = window.setTimeout(() => {
+            setIsStatsNavSubnavReady(true);
+            statsNavExpandDelayRef.current = null;
+        }, 180);
+    }, []);
+
+    const handleStatsNavMouseLeave = useCallback(() => {
+        if (statsNavExpandDelayRef.current !== null) {
+            window.clearTimeout(statsNavExpandDelayRef.current);
+            statsNavExpandDelayRef.current = null;
+        }
+        setIsStatsNavSubnavReady(false);
+        setIsStatsNavExpanded(false);
     }, []);
 
     const handleNavViewChange = (nextView: 'dashboard' | 'stats' | 'settings') => {
@@ -358,35 +387,22 @@ export function AppLayout({ ctx }: { ctx: any }) {
                 {view === 'stats' && statsViewMounted && (
                     <div className="flex flex-1 min-h-0">
                         <div className="flex-1 min-h-0 flex gap-3">
-                            <aside className="relative w-[248px] -mr-[176px] shrink-0 self-stretch min-h-0 overflow-visible">
-                                <div className={`peer/statsnavtrigger absolute inset-y-0 left-0 z-30 min-h-0 w-[72px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden`}>
-                                    <div className="h-full min-h-0 overflow-y-auto py-3 px-2 space-y-2">
-                                        {STATS_TOC_GROUPS.map((group) => {
-                                            const GroupIcon = group.icon as any;
-                                            const isActiveGroup = group.id === activeStatsGroupDef?.id;
-                                            return (
-                                                <button
-                                                    key={`${group.id}-compact`}
-                                                    type="button"
-                                                    onClick={() => handleStatsNavItemClick(group.id, group.items[0]?.id || 'overview')}
-                                                    className={`w-full h-9 rounded-md border transition-colors flex items-center justify-center ${isActiveGroup ? 'border-white/20 bg-white/10 text-white' : 'border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]'}`}
-                                                    title={group.label}
-                                                >
-                                                    <GroupIcon className="w-3.5 h-3.5 text-[color:var(--accent)] shrink-0" />
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                <div className={`group/statsnavpanel absolute inset-y-0 left-0 z-40 min-h-0 w-[248px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden opacity-0 -translate-x-1 pointer-events-none will-change-[transform,opacity] transition-[transform,opacity] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover/statsnavtrigger:opacity-100 peer-hover/statsnavtrigger:translate-x-0 peer-hover/statsnavtrigger:pointer-events-auto hover:opacity-100 hover:translate-x-0 hover:pointer-events-auto`}>
+                            <aside
+                                className="relative w-[248px] -mr-[176px] shrink-0 self-stretch min-h-0 overflow-visible"
+                            >
+                                <div
+                                    className={`group/statsnavpanel absolute inset-y-0 left-0 z-40 min-h-0 w-[72px] hover:w-[248px] rounded-xl ${statsSidebarSurfaceClass} ${statsSidebarBlurClass} ${statsSidebarShadowClass} overflow-hidden will-change-[width] transition-[width] duration-[1250ms] ease-[cubic-bezier(0.16,1,0.3,1)]`}
+                                    onMouseEnter={handleStatsNavMouseEnter}
+                                    onMouseLeave={handleStatsNavMouseLeave}
+                                >
                                     <div className="h-full min-h-0 overflow-y-auto py-3 px-2 space-y-1.5">
-                                        <div className="px-2 h-5 text-[10px] uppercase tracking-[0.28em] text-gray-400 opacity-0 transition-opacity duration-150 peer-hover/statsnavtrigger:opacity-100 group-hover/statsnavpanel:opacity-100">
+                                        <div className="px-2 h-5 text-[10px] uppercase tracking-[0.28em] text-gray-400 opacity-0 transition-opacity duration-300 group-hover/statsnavpanel:opacity-100">
                                             Jump to
                                         </div>
                                         {STATS_TOC_GROUPS.map((group) => {
                                             const GroupIcon = group.icon as any;
                                             const isActiveGroup = group.id === activeStatsGroupDef?.id;
-                                            const isExpanded = statsOpenGroup === group.id;
+                                            const isExpanded = isStatsNavSubnavReady && statsOpenGroup === group.id;
                                             return (
                                                 <div key={group.id} className="rounded-lg border border-white/10 bg-white/[0.04]">
                                                     <button
@@ -395,29 +411,36 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                                             if (isExpanded) return;
                                                             handleStatsNavItemClick(group.id, group.items[0]?.id || 'overview');
                                                         }}
-                                                        className={`w-full h-9 flex items-center justify-center gap-0 px-2 text-left transition-colors peer-hover/statsnavtrigger:justify-start peer-hover/statsnavtrigger:gap-2 peer-hover/statsnavtrigger:px-3 group-hover/statsnavpanel:justify-start group-hover/statsnavpanel:gap-2 group-hover/statsnavpanel:px-3 ${isActiveGroup ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
+                                                        className={`w-full h-9 flex items-center justify-start gap-0 pl-[21px] pr-[21px] text-left transition-[padding,gap,background-color,color] duration-[980ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/statsnavpanel:gap-2 group-hover/statsnavpanel:pl-3 group-hover/statsnavpanel:pr-3 ${isActiveGroup ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
                                                     >
-                                                        <GroupIcon className="w-3.5 h-3.5 text-[color:var(--accent)] shrink-0" />
-                                                        <span className="text-[11px] leading-none font-semibold uppercase tracking-[0.18em] truncate">{group.label}</span>
-                                                        <span className={`inline-flex ml-auto transition-transform duration-320 ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                                                        <GroupIcon className={`w-3.5 h-3.5 text-[color:var(--accent)] shrink-0 transition-transform duration-[1050ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${isStatsNavExpanded ? 'scale-110' : 'scale-100'}`} />
+                                                        <span className={`text-[11px] leading-none font-semibold uppercase tracking-[0.18em] whitespace-nowrap overflow-hidden transition-[opacity,transform,max-width] duration-[1050ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isStatsNavExpanded ? 'opacity-100 translate-x-0 max-w-[160px]' : 'opacity-0 -translate-x-2 max-w-0'}`}>{group.label}</span>
+                                                        <span className={`inline-flex ml-auto overflow-hidden transition-[opacity,transform,max-width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isStatsNavExpanded ? 'opacity-100 scale-100 max-w-[24px]' : 'opacity-0 scale-75 max-w-0'} ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
                                                             <ChevronDown className="w-4 h-4 text-gray-300" />
                                                         </span>
                                                     </button>
-                                                    <div className={`${isExpanded ? 'max-h-[520px]' : 'max-h-0'} overflow-hidden`}>
-                                                        <div className={`pt-1.5 pb-1.5 px-2 space-y-0.5 will-change-[opacity,transform] transition-[opacity,transform] duration-180 ease-[cubic-bezier(0.2,0.9,0.25,1)] ${statsSubnavItemsClass} ${isExpanded ? 'opacity-0 -translate-x-1 peer-hover/statsnavtrigger:opacity-100 peer-hover/statsnavtrigger:translate-x-0 group-hover/statsnavpanel:opacity-100 group-hover/statsnavpanel:translate-x-0' : 'opacity-0 -translate-x-1'}`}>
-                                                            {group.items.map((item) => {
+                                                    <div className={`${isExpanded ? 'max-h-[560px]' : 'max-h-0'} overflow-hidden transition-[max-height] duration-[1180ms] ease-[cubic-bezier(0.16,1,0.3,1)]`}>
+                                                        <div className={`origin-top pt-1.5 pb-1.5 px-2 space-y-0.5 will-change-[opacity,transform] transition-[opacity,transform] duration-[1020ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${statsSubnavItemsClass} ${isExpanded ? 'opacity-100 translate-y-0 scale-y-100' : 'opacity-0 -translate-y-2 scale-y-95'}`}>
+                                                            {group.items.map((item, index) => {
                                                                 const ItemIcon = item.icon;
                                                                 const isActiveItem = statsActiveNavId === item.id;
+                                                                const enterDelay = 420 + Math.min(index * 34, 204);
+                                                                const exitDelay = Math.min((group.items.length - index - 1) * 14, 84);
                                                                 return (
-                                                                    <button
+                                                                    <div
                                                                         key={item.id}
-                                                                        type="button"
-                                                                        onClick={() => handleStatsNavItemClick(group.id, item.id)}
-                                                                        className={`stats-nav-entry w-full h-[34px] flex items-center gap-2 text-left rounded-md px-2 transition-colors ${isActiveItem ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
+                                                                        style={{ transitionDelay: isExpanded ? `${enterDelay}ms` : `${exitDelay}ms` }}
+                                                                        className={`transition-[opacity,transform] duration-[560ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}
                                                                     >
-                                                                        <ItemIcon className="w-3.5 h-3.5 text-[color:var(--accent)] shrink-0" />
-                                                                        <span className="text-xs leading-tight truncate">{item.label}</span>
-                                                                    </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleStatsNavItemClick(group.id, item.id)}
+                                                                            className={`stats-nav-entry w-full h-[34px] flex items-center gap-2 text-left rounded-md px-2 transition-colors duration-150 ${isActiveItem ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
+                                                                        >
+                                                                            <ItemIcon className="w-3.5 h-3.5 text-[color:var(--accent)] shrink-0" />
+                                                                            <span className="text-xs leading-tight truncate">{item.label}</span>
+                                                                        </button>
+                                                                    </div>
                                                                 );
                                                             })}
                                                         </div>
