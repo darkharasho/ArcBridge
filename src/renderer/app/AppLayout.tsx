@@ -217,13 +217,13 @@ export function AppLayout({ ctx }: { ctx: any }) {
 
     const handleNavViewChange = (nextView: 'dashboard' | 'stats' | 'settings') => {
         setActiveNavView(nextView);
-        if (view === nextView) return;
         if (navSwitchRafRef.current !== null) {
             window.cancelAnimationFrame(navSwitchRafRef.current);
             navSwitchRafRef.current = null;
         }
         navSwitchRafRef.current = window.requestAnimationFrame(() => {
             navSwitchRafRef.current = null;
+            if (view === nextView) return;
             setView(nextView);
         });
     };
