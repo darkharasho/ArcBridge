@@ -235,6 +235,7 @@ export function ReportApp() {
     const metricsSpecHighlightRef = useRef<number | null>(null);
     const metricsSpecHeadingCountsRef = useRef<Map<string, number>>(new Map());
     const pendingScrollIdRef = useRef<string | null>(null);
+    const groupTopScrollRafRef = useRef<number | null>(null);
     const basePath = useMemo(() => {
         let pathName = window.location.pathname || '/';
         const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host);
@@ -628,8 +629,15 @@ export function ReportApp() {
         return new Set(ids);
     }, [activeGroupDef]);
     const scrollToSection = (id: string) => {
+        if (id === 'report-top') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (history.replaceState) {
+                history.replaceState(null, '', '#report-top');
+            }
+            return true;
+        }
         const targetId = id === 'kdr' ? 'overview' : id;
-        const resolvedId = targetId === 'overview' ? 'report-top' : targetId;
+        const resolvedId = (targetId === 'overview' && id !== 'kdr') ? 'report-top' : targetId;
         const el = document.getElementById(resolvedId);
         if (!el) return false;
         const isVisible = el.getAttribute('data-section-visible') !== 'false';
@@ -991,6 +999,12 @@ export function ReportApp() {
             window.removeEventListener('keydown', onWindowKeyDown);
         };
     }, []);
+    useEffect(() => () => {
+        if (groupTopScrollRafRef.current !== null) {
+            cancelAnimationFrame(groupTopScrollRafRef.current);
+            groupTopScrollRafRef.current = null;
+        }
+    }, []);
 
     const activeThemeLabel = useMemo(() => {
         if (!themeIdOverride) return 'Default';
@@ -1262,6 +1276,33 @@ export function ReportApp() {
 
     if (report) {
         const arcbridgeLogoUrl = joinAssetPath(assetBasePath, 'svg/ArcBridge.svg');
+        const animateGroupScrollToTop = () => {
+            if (groupTopScrollRafRef.current !== null) {
+                cancelAnimationFrame(groupTopScrollRafRef.current);
+                groupTopScrollRafRef.current = null;
+            }
+            const startTop = window.scrollY || window.pageYOffset || 0;
+            if (startTop <= 1) {
+                window.scrollTo({ top: 0, behavior: 'auto' });
+                return;
+            }
+            const durationMs = 320;
+            const startAt = performance.now();
+            const step = (now: number) => {
+                const elapsed = now - startAt;
+                const t = Math.min(1, elapsed / durationMs);
+                const eased = 1 - Math.pow(1 - t, 3);
+                const nextTop = Math.max(0, Math.round(startTop * (1 - eased)));
+                window.scrollTo({ top: nextTop, behavior: 'auto' });
+                if (t < 1) {
+                    groupTopScrollRafRef.current = requestAnimationFrame(step);
+                } else {
+                    groupTopScrollRafRef.current = null;
+                    window.scrollTo({ top: 0, behavior: 'auto' });
+                }
+            };
+            groupTopScrollRafRef.current = requestAnimationFrame(step);
+        };
         const expandOnlyGroup = (groupId: string) => {
             setExpandedGroups(() => {
                 const next: Record<string, boolean> = {};
@@ -1274,7 +1315,7 @@ export function ReportApp() {
         const handleGroupSelect = (groupId: string) => {
             pendingScrollIdRef.current = null;
             setActiveGroup(groupId);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            animateGroupScrollToTop();
         };
         const handleGroupHeaderClick = (groupId: string) => {
             const isExpanded = !!expandedGroups[groupId];
@@ -1297,7 +1338,7 @@ export function ReportApp() {
             if (!isSameGroup) {
                 pendingScrollIdRef.current = id;
                 setActiveGroup(groupId);
-                window.scrollTo({ top: 0, behavior: 'auto' });
+                requestAnimationFrame(() => scrollToSectionSafe(id));
             }
             if (isSameGroup) {
                 requestAnimationFrame(() => scrollToSectionSafe(id));
