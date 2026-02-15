@@ -234,6 +234,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
     );
     const statsSidebarSurfaceClass = uiTheme === 'matte'
         ? 'border border-[color:var(--border-default)] bg-[color:var(--bg-card)]'
+        : uiTheme === 'kinetic'
+            ? 'border border-stone-500/20 bg-[color:var(--bg-card)]'
         : uiTheme === 'crt'
             ? 'border border-[#3a6b52]/60 bg-[#09140e]/90'
             : uiTheme === 'modern'
@@ -241,21 +243,31 @@ export function AppLayout({ ctx }: { ctx: any }) {
                 : 'border border-white/10 bg-slate-950/85';
     const statsSidebarShadowClass = uiTheme === 'matte'
         ? 'shadow-[-6px_-6px_12px_rgba(255,255,255,0.04),6px_6px_14px_rgba(0,0,0,0.45)]'
+        : uiTheme === 'kinetic'
+            ? 'shadow-[0_10px_24px_rgba(62,52,39,0.08)]'
         : uiTheme === 'modern'
             ? 'shadow-[0_16px_46px_rgba(0,0,0,0.5),0_0_0_1px_rgba(122,215,240,0.08)]'
             : 'shadow-[0_20px_60px_rgba(0,0,0,0.45)]';
-    const statsSidebarBlurClass = uiTheme === 'matte' ? '' : uiTheme === 'modern' ? 'backdrop-blur-lg' : 'backdrop-blur-md';
+    const statsSidebarBlurClass = uiTheme === 'matte' || uiTheme === 'kinetic' ? '' : uiTheme === 'modern' ? 'backdrop-blur-lg' : 'backdrop-blur-md';
     const statsSubnavItemsClass = uiTheme === 'matte'
         ? 'rounded-lg border border-[color:var(--border-default)] bg-[color:var(--bg-input)] shadow-[inset_-4px_-4px_10px_rgba(255,255,255,0.03),inset_5px_5px_12px_rgba(0,0,0,0.4)]'
+        : uiTheme === 'kinetic'
+            ? 'rounded-lg border border-stone-500/20 bg-[color:var(--bg-input)]'
         : uiTheme === 'modern'
             ? 'rounded-lg border border-cyan-300/15 bg-slate-900/65 backdrop-blur-sm'
         : '';
+    const isKineticTheme = uiTheme === 'kinetic';
     const statsSectionVisibility = useCallback((id: string) => {
+        if (isKineticTheme) {
+            const activeId = statsActiveNavId === 'kdr' ? 'overview' : statsActiveNavId;
+            const targetId = id === 'kdr' ? 'overview' : id;
+            return targetId === activeId;
+        }
         const sectionIds = Array.isArray((activeStatsGroupDef as any)?.sectionIds)
             ? (activeStatsGroupDef as any).sectionIds
             : ((activeStatsGroupDef as any)?.items || []).map((item: any) => item.id);
         return sectionIds.includes(id);
-    }, [activeStatsGroupDef]);
+    }, [activeStatsGroupDef, isKineticTheme, statsActiveNavId]);
     const scrollToStatsSection = useCallback((id: string) => {
         const targetId = id === 'kdr' ? 'overview' : id;
         let attempts = 0;

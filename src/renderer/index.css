@@ -1843,6 +1843,10 @@ body.theme-crt {
     --arcbridge-gradient: linear-gradient(90deg, #57ff9a, #2fcf74);
 }
 
+body.theme-kinetic {
+    --arcbridge-gradient: linear-gradient(90deg, #24211d, #24211d);
+}
+
 .arcbridge-gradient-text {
     background-image: var(--arcbridge-gradient);
     background-clip: text;
@@ -3135,4 +3139,241 @@ body.theme-matte .whats-new-modal__scroll {
     box-shadow: none;
     padding: 1.25rem 1rem 1.25rem 1.5rem;
     max-height: 65vh;
+}
+
+/* =========================================
+   Theme: Kinetic
+   ========================================= */
+
+@keyframes kinetic-section-reveal {
+    0% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body.theme-kinetic {
+    --bg-base: #e9e3d8;
+    --bg-elevated: #eee8dd;
+    --bg-card: rgba(240, 234, 224, 0.95);
+    --bg-hover: rgba(232, 225, 214, 0.98);
+    --bg-input: rgba(226, 218, 206, 0.94);
+    --border-subtle: rgba(62, 54, 43, 0.1);
+    --border-default: rgba(62, 54, 43, 0.16);
+    --border-hover: rgba(62, 54, 43, 0.24);
+    --text-primary: #24211d;
+    --text-secondary: #3f3831;
+    --text-muted: #5f554b;
+    --accent-bg: rgba(96, 86, 74, 0.1);
+    --accent-border: rgba(86, 75, 63, 0.2);
+    background: var(--bg-base);
+    background-image: none;
+    color: var(--text-primary);
+    font-family: "IBM Plex Serif", "Iowan Old Style", "Georgia", "Times New Roman", serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body.theme-kinetic .app-shell .bg-white\/5,
+body.theme-kinetic .app-shell .bg-white\/10,
+body.theme-kinetic .app-shell .bg-black\/20,
+body.theme-kinetic .app-shell .bg-black\/30,
+body.theme-kinetic .app-shell .bg-black\/40 {
+    background-image: none !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+body.theme-kinetic .legacy-orb {
+    display: none !important;
+}
+
+body.theme-kinetic .app-shell .bg-white\/5,
+body.theme-kinetic .app-shell .bg-black\/30 {
+    background-color: var(--bg-card) !important;
+}
+
+body.theme-kinetic .app-shell .bg-white\/10,
+body.theme-kinetic .app-shell .bg-black\/20,
+body.theme-kinetic .app-shell .bg-black\/40 {
+    background-color: var(--bg-input) !important;
+}
+
+body.theme-kinetic .app-shell .border-white\/5,
+body.theme-kinetic .app-shell .border-white\/10 {
+    border-color: var(--border-default) !important;
+}
+
+body.theme-kinetic .app-shell .border-white\/20 {
+    border-color: var(--border-hover) !important;
+}
+
+body.theme-kinetic .app-shell .text-white {
+    color: var(--text-primary) !important;
+}
+
+body.theme-kinetic .app-shell .text-gray-200,
+body.theme-kinetic .app-shell .text-gray-300 {
+    color: var(--text-secondary) !important;
+}
+
+body.theme-kinetic .app-shell .text-gray-400,
+body.theme-kinetic .app-shell .text-gray-500 {
+    color: var(--text-muted) !important;
+}
+
+body.theme-kinetic .app-shell .shadow-2xl {
+    box-shadow: 0 6px 16px rgba(52, 43, 33, 0.05) !important;
+}
+
+body.theme-kinetic .app-shell .rounded-2xl,
+body.theme-kinetic .app-shell .rounded-xl {
+    border-radius: 12px !important;
+}
+
+body.theme-kinetic .stats-view [data-section-visible="true"] {
+    animation: kinetic-section-reveal 260ms ease-out;
+}
+
+body.theme-kinetic .stats-nav-entry {
+    border-color: var(--border-default) !important;
+}
+
+body.theme-kinetic .stats-nav-entry:hover {
+    background: rgba(96, 86, 74, 0.08) !important;
+}
+
+body.theme-kinetic .app-shell .backdrop-blur-xl,
+body.theme-kinetic .app-shell .backdrop-blur-2xl,
+body.theme-kinetic .app-shell .backdrop-blur-md {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.theme-kinetic .stats-view table,
+body.web-report.theme-kinetic .stats-view table {
+    line-height: 1.45;
+}
+
+body.theme-kinetic .stats-view th,
+body.web-report.theme-kinetic .stats-view th {
+    color: #42382f !important;
+    background: rgba(220, 210, 196, 0.72) !important;
+}
+
+body.theme-kinetic .stats-view td,
+body.web-report.theme-kinetic .stats-view td {
+    color: #3f372f !important;
+}
+
+body.theme-kinetic .app-shell .bg-gradient-to-br,
+body.theme-kinetic .app-shell .bg-gradient-to-r {
+    background-image: none !important;
+}
+
+body.theme-kinetic .app-shell .from-blue-600\/20,
+body.theme-kinetic .app-shell .to-purple-600\/20,
+body.theme-kinetic .app-shell .from-emerald-600\/20,
+body.theme-kinetic .app-shell .to-cyan-600\/20,
+body.theme-kinetic .app-shell .from-rose-600\/20,
+body.theme-kinetic .app-shell .to-orange-600\/20,
+body.theme-kinetic .app-shell .from-amber-600\/20,
+body.theme-kinetic .app-shell .to-yellow-600\/20 {
+    --tw-gradient-from: rgba(120, 106, 89, 0.14) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: rgba(120, 106, 89, 0.06) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+body.theme-kinetic .app-shell .bg-blue-500\/20,
+body.theme-kinetic .app-shell .bg-blue-500\/10,
+body.theme-kinetic .app-shell .bg-purple-500\/20,
+body.theme-kinetic .app-shell .bg-purple-500\/10,
+body.theme-kinetic .app-shell .bg-green-500\/20,
+body.theme-kinetic .app-shell .bg-green-500\/10,
+body.theme-kinetic .app-shell .bg-red-500\/20,
+body.theme-kinetic .app-shell .bg-red-500\/10,
+body.theme-kinetic .app-shell .bg-amber-500\/20,
+body.theme-kinetic .app-shell .bg-amber-500\/15 {
+    background-color: rgba(94, 84, 72, 0.12) !important;
+}
+
+body.theme-kinetic .app-shell .text-blue-400,
+body.theme-kinetic .app-shell .text-blue-500,
+body.theme-kinetic .app-shell .text-purple-400,
+body.theme-kinetic .app-shell .text-purple-500,
+body.theme-kinetic .app-shell .text-green-300,
+body.theme-kinetic .app-shell .text-green-400,
+body.theme-kinetic .app-shell .text-red-300,
+body.theme-kinetic .app-shell .text-red-400,
+body.theme-kinetic .app-shell .text-amber-200,
+body.theme-kinetic .app-shell .text-amber-500,
+body.theme-kinetic .app-shell .text-yellow-500,
+body.theme-kinetic .app-shell .text-yellow-400 {
+    color: #54493e !important;
+}
+
+body.theme-kinetic .app-shell .border-blue-500\/30,
+body.theme-kinetic .app-shell .border-blue-500\/50,
+body.theme-kinetic .app-shell .border-purple-500\/30,
+body.theme-kinetic .app-shell .border-purple-500\/50,
+body.theme-kinetic .app-shell .border-green-500\/30,
+body.theme-kinetic .app-shell .border-green-500\/40,
+body.theme-kinetic .app-shell .border-red-500\/30,
+body.theme-kinetic .app-shell .border-red-500\/40,
+body.theme-kinetic .app-shell .border-amber-500\/30 {
+    border-color: rgba(84, 73, 62, 0.24) !important;
+}
+
+body.web-report.theme-kinetic .glass-card {
+    background-color: rgba(220, 210, 196, 0.95) !important;
+    border-color: var(--border-default) !important;
+    box-shadow: 0 10px 22px rgba(60, 49, 35, 0.08) !important;
+}
+
+body.web-report.theme-kinetic .bg-white\/5,
+body.web-report.theme-kinetic .bg-white\/10 {
+    background-color: rgba(212, 202, 188, 0.92) !important;
+}
+
+body.web-report.theme-kinetic .bg-gradient-to-br,
+body.web-report.theme-kinetic .bg-gradient-to-r {
+    background-image: none !important;
+}
+
+body.web-report.theme-kinetic .shadow-\[0_10px_25px_rgba\(0\,0\,0\,0\.35\)\],
+body.web-report.theme-kinetic .shadow-\[0_18px_35px_rgba\(0\,0\,0\,0\.45\)\] {
+    box-shadow: 0 4px 10px rgba(58, 46, 34, 0.08) !important;
+}
+
+body.web-report.theme-kinetic .text-\[10px\],
+body.web-report.theme-kinetic .text-\[11px\] {
+    font-size: 0.74rem !important;
+}
+
+body.web-report.theme-kinetic .tracking-widest,
+body.web-report.theme-kinetic .tracking-\[0\.35em\],
+body.web-report.theme-kinetic .tracking-\[0\.4em\] {
+    letter-spacing: 0.1em !important;
+}
+
+body.web-report.theme-kinetic .text-white {
+    color: var(--text-primary) !important;
+}
+
+body.web-report.theme-kinetic .text-gray-200,
+body.web-report.theme-kinetic .text-gray-300 {
+    color: var(--text-secondary) !important;
+}
+
+body.web-report.theme-kinetic .text-gray-400,
+body.web-report.theme-kinetic .text-gray-500 {
+    color: var(--text-muted) !important;
+}
+
+body.web-report.theme-kinetic .stats-view [data-section-visible="true"] {
+    animation: kinetic-section-reveal 280ms ease-out;
 }

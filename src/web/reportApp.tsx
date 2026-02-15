@@ -70,7 +70,7 @@ interface ReportIndexEntry {
     };
 }
 
-type UiThemeChoice = 'classic' | 'modern' | 'crt' | 'matte';
+type UiThemeChoice = 'classic' | 'modern' | 'crt' | 'matte' | 'kinetic';
 
 const glassCard = 'border border-white/10 rounded-2xl shadow-xl backdrop-blur-md glass-card';
 const WEB_THEME_OVERRIDE_COOKIE = 'arcbridge_web_theme_override';
@@ -222,6 +222,7 @@ export function ReportApp() {
     const [metricsSpecSearchResults, setMetricsSpecSearchResults] = useState<Array<{ index: number; text: string; section: string; hitId: number }>>([]);
     const [metricsSpecSearchFocused, setMetricsSpecSearchFocused] = useState(false);
     const [activeGroup, setActiveGroup] = useState('overview');
+    const [activeSectionId, setActiveSectionId] = useState<string>('kdr');
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
         overview: true,
         roster: false,
@@ -355,7 +356,7 @@ export function ReportApp() {
             setUiTheme('crt');
             return;
         }
-        setUiTheme('classic');
+        setUiTheme(defaultUiTheme);
     }, [themeIdOverride, defaultUiTheme]);
 
     useEffect(() => {
@@ -625,11 +626,16 @@ export function ReportApp() {
         () => navGroups.find((group) => group.id === activeGroup) || navGroups[0],
         [navGroups, activeGroup]
     );
+    const isKineticUi = uiTheme === 'kinetic';
     const activeSectionIds = useMemo(() => {
+        if (isKineticUi) {
+            const sectionId = activeSectionId === 'kdr' ? 'overview' : activeSectionId;
+            return new Set([sectionId]);
+        }
         const baseIds = (activeGroupDef as any)?.sectionIds || (activeGroupDef?.items || []).map((item) => item.id);
         const ids = baseIds.map((id: string) => (id === 'kdr' ? 'overview' : id));
         return new Set(ids);
-    }, [activeGroupDef]);
+    }, [activeGroupDef, activeSectionId, isKineticUi]);
     const scrollToSection = (id: string) => {
         if (id === 'report-top') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -721,6 +727,12 @@ export function ReportApp() {
                 });
                 return next;
             });
+            if (normalizedAnchor === 'report-top') {
+                setActiveSectionId('kdr');
+            } else {
+                const matchedGroup = navGroups.find((group) => group.id.toLowerCase() === normalizedAnchor);
+                setActiveSectionId(matchedGroup?.items?.[0]?.id || normalizedAnchor);
+            }
             pendingScrollIdRef.current = normalizedAnchor === 'report-top'
                 ? 'kdr'
                 : normalizedAnchor;
@@ -733,26 +745,34 @@ export function ReportApp() {
     }, [navGroupByAnchor, navGroups]);
     const isMatteUi = uiTheme === 'matte';
     const resolvedTheme = theme ?? DEFAULT_WEB_THEME;
-    const accentRgb = resolvedTheme.rgb;
-    const defaultLogoColor = isMatteUi ? '#d8e1eb' : 'var(--accent)';
+    const accentRgb = isKineticUi ? '90, 80, 68' : resolvedTheme.rgb;
+    const defaultLogoColor = isMatteUi ? '#d8e1eb' : (isKineticUi ? '#24211d' : 'var(--accent)');
     const accentVars = {
         '--accent': `rgb(${accentRgb})`,
         '--accent-rgb': accentRgb,
-        '--accent-soft': `rgba(${accentRgb}, 0.32)`,
-        '--accent-strong': `rgba(${accentRgb}, 0.95)`,
-        '--accent-border': `rgba(${accentRgb}, 0.4)`,
-        '--accent-glow': `rgba(${accentRgb}, 0.18)`,
-        '--accent-glow-soft': `rgba(${accentRgb}, 0.08)`
+        '--accent-soft': `rgba(${accentRgb}, ${isKineticUi ? '0.18' : '0.32'})`,
+        '--accent-strong': `rgba(${accentRgb}, ${isKineticUi ? '0.78' : '0.95'})`,
+        '--accent-border': `rgba(${accentRgb}, ${isKineticUi ? '0.22' : '0.4'})`,
+        '--accent-glow': `rgba(${accentRgb}, ${isKineticUi ? '0.08' : '0.18'})`,
+        '--accent-glow-soft': `rgba(${accentRgb}, ${isKineticUi ? '0.04' : '0.08'})`
     } as CSSProperties;
-    const isModernUi = uiTheme === 'modern' || uiTheme === 'matte';
+    const isModernUi = uiTheme === 'modern' || uiTheme === 'matte' || uiTheme === 'kinetic';
     const reportBackgroundImage = resolvedTheme.pattern
         ? (isMatteUi
             ? undefined
+            : isKineticUi
+                ? undefined
             : isModernUi
                 ? `linear-gradient(180deg, rgba(14, 18, 26, 0.72), rgba(18, 24, 34, 0.78)), ${resolvedTheme.pattern}`
                 : resolvedTheme.pattern)
         : undefined;
-    const glassCardStyle: CSSProperties = isMatteUi
+    const glassCardStyle: CSSProperties = isKineticUi
+        ? {
+            backgroundImage: 'none',
+            backgroundColor: 'rgba(220, 210, 196, 0.95)',
+            borderColor: 'rgba(78, 67, 56, 0.18)'
+        }
+        : isMatteUi
         ? { backgroundImage: 'none', backgroundColor: 'var(--bg-card)' }
         : {
             backgroundImage: isModernUi
@@ -816,7 +836,7 @@ export function ReportApp() {
                 const normalized = normalizeTopDownContribution(normalizeCommanderDistance(data));
                 setReport(normalized);
                 const themeChoice = normalized?.stats?.uiTheme;
-                if (themeChoice === 'modern' || themeChoice === 'classic' || themeChoice === 'crt' || themeChoice === 'matte') {
+                if (themeChoice === 'modern' || themeChoice === 'classic' || themeChoice === 'crt' || themeChoice === 'matte' || themeChoice === 'kinetic') {
                     setDefaultUiTheme(themeChoice);
                 } else if (normalized?.stats?.webThemeId === MATTE_WEB_THEME_ID) {
                     setDefaultUiTheme('matte');
@@ -867,10 +887,11 @@ export function ReportApp() {
     useEffect(() => {
         const body = document.body;
         body.classList.add('web-report');
-        body.classList.remove('theme-classic', 'theme-modern', 'theme-crt', 'theme-matte');
+        body.classList.remove('theme-classic', 'theme-modern', 'theme-crt', 'theme-matte', 'theme-kinetic');
         if (isMatteUi) body.classList.add('theme-matte');
         else if (uiTheme === 'modern') body.classList.add('theme-modern');
         else if (uiTheme === 'crt') body.classList.add('theme-crt');
+        else if (uiTheme === 'kinetic') body.classList.add('theme-kinetic');
         else body.classList.add('theme-classic');
     }, [uiTheme, isMatteUi]);
 
@@ -896,7 +917,7 @@ export function ReportApp() {
     useEffect(() => {
         const reportThemeId = report?.stats?.webThemeId;
         const reportUiTheme = report?.stats?.uiTheme;
-        const hasReportUiTheme = reportUiTheme === 'modern' || reportUiTheme === 'classic' || reportUiTheme === 'crt' || reportUiTheme === 'matte';
+        const hasReportUiTheme = reportUiTheme === 'modern' || reportUiTheme === 'classic' || reportUiTheme === 'crt' || reportUiTheme === 'matte' || reportUiTheme === 'kinetic';
         const reportUiThemeLooksStale = (
             (reportThemeId === MATTE_WEB_THEME_ID && reportUiTheme !== 'matte')
             || (reportThemeId === 'CRT' && reportUiTheme !== 'crt')
@@ -910,7 +931,7 @@ export function ReportApp() {
             .then((data) => {
                 if (!isMounted) return;
                 const themeChoice = data?.theme;
-                if (themeChoice === 'modern' || themeChoice === 'classic' || themeChoice === 'crt' || themeChoice === 'matte') {
+                if (themeChoice === 'modern' || themeChoice === 'classic' || themeChoice === 'crt' || themeChoice === 'matte' || themeChoice === 'kinetic') {
                     setDefaultUiTheme(themeChoice);
                 }
             })
@@ -1317,6 +1338,8 @@ export function ReportApp() {
         const handleGroupSelect = (groupId: string) => {
             pendingScrollIdRef.current = null;
             setActiveGroup(groupId);
+            const group = navGroups.find((entry) => entry.id === groupId);
+            setActiveSectionId(group?.items?.[0]?.id || 'kdr');
             animateGroupScrollToTop();
         };
         const handleGroupHeaderClick = (groupId: string) => {
@@ -1336,6 +1359,7 @@ export function ReportApp() {
             if (!expandedGroups[groupId]) {
                 expandOnlyGroup(groupId);
             }
+            setActiveSectionId(id);
             const isSameGroup = groupId === activeGroup;
             if (!isSameGroup) {
                 pendingScrollIdRef.current = id;
@@ -1411,12 +1435,12 @@ export function ReportApp() {
             <div
                 className="min-h-screen text-white relative overflow-x-hidden"
                 style={{
-                    backgroundColor: isMatteUi ? 'var(--bg-base)' : (isModernUi ? '#0f141c' : '#0f172a'),
+                    backgroundColor: isMatteUi ? 'var(--bg-base)' : (isKineticUi ? '#d8d1c5' : (isModernUi ? '#0f141c' : '#0f172a')),
                     backgroundImage: isMatteUi ? 'none' : reportBackgroundImage,
                     ...accentVars
                 }}
             >
-                {!isMatteUi && (
+                {!isMatteUi && !isKineticUi && (
                     <div className="absolute inset-0 pointer-events-none">
                         <div
                             className="absolute -top-32 -right-24 h-80 w-80 rounded-full blur-[140px]"
@@ -1521,7 +1545,7 @@ export function ReportApp() {
                                                                 handleSubNavClick(group.id, item.id);
                                                                 setTocOpen(false);
                                                             }}
-                                                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] text-gray-200 border border-transparent hover:border-white/10 hover:bg-white/10 transition-colors transform-gpu"
+                                                            className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] border transition-colors transform-gpu ${activeSectionId === item.id ? 'text-white border-white/20 bg-white/10' : 'text-gray-200 border-transparent hover:border-white/10 hover:bg-white/10'}`}
                                                         >
                                                             <ItemIcon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
                                                             {item.label}
@@ -1618,7 +1642,7 @@ export function ReportApp() {
                                                             variants={navItemMotion}
                                                             transition={{ duration: navTiming.itemDuration, ease: [0.2, 0.9, 0.25, 1] }}
                                                             onClick={() => handleSubNavClick(group.id, item.id)}
-                                                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] text-gray-200 border border-transparent hover:border-white/10 hover:bg-white/10 transition-colors transform-gpu"
+                                                            className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] border transition-colors transform-gpu ${activeSectionId === item.id ? 'text-white border-white/20 bg-white/10' : 'text-gray-200 border-transparent hover:border-white/10 hover:bg-white/10'}`}
                                                         >
                                                             <ItemIcon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
                                                             {item.label}
@@ -1716,7 +1740,7 @@ export function ReportApp() {
                                     <button
                                         key={`chip-${item.id}`}
                                         onClick={() => handleSubNavClick(activeGroupDef?.id || 'overview', item.id)}
-                                        className="group flex items-center gap-2 px-3 py-2 rounded-full text-[10px] uppercase tracking-widest text-gray-200 whitespace-nowrap border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_10px_25px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[color:var(--accent-border)] hover:shadow-[0_18px_35px_rgba(0,0,0,0.45)] active:translate-y-0 active:scale-[0.98] snap-start"
+                                        className={`group flex items-center gap-2 px-3 py-2 rounded-full text-[10px] uppercase tracking-widest whitespace-nowrap border bg-gradient-to-br shadow-[0_10px_25px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200 active:translate-y-0 active:scale-[0.98] snap-start ${activeSectionId === item.id ? 'text-white border-[color:var(--accent-border)] from-[color:var(--accent-glow)] via-white/10 to-transparent' : 'text-gray-200 border-white/15 from-white/10 via-white/5 to-transparent hover:-translate-y-0.5 hover:border-[color:var(--accent-border)] hover:shadow-[0_18px_35px_rgba(0,0,0,0.45)]'}`}
                                     >
                                         <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 border border-white/10 group-hover:border-[color:var(--accent-border)] group-hover:bg-[color:var(--accent-glow)] transition-colors">
                                             <Icon className="w-3 h-3 text-[color:var(--accent)]" />
@@ -1780,12 +1804,12 @@ export function ReportApp() {
         <div
             className="min-h-screen text-white relative overflow-x-hidden"
             style={{
-                backgroundColor: isMatteUi ? 'var(--bg-base)' : (isModernUi ? '#0f141c' : '#0f172a'),
+                backgroundColor: isMatteUi ? 'var(--bg-base)' : (isKineticUi ? '#d8d1c5' : (isModernUi ? '#0f141c' : '#0f172a')),
                 backgroundImage: isMatteUi ? 'none' : reportBackgroundImage,
                 ...accentVars
             }}
         >
-            {!isMatteUi && (
+            {!isMatteUi && !isKineticUi && (
                 <div className="absolute inset-0 pointer-events-none">
                     <div
                         className="absolute -top-32 -right-24 h-80 w-80 rounded-full blur-[140px]"
