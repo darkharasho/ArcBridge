@@ -372,7 +372,10 @@ export function ReportApp() {
             setUiTheme('crt');
             return;
         }
-        setUiTheme(defaultUiTheme);
+        const fallbackUiTheme = defaultUiTheme === 'modern' || defaultUiTheme === 'classic'
+            ? defaultUiTheme
+            : 'classic';
+        setUiTheme(fallbackUiTheme);
     }, [themeIdOverride, defaultUiTheme]);
 
     useEffect(() => {
