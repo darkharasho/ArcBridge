@@ -5951,6 +5951,16 @@ body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-togg
     color: #f4e3c4 !important;
 }
 
+body.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .top-skills-outgoing-icon,
+body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .top-skills-outgoing-icon {
+    color: #f0debe !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #defense-detailed > div:first-child h3 svg,
+body.web-report.theme-kinetic.theme-kinetic-dark #defense-detailed > div:first-child h3 svg {
+    color: #f0debe !important;
+}
+
 /* MVP cards: explicit dark kinetic palette with strong text contrast. */
 body.theme-kinetic.theme-kinetic-dark .stats-view .mvp-card--gold,
 body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .mvp-card--gold {
@@ -6317,5 +6327,19 @@ body.theme-kinetic.theme-kinetic-dark #player-breakdown .text-sky-300,
 body.web-report.theme-kinetic.theme-kinetic-dark #player-breakdown .text-sky-300,
 body.theme-kinetic.theme-kinetic-dark #player-breakdown .lucide-list-tree,
 body.web-report.theme-kinetic.theme-kinetic-dark #player-breakdown .lucide-list-tree {
+    color: #f0debe !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #healing-stats > div:first-child h3 svg,
+body.web-report.theme-kinetic.theme-kinetic-dark #healing-stats > div:first-child h3 svg,
+body.theme-kinetic.theme-kinetic-dark #healing-stats .text-lime-300,
+body.web-report.theme-kinetic.theme-kinetic-dark #healing-stats .text-lime-300 {
+    color: #f0debe !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #sigil-relic-uptime > div:first-child h3 svg,
+body.web-report.theme-kinetic.theme-kinetic-dark #sigil-relic-uptime > div:first-child h3 svg,
+body.theme-kinetic.theme-kinetic-dark #sigil-relic-uptime .text-fuchsia-300,
+body.web-report.theme-kinetic.theme-kinetic-dark #sigil-relic-uptime .text-fuchsia-300 {
     color: #f0debe !important;
 }
