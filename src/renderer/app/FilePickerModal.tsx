@@ -13,6 +13,10 @@ export function FilePickerModal({ ctx }: { ctx: any }) {
         logDirectory,
         selectSinceOpen,
         setSelectSinceOpen,
+        selectDayOpen,
+        setSelectDayOpen,
+        selectDayDate,
+        setSelectDayDate,
         setSelectSinceView,
         setSelectSinceDate,
         setSelectSinceHour,
@@ -66,6 +70,8 @@ export function FilePickerModal({ ctx }: { ctx: any }) {
                                     setFilePickerOpen(false);
                                     setFilePickerError(null);
                                     setFilePickerSelected(new Set());
+                                    setSelectDayOpen(false);
+                                    setSelectSinceOpen(false);
                                 }}
                                 className="p-2 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-white/30 file-picker-close"
                             >
@@ -90,6 +96,7 @@ export function FilePickerModal({ ctx }: { ctx: any }) {
                                                     setFilePickerSelected(new Set());
                                                     return;
                                                 }
+                                                setSelectDayOpen(false);
                                                 setSelectSinceOpen((prev: boolean) => {
                                                     const next = !prev;
                                                     if (next) {
@@ -114,8 +121,190 @@ export function FilePickerModal({ ctx }: { ctx: any }) {
                                         >
                                             {filePickerSelected.size > 0 ? 'Clear Selection' : 'Select Since'}
                                         </button>
+                                        {filePickerSelected.size === 0 && (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectSinceOpen(false);
+                                                    setSelectDayOpen((prev: boolean) => {
+                                                        const next = !prev;
+                                                        if (next) {
+                                                            const now = new Date();
+                                                            const resolvedDate = selectDayDate ?? new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                                            setSelectDayDate(resolvedDate);
+                                                            setSelectSinceView(new Date(resolvedDate.getFullYear(), resolvedDate.getMonth(), 1));
+                                                            setSelectSinceMonthOpen(false);
+                                                        }
+                                                        return next;
+                                                    });
+                                                }}
+                                                className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-blue-600/20 text-blue-200 border-blue-500/40 hover:bg-blue-600/30"
+                                            >
+                                                Select Day
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
+                                <AnimatePresence>
+                                    {selectDayOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                                            className="absolute z-20 left-4 right-4 top-[56px] rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md shadow-2xl shadow-black/40 file-picker-popover"
+                                        >
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="text-xs uppercase tracking-widest text-gray-400">Select Day</div>
+                                                <div className="text-[10px] text-gray-500">
+                                                    {selectDayDate ? selectDayDate.toLocaleDateString() : 'Pick a date'}
+                                                </div>
+                                            </div>
+                                            <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <button
+                                                        onClick={() => setSelectSinceView((prev: Date) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                                                        className="h-6 w-6 rounded-full border border-white/10 bg-black/30 text-gray-300 hover:text-white hover:border-white/30 transition-colors focus:outline-none focus:ring-0 flex items-center justify-center"
+                                                        aria-label="Previous month"
+                                                    >
+                                                        <ChevronLeft className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setSelectSinceMonthOpen((prev: boolean) => !prev)}
+                                                            className="text-sm font-semibold text-gray-200 hover:text-white"
+                                                        >
+                                                            {selectSinceView.toLocaleString(undefined, { month: 'long', year: 'numeric' })}
+                                                        </button>
+                                                        <AnimatePresence>
+                                                            {selectSinceMonthOpen && (
+                                                                <motion.div
+                                                                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                                                                    transition={{ duration: 0.14, ease: 'easeOut' }}
+                                                                    className="absolute z-10 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/90 backdrop-blur-md shadow-2xl p-2 file-picker-popover"
+                                                                >
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <button
+                                                                            onClick={() => setSelectSinceView((prev: Date) => new Date(prev.getFullYear() - 1, prev.getMonth(), 1))}
+                                                                            className="h-5 w-5 rounded-full border border-white/10 bg-black/30 text-gray-300 hover:text-white hover:border-white/30 transition-colors focus:outline-none focus:ring-0 flex items-center justify-center"
+                                                                            aria-label="Previous year"
+                                                                        >
+                                                                            <ChevronLeft className="w-3 h-3" />
+                                                                        </button>
+                                                                        <div className="text-[11px] text-gray-300">
+                                                                            {selectSinceView.getFullYear()}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => setSelectSinceView((prev: Date) => new Date(prev.getFullYear() + 1, prev.getMonth(), 1))}
+                                                                            className="h-5 w-5 rounded-full border border-white/10 bg-black/30 text-gray-300 hover:text-white hover:border-white/30 transition-colors focus:outline-none focus:ring-0 flex items-center justify-center"
+                                                                            aria-label="Next year"
+                                                                        >
+                                                                            <ChevronRight className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-3 gap-1">
+                                                                        {Array.from({ length: 12 }, (_, i) => (
+                                                                            <button
+                                                                                key={`day-picker-month-${i}`}
+                                                                                onClick={() => {
+                                                                                    setSelectSinceView((prev: Date) => new Date(prev.getFullYear(), i, 1));
+                                                                                    setSelectSinceMonthOpen(false);
+                                                                                }}
+                                                                                className={`px-2 py-1 rounded-full text-[10px] border transition-colors ${selectSinceView.getMonth() === i
+                                                                                    ? 'bg-cyan-500/30 text-cyan-100 border-cyan-400/50'
+                                                                                    : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                                                    }`}
+                                                                            >
+                                                                                {new Date(2000, i, 1).toLocaleString(undefined, { month: 'short' })}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setSelectSinceView((prev: Date) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                                                        className="h-6 w-6 rounded-full border border-white/10 bg-black/30 text-gray-300 hover:text-white hover:border-white/30 transition-colors focus:outline-none focus:ring-0 flex items-center justify-center"
+                                                        aria-label="Next month"
+                                                    >
+                                                        <ChevronRight className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-7 gap-1 text-[10px] text-gray-500 mb-2">
+                                                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                                                        <div key={`day-picker-weekday-${idx}-${day}`} className="text-center">{day}</div>
+                                                    ))}
+                                                </div>
+                                                {(() => {
+                                                    const year = selectSinceView.getFullYear();
+                                                    const month = selectSinceView.getMonth();
+                                                    const firstDay = new Date(year, month, 1).getDay();
+                                                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                                                    const cells = Array.from({ length: firstDay + daysInMonth }, (_, idx) => idx);
+                                                    return (
+                                                        <div className="grid grid-cols-7 gap-1 text-xs">
+                                                            {cells.map((idx) => {
+                                                                if (idx < firstDay) {
+                                                                    return <div key={`day-picker-pad-${idx}`} />;
+                                                                }
+                                                                const day = idx - firstDay + 1;
+                                                                const isSelected = selectDayDate
+                                                                    && selectDayDate.getFullYear() === year
+                                                                    && selectDayDate.getMonth() === month
+                                                                    && selectDayDate.getDate() === day;
+                                                                return (
+                                                                    <button
+                                                                        key={`day-picker-day-${day}`}
+                                                                        onClick={() => setSelectDayDate(new Date(year, month, day))}
+                                                                        className={`h-7 w-7 rounded-full mx-auto flex items-center justify-center transition-colors ${isSelected
+                                                                            ? 'bg-cyan-500/30 text-cyan-100 border border-cyan-400/50'
+                                                                            : 'text-gray-200 hover:bg-white/10'
+                                                                            }`}
+                                                                    >
+                                                                        {day}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <div className="mt-3 flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        if (!selectDayDate) return;
+                                                        const dayStart = new Date(selectDayDate.getFullYear(), selectDayDate.getMonth(), selectDayDate.getDate(), 0, 0, 0, 0).getTime();
+                                                        const dayEnd = new Date(selectDayDate.getFullYear(), selectDayDate.getMonth(), selectDayDate.getDate(), 23, 59, 59, 999).getTime();
+                                                        if (!Number.isFinite(dayStart) || !Number.isFinite(dayEnd)) return;
+                                                        ensureMonthWindowForSince(dayStart);
+                                                        const matching = filePickerAll.filter(
+                                                            (entry: any) => Number.isFinite(entry.mtimeMs) && entry.mtimeMs >= dayStart && entry.mtimeMs <= dayEnd
+                                                        );
+                                                        setFilePickerSelected(new Set(matching.map((entry: any) => entry.path)));
+                                                        setSelectDayOpen(false);
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${uiTheme === 'matte'
+                                                        ? 'bg-[#222629] text-cyan-200 border-transparent shadow-[-2px_-2px_4px_#2b3034,2px_2px_4px_#191c1e] hover:text-cyan-100 active:shadow-[inset_-2px_-2px_4px_#2b3034,inset_2px_2px_4px_#191c1e]'
+                                                        : 'bg-cyan-600/20 text-cyan-200 border-cyan-500/40 hover:bg-cyan-600/30'
+                                                        }`}
+                                                >
+                                                    Apply
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectDayOpen(false)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${uiTheme === 'matte'
+                                                        ? 'bg-[#222629] text-gray-400 border-transparent shadow-[-2px_-2px_4px_#2b3034,2px_2px_4px_#191c1e] hover:text-gray-200 active:shadow-[inset_-2px_-2px_4px_#2b3034,inset_2px_2px_4px_#191c1e]'
+                                                        : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                                 <AnimatePresence>
                                     {selectSinceOpen && filePickerSelected.size === 0 && (
                                         <motion.div
@@ -420,12 +609,21 @@ export function FilePickerModal({ ctx }: { ctx: any }) {
                                         setFilePickerOpen(false);
                                         setFilePickerError(null);
                                         setFilePickerSelected(new Set());
+                                        setSelectDayOpen(false);
+                                        setSelectSinceOpen(false);
                                     }}
                                     className="px-4 py-2 rounded-lg text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white"
                                 >
                                     Cancel
                                 </button>
-                                <button onClick={handleAddSelectedFiles} className="px-4 py-2 rounded-lg text-xs font-semibold border bg-emerald-500/20 text-emerald-200 border-emerald-400/40 hover:bg-emerald-500/30">
+                                <button
+                                    onClick={() => {
+                                        setSelectDayOpen(false);
+                                        setSelectSinceOpen(false);
+                                        handleAddSelectedFiles();
+                                    }}
+                                    className="px-4 py-2 rounded-lg text-xs font-semibold border bg-emerald-500/20 text-emerald-200 border-emerald-400/40 hover:bg-emerald-500/30"
+                                >
                                     Add to Recent Activity ({filePickerSelected.size})
                                 </button>
                             </div>

@@ -29,6 +29,8 @@ export function useFilePicker({
     const [filePickerSelected, setFilePickerSelected] = useState<Set<string>>(new Set());
     const [filePickerFilter, setFilePickerFilter] = useState('');
     const [selectSinceOpen, setSelectSinceOpen] = useState(false);
+    const [selectDayOpen, setSelectDayOpen] = useState(false);
+    const [selectDayDate, setSelectDayDate] = useState<Date | null>(null);
     const [selectSinceDate, setSelectSinceDate] = useState<Date | null>(null);
     const [selectSinceView, setSelectSinceView] = useState<Date>(() => new Date());
     const [selectSinceHour, setSelectSinceHour] = useState<number>(12);
@@ -170,6 +172,10 @@ export function useFilePicker({
         loadLogFiles,
         selectSinceOpen,
         setSelectSinceOpen,
+        selectDayOpen,
+        setSelectDayOpen,
+        selectDayDate,
+        setSelectDayDate,
         setSelectSinceView,
         setSelectSinceDate,
         setSelectSinceHour,
