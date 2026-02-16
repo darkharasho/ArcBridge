@@ -263,7 +263,7 @@ export const PlayerBreakdownSection = ({
                                                                     setActivePlayerKey(player.key);
                                                                     setActivePlayerSkillId(skill.id);
                                                                 }}
-                                                                className={`w-full text-left px-2 py-1.5 rounded-md text-[11px] border transition-colors ${
+                                                                className={`w-full min-h-[30px] text-left px-2 py-1.5 rounded-md text-[11px] border transition-colors ${
                                                                     activePlayerKey === player.key && activePlayerSkillId === skill.id
                                                                         ? 'bg-sky-500/20 text-sky-200 border-sky-500/30'
                                                                         : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
@@ -274,7 +274,7 @@ export const PlayerBreakdownSection = ({
                                                                     {skill.icon ? (
                                                                         <img src={skill.icon} alt="" className="h-3.5 w-3.5 object-contain shrink-0" />
                                                                     ) : null}
-                                                                    <span className="truncate">{skill.name}</span>
+                                                                    <span className="truncate leading-[1.45] pt-[1px] pb-[2px]">{skill.name}</span>
                                                                 </div>
                                                             </button>
                                                         ))}
@@ -348,7 +348,7 @@ export const PlayerBreakdownSection = ({
                                                                     setActiveClassKey(bucket.profession);
                                                                     setActiveClassSkillId(skill.id);
                                                                 }}
-                                                                className={`w-full text-left px-2 py-1.5 rounded-md text-[11px] border transition-colors ${
+                                                                className={`w-full min-h-[30px] text-left px-2 py-1.5 rounded-md text-[11px] border transition-colors ${
                                                                     activeClassKey === bucket.profession && activeClassSkillId === skill.id
                                                                         ? 'bg-sky-500/20 text-sky-200 border-sky-500/30'
                                                                         : 'bg-white/5 text-gray-300 border-white/10 hover:text-white'
@@ -359,7 +359,7 @@ export const PlayerBreakdownSection = ({
                                                                     {skill.icon ? (
                                                                         <img src={skill.icon} alt="" className="h-3.5 w-3.5 object-contain shrink-0" />
                                                                     ) : null}
-                                                                    <span className="truncate">{skill.name}</span>
+                                                                    <span className="truncate leading-[1.45] pt-[1px] pb-[2px]">{skill.name}</span>
                                                                 </div>
                                                             </button>
                                                         ))}

@@ -4941,12 +4941,34 @@ body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-sky-
     color: #e4efff !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-blue-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-cyan-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-sky-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-blue-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-cyan-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-sky-"] {
+    background-color: rgba(96, 130, 178, 0.34) !important;
+    border-color: rgba(139, 175, 225, 0.44) !important;
+    color: #e4efff !important;
+}
+
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-emerald-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-green-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-lime-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-emerald-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-green-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-lime-"] {
+    background-color: rgba(96, 150, 112, 0.34) !important;
+    border-color: rgba(139, 201, 156, 0.44) !important;
+    color: #e4f7e8 !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-emerald-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-green-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-lime-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-emerald-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-green-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-lime-"] {
     background-color: rgba(96, 150, 112, 0.34) !important;
     border-color: rgba(139, 201, 156, 0.44) !important;
     color: #e4f7e8 !important;
@@ -4963,10 +4985,30 @@ body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-purp
     color: #ece9ff !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-indigo-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-violet-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-purple-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-indigo-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-violet-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-purple-"] {
+    background-color: rgba(115, 110, 172, 0.34) !important;
+    border-color: rgba(164, 157, 227, 0.44) !important;
+    color: #ece9ff !important;
+}
+
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-red-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-rose-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-red-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-rose-"] {
+    background-color: rgba(166, 108, 108, 0.34) !important;
+    border-color: rgba(224, 154, 154, 0.44) !important;
+    color: #fde7e4 !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-red-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-rose-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-red-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-rose-"] {
     background-color: rgba(166, 108, 108, 0.34) !important;
     border-color: rgba(224, 154, 154, 0.44) !important;
     color: #fde7e4 !important;
@@ -4983,10 +5025,30 @@ body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-oran
     color: #fff0d9 !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-amber-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-yellow-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-orange-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-amber-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-yellow-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-orange-"] {
+    background-color: rgba(168, 132, 90, 0.34) !important;
+    border-color: rgba(225, 186, 132, 0.44) !important;
+    color: #fff0d9 !important;
+}
+
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-slate-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-gray-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-slate-"],
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-gray-"] {
+    background-color: rgba(94, 104, 128, 0.34) !important;
+    border-color: rgba(146, 159, 188, 0.42) !important;
+    color: #e6ebf8 !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-slate-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-gray-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-slate-"],
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-gray-"] {
     background-color: rgba(94, 104, 128, 0.34) !important;
     border-color: rgba(146, 159, 188, 0.42) !important;
     color: #e6ebf8 !important;
@@ -5002,12 +5064,32 @@ body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-sky-
     border-color: rgba(170, 202, 243, 0.54) !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-blue-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-cyan-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-sky-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-blue-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-cyan-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-sky-"]:hover {
+    background-color: rgba(109, 146, 197, 0.44) !important;
+    border-color: rgba(170, 202, 243, 0.54) !important;
+}
+
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-emerald-"]:hover:not(:disabled),
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-green-"]:hover:not(:disabled),
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-lime-"]:hover:not(:disabled),
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-emerald-"]:hover,
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-green-"]:hover,
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-lime-"]:hover {
+    background-color: rgba(110, 170, 128, 0.44) !important;
+    border-color: rgba(163, 224, 181, 0.54) !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-emerald-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-green-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-lime-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-emerald-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-green-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-lime-"]:hover {
     background-color: rgba(110, 170, 128, 0.44) !important;
     border-color: rgba(163, 224, 181, 0.54) !important;
 }
@@ -5022,10 +5104,28 @@ body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-purp
     border-color: rgba(182, 175, 241, 0.54) !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-indigo-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-violet-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-purple-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-indigo-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-violet-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-purple-"]:hover {
+    background-color: rgba(129, 123, 191, 0.44) !important;
+    border-color: rgba(182, 175, 241, 0.54) !important;
+}
+
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-red-"]:hover:not(:disabled),
 body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-rose-"]:hover:not(:disabled),
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-red-"]:hover,
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-rose-"]:hover {
+    background-color: rgba(182, 120, 120, 0.44) !important;
+    border-color: rgba(234, 172, 172, 0.54) !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-red-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-rose-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-red-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-rose-"]:hover {
     background-color: rgba(182, 120, 120, 0.44) !important;
     border-color: rgba(234, 172, 172, 0.54) !important;
 }
@@ -5036,6 +5136,16 @@ body.theme-kinetic.theme-kinetic-dark .app-shell button[class*="bg-orange-"]:hov
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-amber-"]:hover,
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-yellow-"]:hover,
 body.theme-kinetic.theme-kinetic-dark .app-shell [role="button"][class*="bg-orange-"]:hover {
+    background-color: rgba(185, 146, 100, 0.44) !important;
+    border-color: rgba(239, 198, 144, 0.54) !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-amber-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-yellow-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view button[class*="bg-orange-"]:hover:not(:disabled),
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-amber-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-yellow-"]:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view [role="button"][class*="bg-orange-"]:hover {
     background-color: rgba(185, 146, 100, 0.44) !important;
     border-color: rgba(239, 198, 144, 0.54) !important;
 }
@@ -5439,6 +5549,56 @@ body.web-report.theme-kinetic.theme-kinetic-dark .recharts-tooltip-wrapper .rech
     color: #f6e7cb !important;
 }
 
+/* Keep multiclass/enemy-comp tooltip text readable in kinetic dark. */
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip {
+    color: #f0debe !important;
+    background: rgba(58, 66, 98, 0.96) !important;
+    background-color: rgba(58, 66, 98, 0.96) !important;
+    border-color: rgba(236, 197, 132, 0.44) !important;
+    box-shadow: 0 10px 24px rgba(14, 18, 31, 0.42) !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-100,
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-200,
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-300,
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-400,
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-500,
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-amber-200,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-100,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-200,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-300,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-400,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-500,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-amber-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-100,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-300,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-400,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-gray-500,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip .text-amber-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-100,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-300,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-400,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-gray-500,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip .text-amber-200 {
+    color: #f0debe !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip span,
+body.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip div,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip span,
+body.theme-kinetic.theme-kinetic-dark .count-class-tooltip div,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip span,
+body.web-report.theme-kinetic.theme-kinetic-dark .profession-multi-tooltip div,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip span,
+body.web-report.theme-kinetic.theme-kinetic-dark .count-class-tooltip div {
+    color: #f0debe !important;
+}
+
 /* Keep uploader KPI rows horizontally aligned in both kinetic variants. */
 body.theme-kinetic .uploader-kpi-card {
     align-items: stretch !important;
@@ -5772,6 +5932,23 @@ body.theme-kinetic.theme-kinetic-dark #top-skills-incoming .text-gray-500,
 body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .text-gray-500,
 body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-incoming .text-gray-500 {
     color: #ccb993 !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-toggle-option--active,
+body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-toggle-option--active {
+    background-color: rgba(175, 138, 84, 0.34) !important;
+    border-color: rgba(236, 197, 132, 0.5) !important;
+    color: #ffeacc !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-toggle-option:not(.pill-toggle-option--active),
+body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-toggle-option:not(.pill-toggle-option--active) {
+    color: #d9c49f !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-toggle-option:not(.pill-toggle-option--active):hover,
+body.web-report.theme-kinetic.theme-kinetic-dark #top-skills-outgoing .pill-toggle-option:not(.pill-toggle-option--active):hover {
+    color: #f4e3c4 !important;
 }
 
 /* MVP cards: explicit dark kinetic palette with strong text contrast. */
@@ -6128,4 +6305,17 @@ body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .fight-diff-sort-bu
 body.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head .text-slate-200,
 body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head .text-slate-200 {
     color: #e8efff !important;
+}
+
+/* Player Breakdown icon should not appear muted/dark in web-report kinetic dark. */
+body.web-report.theme-kinetic.theme-kinetic-dark .report-nav-item-btn .lucide-list-tree,
+body.web-report.theme-kinetic.theme-kinetic-dark #player-breakdown .lucide-list-tree {
+    color: #dbe8ff !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #player-breakdown .text-sky-300,
+body.web-report.theme-kinetic.theme-kinetic-dark #player-breakdown .text-sky-300,
+body.theme-kinetic.theme-kinetic-dark #player-breakdown .lucide-list-tree,
+body.web-report.theme-kinetic.theme-kinetic-dark #player-breakdown .lucide-list-tree {
+    color: #f0debe !important;
 }

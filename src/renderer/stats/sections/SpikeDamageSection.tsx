@@ -547,7 +547,7 @@ export const SpikeDamageSection = ({
                                 {spikeFightSkillRows.map((row, idx) => (
                                     <div
                                         key={`${row.skillName}-${idx}`}
-                                        className="grid grid-cols-[2fr_0.8fr_0.8fr] gap-2 px-3 py-2 text-sm text-gray-200 border-b border-white/[0.05] last:border-b-0"
+                                        className="grid grid-cols-[2fr_0.8fr_0.8fr] gap-2 px-3 py-2.5 text-sm text-gray-200 border-b border-white/[0.05] last:border-b-0"
                                     >
                                         <div className="min-w-0 flex items-center gap-2">
                                             {row.icon ? (
@@ -560,7 +560,7 @@ export const SpikeDamageSection = ({
                                             ) : (
                                                 <div className="w-4 h-4 rounded-sm border border-white/[0.14] bg-white/[0.06] flex-shrink-0" />
                                             )}
-                                            <div className="truncate" title={row.skillName}>{row.skillName}</div>
+                                            <div className="truncate leading-[1.45] pt-[1px] pb-[2px]" title={row.skillName}>{row.skillName}</div>
                                         </div>
                                         <div className="text-right font-mono text-rose-200">{formatWithCommas(Number(row.damage || 0), 0)}</div>
                                         <div className="text-right font-mono text-gray-300">{formatWithCommas(Number(row.hits || 0), 0)}</div>
