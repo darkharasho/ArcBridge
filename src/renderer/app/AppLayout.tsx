@@ -256,24 +256,12 @@ export function AppLayout({ ctx }: { ctx: any }) {
         : uiTheme === 'modern'
             ? 'rounded-lg border border-cyan-300/15 bg-slate-900/65 backdrop-blur-sm'
         : '';
-    const isKineticTheme = uiTheme === 'kinetic';
     const statsSectionVisibility = useCallback((id: string) => {
-        if (isKineticTheme) {
-            const activeId = statsActiveNavId === 'kdr' ? 'overview' : statsActiveNavId;
-            const targetId = id === 'kdr' ? 'overview' : id;
-            if (
-                (activeId === 'top-skills-outgoing' && targetId === 'top-skills-incoming')
-                || (activeId === 'top-skills-incoming' && targetId === 'top-skills-outgoing')
-            ) {
-                return true;
-            }
-            return targetId === activeId;
-        }
         const sectionIds = Array.isArray((activeStatsGroupDef as any)?.sectionIds)
             ? (activeStatsGroupDef as any).sectionIds
             : ((activeStatsGroupDef as any)?.items || []).map((item: any) => item.id);
         return sectionIds.includes(id);
-    }, [activeStatsGroupDef, isKineticTheme, statsActiveNavId]);
+    }, [activeStatsGroupDef]);
     const scrollToStatsSection = useCallback((id: string) => {
         const targetId = id === 'kdr' ? 'overview' : id;
         let attempts = 0;

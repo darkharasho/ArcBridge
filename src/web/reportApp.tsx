@@ -632,17 +632,10 @@ export function ReportApp() {
     );
     const isKineticUi = uiTheme === 'kinetic';
     const activeSectionIds = useMemo(() => {
-        if (isKineticUi) {
-            const sectionId = activeSectionId === 'kdr' ? 'overview' : activeSectionId;
-            if (sectionId === 'top-skills-outgoing' || sectionId === 'top-skills-incoming') {
-                return new Set(['top-skills-outgoing', 'top-skills-incoming']);
-            }
-            return new Set([sectionId]);
-        }
         const baseIds = (activeGroupDef as any)?.sectionIds || (activeGroupDef?.items || []).map((item) => item.id);
         const ids = baseIds.map((id: string) => (id === 'kdr' ? 'overview' : id));
         return new Set(ids);
-    }, [activeGroupDef, activeSectionId, isKineticUi]);
+    }, [activeGroupDef]);
     const scrollToSection = (id: string) => {
         if (id === 'report-top') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1470,7 +1463,7 @@ export function ReportApp() {
                 <aside
                     className={`fixed z-30 top-0 bottom-0 w-64 max-w-[80vw] transition-transform duration-300 lg:hidden ${tocOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 >
-                    <div className="h-full bg-white/5 border-r border-white/10 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.45)] flex flex-col">
+                    <div className="report-nav-sidebar h-full bg-white/5 border-r border-white/10 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.45)] flex flex-col">
                         <div className="px-5 pt-6 pb-4 flex items-center justify-between">
                             <div className="text-[11px] uppercase tracking-[0.4em] text-gray-400">Contents</div>
                             <button
@@ -1484,7 +1477,7 @@ export function ReportApp() {
                         <div className="px-5 pb-4">
                             <a
                                 href="./"
-                                className="w-full inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
+                                className="report-back-link w-full inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
                             >
                                 <span className="h-8 w-8 rounded-full border border-[color:var(--accent-border)] inline-flex items-center justify-center text-[color:var(--accent-strong)]">
                                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1511,15 +1504,15 @@ export function ReportApp() {
                                     >
                                         <button
                                             onClick={() => handleGroupHeaderClick(group.id)}
-                                            className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${isActive
+                                            className={`report-nav-group-btn w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${isActive
                                                 ? 'bg-white/10 text-white border-white/20'
                                                 : 'text-gray-300 border-transparent hover:border-white/10 hover:bg-white/10'
                                                 }`}
                                         >
-                                            <GroupIcon className="w-4 h-4 text-[color:var(--accent)]" />
-                                            <span className="text-[11px] uppercase tracking-[0.22em] whitespace-nowrap">{group.label}</span>
+                                            <GroupIcon className="report-nav-group-icon w-4 h-4 text-[color:var(--accent)]" />
+                                            <span className="report-nav-group-label text-[11px] uppercase tracking-[0.22em] whitespace-nowrap min-w-0 truncate">{group.label}</span>
                                             <motion.span
-                                                className="ml-auto inline-flex"
+                                                className="report-nav-chevron ml-auto inline-flex shrink-0"
                                                 animate={{ rotate: isExpanded ? 0 : -90 }}
                                                 transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.86 }}
                                             >
@@ -1541,7 +1534,7 @@ export function ReportApp() {
                                                 variants={navItemsMotion}
                                                 initial={false}
                                                 animate={isExpanded ? 'open' : 'closed'}
-                                                className="space-y-1 pl-2 pt-1"
+                                                className="report-nav-submenu space-y-1 pl-2 pt-1"
                                                 data-nav-submenu-content
                                             >
                                                 {group.items.map((item) => {
@@ -1555,7 +1548,7 @@ export function ReportApp() {
                                                                 handleSubNavClick(group.id, item.id);
                                                                 setTocOpen(false);
                                                             }}
-                                                            className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] border transition-colors transform-gpu ${activeSectionId === item.id ? 'text-white border-white/20 bg-white/10' : 'text-gray-200 border-transparent hover:border-white/10 hover:bg-white/10'}`}
+                                                            className={`report-nav-item-btn w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] border transition-colors transform-gpu ${activeSectionId === item.id ? 'text-white border-white/20 bg-white/10' : 'text-gray-200 border-transparent hover:border-white/10 hover:bg-white/10'}`}
                                                         >
                                                             <ItemIcon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
                                                             {item.label}
@@ -1570,7 +1563,7 @@ export function ReportApp() {
                         </nav>
                     </div>
                 </aside>
-                <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
+                <aside className="report-nav-sidebar hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] z-20">
                     <div className="flex flex-col w-full">
                         <div className="px-6 pt-6 pb-5">
                             <div className="flex items-center gap-3">
@@ -1611,15 +1604,15 @@ export function ReportApp() {
                                     >
                                         <button
                                             onClick={() => handleGroupHeaderClick(group.id)}
-                                            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${isActive
+                                            className={`report-nav-group-btn w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${isActive
                                                 ? 'bg-white/10 text-white border-white/20'
                                                 : 'text-gray-300 border-transparent hover:border-white/10 hover:bg-white/10'
                                                 }`}
                                         >
-                                            <GroupIcon className="w-4 h-4 text-[color:var(--accent)]" />
-                                            <span className="text-[11px] uppercase tracking-[0.22em] whitespace-nowrap">{group.label}</span>
+                                            <GroupIcon className="report-nav-group-icon w-4 h-4 text-[color:var(--accent)]" />
+                                            <span className="report-nav-group-label text-[11px] uppercase tracking-[0.22em] whitespace-nowrap min-w-0 truncate">{group.label}</span>
                                             <motion.span
-                                                className="ml-auto inline-flex"
+                                                className="report-nav-chevron ml-auto inline-flex shrink-0"
                                                 animate={{ rotate: isExpanded ? 0 : -90 }}
                                                 transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.86 }}
                                             >
@@ -1641,7 +1634,7 @@ export function ReportApp() {
                                                 variants={navItemsMotion}
                                                 initial={false}
                                                 animate={isExpanded ? 'open' : 'closed'}
-                                                className="space-y-1 pl-2 pt-1"
+                                                className="report-nav-submenu space-y-1 pl-2 pt-1"
                                                 data-nav-submenu-content
                                             >
                                                 {group.items.map((item) => {
@@ -1652,7 +1645,7 @@ export function ReportApp() {
                                                             variants={navItemMotion}
                                                             transition={{ duration: navTiming.itemDuration, ease: [0.2, 0.9, 0.25, 1] }}
                                                             onClick={() => handleSubNavClick(group.id, item.id)}
-                                                            className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] border transition-colors transform-gpu ${activeSectionId === item.id ? 'text-white border-white/20 bg-white/10' : 'text-gray-200 border-transparent hover:border-white/10 hover:bg-white/10'}`}
+                                                            className={`report-nav-item-btn w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] border transition-colors transform-gpu ${activeSectionId === item.id ? 'text-white border-white/20 bg-white/10' : 'text-gray-200 border-transparent hover:border-white/10 hover:bg-white/10'}`}
                                                         >
                                                             <ItemIcon className="w-3.5 h-3.5 text-[color:var(--accent)]" />
                                                             {item.label}
@@ -1668,7 +1661,7 @@ export function ReportApp() {
                         <div className="border-t border-white/10">
                             <a
                                 href="./"
-                                className="w-full inline-flex items-center gap-3 px-6 py-4 bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
+                                className="report-back-link w-full inline-flex items-center gap-3 px-6 py-4 bg-[color:var(--accent-glow)] text-[10px] uppercase tracking-[0.35em] text-gray-100 transition-colors hover:bg-[color:var(--accent-border)]"
                             >
                                 <span className="h-9 w-9 rounded-full border border-[color:var(--accent-border)] inline-flex items-center justify-center text-[color:var(--accent-strong)]">
                                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
