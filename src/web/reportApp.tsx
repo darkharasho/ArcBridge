@@ -71,9 +71,11 @@ interface ReportIndexEntry {
 }
 
 type UiThemeChoice = 'classic' | 'modern' | 'crt' | 'matte' | 'kinetic';
+type KineticWebFontChoice = 'default' | 'original';
 
 const glassCard = 'border border-white/10 rounded-2xl shadow-xl backdrop-blur-md glass-card';
 const WEB_THEME_OVERRIDE_COOKIE = 'arcbridge_web_theme_override';
+const KINETIC_WEB_FONT_OVERRIDE_COOKIE = 'arcbridge_web_kinetic_font_override';
 const DEFAULT_THEME_SELECT_VALUE = '__default__';
 
 const readCookieValue = (name: string): string | null => {
@@ -215,7 +217,9 @@ export function ReportApp() {
     const [defaultUiTheme, setDefaultUiTheme] = useState<UiThemeChoice>('classic');
     const [defaultThemeId, setDefaultThemeId] = useState<string>(DEFAULT_WEB_THEME.id);
     const [themeIdOverride, setThemeIdOverride] = useState<string | null>(null);
+    const [kineticFontChoice, setKineticFontChoice] = useState<KineticWebFontChoice>('default');
     const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+    const [kineticFontDropdownOpen, setKineticFontDropdownOpen] = useState(false);
     const [proofOfWorkOpen, setProofOfWorkOpen] = useState(false);
     const [activeProofOfWorkHeadingId, setActiveProofOfWorkHeadingId] = useState('');
     const [metricsSpecSearch, setMetricsSpecSearch] = useState('');
@@ -234,6 +238,7 @@ export function ReportApp() {
     const metricsSpecContentRef = useRef<HTMLDivElement | null>(null);
     const metricsSpecSearchRef = useRef<HTMLDivElement | null>(null);
     const themeDropdownRef = useRef<HTMLDivElement | null>(null);
+    const kineticFontDropdownRef = useRef<HTMLDivElement | null>(null);
     const metricsSpecHighlightRef = useRef<number | null>(null);
     const metricsSpecHeadingCountsRef = useRef<Map<string, number>>(new Map());
     const pendingScrollIdRef = useRef<string | null>(null);
@@ -334,6 +339,13 @@ export function ReportApp() {
             }
         } catch {
             // Ignore invalid cookie payload.
+        }
+    }, []);
+
+    useEffect(() => {
+        const persisted = readCookieValue(KINETIC_WEB_FONT_OVERRIDE_COOKIE);
+        if (persisted === 'original' || persisted === 'default') {
+            setKineticFontChoice(persisted);
         }
     }, []);
 
@@ -890,16 +902,17 @@ export function ReportApp() {
     useEffect(() => {
         const body = document.body;
         body.classList.add('web-report');
-        body.classList.remove('theme-classic', 'theme-modern', 'theme-crt', 'theme-matte', 'theme-kinetic', 'theme-kinetic-dark');
+        body.classList.remove('theme-classic', 'theme-modern', 'theme-crt', 'theme-matte', 'theme-kinetic', 'theme-kinetic-dark', 'theme-kinetic-font-original');
         if (isMatteUi) body.classList.add('theme-matte');
         else if (uiTheme === 'modern') body.classList.add('theme-modern');
         else if (uiTheme === 'crt') body.classList.add('theme-crt');
         else if (uiTheme === 'kinetic') {
             body.classList.add('theme-kinetic');
             if (isKineticDarkTheme) body.classList.add('theme-kinetic-dark');
+            if (kineticFontChoice === 'original') body.classList.add('theme-kinetic-font-original');
         }
         else body.classList.add('theme-classic');
-    }, [uiTheme, isMatteUi, isKineticDarkTheme]);
+    }, [uiTheme, isMatteUi, isKineticDarkTheme, kineticFontChoice]);
 
     useEffect(() => {
         if (isDevLocalWeb && report?.stats?.webThemeId) return;
@@ -1013,14 +1026,26 @@ export function ReportApp() {
         setThemeDropdownOpen(false);
     };
 
+    const selectKineticFontChoice = (value: KineticWebFontChoice) => {
+        setKineticFontChoice(value);
+        writeCookieValue(KINETIC_WEB_FONT_OVERRIDE_COOKIE, value);
+        setKineticFontDropdownOpen(false);
+    };
+
     useEffect(() => {
         const onWindowPointerDown = (event: MouseEvent) => {
             if (!themeDropdownRef.current) return;
-            if (themeDropdownRef.current.contains(event.target as Node)) return;
+            const target = event.target as Node;
+            if (themeDropdownRef.current.contains(target)) return;
+            if (kineticFontDropdownRef.current && kineticFontDropdownRef.current.contains(target)) return;
             setThemeDropdownOpen(false);
+            setKineticFontDropdownOpen(false);
         };
         const onWindowKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setThemeDropdownOpen(false);
+            if (event.key === 'Escape') {
+                setThemeDropdownOpen(false);
+                setKineticFontDropdownOpen(false);
+            }
         };
         window.addEventListener('mousedown', onWindowPointerDown);
         window.addEventListener('keydown', onWindowKeyDown);
@@ -1088,6 +1113,49 @@ export function ReportApp() {
         </div>
     );
 
+    const kineticFontSelectControl = isKineticUi ? (
+        <div className="relative flex items-center gap-2" ref={kineticFontDropdownRef}>
+            <div className="text-[9px] uppercase tracking-widest text-gray-400 whitespace-nowrap">Font</div>
+            <button
+                type="button"
+                onClick={() => setKineticFontDropdownOpen((value) => !value)}
+                className="w-[152px] inline-flex items-center justify-between gap-2 rounded-full border px-3 py-1 text-[9px] uppercase tracking-widest text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
+                style={{
+                    backgroundColor: 'var(--bg-card)',
+                    borderColor: 'var(--accent-border)'
+                }}
+            >
+                <span className="truncate text-left">{kineticFontChoice === 'original' ? 'Original App' : 'Kinetic Default'}</span>
+                <span className={`transition-transform ${kineticFontDropdownOpen ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {kineticFontDropdownOpen && (
+                <div
+                    className="absolute right-0 bottom-[calc(100%+6px)] z-20 w-[240px] overflow-y-auto rounded-xl border shadow-2xl backdrop-blur-xl"
+                    style={{
+                        maxHeight: '180px',
+                        backgroundColor: 'color-mix(in srgb, var(--bg-card) 92%, black)',
+                        borderColor: 'var(--accent-border)'
+                    }}
+                >
+                    <button
+                        type="button"
+                        onClick={() => selectKineticFontChoice('default')}
+                        className={`w-full px-3 py-2 text-left text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-white/10 ${kineticFontChoice === 'default' ? 'text-[color:var(--accent)]' : 'text-gray-200'}`}
+                    >
+                        Kinetic Default
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => selectKineticFontChoice('original')}
+                        className={`w-full px-3 py-2 text-left text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-white/10 ${kineticFontChoice === 'original' ? 'text-[color:var(--accent)]' : 'text-gray-200'}`}
+                    >
+                        Original App
+                    </button>
+                </div>
+            )}
+        </div>
+    ) : null;
+
     const legalNoticePane = (
         <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] text-gray-500">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -1096,6 +1164,11 @@ export function ReportApp() {
                     <div className="min-w-[160px]">
                         {themeSelectControl}
                     </div>
+                    {kineticFontSelectControl && (
+                        <div className="min-w-[160px]">
+                            {kineticFontSelectControl}
+                        </div>
+                    )}
                     <a
                         href="https://github.com/darkharasho/ArcBridge"
                         target="_blank"

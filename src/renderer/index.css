@@ -3585,6 +3585,11 @@ body.theme-kinetic.theme-kinetic-font-original .dense-table__cell--right {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-font-original .font-mono,
+body.web-report.theme-kinetic.theme-kinetic-font-original .dense-table__cell--right {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
 body.theme-kinetic .stats-view [data-section-visible="true"] {
     animation: kinetic-section-reveal 260ms ease-out;
 }
