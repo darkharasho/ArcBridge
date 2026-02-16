@@ -1,22 +1,22 @@
 # Release Notes
 
-Version v1.33.0 — February 15, 2026
+Version v1.34.0 — February 15, 2026
 
 ## 🌟 Highlights
-- Attendance ledger CSV export now available across the app and web
-- Kinetic Paper theme gets a fresh polish across the UI
-- First version of kinetic passthrough introduced (v1)
+- New Dark Kinetic Paper theme brings a darker, muted, paper-like look.
+- Kinetic-dark stats UI now offers sharper contrast and smoother navigation.
+- Added minion damage breakdown modes for deeper analysis, integrated with stats+kinetic.
+- Asset bundles and web assets refreshed to enhance visuals and performance.
 
 ## 🛠️ Improvements
-- Final polish on the Kinetic Paper theme and corrected styling in the details pane
-- Refactor TopSkillsSection and StatsViewShared tooltips for improved styling and functionality
-- Init kinetic theme to ensure consistent visuals across the app
-- Code structure refactor for readability and maintainability
+- Stats panels updated for improved readability with higher contrast.
+- Navigation in the kinetic-dark UI streamlined for quicker access.
+- Minion defense and damage breakdowns clearer and more accessible.
+- Overall polish to the dark-kinetic UX across relevant views.
 
 ## 🧯 Fixes
-- Fixed CSS classes in the details pane to ensure correct layout
-- Resolved styling inconsistencies in the Kinetic Paper theme across screens
-- Minor stability improvements to theme-related visuals
+- Fixes to index loading for a smoother startup.
+- Small adjustments to web assets and HTML to ensure consistent rendering.
 
 ## ⚠️ Breaking Changes
-None.
+- None.
