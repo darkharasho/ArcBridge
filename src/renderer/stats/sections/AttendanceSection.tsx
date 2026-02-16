@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileText } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 
 type AttendanceClassTime = {
     profession: string;
@@ -32,6 +32,17 @@ const formatDuration = (timeMs: number) => {
     if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
     if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
     return `${seconds}s`;
+};
+
+const formatCsvDurationSeconds = (timeMs: number) => {
+    const seconds = Math.max(0, Math.floor(Number(timeMs || 0) / 1000));
+    return String(seconds);
+};
+
+const escapeCsvCell = (value: string) => {
+    const normalized = value.replace(/\r?\n/g, ' ').trim();
+    if (!/[",\n]/.test(normalized)) return normalized;
+    return `"${normalized.replace(/"/g, '""')}"`;
 };
 
 export const AttendanceSection = ({
@@ -75,6 +86,41 @@ export const AttendanceSection = ({
     };
     const shouldScrollLedger = visibleRows.length > MAX_LEDGER_ROWS_BEFORE_SCROLL;
 
+    const exportVisibleRowsAsCsv = () => {
+        const header = [
+            'Account',
+            'Characters',
+            'Classes Played',
+            'Total Fight Time (seconds)',
+            'Total Squad Time (seconds)'
+        ];
+        const rows = visibleRows.map((row) => {
+            const classesPlayed = (row.classTimes || [])
+                .map((entry) => `${entry.profession} (${formatDuration(entry.timeMs)})`)
+                .join('; ');
+            return [
+                row.account || '',
+                (row.characterNames || []).join(', '),
+                classesPlayed,
+                formatCsvDurationSeconds(Number(row.combatTimeMs ?? row.squadTimeMs ?? 0)),
+                formatCsvDurationSeconds(row.squadTimeMs)
+            ];
+        });
+        const csv = [header, ...rows]
+            .map((line) => line.map((cell) => escapeCsvCell(String(cell ?? ''))).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        link.href = url;
+        link.download = `attendance-ledger-${stamp}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <section
             id="attendance-ledger"
@@ -93,12 +139,22 @@ export const AttendanceSection = ({
                             {attendanceRows.length} Joined
                         </span>
                     </div>
-                    <input
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Search account, character, or class..."
-                        className="w-full sm:w-[320px] bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-200 placeholder:text-gray-500 focus:outline-none"
-                    />
+                    <div className="flex w-full sm:w-auto items-center gap-2">
+                        <input
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Search account, character, or class..."
+                            className="w-full sm:w-[320px] bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-200 placeholder:text-gray-500 focus:outline-none"
+                        />
+                        <button
+                            type="button"
+                            onClick={exportVisibleRowsAsCsv}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-200 hover:text-white hover:border-white/30 transition-colors whitespace-nowrap"
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            Export CSV
+                        </button>
+                    </div>
                 </div>
                 {attendanceRows.length === 0 ? (
                     <div className="text-center text-gray-500 italic py-6">No attendance data available.</div>
