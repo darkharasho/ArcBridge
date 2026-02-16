@@ -116,6 +116,15 @@ const withThemeIdParam = (url: string, themeId: string): string => {
     }
 };
 
+const buildReportHref = (baseHref: string, reportId: string, themeId: string | null): string => {
+    const next = new URL(baseHref);
+    next.searchParams.set('report', reportId || '');
+    if (themeId) {
+        next.searchParams.set('themeId', themeId);
+    }
+    return next.toString();
+};
+
 const isValidThemeOverrideId = (themeId: string): boolean => {
     if (!themeId) return false;
     if (themeId === CRT_WEB_THEME_ID) return true;
@@ -270,10 +279,6 @@ export function ReportApp() {
         if (!requested) return null;
         return isValidThemeOverrideId(requested) ? requested : null;
     }, []);
-    const themedIndexHref = useMemo(
-        () => (queryThemeId ? withThemeIdParam('./', queryThemeId) : './'),
-        [queryThemeId]
-    );
     const [kineticFontChoice, setKineticFontChoice] = useState<KineticWebFontChoice>('default');
     const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
     const [kineticFontDropdownOpen, setKineticFontDropdownOpen] = useState(false);
@@ -319,6 +324,11 @@ export function ReportApp() {
         }
         return pathName;
     }, []);
+    const baseHref = useMemo(() => new URL(basePath, window.location.origin).toString(), [basePath]);
+    const themedIndexHref = useMemo(
+        () => (queryThemeId ? withThemeIdParam(baseHref, queryThemeId) : baseHref),
+        [queryThemeId, baseHref]
+    );
     const isDevLocalWeb = useMemo(() => {
         const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(window.location.host);
         return isLocalhost && window.location.pathname.startsWith('/web/');
@@ -2018,7 +2028,7 @@ export function ReportApp() {
                             {filteredIndex.map((entry) => (
                                 <a
                                     key={entry.id}
-                                    href={queryThemeId ? withThemeIdParam(entry.url, queryThemeId) : entry.url}
+                                    href={buildReportHref(baseHref, entry.id, queryThemeId)}
                                     className={`${glassCard} px-5 py-4 hover:border-[color:var(--accent-border)] transition-colors group`}
                                     style={glassCardStyle}
                                 >

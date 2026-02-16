@@ -51,6 +51,12 @@
           "title": "Theme & Branding",
           "summary": "Set report visuals and keep published branding consistent.",
           "content": "## ![Control](icon:sliders) What this section controls\n\n- **Web theme**: visual style/colors/layout for published reports.\n- **Logo**: image shown in your report branding area.\n- **Template sync**: ensures the hosted report structure is up to date.\n\n## ![Flow](icon:layers) Recommended beginner workflow\n\n1. Connect GitHub and select repo first.\n2. Choose your theme in ArcBridge.\n3. Optionally select a logo file.\n4. Apply/sync changes.\n5. Wait for build status to complete.\n6. Open the Pages URL and confirm visuals.\n\n## ![Image](icon:file) Logo guidance\n\n- Prefer a clean PNG or SVG with transparent background.\n- Avoid extremely large files.\n- If logo looks stretched, try a square or balanced aspect ratio.\n\n## ![Check](icon:check) How to verify your changes\n\n- Build status should move from pending/checking to success.\n- Refresh the published URL in browser after build finishes.\n- Confirm theme colors and logo match what you selected.\n\n## ![Help](icon:alert-triangle) If customization doesn't show up\n\n- Re-run apply theme/logo.\n- Confirm repo/branch are correct.\n- Check build status for errors.\n- Hard-refresh browser cache on the report URL."
+        },
+        {
+          "id": "settings-github-history-viewer",
+          "title": "In-App Report History Viewer",
+          "summary": "Open hosted reports inside ArcBridge using the History tab.",
+          "content": "## ![Globe](icon:globe) What this feature does\n\nThe top-level **History** tab opens your hosted GitHub Pages report site directly inside ArcBridge.\n\n- It lands on your report index page.\n- Clicking a fight report stays in the in-app viewer.\n\n## ![List](icon:list-tree) Setup requirements\n\nBefore using History viewer:\n\n1. Go to **Settings -> GitHub Web Reports**.\n2. Connect GitHub and select a repo.\n3. Make sure **Pages URL** is configured.\n4. Publish at least one web report.\n\nIf Pages is not configured, History viewer will show a setup error.\n\n## ![Fix](icon:alert-triangle) If reports do not appear\n\n- Reopen the History tab.\n- Confirm repo/branch and Pages URL in Settings.\n- Verify your GitHub Pages build completed successfully.\n- Hard refresh the embedded page (Ctrl+R) after a fresh publish."
         }
       ]
     },

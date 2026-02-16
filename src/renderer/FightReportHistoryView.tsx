@@ -64,15 +64,6 @@ export function FightReportHistoryView() {
                     return;
                 }
                 const forcedThemeId = resolveForcedThemeId(settings);
-                if (window.electronAPI?.setWebReportThemeCookie) {
-                    const cookieResp = await window.electronAPI.setWebReportThemeCookie({
-                        baseUrl: url,
-                        themeId: forcedThemeId
-                    });
-                    if (!cookieResp?.success) {
-                        console.warn('[FightReportHistory] Failed to set web report theme cookie:', cookieResp?.error || 'Unknown error');
-                    }
-                }
                 setIndexUrl(withThemeParam(url, forcedThemeId));
                 setError(null);
             } catch (err: any) {
