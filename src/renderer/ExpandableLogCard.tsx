@@ -71,6 +71,14 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                 : isCalculating ? 'Calculating statistics'
                     : isDiscord ? 'Preparing Discord preview'
                         : null;
+    const statusKey = isQueued ? 'queued'
+        : isPending ? 'pending'
+            : isUploading ? 'uploading'
+                : isRetrying ? 'retrying'
+                    : isCalculating ? 'calculating'
+                        : isDiscord ? 'discord'
+                            : hasError ? 'error'
+                                : 'success';
     const isCancellable = Boolean(!log.details && !isExpanded && onCancel && (isQueued || isPending || isUploading || isRetrying));
     const [relativeNow, setRelativeNow] = useState(() => Date.now());
     useEffect(() => {
@@ -1074,14 +1082,17 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             <div className="rounded-xl overflow-hidden">
             {/* Collapsed View */}
             <div className="p-4 flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all shrink-0 ${isQueued ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
+                <div
+                    data-status={statusKey}
+                    className={`recent-activity-status-badge w-10 h-10 rounded-lg flex items-center justify-center border transition-all shrink-0 ${isQueued ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
                     isPending ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
                         isUploading ? 'bg-blue-500/20 border-blue-500/30 text-blue-400 animate-pulse' :
                             isCalculating ? 'bg-amber-500/20 border-amber-400/30 text-amber-300 animate-pulse' :
                                 isDiscord ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 animate-pulse' :
                                     hasError ? 'bg-red-500/20 border-red-500/30 text-red-400' :
                                         'bg-green-500/20 border-green-500/30 text-green-400'
-                    }`}>
+                    }`}
+                >
                     <span className="font-bold text-xs uppercase">
                         {isQueued ? 'QUE' : isPending ? 'PEN' : isUploading ? '...' : isCalculating ? 'CAL' : isDiscord ? 'DC' : hasError ? 'ERR' : 'LOG'}
                     </span>

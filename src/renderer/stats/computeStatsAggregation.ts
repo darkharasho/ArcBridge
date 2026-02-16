@@ -238,6 +238,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             offenseRateWeights: Record<string, number>;
             defenseActiveMs: number;
             defenseTotals: Record<string, number>;
+            defenseMinionDamageTaken: Record<string, number>;
             supportActiveMs: number;
             supportTotals: Record<string, number>;
             healingActiveMs: number;
@@ -626,7 +627,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     playerStats.set(key, {
                         name, account: key, characterNames: new Set<string>(), downContrib: 0, cleanses: 0, strips: 0, stab: 0, healing: 0, barrier: 0, cc: 0, logsJoined: 0,
                         totalDist: 0, distCount: 0, dodges: 0, downs: 0, deaths: 0, totalFightMs: 0,
-                        offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, supportActiveMs: 0, supportTotals: {},
+                        offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, defenseMinionDamageTaken: {}, supportActiveMs: 0, supportTotals: {},
                         healingActiveMs: 0, healingTotals: {}, profession: p.profession || 'Unknown', professions: new Set(),
                         professionTimeMs: {}, squadActiveMs: 0, firstSeenFightTs: 0, lastSeenFightTs: 0, lastSeenFightDurationMs: 0, isCommander: false, damage: 0, dps: 0, revives: 0, outgoingConditions: {}, incomingConditions: {}
                     });
@@ -778,8 +779,42 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 }
 
                 if (p.defenses?.[0]) {
+                    const normalizeMinionName = (rawName: any) => {
+                        let minionName = String(rawName || 'Unknown').replace(/^Juvenile\s+/i, '') || 'Unknown';
+                        if (minionName.toUpperCase().includes('UNKNOWN')) minionName = 'Unknown';
+                        return minionName;
+                    };
+                    const getMinionDamageTaken = () => {
+                        const minions = Array.isArray((p as any)?.minions) ? (p as any).minions : [];
+                        if (minions.length === 0) return { total: 0, byMinion: {} as Record<string, number> };
+                        let total = 0;
+                        const byMinion: Record<string, number> = {};
+                        minions.forEach((minion: any) => {
+                            const dist = Array.isArray(minion?.totalDamageTakenDist) ? minion.totalDamageTakenDist : [];
+                            const entries = Array.isArray(dist[0]) ? dist[0] : [];
+                            const minionName = normalizeMinionName(minion?.name);
+                            entries.forEach((entry: any) => {
+                                const damage = Number(entry?.totalDamage ?? entry?.damageTaken ?? 0);
+                                if (Number.isFinite(damage)) {
+                                    total += damage;
+                                    byMinion[minionName] = (byMinion[minionName] || 0) + damage;
+                                }
+                            });
+                        });
+                        return { total, byMinion };
+                    };
+                    const minionDamage = getMinionDamageTaken();
+                    if (minionDamage.byMinion && typeof minionDamage.byMinion === 'object') {
+                        Object.entries(minionDamage.byMinion).forEach(([minionName, damage]) => {
+                            const numeric = Number(damage || 0);
+                            if (!Number.isFinite(numeric) || numeric <= 0) return;
+                            s.defenseMinionDamageTaken[minionName] = (s.defenseMinionDamageTaken[minionName] || 0) + numeric;
+                        });
+                    }
                     DEFENSE_METRICS.forEach(m => {
-                        const val = Number((p.defenses![0] as any)[m.field!] ?? 0);
+                        const val = m.id === 'minionDamageTaken'
+                            ? minionDamage.total
+                            : Number((p.defenses![0] as any)[m.field!] ?? 0);
                         if (Number.isFinite(val)) s.defenseTotals[m.id] = (s.defenseTotals[m.id] || 0) + val;
                     });
                 }
@@ -3254,7 +3289,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             })),
             defensePlayers: Array.from(playerStats.values()).map(s => ({
                 account: s.account, profession: s.profession, professionList: s.professionList,
-                defenseTotals: s.defenseTotals, activeMs: s.defenseActiveMs
+                defenseTotals: s.defenseTotals, activeMs: s.defenseActiveMs, minionDamageTakenByMinion: s.defenseMinionDamageTaken
             })),
             damageMitigationPlayers,
             damageMitigationMinions,

@@ -511,6 +511,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                             const GroupIcon = group.icon as any;
                                             const isActiveGroup = group.id === activeStatsGroupDef?.id;
                                             const isCurrentGroup = statsOpenGroup === group.id;
+                                            const defaultGroupTarget = group.sectionIds?.[0] || group.items[0]?.id || 'overview';
                                             const isOpenGroup = isStatsNavSubnavReady && isCurrentGroup;
                                             const isNavClosingGroup = isStatsNavClosing && isCurrentGroup;
                                             const isSwitchClosingGroup = statsClosingGroupId === group.id;
@@ -528,7 +529,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                                         type="button"
                                                         onClick={() => {
                                                             if (isOpenGroup) return;
-                                                            handleStatsNavItemClick(group.id, group.items[0]?.id || 'overview');
+                                                            handleStatsNavItemClick(group.id, defaultGroupTarget);
                                                         }}
                                                         className={`w-full h-9 flex items-center justify-start gap-0 pl-[21px] pr-[21px] text-left transition-[padding,gap,background-color,color] duration-[980ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/statsnavpanel:gap-2 group-hover/statsnavpanel:pl-3 group-hover/statsnavpanel:pr-3 ${isActiveGroup ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/[0.08]'}`}
                                                     >

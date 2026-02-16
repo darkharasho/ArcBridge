@@ -6049,3 +6049,83 @@ body.web-report.theme-kinetic.theme-kinetic-dark #top-players img[src*="/svg/cla
 body.web-report.theme-kinetic.theme-kinetic-dark #top-players img[src*="./svg/class-icons/"] {
     filter: saturate(0.9) brightness(1.02) contrast(0.96) !important;
 }
+
+/* Restore semantic colors for recent-activity LOG/CAL/DC/ERR status squares. */
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="queued"],
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="pending"] {
+    background-color: rgba(124, 136, 168, 0.26) !important;
+    border-color: rgba(124, 136, 168, 0.46) !important;
+    color: #d9e1f4 !important;
+}
+
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="uploading"] {
+    background-color: rgba(96, 144, 198, 0.28) !important;
+    border-color: rgba(96, 144, 198, 0.5) !important;
+    color: #d6ecff !important;
+}
+
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="retrying"],
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="calculating"] {
+    background-color: rgba(180, 145, 84, 0.3) !important;
+    border-color: rgba(180, 145, 84, 0.5) !important;
+    color: #fae4bb !important;
+}
+
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="discord"] {
+    background-color: rgba(132, 113, 184, 0.3) !important;
+    border-color: rgba(132, 113, 184, 0.5) !important;
+    color: #e5dbff !important;
+}
+
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="error"] {
+    background-color: rgba(166, 91, 91, 0.3) !important;
+    border-color: rgba(166, 91, 91, 0.52) !important;
+    color: #ffd7d1 !important;
+}
+
+body.theme-kinetic .app-shell .recent-activity-status-badge[data-status="success"] {
+    background-color: rgba(88, 149, 112, 0.3) !important;
+    border-color: rgba(88, 149, 112, 0.52) !important;
+    color: #d2f2dc !important;
+}
+
+/* Keep sortable table headers readable in Kinetic Dark (app + web). */
+body.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head,
+body.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head--pinned,
+body.theme-kinetic.theme-kinetic-dark .stats-view th,
+body.theme-kinetic.theme-kinetic-dark #attendance-ledger thead th,
+body.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-column-header,
+body.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns > .grid,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-column-header,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns > .grid {
+    color: #d6e2ff !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head-inner,
+body.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns button,
+body.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns thead button,
+body.theme-kinetic.theme-kinetic-dark #attendance-ledger thead button,
+body.theme-kinetic.theme-kinetic-dark .stats-view .fight-diff-sort-button,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head-inner,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns button,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns thead button,
+body.web-report.theme-kinetic.theme-kinetic-dark #attendance-ledger thead button,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .fight-diff-sort-button {
+    color: #d6e2ff !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns button:hover,
+body.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns thead button:hover,
+body.theme-kinetic.theme-kinetic-dark #attendance-ledger thead button:hover,
+body.theme-kinetic.theme-kinetic-dark .stats-view .fight-diff-sort-button:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns button:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .stats-table-shell__columns thead button:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark #attendance-ledger thead button:hover,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .fight-diff-sort-button:hover {
+    color: #e8efff !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head .text-slate-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .stats-view .dense-table__head .text-slate-200 {
+    color: #e8efff !important;
+}

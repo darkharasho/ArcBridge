@@ -51,6 +51,7 @@ export const DefenseSection = ({
     sidebarListClass
 }: DefenseSectionProps) => {
     const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const [minionDamageMode, setMinionDamageMode] = useState<'combined' | 'separate'>('combined');
     const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
         columnId: DEFENSE_METRICS[0]?.id || 'value',
         dir: 'desc'
@@ -85,6 +86,29 @@ export const DefenseSection = ({
             key,
             dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
         }));
+    };
+    const isMinionDamageMetric = (id?: string) => id === 'minionDamageTaken';
+    const getMinionRows = (rows: any[], mode: 'combined' | 'separate') => {
+        if (mode === 'combined') {
+            return rows.map((row: any) => ({
+                ...row,
+                minionList: Object.entries(row?.minionDamageTakenByMinion || {})
+                    .filter(([, value]) => Number(value || 0) > 0)
+                    .sort((a: any, b: any) => Number(b[1] || 0) - Number(a[1] || 0))
+                    .map(([name]) => String(name))
+            }));
+        }
+        return rows.flatMap((row: any) => {
+            const entries = Object.entries(row?.minionDamageTakenByMinion || {})
+                .filter(([, value]) => Number(value || 0) > 0)
+                .sort((a: any, b: any) => Number(b[1] || 0) - Number(a[1] || 0));
+            if (entries.length === 0) return [];
+            return entries.map(([minionName, damage]) => ({
+                ...row,
+                minionName: String(minionName),
+                defenseTotals: { ...(row.defenseTotals || {}), minionDamageTaken: Number(damage || 0) }
+            }));
+        });
     };
     return (
     <div
@@ -174,6 +198,18 @@ export const DefenseSection = ({
                             activeClassName="bg-sky-500/20 text-sky-200 border border-sky-500/40"
                             inactiveClassName="border border-transparent text-gray-400 hover:text-white"
                         />
+                        {visibleDefenseMetrics.some((metric) => isMinionDamageMetric(metric.id)) && (
+                            <PillToggleGroup
+                                value={minionDamageMode}
+                                onChange={(value) => setMinionDamageMode(value as 'combined' | 'separate')}
+                                options={[
+                                    { value: 'combined', label: 'Combined' },
+                                    { value: 'separate', label: 'Separate' }
+                                ]}
+                                activeClassName="bg-indigo-500/20 text-indigo-200 border border-indigo-500/40"
+                                inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                            />
+                        )}
                     </div>
                     {(selectedDefenseColumnIds.length > 0 || selectedDefensePlayers.length > 0) && (
                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -230,8 +266,12 @@ export const DefenseSection = ({
                             const resolvedSortColumnId = visibleDefenseMetrics.find((entry) => entry.id === denseSort.columnId)?.id
                                 || visibleDefenseMetrics[0]?.id
                                 || '';
-                            const rows = [...stats.defensePlayers]
-                                .filter((row: any) => selectedDefensePlayers.length === 0 || selectedDefensePlayers.includes(row.account))
+                            const sourceRows = [...stats.defensePlayers]
+                                .filter((row: any) => selectedDefensePlayers.length === 0 || selectedDefensePlayers.includes(row.account));
+                            const effectiveRows = visibleDefenseMetrics.some((metric) => isMinionDamageMetric(metric.id))
+                                ? getMinionRows(sourceRows, minionDamageMode)
+                                : sourceRows;
+                            const rows = [...effectiveRows]
                                 .map((row: any) => {
                                     const values: Record<string, string> = {};
                                     const numericValues: Record<string, number> = {};
@@ -280,7 +320,19 @@ export const DefenseSection = ({
                                             <>
                                                 <span className="text-gray-500 font-mono">{idx + 1}</span>
                                                 {renderProfessionIcon(entry.row.profession, entry.row.professionList, 'w-4 h-4')}
-                                                <span className="truncate">{entry.row.account}</span>
+                                                <span className="min-w-0 flex flex-col">
+                                                    <span className="truncate">{entry.row.account}</span>
+                                                    {minionDamageMode === 'combined' && Array.isArray(entry.row.minionList) && entry.row.minionList.length > 0 && (
+                                                        <span className="truncate text-[10px] text-gray-500">
+                                                            {entry.row.minionList.join(', ')}
+                                                        </span>
+                                                    )}
+                                                    {minionDamageMode === 'separate' && entry.row.minionName && (
+                                                        <span className="truncate text-[10px] text-gray-400">
+                                                            {entry.row.minionName}
+                                                        </span>
+                                                    )}
+                                                </span>
                                             </>
                                         ),
                                         values: entry.values
@@ -331,7 +383,11 @@ export const DefenseSection = ({
                         {(() => {
                             const metric = DEFENSE_METRICS.find((entry) => entry.id === activeDefenseStat) || DEFENSE_METRICS[0];
                             const totalSeconds = (row: any) => Math.max(1, (row.activeMs || 0) / 1000);
-                            const rows = [...stats.defensePlayers]
+                            const sourceRows = [...stats.defensePlayers];
+                            const effectiveRows = isMinionDamageMetric(metric.id)
+                                ? getMinionRows(sourceRows, minionDamageMode)
+                                : sourceRows;
+                            const rows = [...effectiveRows]
                                 .map((row: any) => ({
                                     ...row,
                                     total: row.defenseTotals?.[metric.id] || 0,
@@ -360,18 +416,32 @@ export const DefenseSection = ({
                                     }
                                     columns={
                                         <>
-                                            <div className="flex items-center justify-end px-4 py-2 bg-white/5">
-                                                <PillToggleGroup
-                                                    value={defenseViewMode}
-                                                    onChange={setDefenseViewMode}
-                                                    options={[
-                                                        { value: 'total', label: 'Total' },
-                                                        { value: 'per1s', label: 'Stat/1s' },
-                                                        { value: 'per60s', label: 'Stat/60s' }
-                                                    ]}
-                                                    activeClassName="bg-sky-500/20 text-sky-200 border border-sky-500/40"
-                                                    inactiveClassName="border border-transparent text-gray-400 hover:text-white"
-                                                />
+                                            <div className={`flex items-center px-4 py-2 bg-white/5 ${isMinionDamageMetric(metric.id) ? 'justify-between' : 'justify-end'}`}>
+                                                {isMinionDamageMetric(metric.id) && (
+                                                    <PillToggleGroup
+                                                        value={minionDamageMode}
+                                                        onChange={(value) => setMinionDamageMode(value as 'combined' | 'separate')}
+                                                        options={[
+                                                            { value: 'combined', label: 'Combined' },
+                                                            { value: 'separate', label: 'Separate' }
+                                                        ]}
+                                                        activeClassName="bg-indigo-500/20 text-indigo-200 border border-indigo-500/40"
+                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                    />
+                                                )}
+                                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                                    <PillToggleGroup
+                                                        value={defenseViewMode}
+                                                        onChange={setDefenseViewMode}
+                                                        options={[
+                                                            { value: 'total', label: 'Total' },
+                                                            { value: 'per1s', label: 'Stat/1s' },
+                                                            { value: 'per60s', label: 'Stat/60s' }
+                                                        ]}
+                                                        activeClassName="bg-sky-500/20 text-sky-200 border border-sky-500/40"
+                                                        inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-[0.4fr_1.5fr_1fr_0.9fr] text-xs uppercase tracking-wider text-gray-400 bg-white/5 px-4 py-2">
                                                 <div className="text-center">#</div>
@@ -401,7 +471,15 @@ export const DefenseSection = ({
                                                     <div className="text-center text-gray-500 font-mono">{idx + 1}</div>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         {renderProfessionIcon(row.profession, row.professionList, 'w-4 h-4')}
-                                                        <span className="truncate">{row.account}</span>
+                                                        <span className="min-w-0 flex flex-col">
+                                                            <span className="truncate">{row.account}</span>
+                                                            {isMinionDamageMetric(metric.id) && minionDamageMode === 'combined' && Array.isArray(row.minionList) && row.minionList.length > 0 && (
+                                                                <span className="truncate text-[10px] text-gray-500">{row.minionList.join(', ')}</span>
+                                                            )}
+                                                            {isMinionDamageMetric(metric.id) && minionDamageMode === 'separate' && row.minionName && (
+                                                                <span className="truncate text-[10px] text-gray-400">{row.minionName}</span>
+                                                            )}
+                                                        </span>
                                                     </div>
                                                     <div className="text-right font-mono text-gray-300">
                                                         {(() => {

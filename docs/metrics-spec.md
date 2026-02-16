@@ -18,6 +18,8 @@ minimum fields consumed are:
   `missedCount`, `blockedCount`, `evadedCount`, `dodgeCount`,
   `receivedCrowdControl`, `receivedCrowdControlDuration`,
   `boonStrips`, `boonStripsTime`
+- `players[*].minions[*].totalDamageTakenDist[0][*].totalDamage` (fallback:
+  `damageTaken`) for minion incoming damage totals
 - `players[*].support[0].condiCleanse`, `condiCleanseSelf`, `boonStrips`,
   `boonStripsTime`, `resurrects`
 - `players[*].statsAll[0].stackDist`, `players[*].statsAll[0].distToCom`
@@ -573,6 +575,11 @@ Detailed tables aggregate the per-player totals defined in:
 - `src/renderer/stats/statsMetrics.ts` (metric definitions)
 - `src/shared/dashboardMetrics.ts` (per-player metric extraction)
 - `src/renderer/stats/computeStatsAggregation.ts` (aggregation)
+
+Defense Detailed includes a derived metric:
+- `Minion Damage Taken`:
+  sum `players[*].minions[*].totalDamageTakenDist[0][*].totalDamage`, with
+  fallback to `damageTaken` when `totalDamage` is absent.
 
 ## Spike Damage
 

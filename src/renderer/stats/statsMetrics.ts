@@ -49,10 +49,11 @@ export const OFFENSE_METRICS: Array<{
 export const DEFENSE_METRICS: Array<{
     id: string;
     label: string;
-    field: string;
+    field?: string;
     isTimeMs?: boolean;
 }> = [
         { id: 'damageTaken', label: 'Damage Taken', field: 'damageTaken' },
+        { id: 'minionDamageTaken', label: 'Minion Damage Taken' },
         { id: 'damageTakenCount', label: 'Damage Taken Count', field: 'damageTakenCount' },
         { id: 'conditionDamageTaken', label: 'Condition Damage Taken', field: 'conditionDamageTaken' },
         { id: 'conditionDamageTakenCount', label: 'Condition Damage Taken Count', field: 'conditionDamageTakenCount' },
