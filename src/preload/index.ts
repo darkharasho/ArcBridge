@@ -58,10 +58,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return () => ipcRenderer.removeAllListeners('console-log')
     },
     setConsoleLogForwarding: (enabled: boolean) => ipcRenderer.send('set-console-log-forwarding', enabled),
-    logToMain: (payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => {
-        ipcRenderer.send('renderer-log', payload)
-    },
-    getStatsDiagnosticsLogPath: () => ipcRenderer.invoke('get-stats-diagnostics-log-path'),
     getLogDetails: (payload: { filePath: string }) => ipcRenderer.invoke('get-log-details', payload),
 
     // Auto Updater

@@ -61,6 +61,13 @@ interface StatsViewProps {
     dashboardTitle?: string;
     uiTheme?: 'classic' | 'modern' | 'crt' | 'matte' | 'kinetic';
     canShareDiscord?: boolean;
+    statsDataProgress?: {
+        active: boolean;
+        total: number;
+        processed: number;
+        pending: number;
+        unavailable: number;
+    };
     aggregationResult?: {
         stats: any;
         skillUsageData: SkillUsageSummary;
@@ -97,7 +104,7 @@ const ORDERED_SECTION_IDS = [
     'apm-stats'
 ] as const;
 
-export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme, canShareDiscord = true, aggregationResult: externalAggregationResult }: StatsViewProps) {
+export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme, canShareDiscord = true, statsDataProgress, aggregationResult: externalAggregationResult }: StatsViewProps) {
     const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const activeWebUploadState = webUploadState || DEFAULT_WEB_UPLOAD_STATE;
@@ -133,6 +140,23 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const aggregationDiagnostics = externalAggregationResult?.aggregationDiagnostics || internalAggregationDiagnostics;
     const { stats, skillUsageData: computedSkillUsageData } = aggregationResult;
     const statsSettling = useMemo(() => {
+        const detailsTotal = Math.max(0, Number(statsDataProgress?.total || logs.length || 0));
+        const detailsPending = Math.min(detailsTotal, Math.max(0, Number(statsDataProgress?.pending || 0)));
+        const detailsProcessed = Math.min(detailsTotal, Math.max(0, Number(statsDataProgress?.processed || (detailsTotal - detailsPending))));
+        const detailsUnavailable = Math.max(0, Number(statsDataProgress?.unavailable || 0));
+        const detailsActive = Boolean(statsDataProgress?.active) && detailsTotal > 0 && detailsPending > 0;
+        if (detailsActive) {
+            const progressPercent = detailsTotal > 0
+                ? Math.max(1, Math.min(99, Math.round((detailsProcessed / detailsTotal) * 100)))
+                : 0;
+            const unavailableText = detailsUnavailable > 0 ? ` • ${detailsUnavailable} unavailable` : '';
+            return {
+                active: true,
+                phaseLabel: 'Loading fight details',
+                progressText: `${detailsProcessed} of ${detailsTotal} fights prepared${unavailableText}`,
+                progressPercent
+            };
+        }
         const total = Math.max(0, Number(aggregationProgress?.total || logs.length || 0));
         const active = Boolean(aggregationProgress?.active) && aggregationProgress?.phase !== 'idle' && aggregationProgress?.phase !== 'settled' && total > 0;
         if (!active) {
@@ -159,7 +183,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             progressText,
             progressPercent
         };
-    }, [aggregationProgress, logs.length]);
+    }, [statsDataProgress, aggregationProgress, logs.length]);
     const statsDiagnosticsText = useMemo(() => {
         if (!aggregationDiagnostics) return '';
         const formatMs = (value: number) => {

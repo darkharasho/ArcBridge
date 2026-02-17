@@ -289,8 +289,6 @@ export interface IElectronAPI {
     sendScreenshotsGroups: (id: string, groups: Uint8Array[][]) => void;
     onConsoleLog: (callback: (log: { type: 'info' | 'error', message: string, timestamp: string }) => void) => () => void;
     setConsoleLogForwarding: (enabled: boolean) => void;
-    logToMain: (payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => void;
-    getStatsDiagnosticsLogPath?: () => Promise<{ success: boolean; path?: string; error?: string }>;
     getLogDetails: (payload: { filePath: string }) => Promise<{ success: boolean; details?: any; error?: string }>;
     getLogs: () => Promise<ILogData[]>;
     saveLogs: (logs: ILogData[]) => void;
@@ -359,6 +357,7 @@ declare global {
         fightName?: string;
         detailsLoading?: boolean;
         detailsAvailable?: boolean;
+        statsDetailsLoaded?: boolean;
         splitEnemiesByTeam?: boolean;
         dashboardSummary?: {
             hasPlayers: boolean;

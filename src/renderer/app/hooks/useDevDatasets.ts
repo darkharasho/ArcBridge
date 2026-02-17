@@ -68,7 +68,7 @@ export function useDevDatasets({
     const nextStatsObjectIdRef = useRef(1);
     const lastPublishedStatsKeyRef = useRef('');
     const [statsViewMounted, setStatsViewMounted] = useState(false);
-    const hasPendingStatsDetails = logs.some((log) => log.detailsAvailable && !log.details);
+    const hasPendingStatsDetails = logs.some((log) => log.detailsAvailable && !log.details && !log.statsDetailsLoaded);
     const getStatsObjectId = useCallback((value: unknown): number => {
         if (!value || typeof value !== 'object') return 0;
         const objectValue = value as object;
@@ -94,15 +94,52 @@ export function useDevDatasets({
         });
         return key;
     }, [getStatsObjectId]);
+    const mergeLogsForStatsSnapshot = useCallback((entries: ILogData[], previous: ILogData[]) => {
+        if (entries.length === 0) return entries;
+        if (previous.length === 0) return entries;
+        const previousByIdentity = new Map<string, ILogData>();
+        previous.forEach((entry, index) => {
+            const identity = String(entry?.filePath || entry?.id || `idx-${index}`);
+            if (!identity) return;
+            previousByIdentity.set(identity, entry);
+        });
+        let changed = false;
+        const merged = entries.map((entry, index) => {
+            const identity = String(entry?.filePath || entry?.id || `idx-${index}`);
+            const previousEntry = previousByIdentity.get(identity);
+            if (!previousEntry) return entry;
+            const shouldCarryDetails = !entry.details && !!previousEntry.details;
+            const shouldCarryStatsLoaded = !entry.statsDetailsLoaded && !!previousEntry.statsDetailsLoaded;
+            const shouldPromoteStatus = shouldCarryStatsLoaded && entry.status === 'calculating';
+            if (!shouldCarryDetails && !shouldCarryStatsLoaded && !shouldPromoteStatus) {
+                return entry;
+            }
+            changed = true;
+            const nextEntry: ILogData = { ...entry };
+            if (shouldCarryDetails) {
+                nextEntry.details = previousEntry.details;
+            }
+            if (shouldCarryStatsLoaded) {
+                nextEntry.statsDetailsLoaded = true;
+            }
+            if (shouldPromoteStatus) {
+                nextEntry.status = 'success';
+            }
+            return nextEntry;
+        });
+        return changed ? merged : entries;
+    }, []);
     const publishLogsForStats = useCallback((entries: ILogData[]) => {
-        const nextKey = buildStatsSnapshotKey(entries);
-        if (nextKey === lastPublishedStatsKeyRef.current) {
-            return false;
-        }
-        lastPublishedStatsKeyRef.current = nextKey;
-        setLogsForStats((prev) => (prev === entries ? [...entries] : entries));
-        return true;
-    }, [buildStatsSnapshotKey]);
+        setLogsForStats((prev) => {
+            const mergedEntries = mergeLogsForStatsSnapshot(entries, prev);
+            const nextKey = buildStatsSnapshotKey(mergedEntries);
+            if (nextKey === lastPublishedStatsKeyRef.current) {
+                return prev;
+            }
+            lastPublishedStatsKeyRef.current = nextKey;
+            return mergedEntries;
+        });
+    }, [buildStatsSnapshotKey, mergeLogsForStatsSnapshot]);
 
     const applyDevDatasetSnapshot = useCallback((snapshot: IDevDatasetSnapshot | null | undefined) => {
         const state = snapshot?.state;
@@ -192,7 +229,7 @@ export function useDevDatasets({
             }
             return;
         }
-        if (bulkUploadMode || hasPendingStatsDetails) {
+        if (bulkUploadMode) {
             if (statsBatchTimerRef.current) {
                 window.clearTimeout(statsBatchTimerRef.current);
                 statsBatchTimerRef.current = null;
@@ -204,7 +241,7 @@ export function useDevDatasets({
             statsBatchTimerRef.current = null;
             publishLogsForStats(logsRef.current);
         }, 1200);
-    }, [logs, view, hasPendingStatsDetails, bulkUploadMode, publishLogsForStats]);
+    }, [logs, view, bulkUploadMode, publishLogsForStats]);
 
     useEffect(() => {
         logsRef.current = logs;
@@ -222,12 +259,18 @@ export function useDevDatasets({
     useEffect(() => {
         if (view === 'stats') {
             setStatsViewMounted(true);
-            // During initial hydration, defer refreshes to avoid visibly jumping totals.
-            if (!bulkUploadMode && !hasPendingStatsDetails) {
+            if (!bulkUploadMode) {
                 publishLogsForStats(logsRef.current);
             }
         }
-    }, [view, bulkUploadMode, hasPendingStatsDetails, publishLogsForStats]);
+    }, [view, bulkUploadMode, publishLogsForStats]);
+
+    useEffect(() => {
+        if (view !== 'stats') return;
+        if (bulkUploadMode) return;
+        if (logsForStats.length === logs.length) return;
+        publishLogsForStats(logsRef.current);
+    }, [view, bulkUploadMode, logs.length, logsForStats.length, publishLogsForStats]);
 
     useEffect(() => {
         if (view !== 'stats') return;

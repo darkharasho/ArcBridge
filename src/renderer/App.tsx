@@ -52,11 +52,13 @@ type DashboardSummaryCacheEntry = {
 
 const resolveDashboardStatus = (log: ILogData) => {
     if (log.error || log.status === 'error') return 'error';
+    if (log.status === 'success') return 'success';
     if (log.status === 'queued' || log.status === 'pending' || log.status === 'uploading' || log.status === 'retrying' || log.status === 'discord') {
         return log.status;
     }
-    if (log.detailsAvailable && !log.details) return 'calculating';
-    if (log.status === 'success' || log.details) return 'success';
+    if (log.detailsAvailable && !log.details && !log.statsDetailsLoaded) return 'calculating';
+    if (log.status === 'calculating' && log.statsDetailsLoaded) return 'success';
+    if (log.details) return 'success';
     if (log.status === 'calculating') return 'calculating';
     return log.status || 'queued';
 };
@@ -411,134 +413,6 @@ function App() {
         precomputedStats: precomputedStats || undefined
     });
     const { stats: computedStats, skillUsageData: computedSkillUsageData } = aggregationResult;
-    const lastRangeErrorLogAtRef = useRef(0);
-    const statsDiagPathLoggedRef = useRef(false);
-    const lastStatsDiagProgressKeyRef = useRef('');
-    const lastStatsDiagCycleKeyRef = useRef('');
-
-    useEffect(() => {
-        const shouldLog = (name: unknown, message: unknown) => {
-            const n = String(name || '');
-            const m = String(message || '');
-            return (n === 'RangeError' && /maximum call stack size exceeded/i.test(m))
-                || /RangeError:\s*Maximum call stack size exceeded/i.test(m)
-                || /maximum call stack size exceeded/i.test(m);
-        };
-        const throttle = () => {
-            const now = Date.now();
-            if (now - lastRangeErrorLogAtRef.current < 2000) return false;
-            lastRangeErrorLogAtRef.current = now;
-            return true;
-        };
-        const onWindowError = (event: ErrorEvent) => {
-            if (!shouldLog(event.error?.name, event.message) || !throttle()) return;
-            window.electronAPI.logToMain({
-                level: 'error',
-                message: '[CrashDiag] Renderer window error: RangeError maximum call stack size exceeded.',
-                meta: {
-                    processType: 'renderer',
-                    href: window.location.href,
-                    userAgent: navigator.userAgent,
-                    message: event.message,
-                    filename: event.filename,
-                    lineno: event.lineno,
-                    colno: event.colno,
-                    stack: event.error?.stack || null
-                }
-            });
-        };
-        const onUnhandledRejection = (event: PromiseRejectionEvent) => {
-            const reason: any = event.reason;
-            if (!shouldLog(reason?.name, reason?.message || reason) || !throttle()) return;
-            window.electronAPI.logToMain({
-                level: 'error',
-                message: '[CrashDiag] Renderer unhandled rejection: RangeError maximum call stack size exceeded.',
-                meta: {
-                    processType: 'renderer',
-                    href: window.location.href,
-                    userAgent: navigator.userAgent,
-                    name: reason?.name,
-                    message: reason?.message || String(reason),
-                    stack: reason?.stack || null
-                }
-            });
-        };
-
-        window.addEventListener('error', onWindowError);
-        window.addEventListener('unhandledrejection', onUnhandledRejection);
-        return () => {
-            window.removeEventListener('error', onWindowError);
-            window.removeEventListener('unhandledrejection', onUnhandledRejection);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (statsDiagPathLoggedRef.current) return;
-        if (!window.electronAPI?.getStatsDiagnosticsLogPath) return;
-        statsDiagPathLoggedRef.current = true;
-        window.electronAPI.getStatsDiagnosticsLogPath()
-            .then((resp) => {
-                if (!resp?.success || !resp.path) return;
-                window.electronAPI?.logToMain?.({
-                    level: 'info',
-                    message: '[StatsDiag] log-path',
-                    meta: { path: resp.path }
-                });
-            })
-            .catch(() => {
-                // No-op: diagnostics path lookup is best-effort.
-            });
-    }, []);
-
-    useEffect(() => {
-        const logger = window.electronAPI?.logToMain;
-        if (!logger) return;
-        const active = Boolean(aggregationProgress?.active);
-        const phase = String(aggregationProgress?.phase || 'idle');
-        const total = Math.max(0, Number(aggregationProgress?.total || 0));
-        const streamed = Math.min(total, Math.max(0, Number(aggregationProgress?.streamed || 0)));
-        const startedAt = Number(aggregationProgress?.startedAt || 0);
-        const phaseBucket = phase === 'streaming' && total > 0
-            ? Math.min(4, Math.floor((streamed / total) * 4))
-            : -1;
-        const key = `${active ? 1 : 0}|${phase}|${total}|${phaseBucket}|${startedAt}`;
-        if (lastStatsDiagProgressKeyRef.current === key) return;
-        lastStatsDiagProgressKeyRef.current = key;
-        logger({
-            level: 'info',
-            message: '[StatsDiag] progress',
-            meta: {
-                active,
-                phase,
-                streamed,
-                total,
-                startedAt,
-                completedAt: Number(aggregationProgress?.completedAt || 0),
-                phaseBucket
-            }
-        });
-    }, [aggregationProgress]);
-
-    useEffect(() => {
-        const logger = window.electronAPI?.logToMain;
-        if (!logger || !aggregationDiagnostics) return;
-        const key = [
-            aggregationDiagnostics.mode,
-            aggregationDiagnostics.completedAt,
-            aggregationDiagnostics.flushId ?? 'no-flush',
-            aggregationDiagnostics.logsInPayload,
-            aggregationDiagnostics.computeMs,
-            aggregationDiagnostics.totalMs
-        ].join('|');
-        if (lastStatsDiagCycleKeyRef.current === key) return;
-        lastStatsDiagCycleKeyRef.current = key;
-        logger({
-            level: 'info',
-            message: '[StatsDiag] cycle',
-            meta: aggregationDiagnostics
-        });
-    }, [aggregationDiagnostics]);
-
     const lastUploadCompleteAtRef = useRef(0);
     const bulkStatsAwaitingRef = useRef(false);
     const bulkFlushIdRef = useRef<number | null>(null);
@@ -565,7 +439,7 @@ function App() {
             let changed = false;
             const next = currentLogs.map<ILogData>((log) => {
                 if (log.status === 'calculating') {
-                    if (log.detailsAvailable && !log.details) {
+                    if (log.detailsAvailable && !log.details && !log.statsDetailsLoaded) {
                         return log;
                     }
                     changed = true;
@@ -578,6 +452,45 @@ function App() {
         bulkStatsAwaitingRef.current = false;
         bulkFlushIdRef.current = null;
     }, [computeTick, lastComputedLogCount, lastComputedToken, activeToken, lastComputedAt, lastComputedFlushId, logsForStats.length, setLogsDeferred]);
+    const applyHydratedStatsBatch = useCallback((batch: Array<{ filePath: string; details: any }>) => {
+        if (batch.length === 0) return;
+        setLogsForStats((currentStatsLogs) => {
+            const updatesByPath = new Map(batch.map((entry) => [entry.filePath, entry.details]));
+            let changed = false;
+            const next = currentStatsLogs.map((entry) => {
+                const filePath = entry.filePath || '';
+                const details = updatesByPath.get(filePath);
+                if (!details) return entry;
+                updatesByPath.delete(filePath);
+                if (entry.details === details && entry.statsDetailsLoaded === true && entry.status === 'success') {
+                    return entry;
+                }
+                changed = true;
+                return {
+                    ...entry,
+                    details,
+                    statsDetailsLoaded: true,
+                    status: 'success' as const
+                };
+            });
+            if (updatesByPath.size === 0) {
+                return changed ? next : currentStatsLogs;
+            }
+            const additions: ILogData[] = [];
+            updatesByPath.forEach((details, filePath) => {
+                const base = logsRef.current.find((log) => log.filePath === filePath);
+                additions.push({
+                    ...(base || { id: filePath, filePath, permalink: '' }),
+                    details,
+                    statsDetailsLoaded: true,
+                    status: 'success'
+                } as ILogData);
+                changed = true;
+            });
+            if (!changed) return currentStatsLogs;
+            return additions.length > 0 ? [...additions, ...next] : next;
+        });
+    }, [setLogsForStats, logsRef]);
 
     const enabledTopListCount = [
         embedStatSettings.showDamage,
@@ -682,6 +595,10 @@ function App() {
                 }
                 hydrateDetailsQueueRef.current = null;
             }
+            if (hydrateDetailsRetryTimerRef.current !== null) {
+                window.clearTimeout(hydrateDetailsRetryTimerRef.current);
+                hydrateDetailsRetryTimerRef.current = null;
+            }
         };
     }, []);
 
@@ -767,6 +684,9 @@ function App() {
 
     const pendingDetailsRef = useRef<Set<string>>(new Set());
     const hydrateDetailsQueueRef = useRef<number | null>(null);
+    const hydrateDetailsRetryTimerRef = useRef<number | null>(null);
+    const detailsHydrationAttemptsRef = useRef<Map<string, number>>(new Map());
+    const MAX_DETAILS_HYDRATION_ATTEMPTS = 8;
 
     const scheduleDetailsHydration = useCallback((force = false) => {
         if (hydrateDetailsQueueRef.current !== null && !force) return;
@@ -777,22 +697,54 @@ function App() {
             hydrateDetailsQueueRef.current = null;
             if (!window.electronAPI?.getLogDetails) return;
             const statsViewActive = viewRef.current === 'stats';
-            const allCandidates = logsRef.current
-                .filter((log) => log.detailsAvailable && !log.details && log.filePath)
+            const rawCandidates = logsRef.current
+                .filter((log) => log.detailsAvailable && !log.details && !log.statsDetailsLoaded && log.filePath)
                 .sort((a, b) => {
                     const aTime = a.uploadTime || 0;
                     const bTime = b.uploadTime || 0;
                     if (aTime !== bTime) return aTime - bTime;
                     return (a.filePath || '').localeCompare(b.filePath || '');
                 });
+            const activePaths = new Set(rawCandidates.map((log) => String(log.filePath || '')));
+            detailsHydrationAttemptsRef.current.forEach((_attempts, filePath) => {
+                if (!activePaths.has(filePath)) {
+                    detailsHydrationAttemptsRef.current.delete(filePath);
+                }
+            });
+            const allCandidates = rawCandidates.filter((log) => {
+                const attempts = detailsHydrationAttemptsRef.current.get(String(log.filePath || '')) || 0;
+                return attempts < MAX_DETAILS_HYDRATION_ATTEMPTS;
+            });
             if (allCandidates.length === 0) return;
             const maxPerPass = statsViewActive ? allCandidates.length : Math.min(allCandidates.length, 2);
             const candidates = allCandidates.slice(0, maxPerPass);
             const hasMore = allCandidates.length > candidates.length;
             const hydratedBatch: Array<{ filePath: string; details: any }> = [];
+            const failedPaths = new Set<string>();
             const flushHydratedBatch = () => {
                 if (hydratedBatch.length === 0) return;
                 const batch = hydratedBatch.splice(0, hydratedBatch.length);
+                if (statsViewActive) {
+                    applyHydratedStatsBatch(batch);
+                    setLogsDeferred((currentLogs) => {
+                        if (batch.length === 0) return currentLogs;
+                        const updatedPaths = new Set(batch.map((entry) => entry.filePath));
+                        let changed = false;
+                        const next = currentLogs.map((entry) => {
+                            const filePath = entry.filePath || '';
+                            if (!updatedPaths.has(filePath)) return entry;
+                            if (entry.statsDetailsLoaded && entry.status === 'success') return entry;
+                            changed = true;
+                            return {
+                                ...entry,
+                                statsDetailsLoaded: true,
+                                status: 'success' as const
+                            };
+                        });
+                        return changed ? next : currentLogs;
+                    });
+                    return;
+                }
                 setLogsDeferred((currentLogs) => {
                     if (batch.length === 0) return currentLogs;
                     const updatesByPath = new Map(batch.map((entry) => [entry.filePath, entry.details]));
@@ -804,6 +756,7 @@ function App() {
                         return {
                             ...entry,
                             details,
+                            statsDetailsLoaded: true,
                             status: 'success' as const
                         };
                     });
@@ -824,10 +777,13 @@ function App() {
                     try {
                         const result = await window.electronAPI.getLogDetails({ filePath });
                         if (result?.success && result.details) {
+                            detailsHydrationAttemptsRef.current.delete(filePath);
                             hydratedBatch.push({ filePath, details: result.details });
                             if (hydratedBatch.length >= flushThreshold) {
                                 flushHydratedBatch();
                             }
+                        } else {
+                            failedPaths.add(filePath);
                         }
                         if (!statsViewActive) {
                             await new Promise((resolve) => window.setTimeout(resolve, 40));
@@ -839,11 +795,51 @@ function App() {
             };
             await Promise.all(Array.from({ length: Math.min(maxConcurrent, candidates.length) }, () => runWorker()));
             flushHydratedBatch();
-            if (hasMore) {
-                window.setTimeout(() => scheduleDetailsHydration(true), statsViewActive ? 0 : 180);
+            const retryableFailures: string[] = [];
+            const exhaustedFailures: string[] = [];
+            failedPaths.forEach((filePath) => {
+                const previousAttempts = detailsHydrationAttemptsRef.current.get(filePath) || 0;
+                const nextAttempts = previousAttempts + 1;
+                detailsHydrationAttemptsRef.current.set(filePath, nextAttempts);
+                if (nextAttempts < MAX_DETAILS_HYDRATION_ATTEMPTS) {
+                    retryableFailures.push(filePath);
+                } else {
+                    exhaustedFailures.push(filePath);
+                }
+            });
+            if (exhaustedFailures.length > 0) {
+                const exhaustedSet = new Set(exhaustedFailures);
+                setLogsDeferred((currentLogs) => {
+                    let changed = false;
+                    const next = currentLogs.map((entry) => {
+                        const filePath = entry.filePath || '';
+                        if (!exhaustedSet.has(filePath)) return entry;
+                        if (!entry.detailsAvailable && entry.status !== 'calculating') return entry;
+                        changed = true;
+                        const nextStatus: ILogData['status'] = entry.status === 'error' ? 'error' : 'success';
+                        return {
+                            ...entry,
+                            detailsAvailable: false,
+                            status: nextStatus
+                        };
+                    });
+                    return changed ? next : currentLogs;
+                });
+            }
+            if (hasMore || retryableFailures.length > 0) {
+                const delayMs = retryableFailures.length > 0
+                    ? (statsViewActive ? 260 : 420)
+                    : (statsViewActive ? 0 : 180);
+                if (hydrateDetailsRetryTimerRef.current !== null) {
+                    window.clearTimeout(hydrateDetailsRetryTimerRef.current);
+                }
+                hydrateDetailsRetryTimerRef.current = window.setTimeout(() => {
+                    hydrateDetailsRetryTimerRef.current = null;
+                    scheduleDetailsHydration(true);
+                }, delayMs);
             }
         });
-    }, [setLogsDeferred]);
+    }, [applyHydratedStatsBatch, setLogsDeferred]);
 
     const endBulkUpload = useCallback(() => {
         bulkUploadExpectedRef.current = null;
@@ -1007,6 +1003,44 @@ function App() {
 
         return { totalUploads, statusCounts, uploadPieData, avgSquadSize, avgEnemies, winLoss, squadKdr };
     }, [logs]);
+
+    const statsDataProgress = useMemo(() => {
+        const total = logs.length;
+        if (total <= 0) {
+            return {
+                active: false,
+                total: 0,
+                processed: 0,
+                pending: 0,
+                unavailable: 0
+            };
+        }
+        let pending = 0;
+        let unavailable = 0;
+        logs.forEach((log) => {
+            if (log.details || log.statsDetailsLoaded) {
+                return;
+            }
+            if (log.detailsAvailable) {
+                pending += 1;
+                return;
+            }
+            const status = log.status || 'queued';
+            if (status === 'queued' || status === 'pending' || status === 'uploading' || status === 'retrying' || status === 'discord' || status === 'calculating') {
+                pending += 1;
+                return;
+            }
+            unavailable += 1;
+        });
+        const processed = Math.max(0, total - pending);
+        return {
+            active: view === 'stats' && pending > 0,
+            total,
+            processed,
+            pending,
+            unavailable
+        };
+    }, [logs, view]);
 
     useEffect(() => {
         // Load saved settings
@@ -2097,7 +2131,7 @@ function App() {
         filePickerOpen, setFilePickerOpen, setFilePickerError, setFilePickerSelected, filePickerError, filePickerSelected, loadLogFiles, logDirectory, selectSinceOpen, setSelectSinceOpen, selectDayOpen, setSelectDayOpen, selectDayDate, setSelectDayDate, setSelectSinceView, setSelectSinceDate, setSelectSinceHour, setSelectSinceMinute, setSelectSinceMeridiem, setSelectSinceMonthOpen, selectSinceDate, selectSinceHour, selectSinceMinute, selectSinceMeridiem, selectSinceView, selectSinceMonthOpen, filePickerFilter, setFilePickerFilter, filePickerLoading, filePickerAvailable, filePickerAll, filePickerListRef, setFilePickerAtBottom, lastPickedIndexRef, filePickerHasMore, filePickerAtBottom, setFilePickerMonthWindow, ensureMonthWindowForSince, handleAddSelectedFiles, uiTheme
     };
     const appLayoutCtx = {
-        shellClassName, isDev, arcbridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, devDatasetsEnabled, setDevDatasetsOpen, webUploadState, isModernTheme, setWebUploadState, statsViewMounted, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, precomputedStats, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, setStatsViewSettings, uiTheme, dashboardLayout, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setUiTheme, setKineticFontStyle, setDashboardLayout, setGithubWebTheme, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, statsTilesPanel, activityPanel, configurationPanel, screenshotData, embedStatSettings, showClassIcons, enabledTopListCount, devDatasetsCtx, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore
+        shellClassName, isDev, arcbridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, devDatasetsEnabled, setDevDatasetsOpen, webUploadState, isModernTheme, setWebUploadState, statsViewMounted, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, precomputedStats, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, uiTheme, dashboardLayout, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setUiTheme, setKineticFontStyle, setDashboardLayout, setGithubWebTheme, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, statsTilesPanel, activityPanel, configurationPanel, screenshotData, embedStatSettings, showClassIcons, enabledTopListCount, devDatasetsCtx, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore
     };
 
     return <AppLayout ctx={appLayoutCtx} />;

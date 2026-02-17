@@ -102,16 +102,6 @@ const safeSendToRenderer = (payload: { type: 'info' | 'error'; message: string; 
     }
 };
 
-const sendCrashDiagDirect = (message: string) => {
-    const line = String(message);
-    try {
-        originalConsoleError(line);
-    } catch {
-        // Last-resort: ignore console transport failures.
-    }
-    safeSendToRenderer({ type: 'error', message: line, timestamp: new Date().toISOString() });
-};
-
 console.log = (...args) => {
     const message = formatLogArgs(args);
     originalConsoleLog(message);
@@ -130,108 +120,8 @@ console.error = (...args) => {
     safeSendToRenderer({ type: 'error', message, timestamp: new Date().toISOString() });
 };
 
-const isStackOverflowRangeError = (errorLike: any): boolean => {
-    const message = String(errorLike?.message || errorLike || '');
-    const name = String(errorLike?.name || '');
-    return (name === 'RangeError' && /maximum call stack size exceeded/i.test(message))
-        || /RangeError:\s*Maximum call stack size exceeded/i.test(message);
-};
-
-const buildMainCrashDiagnostics = () => {
-    let rssMb = 'n/a';
-    let heapUsedMb = 'n/a';
-    let heapTotalMb = 'n/a';
-    try {
-        const mem = process.memoryUsage();
-        rssMb = (mem.rss / 1024 / 1024).toFixed(1);
-        heapUsedMb = (mem.heapUsed / 1024 / 1024).toFixed(1);
-        heapTotalMb = (mem.heapTotal / 1024 / 1024).toFixed(1);
-    } catch {
-        // Ignore memory probe errors.
-    }
-    return {
-        processType: 'main',
-        pid: process.pid,
-        platform: process.platform,
-        arch: process.arch,
-        node: process.version,
-        electron: process.versions?.electron || 'unknown',
-        chrome: process.versions?.chrome || 'unknown',
-        appVersion: app.getVersion(),
-        isPackaged: app.isPackaged,
-        uptimeSec: Math.round(process.uptime()),
-        cwd: process.cwd(),
-        rssMb,
-        heapUsedMb,
-        heapTotalMb
-    };
-};
-
-const serializeCrashReason = (value: any): { name: string; message: string; stack: string | null } => {
-    if (value instanceof Error) {
-        return {
-            name: value.name || 'Error',
-            message: value.message || '[no message]',
-            stack: value.stack || null
-        };
-    }
-    const asString = String(value ?? 'Unknown error');
-    return {
-        name: 'NonError',
-        message: asString,
-        stack: null
-    };
-};
-
-const emitMainCrashDiagnostics = (source: 'uncaughtExceptionMonitor' | 'uncaughtException' | 'unhandledRejection', reason: any) => {
-    const payload = serializeCrashReason(reason);
-    const diagnostics = buildMainCrashDiagnostics();
-    sendCrashDiagDirect(`[CrashDiag] ${source} | name=${payload.name} | message=${payload.message}`);
-    sendCrashDiagDirect(`[CrashDiag] Runtime: ${JSON.stringify(diagnostics)}`);
-    if (payload.stack) {
-        sendCrashDiagDirect(`[CrashDiag] Stack:\n${payload.stack}`);
-    }
-};
-
-process.on('uncaughtExceptionMonitor', (error) => {
-    // Monitor fires before uncaughtException and helps capture diagnostics even if later handlers fail.
-    emitMainCrashDiagnostics('uncaughtExceptionMonitor', error);
-});
-
-process.on('uncaughtException', (error) => {
-    if (!isStackOverflowRangeError(error)) return;
-    emitMainCrashDiagnostics('uncaughtException', error);
-});
-
-process.on('unhandledRejection', (reason: any) => {
-    if (!isStackOverflowRangeError(reason)) return;
-    emitMainCrashDiagnostics('unhandledRejection', reason);
-});
-
 const Store = require('electron-store');
 const store = new Store();
-
-const getStatsDiagnosticsLogPath = () => path.join(app.getPath('userData'), 'logs', 'stats-diagnostics.ndjson');
-
-const appendStatsDiagnosticsEntry = (entry: Record<string, any>) => {
-    const filePath = getStatsDiagnosticsLogPath();
-    let line = '';
-    try {
-        line = `${JSON.stringify(entry)}\n`;
-    } catch {
-        line = `${JSON.stringify({
-            timestamp: new Date().toISOString(),
-            source: 'main',
-            level: 'warn',
-            message: '[StatsDiag] failed-to-serialize-entry'
-        })}\n`;
-    }
-    fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-        .then(() => fs.promises.appendFile(filePath, line, 'utf-8'))
-        .catch((err: any) => {
-            originalConsoleWarn(`[Main] Failed to append stats diagnostics log: ${err?.message || err}`);
-        });
-};
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -3528,46 +3418,6 @@ if (!gotTheLock) {
             }
             console.warn(`[Main] get-log-details not found: ${filePath}`);
             return { success: false, error: 'Details not found.' };
-        });
-
-        ipcMain.handle('get-stats-diagnostics-log-path', async () => {
-            try {
-                const logPath = getStatsDiagnosticsLogPath();
-                await fs.promises.mkdir(path.dirname(logPath), { recursive: true });
-                return { success: true, path: logPath };
-            } catch (err: any) {
-                return { success: false, error: err?.message || 'Failed to resolve diagnostics log path.' };
-            }
-        });
-
-        ipcMain.on('renderer-log', (_event, payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => {
-            const level = payload?.level || 'info';
-            const meta = payload?.meta;
-            const message = payload?.message || '';
-            const formatted = meta ? `${message} ${formatLogArgs([meta])}` : message;
-            if (level === 'error') {
-                log.error(`[Renderer] ${formatted}`);
-            } else if (level === 'warn') {
-                log.warn(`[Renderer] ${formatted}`);
-            } else {
-                log.info(`[Renderer] ${formatted}`);
-            }
-            if (level === 'error') {
-                console.error(`[Renderer] ${formatted}`);
-            } else if (level === 'warn') {
-                console.warn(`[Renderer] ${formatted}`);
-            } else {
-                console.log(`[Renderer] ${formatted}`);
-            }
-            if (message.startsWith('[StatsDiag]')) {
-                appendStatsDiagnosticsEntry({
-                    timestamp: new Date().toISOString(),
-                    source: 'renderer',
-                    level,
-                    message,
-                    meta: meta ?? null
-                });
-            }
         });
 
         ipcMain.on('window-control', (_event, action: 'minimize' | 'maximize' | 'close') => {
