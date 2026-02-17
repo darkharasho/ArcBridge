@@ -40,6 +40,7 @@
         "generate:fixtures": "for f in testdata/*.zevtc; do bash scripts/generate-json-fixture.sh \"$f\"; done",
         "build:electron:test": "vite build && tsc -p electron/tsconfig.json",
         "test:unit": "vitest run",
+        "test:regression:stats": "vitest run src/main/__tests__/uploader.detailFetch.test.ts src/renderer/__tests__/statsSyncRecovery.test.ts src/renderer/__tests__/StatsView.integration.test.tsx",
         "test:unit:watch": "vitest",
         "test:e2e:web": "playwright test --config playwright.web.config.ts",
         "pretest:e2e:electron": "npm run build:electron:test",

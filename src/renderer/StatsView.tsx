@@ -157,6 +157,22 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
                 progressPercent
             };
         }
+        if (detailsTotal > 0 && detailsUnavailable >= detailsTotal) {
+            return {
+                active: true,
+                phaseLabel: 'Fight details unavailable',
+                progressText: `${detailsUnavailable} of ${detailsTotal} fights could not be loaded from dps.report`,
+                progressPercent: 100
+            };
+        }
+        if (detailsTotal > 0 && logs.length === 0) {
+            return {
+                active: true,
+                phaseLabel: 'Preparing fights for stats',
+                progressText: 'Syncing uploaded fights into the stats dashboard',
+                progressPercent: 5
+            };
+        }
         const total = Math.max(0, Number(aggregationProgress?.total || logs.length || 0));
         const active = Boolean(aggregationProgress?.active) && aggregationProgress?.phase !== 'idle' && aggregationProgress?.phase !== 'settled' && total > 0;
         if (!active) {

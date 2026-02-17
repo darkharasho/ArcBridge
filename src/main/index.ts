@@ -957,11 +957,33 @@ const activeUploads = new Set<string>();
 const pendingDiscordLogs = new Map<string, { result: any, jsonDetails: any }>();
 const recentDiscordSends = new Map<string, number>();
 const DISCORD_DEDUPE_TTL_MS = 2 * 60 * 1000;
+let discordNoWebhookLogAt = 0;
 let bulkUploadMode = false;
 const BULK_PROCESS_CONCURRENCY = 3;
 const bulkLogDetailsCache = new Map<string, any>();
+const bulkLogDetailsByBaseName = new Map<string, any>();
 const BULK_LOG_DETAILS_CACHE_MAX = 600;
+const fileHashByPath = new Map<string, string>();
+const FILE_HASH_CACHE_MAX = 1200;
 const normalizeDetailsCacheKey = (filePath: string) => path.resolve(path.normalize(String(filePath || '')));
+const rememberFileHash = (filePath: string, hash: string | null | undefined) => {
+    const normalizedKey = normalizeDetailsCacheKey(filePath);
+    if (!normalizedKey || !hash) return;
+    if (fileHashByPath.has(normalizedKey)) {
+        fileHashByPath.delete(normalizedKey);
+    }
+    fileHashByPath.set(normalizedKey, hash);
+    while (fileHashByPath.size > FILE_HASH_CACHE_MAX) {
+        const oldest = fileHashByPath.keys().next().value;
+        if (!oldest) break;
+        fileHashByPath.delete(oldest);
+    }
+};
+const getKnownFileHash = (filePath: string): string | null => {
+    const normalizedKey = normalizeDetailsCacheKey(filePath);
+    if (!normalizedKey) return null;
+    return fileHashByPath.get(normalizedKey) || null;
+};
 const setBulkLogDetails = (filePath: string, details: any) => {
     const rawKey = String(filePath || '');
     const normalizedKey = normalizeDetailsCacheKey(filePath);
@@ -972,10 +994,22 @@ const setBulkLogDetails = (filePath: string, details: any) => {
         }
         bulkLogDetailsCache.set(key, details);
     });
+    const baseName = path.basename(rawKey || normalizedKey || '');
+    if (baseName) {
+        if (bulkLogDetailsByBaseName.has(baseName)) {
+            bulkLogDetailsByBaseName.delete(baseName);
+        }
+        bulkLogDetailsByBaseName.set(baseName, details);
+    }
     while (bulkLogDetailsCache.size > BULK_LOG_DETAILS_CACHE_MAX) {
         const oldest = bulkLogDetailsCache.keys().next().value;
         if (!oldest) break;
         bulkLogDetailsCache.delete(oldest);
+    }
+    while (bulkLogDetailsByBaseName.size > BULK_LOG_DETAILS_CACHE_MAX) {
+        const oldest = bulkLogDetailsByBaseName.keys().next().value;
+        if (!oldest) break;
+        bulkLogDetailsByBaseName.delete(oldest);
     }
 };
 const getBulkLogDetails = (filePath: string) => {
@@ -986,41 +1020,38 @@ const getBulkLogDetails = (filePath: string) => {
     if (direct) return direct;
     const baseName = path.basename(rawKey || normalizedKey || '');
     if (!baseName) return null;
-    for (const [key, value] of bulkLogDetailsCache.entries()) {
-        if (path.basename(key) === baseName) {
-            return value;
-        }
-    }
-    return null;
+    return bulkLogDetailsByBaseName.get(baseName) || null;
 };
 const hasUsableFightDetails = (details: any) => {
     const players = Array.isArray(details?.players) ? details.players : [];
     return players.length > 0;
 };
-const pendingDetailsRefreshByPermalink = new Map<string, Promise<{ details: any | null; terminal: boolean }>>();
+const pendingDetailsRefreshByPermalink = new Map<string, Promise<{ details: any | null; terminal: boolean; errorCode?: string }>>();
+const missingDetailsLogByPath = new Map<string, number>();
 const fetchDetailsFromPermalinkWithRetry = async (permalink: string) => {
     if (!uploader || !permalink) return { details: null as any | null, terminal: false };
-    const maxAttempts = 3;
-    let sawUnusablePayload = false;
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        try {
-            const fetched = await uploader.fetchDetailedJson(permalink);
-            if (fetched && !fetched.error) {
-                const enriched = attachConditionMetrics(fetched);
-                if (hasUsableFightDetails(enriched)) {
-                    return { details: enriched, terminal: false };
-                }
-                sawUnusablePayload = true;
-                break;
+    try {
+        const fetched = await uploader.fetchDetailedJson(permalink);
+        if (fetched?.error) {
+            const code = String(fetched.error || '').toLowerCase();
+            const terminal = code === 'incomplete-json' || code === 'invalid-json' || code === 'empty-json-payload';
+            return {
+                details: null as any | null,
+                terminal,
+                errorCode: code || undefined
+            };
+        }
+        if (fetched) {
+            const enriched = attachConditionMetrics(fetched);
+            if (hasUsableFightDetails(enriched)) {
+                return { details: enriched, terminal: false };
             }
-        } catch (err: any) {
-            console.warn('[Main] get-log-details permalink refresh failed:', err?.message || err);
+            return { details: null as any | null, terminal: true };
         }
-        if (attempt < maxAttempts - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
-        }
+    } catch (err: any) {
+        console.warn('[Main] get-log-details permalink refresh failed:', err?.message || err);
     }
-    return { details: null as any | null, terminal: sawUnusablePayload };
+    return { details: null as any | null, terminal: false };
 };
 const globalManifest: Array<any> = [];
 const globalManifestPath = () => path.join(process.cwd(), 'dev', 'manifest.json');
@@ -1159,6 +1190,7 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
         let cacheKey: string | null = null;
         try {
             cacheKey = await computeFileHash(filePath);
+            rememberFileHash(filePath, cacheKey);
         } catch (hashError: any) {
             console.warn('[Main] Failed to compute log hash for cache:', hashError?.message || hashError);
         }
@@ -1186,14 +1218,13 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                 console.warn(`[Main] JSON details missing or error for ${filePath} (${result.permalink}): ${reason}`);
             }
 
-            if (!jsonDetails || jsonDetails.error) {
-                console.log('[Main] Retrying JSON fetch in 2 seconds...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                jsonDetails = await uploader.fetchDetailedJson(result.permalink);
-                if (!jsonDetails || jsonDetails.error) {
-                    const retryReason = jsonDetails?.error || 'null-response';
-                    console.warn(`[Main] JSON details retry failed for ${filePath} (${result.permalink}): ${retryReason}`);
-                }
+            const isUnrecoverableDetailsError = Boolean(
+                jsonDetails?.error
+                && ['incomplete-json', 'invalid-json', 'empty-json-payload'].includes(String(jsonDetails.error))
+            );
+            if ((!jsonDetails || jsonDetails.error) && !isUnrecoverableDetailsError) {
+                const retryReason = jsonDetails?.error || 'null-response';
+                console.warn(`[Main] JSON details unresolved for ${filePath} (${result.permalink}): ${retryReason}`);
             }
 
             if (jsonDetails && !jsonDetails.error) {
@@ -1237,7 +1268,9 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
             const selectedWebhookId = store.get('selectedWebhookId', null);
             const webhookUrl = store.get('discordWebhookUrl', null);
             const shouldSendDiscord = Boolean(selectedWebhookId) && typeof webhookUrl === 'string' && webhookUrl.length > 0;
-            console.log(`[Main] Preparing Discord delivery. Configured type: ${notificationType}`);
+            if (shouldSendDiscord) {
+                console.log(`[Main] Preparing Discord delivery. Configured type: ${notificationType}`);
+            }
 
             if (shouldSendDiscord) {
                 try {
@@ -1272,11 +1305,19 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     // Still mark as success since upload worked, but log the Discord failure
                 }
             } else {
-                console.log('[Main] Discord notification skipped: no webhook selected.');
+                const now = Date.now();
+                if (now - discordNoWebhookLogAt > 15000) {
+                    console.log('[Main] Discord notifications disabled: no webhook selected.');
+                    discordNoWebhookLogAt = now;
+                }
             }
 
             const hasDetails = hasUsableDetails;
-            const detailsKnownUnavailable = hasJsonPayload && !hasUsableDetails;
+            const detailsErrorCode = String(jsonDetails?.error || '').toLowerCase();
+            const detailsKnownUnavailable = detailsErrorCode === 'incomplete-json'
+                || detailsErrorCode === 'invalid-json'
+                || detailsErrorCode === 'empty-json-payload'
+                || (hasJsonPayload && !hasUsableDetails);
             const prunedDetails = hasDetails ? pruneDetailsForStats(jsonDetails) : null;
             const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
             const dashboardSummary = prunedDetails ? buildDashboardSummaryFromDetails(prunedDetails) : undefined;
@@ -3438,7 +3479,6 @@ if (!gotTheLock) {
             }
             const details = getBulkLogDetails(filePath);
             if (details && hasUsableFightDetails(details)) {
-                console.log(`[Main] get-log-details hit: ${filePath}`);
                 return { success: true, details };
             }
             if (permalink) {
@@ -3449,11 +3489,13 @@ if (!gotTheLock) {
                         if (!refreshed.details) return refreshed;
                         const resolved = pruneDetailsForStats(refreshed.details);
                         setBulkLogDetails(filePath, resolved);
-                        try {
-                            const hash = await computeFileHash(filePath);
-                            await updateDpsReportCacheDetails(hash, refreshed.details);
-                        } catch {
-                            // Cache refresh failures should not block stats hydration.
+                        const knownHash = getKnownFileHash(filePath);
+                        if (knownHash) {
+                            try {
+                                await updateDpsReportCacheDetails(knownHash, refreshed.details);
+                            } catch {
+                                // Cache refresh failures should not block stats hydration.
+                            }
                         }
                         return { details: resolved, terminal: false };
                     })();
@@ -3490,7 +3532,18 @@ if (!gotTheLock) {
             } catch (err: any) {
                 console.warn('[Main] get-log-details failed:', err?.message || err);
             }
-            console.warn(`[Main] get-log-details not found: ${filePath}`);
+            const now = Date.now();
+            const lastLoggedAt = missingDetailsLogByPath.get(filePath) || 0;
+            if (now - lastLoggedAt > 60000) {
+                console.warn(`[Main] get-log-details not found: ${filePath}`);
+                missingDetailsLogByPath.set(filePath, now);
+                if (missingDetailsLogByPath.size > 2000) {
+                    const oldestKey = missingDetailsLogByPath.keys().next().value;
+                    if (oldestKey) {
+                        missingDetailsLogByPath.delete(oldestKey);
+                    }
+                }
+            }
             return { success: false, error: 'Details not found.' };
         });
 

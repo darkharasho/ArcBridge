@@ -151,4 +151,38 @@ describe('StatsView (integration)', () => {
         expect(within(apmSection as HTMLElement).getByRole('button', { name: /^Players$/i })).toBeInTheDocument();
         expect(within(apmSection as HTMLElement).getByText(/acct\.3456/i)).toBeInTheDocument();
     });
+
+    it('shows a syncing banner when fights exist but stats logs are not yet synchronized', () => {
+        render(
+            <StatsView
+                logs={[]}
+                onBack={() => {}}
+                precomputedStats={{}}
+                statsViewSettings={DEFAULT_STATS_VIEW_SETTINGS}
+                embedded
+                statsDataProgress={{ active: false, total: 43, processed: 43, pending: 0, unavailable: 0 }}
+                dashboardTitle="Stats Syncing Banner"
+            />
+        );
+
+        expect(screen.getByText(/Preparing fights for stats/i)).toBeInTheDocument();
+        expect(screen.getByText(/Syncing uploaded fights into the stats dashboard/i)).toBeInTheDocument();
+    });
+
+    it('shows an unavailable-details banner when all fights fail to load details', () => {
+        render(
+            <StatsView
+                logs={[]}
+                onBack={() => {}}
+                precomputedStats={{}}
+                statsViewSettings={DEFAULT_STATS_VIEW_SETTINGS}
+                embedded
+                statsDataProgress={{ active: false, total: 12, processed: 12, pending: 0, unavailable: 12 }}
+                dashboardTitle="Stats Unavailable Banner"
+            />
+        );
+
+        expect(screen.getByText(/Fight details unavailable/i)).toBeInTheDocument();
+        expect(screen.getByText(/12 of 12 fights could not be loaded from dps\.report/i)).toBeInTheDocument();
+    });
 });

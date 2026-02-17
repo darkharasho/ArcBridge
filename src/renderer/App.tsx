@@ -11,6 +11,7 @@ import { AppLayout } from './app/AppLayout';
 import { useDevDatasets } from './app/hooks/useDevDatasets';
 import { useFilePicker } from './app/hooks/useFilePicker';
 import { useWebUpload } from './app/hooks/useWebUpload';
+import { shouldAttemptStatsSyncRecovery } from './stats/utils/statsSyncRecovery';
 import { DEFAULT_WEB_THEME_ID, KINETIC_DARK_WEB_THEME_ID } from '../shared/webThemes';
 
 const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
@@ -223,6 +224,9 @@ function App() {
     const dashboardSummaryCacheRef = useRef<Map<string, DashboardSummaryCacheEntry>>(new Map());
     const pendingLogUpdatesRef = useRef<Map<string, ILogData>>(new Map());
     const pendingLogFlushTimerRef = useRef<number | null>(null);
+    const screenshotCaptureChainRef = useRef<Promise<void>>(Promise.resolve());
+    const embedStatSettingsRef = useRef(embedStatSettings);
+    const enabledTopListCountRef = useRef(0);
     const setLogsDeferred = useCallback((updater: (currentLogs: ILogData[]) => ILogData[]) => {
         startTransition(() => {
             setLogs(updater);
@@ -291,7 +295,7 @@ function App() {
         if (pendingLogFlushTimerRef.current !== null) return;
         const pendingCount = pendingLogUpdatesRef.current.size;
         const delayMs = bulkUploadModeRef.current
-            ? (pendingCount > 20 ? 140 : 90)
+            ? (pendingCount > 24 ? 240 : pendingCount > 10 ? 180 : 120)
             : 16;
         pendingLogFlushTimerRef.current = window.setTimeout(() => {
             flushQueuedLogUpdates();
@@ -422,6 +426,7 @@ function App() {
     const lastUploadCompleteAtRef = useRef(0);
     const bulkStatsAwaitingRef = useRef(false);
     const bulkFlushIdRef = useRef<number | null>(null);
+    const statsSyncRecoveryAtRef = useRef(0);
 
     useEffect(() => {
         if (!bulkStatsAwaitingRef.current) {
@@ -519,6 +524,10 @@ function App() {
         embedStatSettings.showDodges
     ].filter(Boolean).length;
     const showClassIcons = notificationType === 'image' || notificationType === 'image-beta';
+    useEffect(() => {
+        embedStatSettingsRef.current = embedStatSettings;
+        enabledTopListCountRef.current = enabledTopListCount;
+    }, [embedStatSettings, enabledTopListCount]);
 
     const selectedWebhook = useMemo(
         () => webhooks.find((hook) => hook.id === selectedWebhookId) || null,
@@ -1075,6 +1084,15 @@ function App() {
 
     const statsDataProgress = useMemo(() => {
         const total = logs.length;
+        if (view !== 'stats') {
+            return {
+                active: false,
+                total,
+                processed: total,
+                pending: 0,
+                unavailable: 0
+            };
+        }
         if (total <= 0) {
             return {
                 active: false,
@@ -1122,13 +1140,50 @@ function App() {
         });
         const processed = Math.max(0, total - pending);
         return {
-            active: view === 'stats' && pending > 0,
+            active: pending > 0,
             total,
             processed,
             pending,
             unavailable
         };
     }, [logs, view, isBulkUploadActive]);
+
+    useEffect(() => {
+        if (logs.length === 0) return;
+        const now = Date.now();
+        const canAttempt = now - statsSyncRecoveryAtRef.current > 1500;
+        if (!canAttempt) return;
+        const shouldRecover = shouldAttemptStatsSyncRecovery({
+            view,
+            bulkUploadMode,
+            liveLogs: logs,
+            statsLogs: logsForStats,
+            progress: {
+                total: statsDataProgress.total,
+                pending: statsDataProgress.pending,
+                unavailable: statsDataProgress.unavailable
+            }
+        });
+        if (!shouldRecover) return;
+        statsSyncRecoveryAtRef.current = now;
+        setLogsForStats((prev) => {
+            if (prev.length === logsRef.current.length && prev.length > 0) return prev;
+            return logsRef.current.length > 0 ? logsRef.current : logs;
+        });
+        scheduleDetailsHydration(true);
+    }, [
+        view,
+        bulkUploadMode,
+        logs.length,
+        logs,
+        logsForStats,
+        logsRef,
+        statsDataProgress.pending,
+        statsDataProgress.total,
+        statsDataProgress.unavailable,
+        setLogsForStats,
+        scheduleDetailsHydration
+    ]);
 
     useEffect(() => {
         // Load saved settings
@@ -1241,224 +1296,219 @@ function App() {
             queueLogUpdate(data);
         });
 
-        const cleanupScreenshot = window.electronAPI.onRequestScreenshot(async (data: ILogData) => {
-            const logKey = data.id || data.filePath;
-            console.log("Screenshot requested for:", logKey);
-            if (!logKey) {
-                console.error('Screenshot request missing log identifier.');
+        let screenshotSubscriptionDisposed = false;
+        const waitMs = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+        const waitFrame = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+        const escapeSelector = (value: string) => {
+            if (typeof window !== 'undefined' && (window as any).CSS?.escape) {
+                return (window as any).CSS.escape(value);
+            }
+            return value.replace(/"/g, '\\"');
+        };
+        const waitForNodes = async (selector: string, expectedCount: number, timeoutMs: number) => {
+            const start = performance.now();
+            while (!screenshotSubscriptionDisposed && performance.now() - start < timeoutMs) {
+                const nodes = Array.from(document.querySelectorAll(selector));
+                if (nodes.length >= expectedCount) {
+                    return nodes;
+                }
+                await waitMs(90);
+            }
+            return screenshotSubscriptionDisposed ? [] : Array.from(document.querySelectorAll(selector));
+        };
+        const waitForNode = async (nodeId: string, timeoutMs: number) => {
+            const start = performance.now();
+            while (!screenshotSubscriptionDisposed && performance.now() - start < timeoutMs) {
+                const node = document.getElementById(nodeId);
+                if (node) return node as HTMLElement;
+                await waitMs(90);
+            }
+            if (screenshotSubscriptionDisposed) return null;
+            return document.getElementById(nodeId) as HTMLElement | null;
+        };
+        const safeToPng = async (node: HTMLElement, options: any) => {
+            return Promise.race([
+                toPng(node, { ...options, cacheBust: false, skipAutoScale: true }),
+                new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Screenshot generation timed out')), 5000))
+            ]);
+        };
+        const captureScreenshotForLog = async (incoming: ILogData) => {
+            const logKey = incoming.id || incoming.filePath;
+            if (!logKey || screenshotSubscriptionDisposed) {
+                if (!logKey) {
+                    console.error('Screenshot request missing log identifier.');
+                }
                 return;
             }
-            setScreenshotData({
-                ...data,
+            console.log('Screenshot requested for:', logKey);
+            const payload = {
+                ...incoming,
                 id: logKey,
-                splitEnemiesByTeam: Boolean((data as any)?.splitEnemiesByTeam)
-            });
-
-            const escapeSelector = (value: string) => {
-                if (typeof window !== 'undefined' && (window as any).CSS?.escape) {
-                    return (window as any).CSS.escape(value);
-                }
-                return value.replace(/"/g, '\\"');
+                splitEnemiesByTeam: Boolean((incoming as any)?.splitEnemiesByTeam)
             };
-
-            const waitForNodes = async (selector: string, expectedCount: number, timeoutMs: number) => {
-                const start = performance.now();
-                while (performance.now() - start < timeoutMs) {
-                    const nodes = Array.from(document.querySelectorAll(selector));
-                    if (nodes.length >= expectedCount) {
-                        return nodes;
-                    }
-                    await new Promise((resolve) => setTimeout(resolve, 100));
-                }
-                return Array.from(document.querySelectorAll(selector));
-            };
-
-            const waitForNode = async (nodeId: string, timeoutMs: number) => {
-                const start = performance.now();
-                while (performance.now() - start < timeoutMs) {
-                    const node = document.getElementById(nodeId);
-                    if (node) return node;
-                    await new Promise((resolve) => setTimeout(resolve, 100));
-                }
-                return document.getElementById(nodeId);
-            };
-
-            // Wait for render
-            setTimeout(async () => {
-                const mode = (data as any)?.mode || 'image';
-
-                // Helper to prevent hanging calls
-                const safeToPng = async (node: HTMLElement, options: any) => {
-                    return Promise.race([
-                        toPng(node, { ...options, cacheBust: false, skipAutoScale: true }),
-                        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Screenshot generation timed out')), 5000))
-                    ]);
-                };
-
+            setScreenshotData(payload);
+            await waitFrame();
+            await waitMs(bulkUploadModeRef.current ? 240 : 120);
+            if (screenshotSubscriptionDisposed) return;
+            const mode = (incoming as any)?.mode || 'image';
+            try {
                 if (mode === 'image-beta') {
                     const selector = `[data-screenshot-id="${escapeSelector(logKey)}"]`;
-                    const resolveTeamIdsForScreenshot = () => {
-                        if (!(data as any)?.splitEnemiesByTeam) return [] as number[];
-                        const details: any = (data as any)?.details || {};
-                        const players = Array.isArray(details.players) ? details.players : [];
-                        const targets = Array.isArray(details.targets) ? details.targets : [];
-                        const normalizeTeamId = (raw: any): number | null => {
-                            const value = raw?.teamID ?? raw?.teamId ?? raw?.team;
-                            const num = Number(value);
-                            return Number.isFinite(num) && num > 0 ? num : null;
-                        };
-                        const allyTeamIds = new Set<number>();
-                        players.forEach((player: any) => {
-                            if (player?.notInSquad) return;
-                            const teamId = normalizeTeamId(player);
-                            if (teamId !== null) allyTeamIds.add(teamId);
-                        });
-                        const enemyTeamIds = new Set<number>();
-                        targets.forEach((target: any) => {
-                            if (target?.isFake) return;
-                            if (target?.enemyPlayer === false) return;
-                            const teamId = normalizeTeamId(target);
-                            if (teamId === null || allyTeamIds.has(teamId)) return;
-                            enemyTeamIds.add(teamId);
-                        });
-                        players.forEach((player: any) => {
-                            if (!player?.notInSquad) return;
-                            const teamId = normalizeTeamId(player);
-                            if (teamId === null || allyTeamIds.has(teamId)) return;
-                            enemyTeamIds.add(teamId);
-                        });
-                        return Array.from(enemyTeamIds).sort((a, b) => a - b);
+                    const details: any = (incoming as any)?.details || {};
+                    const players = Array.isArray(details.players) ? details.players : [];
+                    const targets = Array.isArray(details.targets) ? details.targets : [];
+                    const normalizeTeamId = (raw: any): number | null => {
+                        const value = raw?.teamID ?? raw?.teamId ?? raw?.team;
+                        const num = Number(value);
+                        return Number.isFinite(num) && num > 0 ? num : null;
                     };
-                    const enemyTeamIds = resolveTeamIdsForScreenshot();
-                    const enemySummaryTileCount = embedStatSettings.showEnemySummary
-                        ? ((data as any)?.splitEnemiesByTeam ? enemyTeamIds.length : 1)
+                    const allyTeamIds = new Set<number>();
+                    players.forEach((player: any) => {
+                        if (player?.notInSquad) return;
+                        const teamId = normalizeTeamId(player);
+                        if (teamId !== null) allyTeamIds.add(teamId);
+                    });
+                    const enemyTeamIds = new Set<number>();
+                    targets.forEach((target: any) => {
+                        if (target?.isFake) return;
+                        if (target?.enemyPlayer === false) return;
+                        const teamId = normalizeTeamId(target);
+                        if (teamId === null || allyTeamIds.has(teamId)) return;
+                        enemyTeamIds.add(teamId);
+                    });
+                    players.forEach((player: any) => {
+                        if (!player?.notInSquad) return;
+                        const teamId = normalizeTeamId(player);
+                        if (teamId === null || allyTeamIds.has(teamId)) return;
+                        enemyTeamIds.add(teamId);
+                    });
+                    const resolvedEnemyTeamIds = Array.from(enemyTeamIds).sort((a, b) => a - b);
+                    const activeEmbedStatSettings = embedStatSettingsRef.current;
+                    const enemySummaryTileCount = activeEmbedStatSettings.showEnemySummary
+                        ? ((incoming as any)?.splitEnemiesByTeam ? resolvedEnemyTeamIds.length : 1)
                         : 0;
-                    const summaryTileCount = (embedStatSettings.showSquadSummary ? 1 : 0) + enemySummaryTileCount;
+                    const summaryTileCount = (activeEmbedStatSettings.showSquadSummary ? 1 : 0) + enemySummaryTileCount;
                     const expectedCount = summaryTileCount
-                        + (embedStatSettings.showClassSummary ? (
-                            (embedStatSettings.showSquadSummary ? 1 : 0)
-                            + (embedStatSettings.showEnemySummary ? (((data as any)?.splitEnemiesByTeam ? enemyTeamIds.length : 1)) : 0)
+                        + (activeEmbedStatSettings.showClassSummary ? (
+                            (activeEmbedStatSettings.showSquadSummary ? 1 : 0)
+                            + (activeEmbedStatSettings.showEnemySummary
+                                ? (((incoming as any)?.splitEnemiesByTeam ? resolvedEnemyTeamIds.length : 1))
+                                : 0)
                         ) : 0)
-                        + (embedStatSettings.showIncomingStats ? 4 : 0)
-                        + enabledTopListCount;
+                        + (activeEmbedStatSettings.showIncomingStats ? 4 : 0)
+                        + enabledTopListCountRef.current;
                     const nodes = await waitForNodes(selector, Math.max(1, expectedCount), 5000);
                     if (nodes.length === 0) {
-                        console.error("Screenshot nodes not found, falling back to full card.");
                         const fallbackNode = await waitForNode(`log-screenshot-${logKey}`, 1500);
-                        if (fallbackNode) {
-                            try {
-                                const dataUrl = await safeToPng(fallbackNode, {
-                                    backgroundColor: '#10141b',
-                                    quality: 0.95,
-                                    pixelRatio: 3
-                                });
-                                const buffer = dataUrlToUint8Array(dataUrl);
-                                window.electronAPI.sendScreenshot(logKey, buffer);
-                            } catch (err) {
-                                console.error("Fallback screenshot failed:", err);
-                                // Ensure we clean up even on error so UI doesn't hang
-                                setScreenshotData(null);
-                            }
-                        } else {
-                            // If everything fails, clean up
-                            console.error("No fallback node found either.");
-                            setScreenshotData(null);
+                        if (!fallbackNode) {
+                            console.error('Screenshot nodes not found.');
+                            return;
                         }
+                        const fallbackDataUrl = await safeToPng(fallbackNode, {
+                            backgroundColor: '#10141b',
+                            quality: 0.95,
+                            pixelRatio: 3
+                        });
+                        const fallbackBuffer = dataUrlToUint8Array(fallbackDataUrl);
+                        window.electronAPI.sendScreenshot(logKey, fallbackBuffer);
                         return;
                     }
-                    try {
-                        const buffers: { group: string; buffer: Uint8Array }[] = [];
-                        for (const node of nodes) {
-                            const transparent = (node as HTMLElement).dataset.screenshotTransparent === 'true';
-                            try {
-                                const dataUrl = await safeToPng(node as HTMLElement, {
-                                    backgroundColor: transparent ? 'rgba(0,0,0,0)' : '#10141b',
-                                    quality: 0.95,
-                                    pixelRatio: 3,
-                                    width: (node as HTMLElement).offsetWidth,
-                                    height: (node as HTMLElement).offsetHeight
-                                });
-                                const buffer = dataUrlToUint8Array(dataUrl);
-                                const group = (node as HTMLElement).dataset.screenshotGroup || 'default';
-                                buffers.push({ group, buffer });
-                            } catch (innerErr) {
-                                console.error("Failed to screenshot a specific tile:", innerErr);
-                                // Continue with other tiles if one fails
-                            }
+                    const buffers: { group: string; buffer: Uint8Array }[] = [];
+                    for (const node of nodes) {
+                        if (screenshotSubscriptionDisposed) return;
+                        const transparent = (node as HTMLElement).dataset.screenshotTransparent === 'true';
+                        try {
+                            const dataUrl = await safeToPng(node as HTMLElement, {
+                                backgroundColor: transparent ? 'rgba(0,0,0,0)' : '#10141b',
+                                quality: 0.95,
+                                pixelRatio: 3,
+                                width: (node as HTMLElement).offsetWidth,
+                                height: (node as HTMLElement).offsetHeight
+                            });
+                            const buffer = dataUrlToUint8Array(dataUrl);
+                            const group = (node as HTMLElement).dataset.screenshotGroup || 'default';
+                            buffers.push({ group, buffer });
+                        } catch (innerErr) {
+                            console.error('Failed to screenshot a specific tile:', innerErr);
                         }
-
-                        if (buffers.length === 0) {
-                            throw new Error("No tiles were successfully captured");
-                        }
-
-                        const groups: Uint8Array[][] = [];
-                        const incomingBuffers: Uint8Array[] = [];
-                        let currentPair: Uint8Array[] = [];
-                        let i = 0;
-                        while (i < buffers.length) {
-                            const entry = buffers[i];
-                            if (entry.group === 'incoming') {
-                                while (i < buffers.length && buffers[i].group === 'incoming') {
-                                    incomingBuffers.push(buffers[i].buffer);
-                                    i += 1;
-                                }
-                                if (currentPair.length > 0) {
-                                    groups.push(currentPair);
-                                    currentPair = [];
-                                }
-                                if (incomingBuffers.length > 0) {
-                                    groups.push([...incomingBuffers]);
-                                    incomingBuffers.length = 0;
-                                }
-                                continue;
+                    }
+                    if (buffers.length === 0) {
+                        throw new Error('No tiles were successfully captured');
+                    }
+                    const groups: Uint8Array[][] = [];
+                    const incomingBuffers: Uint8Array[] = [];
+                    let currentPair: Uint8Array[] = [];
+                    let i = 0;
+                    while (i < buffers.length) {
+                        const entry = buffers[i];
+                        if (entry.group === 'incoming') {
+                            while (i < buffers.length && buffers[i].group === 'incoming') {
+                                incomingBuffers.push(buffers[i].buffer);
+                                i += 1;
                             }
-                            currentPair.push(entry.buffer);
-                            if (currentPair.length === 2) {
+                            if (currentPair.length > 0) {
                                 groups.push(currentPair);
                                 currentPair = [];
                             }
-                            i += 1;
+                            if (incomingBuffers.length > 0) {
+                                groups.push([...incomingBuffers]);
+                                incomingBuffers.length = 0;
+                            }
+                            continue;
                         }
-                        if (currentPair.length > 0) {
+                        currentPair.push(entry.buffer);
+                        if (currentPair.length === 2) {
                             groups.push(currentPair);
+                            currentPair = [];
                         }
-                        window.electronAPI.sendScreenshotsGroups(logKey, groups);
-                        setScreenshotData(null);
-                    } catch (err) {
-                        console.error("Screenshot failed:", err);
-                        setScreenshotData(null);
+                        i += 1;
                     }
-                } else {
-                    const node = await waitForNode(`log-screenshot-${logKey}`, 2000);
-                    if (node) {
-                        try {
-                            const dataUrl = await safeToPng(node, {
-                                backgroundColor: '#10141b',
-                                quality: 0.95,
-                                pixelRatio: 3 // Higher fidelity for Discord
-                            });
-                            const buffer = dataUrlToUint8Array(dataUrl);
-
-                            window.electronAPI.sendScreenshot(logKey, buffer);
-                            setScreenshotData(null); // Cleanup
-                        } catch (err) {
-                            console.error("Screenshot failed:", err);
-                            setScreenshotData(null);
-                        }
-                    } else {
-                        console.error("Screenshot node not found");
-                        setScreenshotData(null);
+                    if (currentPair.length > 0) {
+                        groups.push(currentPair);
                     }
+                    window.electronAPI.sendScreenshotsGroups(logKey, groups);
+                    return;
                 }
-            }, 800);
+                const node = await waitForNode(`log-screenshot-${logKey}`, 2000);
+                if (!node) {
+                    console.error('Screenshot node not found');
+                    return;
+                }
+                const dataUrl = await safeToPng(node, {
+                    backgroundColor: '#10141b',
+                    quality: 0.95,
+                    pixelRatio: 3
+                });
+                const buffer = dataUrlToUint8Array(dataUrl);
+                window.electronAPI.sendScreenshot(logKey, buffer);
+            } catch (err) {
+                console.error('Screenshot failed:', err);
+            } finally {
+                if (!screenshotSubscriptionDisposed) {
+                    setScreenshotData(null);
+                }
+            }
+        };
+        const cleanupScreenshot = window.electronAPI.onRequestScreenshot((data: ILogData) => {
+            screenshotCaptureChainRef.current = screenshotCaptureChainRef.current
+                .catch(() => undefined)
+                .then(async () => {
+                    if (screenshotSubscriptionDisposed) return;
+                    await captureScreenshotForLog(data);
+                    if (bulkUploadModeRef.current) {
+                        await waitMs(80);
+                    }
+                });
         });
 
         return () => {
+            screenshotSubscriptionDisposed = true;
             if (pendingLogFlushTimerRef.current !== null) {
                 window.clearTimeout(pendingLogFlushTimerRef.current);
                 pendingLogFlushTimerRef.current = null;
             }
             pendingLogUpdatesRef.current.clear();
+            setScreenshotData(null);
             cleanupStatus();
             cleanupUpload();
             cleanupScreenshot();
