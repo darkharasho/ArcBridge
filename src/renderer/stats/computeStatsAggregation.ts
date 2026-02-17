@@ -15,6 +15,7 @@ interface UseStatsAggregationProps {
     mvpWeights?: IMvpWeights;
     statsViewSettings?: IStatsViewSettings;
     disruptionMethod?: DisruptionMethod;
+    includePlayerSkillMap?: boolean;
 }
 
 const parseTimestamp = (value: any): number => {
@@ -54,7 +55,7 @@ const resolveFightTimestamp = (details: any, log: any): number => {
     );
 };
 
-export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }: UseStatsAggregationProps) => {
+export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod, includePlayerSkillMap }: UseStatsAggregationProps) => {
 
     const validLogs = (() => {
         const filtered = logs.filter(l => l.details && l.details.players && l.details.players.length > 0);
@@ -162,6 +163,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         }
 
         const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
+        const shouldIncludePlayerSkillMap = includePlayerSkillMap !== false;
         const skillDamageSource = activeStatsViewSettings.topSkillDamageSource || 'target';
         const topSkillsMetric = activeStatsViewSettings.topSkillsMetric || 'damage';
         const total = validLogs.length;
@@ -420,15 +422,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         };
         const hasMitigationTotals = (totals: DamageMitigationTotals) => Object.values(totals).some((value) => value > 0);
 
-        const resolveDamageSkillName = (skillId: number, skillMap?: Record<string, any>, buffMap?: Record<string, any>) => {
-            const skillKey = `s${skillId}`;
-            if (skillMap?.[skillKey]?.name) return skillMap[skillKey].name;
-            if (skillMap?.[String(skillId)]?.name) return skillMap[String(skillId)].name;
-            const buffKey = `b${skillId}`;
-            if (buffMap?.[buffKey]?.name) return buffMap[buffKey].name;
-            if (buffMap?.[String(skillId)]?.name) return buffMap[String(skillId)].name;
-            return `Unknown Skill ${skillId}`;
-        };
         const globalEnemySkillStats = new Map<number, { totalDamage: number; connectedHits: number; minTotal: number; minCount: number }>();
         const resolveGlobalEnemyStats = (skillId: number) => {
             const bucket = globalEnemySkillStats.get(skillId);
@@ -440,12 +433,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             const min = bucket.minCount > 0 ? bucket.minTotal / bucket.minCount : 0;
             return { hasSkill: true, avg, min, hits };
         };
-        const DEBUG_MITIGATION_ACCOUNT = 'Ashtonlightstone.9145';
-        const DEBUG_MITIGATION_MINION = 'Illusionary Warden';
-        const debugMitigationRows: Array<Record<string, any>> = [];
-        const debugMitigationSummary: Array<Record<string, any>> = [];
-        const debugPlayerMitigationRows: Array<Record<string, any>> = [];
-        const debugPlayerMitigationSummary: Array<Record<string, any>> = [];
         const mitigationCumulativeCounts = new Map<string, DamageMitigationTotals>();
         const mitigationMinionCumulativeCounts = new Map<string, DamageMitigationTotals>();
         const updateCumulativeCounts = (map: Map<string, DamageMitigationTotals>, key: string, delta: DamageMitigationTotals) => {
@@ -483,53 +470,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             });
         });
 
-        validLogs.forEach((log, logIndex) => {
+        validLogs.forEach((log) => {
             const details = log.details;
             if (!details) return;
             const players = details.players as unknown as Player[];
             const targets = details.targets || [];
-            const damageSkillMap = details.skillMap || {};
-            const damageBuffMap = details.buffMap || {};
-            const localEnemyById = new Map<number, { totalDamage: number; connectedHits: number; minTotal: number; minCount: number }>();
-            const localEnemyByName = new Map<string, { totalDamage: number; connectedHits: number; minTotal: number; minCount: number }>();
-            targets.forEach((target: any) => {
-                const dist = target?.totalDamageDist || [];
-                const list = Array.isArray(dist) ? dist[0] : null;
-                list?.forEach((entry: any) => {
-                    if (!entry?.id) return;
-                    const skillId = Number(entry.id);
-                    const keyName = (damageSkillMap?.[skillId]?.name || entry.name || entry.skillName || String(skillId)) as string;
-                    const localId = localEnemyById.get(skillId) || { totalDamage: 0, connectedHits: 0, minTotal: 0, minCount: 0 };
-                    localId.totalDamage += Number(entry.totalDamage || 0);
-                    localId.connectedHits += Number(entry.connectedHits || 0);
-                    const minValueId = Number.isFinite(Number(entry.min)) ? Number(entry.min) : 0;
-                    localId.minTotal += minValueId;
-                    localId.minCount += 1;
-                    localEnemyById.set(skillId, localId);
-
-                    const localName = localEnemyByName.get(keyName) || { totalDamage: 0, connectedHits: 0, minTotal: 0, minCount: 0 };
-                    localName.totalDamage += Number(entry.totalDamage || 0);
-                    localName.connectedHits += Number(entry.connectedHits || 0);
-                    const minValueName = Number.isFinite(Number(entry.min)) ? Number(entry.min) : 0;
-                    localName.minTotal += minValueName;
-                    localName.minCount += 1;
-                    localEnemyByName.set(keyName, localName);
-                });
-            });
-            const resolveLocalAvgById = (skillId: number) => {
-                const bucket = localEnemyById.get(skillId);
-                if (!bucket || bucket.connectedHits <= 0) return { avg: 1, min: 1 };
-                const avg = bucket.connectedHits > 0 ? bucket.totalDamage / bucket.connectedHits : 0;
-                const min = bucket.minCount > 0 ? bucket.minTotal / bucket.minCount : avg;
-                return { avg: avg || 1, min: min || 1 };
-            };
-            const resolveLocalAvgByName = (skillName: string) => {
-                const bucket = localEnemyByName.get(skillName);
-                if (!bucket || bucket.connectedHits <= 0) return { avg: 1, min: 1 };
-                const avg = bucket.connectedHits > 0 ? bucket.totalDamage / bucket.connectedHits : 0;
-                const min = bucket.minCount > 0 ? bucket.minTotal / bucket.minCount : avg;
-                return { avg: avg || 1, min: min || 1 };
-            };
 
             // Basic Setup (Commander Tag, Distance Util)
             const replayMeta = (details as any).combatReplayMetaData || {};
@@ -1194,8 +1139,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             profession: resolveProfessionLabel(player.profession || 'Unknown')
                         };
                         ensureMitigationRow(damageMitigationPlayersMap, account, base);
-                        const skillMap = details.skillMap || {};
-                        const buffMap = details.buffMap || {};
                         const list = Array.isArray(entries) ? entries[0] : null;
                         list?.forEach((entry: any) => {
                             if (!entry?.id) return;
@@ -1207,7 +1150,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             const interrupted = readNumber(entry.interrupted);
                             const skillHits = readNumber(entry.hits ?? entry.connectedHits);
                             const skillId = Number(entry.id);
-                            const skillName = resolveDamageSkillName(skillId, skillMap, buffMap);
                             updateCumulativeCounts(
                                 mitigationCumulativeCounts,
                                 `${account}::${skillId}`,
@@ -1223,74 +1165,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                                     minMitigation: 0
                                 }
                             );
-
-                            if (account === DEBUG_MITIGATION_ACCOUNT) {
-                                const bucket = globalEnemySkillStats.get(skillId);
-                                const enemy = resolveGlobalEnemyStats(skillId);
-                                const avg = enemy.hasSkill ? (enemy.hits > 0 ? enemy.avg : 0) : 1;
-                                const min = enemy.hasSkill ? (enemy.min || 0) : 1;
-                                const avoidDamage = enemy.hits > 0
-                                    ? glanced * avg / 2 + (blocked + evaded + missed + invulned + interrupted) * avg
-                                    : 0;
-                                const avoidMinDamage = enemy.hits > 0
-                                    ? glanced * min / 2 + (blocked + evaded + missed + invulned + interrupted) * min
-                                    : 0;
-                                debugPlayerMitigationRows.push({
-                                    logId: log.filePath || log.id || logIndex,
-                                    skillId: entry.id,
-                                    skillName,
-                                    blocked,
-                                    evaded,
-                                    glanced,
-                                    missed,
-                                    invulned,
-                                    interrupted,
-                                    totalAvoids: blocked + evaded + glanced + missed + invulned + interrupted,
-                                    avg,
-                                    min,
-                                    enemyHits: bucket?.connectedHits ?? 0,
-                                    enemyTotalDmg: bucket?.totalDamage ?? 0,
-                                    avoidDmg: avoidDamage,
-                                    avoidMinDmg: avoidMinDamage
-                                });
-                            }
                         });
-
-                        if (account === DEBUG_MITIGATION_ACCOUNT) {
-                            const computeTotals = (entriesList: any[] | null | undefined, avgResolver: (skillId: number, skillName: string) => { avg: number; min: number; hits?: number }) => {
-                                let total = 0;
-                                let minTotal = 0;
-                                let hits = 0;
-                                if (!Array.isArray(entriesList)) return { total, minTotal, hits };
-                                for (const entry of entriesList) {
-                                    if (!entry?.id) continue;
-                                    const blocked = readNumber(entry.blocked);
-                                    const evaded = readNumber(entry.evaded);
-                                    const glanced = readNumber(entry.glance ?? entry.glanced);
-                                    const missed = readNumber(entry.missed);
-                                    const invulned = readNumber(entry.invulned);
-                                    const interrupted = readNumber(entry.interrupted);
-                                    const skillName = resolveDamageSkillName(Number(entry.id), damageSkillMap, damageBuffMap);
-                                    const avgInfo = avgResolver(Number(entry.id), skillName);
-                                    if ((avgInfo.hits ?? 0) > 0) {
-                                        total += glanced * avgInfo.avg / 2 + (blocked + evaded + missed + invulned + interrupted) * avgInfo.avg;
-                                        minTotal += glanced * avgInfo.min / 2 + (blocked + evaded + missed + invulned + interrupted) * avgInfo.min;
-                                    }
-                                    hits += readNumber(entry.hits ?? entry.connectedHits);
-                                }
-                                return { total, minTotal, hits };
-                            };
-                            debugPlayerMitigationSummary.push({
-                                logId: log.filePath || log.id || logIndex,
-                                variant: 'current_global_name_taken0',
-                                ...computeTotals(list, (_id, _name) => {
-                                    const enemy = resolveGlobalEnemyStats(_id);
-                                    const avg = enemy.hasSkill ? (enemy.hits > 0 ? enemy.avg : 0) : 1;
-                                    const min = enemy.hasSkill ? (enemy.min || 0) : 1;
-                                    return { avg, min, hits: enemy.hits };
-                                })
-                            });
-                        }
                     });
                 }
 
@@ -1304,8 +1179,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             name: player.name || account,
                             profession: resolveProfessionLabel(player.profession || 'Unknown')
                         };
-                        const skillMap = details.skillMap || {};
-                        const buffMap = details.buffMap || {};
                         minions.forEach((minion: any) => {
                             const minionEntries = minion?.totalDamageTakenDist || [];
                             if (!Array.isArray(minionEntries) || minionEntries.length === 0) return;
@@ -1324,7 +1197,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                                 const interrupted = readNumber(entry.interrupted);
                                 const skillHits = readNumber(entry.hits ?? entry.connectedHits);
                                 const skillId = Number(entry.id);
-                                const skillName = resolveDamageSkillName(skillId, skillMap, buffMap);
                                 updateCumulativeCounts(
                                     mitigationMinionCumulativeCounts,
                                     `${rowKey}::${skillId}`,
@@ -1340,131 +1212,13 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                                         minMitigation: 0
                                     }
                                 );
-
-                                if (account === DEBUG_MITIGATION_ACCOUNT && minionName === DEBUG_MITIGATION_MINION) {
-                                    const bucket = globalEnemySkillStats.get(skillId);
-                                    const enemy = resolveGlobalEnemyStats(skillId);
-                                    const avg = enemy.hasSkill ? (enemy.hits > 0 ? enemy.avg : 0) : 1;
-                                    const min = enemy.hasSkill ? (enemy.min || 0) : 1;
-                                    const avoidDamage = enemy.hits > 0
-                                        ? glanced * avg / 2 + (blocked + evaded + missed + invulned + interrupted) * avg
-                                        : 0;
-                                    const avoidMinDamage = enemy.hits > 0
-                                        ? glanced * min / 2 + (blocked + evaded + missed + invulned + interrupted) * min
-                                        : 0;
-                                    debugMitigationRows.push({
-                                        logId: log.filePath || log.id || logIndex,
-                                        skillId: entry.id,
-                                        skillName,
-                                        blocked,
-                                        evaded,
-                                        glanced,
-                                        missed,
-                                        invulned,
-                                        interrupted,
-                                        totalAvoids: blocked + evaded + glanced + missed + invulned + interrupted,
-                                        avg,
-                                        min,
-                                        enemyHits: bucket?.connectedHits ?? 0,
-                                        enemyTotalDmg: bucket?.totalDamage ?? 0,
-                                        avoidDmg: avoidDamage,
-                                        avoidMinDmg: avoidMinDamage
-                                    });
-                                }
                             });
-
-                            if (account === DEBUG_MITIGATION_ACCOUNT && minionName === DEBUG_MITIGATION_MINION) {
-                                const computeTotals = (entries: any[] | null | undefined, avgResolver: (skillId: number, skillName: string) => { avg: number; min: number }) => {
-                                    let total = 0;
-                                    let minTotal = 0;
-                                    let hits = 0;
-                                    if (!Array.isArray(entries)) return { total, minTotal, hits };
-                                    for (const entry of entries) {
-                                        if (!entry?.id) continue;
-                                        const blocked = readNumber(entry.blocked);
-                                        const evaded = readNumber(entry.evaded);
-                                        const glanced = readNumber(entry.glance ?? entry.glanced);
-                                        const missed = readNumber(entry.missed);
-                                        const invulned = readNumber(entry.invulned);
-                                        const interrupted = readNumber(entry.interrupted);
-                                        const skillName = resolveDamageSkillName(Number(entry.id), damageSkillMap, damageBuffMap);
-                                        const { avg, min } = avgResolver(Number(entry.id), skillName);
-                                        if (readNumber(entry.hits ?? entry.connectedHits) > 0) {
-                                            total += glanced * avg / 2 + (blocked + evaded + missed + invulned + interrupted) * avg;
-                                            minTotal += glanced * min / 2 + (blocked + evaded + missed + invulned + interrupted) * min;
-                                        }
-                                        hits += readNumber(entry.hits ?? entry.connectedHits);
-                                    }
-                                    return { total, minTotal, hits };
-                                };
-                                const entriesDist = Array.isArray(minionEntries) ? (minionEntries[0] || []) : [];
-                                const entriesAll = Array.isArray(minionEntries) ? minionEntries.flat() : [];
-                                const entriesTaken = Array.isArray(minion?.totalDamageTaken) ? (minion.totalDamageTaken[0] || []) : [];
-
-                                debugMitigationSummary.push({
-                                    logId: log.filePath || log.id || logIndex,
-                                    variant: 'current_global_name_dist0',
-                                    ...computeTotals(entriesDist, (_id, _name) => {
-                                        const enemy = resolveGlobalEnemyStats(_id);
-                                        const avg = enemy.hasSkill ? (enemy.hits > 0 ? enemy.avg : 0) : 1;
-                                        const min = enemy.hasSkill ? (enemy.min || 0) : 0;
-                                        return { avg, min };
-                                    })
-                                });
-                                debugMitigationSummary.push({
-                                    logId: log.filePath || log.id || logIndex,
-                                    variant: 'local_name_dist0',
-                                    ...computeTotals(entriesDist, (_id, name) => resolveLocalAvgByName(name))
-                                });
-                                debugMitigationSummary.push({
-                                    logId: log.filePath || log.id || logIndex,
-                                    variant: 'local_id_dist0',
-                                    ...computeTotals(entriesDist, (id) => resolveLocalAvgById(id))
-                                });
-                                debugMitigationSummary.push({
-                                    logId: log.filePath || log.id || logIndex,
-                                    variant: 'global_name_alllists',
-                                    ...computeTotals(entriesAll, (_id, _name) => {
-                                        const enemy = resolveGlobalEnemyStats(_id);
-                                        const avg = enemy.hasSkill ? (enemy.hits > 0 ? enemy.avg : 0) : 1;
-                                        const min = enemy.hasSkill ? (enemy.min || 0) : 0;
-                                        return { avg, min };
-                                    })
-                                });
-                                debugMitigationSummary.push({
-                                    logId: log.filePath || log.id || logIndex,
-                                    variant: 'global_name_taken0',
-                                    ...computeTotals(entriesTaken, (_id, _name) => {
-                                        const enemy = resolveGlobalEnemyStats(_id);
-                                        const avg = enemy.hasSkill ? (enemy.hits > 0 ? enemy.avg : 0) : 1;
-                                        const min = enemy.hasSkill ? (enemy.min || 0) : 0;
-                                        return { avg, min };
-                                    })
-                                });
-                            }
                         });
                     });
                 }
             }
 
         }); // End Logs Loop
-
-        if (debugMitigationRows.length > 0) {
-            console.groupCollapsed('[Mitigation Debug] Ashtonlightstone.9145 / Illusionary Warden');
-            console.table(debugMitigationRows);
-            if (debugMitigationSummary.length > 0) {
-                console.table(debugMitigationSummary);
-            }
-            console.groupEnd();
-        }
-        if (debugPlayerMitigationRows.length > 0) {
-            console.groupCollapsed('[Mitigation Debug] Ashtonlightstone.9145 / Player');
-            console.table(debugPlayerMitigationRows);
-            if (debugPlayerMitigationSummary.length > 0) {
-                console.table(debugPlayerMitigationSummary);
-            }
-            console.groupEnd();
-        }
 
         const recomputeMitigationTotals = (
             rows: Map<string, DamageMitigationRow>,
@@ -3251,20 +3005,22 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             .map((entry) => {
                 const skills = Array.from(entry.skills.values())
                     .sort((a, b) => b.damage - a.damage);
-                const skillMap = skills.reduce<Record<string, PlayerSkillDamageEntry>>((acc, skill) => {
-                    acc[skill.id] = skill;
-                    return acc;
-                }, {});
-                return {
+                const payload: any = {
                     key: entry.key,
                     account: entry.account,
                     displayName: entry.displayName,
                     profession: entry.profession,
                     professionList: entry.professionList,
                     totalFightMs: entry.totalFightMs,
-                    skills,
-                    skillMap
+                    skills
                 };
+                if (shouldIncludePlayerSkillMap) {
+                    payload.skillMap = skills.reduce<Record<string, PlayerSkillDamageEntry>>((acc, skill) => {
+                        acc[skill.id] = skill;
+                        return acc;
+                    }, {});
+                }
+                return payload;
             })
             .sort((a, b) => a.displayName.localeCompare(b.displayName));
 

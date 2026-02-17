@@ -11,6 +11,40 @@ interface UseStatsAggregationProps {
     disruptionMethod?: DisruptionMethod;
 }
 
+export interface AggregationProgressState {
+    active: boolean;
+    phase: 'idle' | 'streaming' | 'computing' | 'settled';
+    streamed: number;
+    total: number;
+    startedAt: number;
+    completedAt: number;
+}
+
+export interface AggregationDiagnosticsState {
+    mode: 'worker' | 'fallback';
+    logsInPayload: number;
+    streamedLogs: number;
+    totalLogs: number;
+    startedAt: number;
+    completedAt: number;
+    streamMs: number;
+    computeMs: number;
+    totalMs: number;
+    flushId: number | null;
+    transferStripStats?: {
+        spikeSkillRowsRemoved: number;
+        incomingSkillRowsRemoved: number;
+        playerSkillMapsRemoved: number;
+    };
+    counts?: {
+        playerSkillBreakdowns: number;
+        spikeFights: number;
+        incomingStrikeFights: number;
+    };
+    expectedLogCount?: number;
+    droppedLogMessages?: number;
+}
+
 export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }: UseStatsAggregationProps) => {
     const workerLogLimit = 8;
     const shouldUseWorker = logs.length > workerLogLimit;
@@ -32,18 +66,15 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     const workerRef = useRef<Worker | null>(null);
     const [workerFailed, setWorkerFailed] = useState(false);
     const streamTimerRef = useRef<number | null>(null);
+    const streamIdleCallbackRef = useRef<number | null>(null);
+    const lastStreamProgressUpdateRef = useRef(0);
+    const streamSessionRef = useRef(0);
+    const prunedLogCacheRef = useRef<Map<string, { sourceLog: any; sourceDetails: any; pruned: any }>>(new Map());
     const aggregationSettingsKeyRef = useRef<string>('');
     const aggregationSettingsRef = useRef<IStatsViewSettings | undefined>(undefined);
     const lastFallbackComputeKeyRef = useRef('');
     const expectedLogCountRef = useRef(0);
-    const [aggregationProgress, setAggregationProgress] = useState<{
-        active: boolean;
-        phase: 'idle' | 'streaming' | 'computing' | 'settled';
-        streamed: number;
-        total: number;
-        startedAt: number;
-        completedAt: number;
-    }>({
+    const [aggregationProgress, setAggregationProgress] = useState<AggregationProgressState>({
         active: false,
         phase: 'idle',
         streamed: 0,
@@ -51,6 +82,41 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         startedAt: 0,
         completedAt: 0
     });
+    const [aggregationDiagnostics, setAggregationDiagnostics] = useState<AggregationDiagnosticsState | null>(null);
+    const workerAggregationStartedAtRef = useRef(0);
+    const clearStreamTimer = () => {
+        if (streamTimerRef.current !== null) {
+            window.clearTimeout(streamTimerRef.current);
+            streamTimerRef.current = null;
+        }
+        if (streamIdleCallbackRef.current !== null) {
+            const cancelIdle = (window as any).cancelIdleCallback;
+            if (typeof cancelIdle === 'function') {
+                cancelIdle(streamIdleCallbackRef.current);
+            }
+            streamIdleCallbackRef.current = null;
+        }
+    };
+    const getPrunedLogForWorker = (log: any, index: number) => {
+        const cacheKey = String(log?.filePath || log?.id || `idx-${index}`);
+        const detailsRef = log?.details && typeof log.details === 'object' ? log.details : null;
+        const cached = prunedLogCacheRef.current.get(cacheKey);
+        if (cached) {
+            if (detailsRef && cached.sourceDetails === detailsRef) {
+                return cached.pruned;
+            }
+            if (!detailsRef && cached.sourceLog === log) {
+                return cached.pruned;
+            }
+        }
+        const pruned = pruneLogForStats(log);
+        prunedLogCacheRef.current.set(cacheKey, {
+            sourceLog: log,
+            sourceDetails: detailsRef,
+            pruned
+        });
+        return pruned;
+    };
 
     const aggregationStatsViewSettings = useMemo(() => {
         if (!statsViewSettings) {
@@ -68,11 +134,6 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         return aggregationSettingsRef.current;
     }, [statsViewSettings]);
 
-    const payload = useMemo(
-        () => ({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod }),
-        [logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod]
-    );
-
     useEffect(() => {
         if (typeof Worker === 'undefined') return;
         if (workerFailed) return;
@@ -81,6 +142,10 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
             workerRef.current = new Worker(new URL('../../workers/statsWorker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (event) => {
                 if (event.data?.type === 'result') {
+                    const incomingToken = typeof event.data.token === 'number' ? event.data.token : null;
+                    if (incomingToken !== null && incomingToken !== activeTokenRef.current) {
+                        return;
+                    }
                     setResult(event.data.result);
                     if (typeof event.data.computeId === 'number') {
                         setComputeTick(event.data.computeId);
@@ -99,9 +164,35 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                     if (typeof event.data.flushId === 'number') {
                         setLastComputedFlushId(event.data.flushId);
                     }
-                    const tokenMatches = typeof event.data.token === 'number' && event.data.token === activeTokenRef.current;
+                    const tokenMatches = incomingToken === null || incomingToken === activeTokenRef.current;
                     const expectedCount = expectedLogCountRef.current;
                     const logCount = typeof event.data.logCount === 'number' ? event.data.logCount : 0;
+                    if (tokenMatches) {
+                        const completedAt = typeof event.data.completedAt === 'number' ? event.data.completedAt : Date.now();
+                        const diagnostics = event.data?.diagnostics || {};
+                        const computeMs = Math.max(0, Number(diagnostics.computeMs || 0));
+                        const startedAt = workerAggregationStartedAtRef.current > 0
+                            ? workerAggregationStartedAtRef.current
+                            : completedAt;
+                        const totalMs = Math.max(0, completedAt - startedAt);
+                        const streamMs = Math.max(0, totalMs - computeMs);
+                        setAggregationDiagnostics({
+                            mode: 'worker',
+                            logsInPayload: Number(diagnostics.logsInPayload || event.data.logCount || 0),
+                            streamedLogs: Number(event.data.logCount || 0),
+                            totalLogs: expectedCount,
+                            startedAt,
+                            completedAt,
+                            streamMs,
+                            computeMs,
+                            totalMs,
+                            flushId: typeof event.data.flushId === 'number' ? event.data.flushId : null,
+                            transferStripStats: diagnostics.transferStripStats,
+                            counts: diagnostics.counts,
+                            expectedLogCount: Number(diagnostics.expectedLogCount || 0),
+                            droppedLogMessages: Number(diagnostics.droppedLogMessages || 0)
+                        });
+                    }
                     if (tokenMatches && logCount >= expectedCount) {
                         setAggregationProgress((prev) => ({
                             ...prev,
@@ -127,10 +218,16 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                 setWorkerFailed(true);
             };
             if (pendingFlushIdRef.current !== null) {
-                workerRef.current.postMessage({ type: 'flush', flushId: pendingFlushIdRef.current });
+                workerRef.current.postMessage({
+                    type: 'flush',
+                    flushId: pendingFlushIdRef.current,
+                    token: activeTokenRef.current
+                });
             }
         }
         return () => {
+            streamSessionRef.current += 1;
+            clearStreamTimer();
             workerRef.current?.terminate();
             workerRef.current = null;
         };
@@ -138,8 +235,13 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
 
     useEffect(() => {
         if (!workerRef.current || workerFailed || !shouldUseWorker) return;
+        const streamSession = streamSessionRef.current + 1;
+        streamSessionRef.current = streamSession;
+        let cancelled = false;
         try {
             expectedLogCountRef.current = logs.length;
+            workerAggregationStartedAtRef.current = Date.now();
+            setAggregationDiagnostics(null);
             setAggregationProgress({
                 active: logs.length > 0,
                 phase: logs.length > 0 ? 'streaming' : 'idle',
@@ -148,11 +250,23 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                 startedAt: Date.now(),
                 completedAt: 0
             });
-            activeTokenRef.current += 1;
-            setActiveToken(activeTokenRef.current);
-            workerRef.current.postMessage({ type: 'reset', token: activeTokenRef.current });
+            const activeToken = activeTokenRef.current + 1;
+            activeTokenRef.current = activeToken;
+            setActiveToken(activeToken);
+            const validCacheKeys = new Set<string>();
+            logs.forEach((log, index) => {
+                validCacheKeys.add(String(log?.filePath || log?.id || `idx-${index}`));
+            });
+            prunedLogCacheRef.current.forEach((_value, key) => {
+                if (!validCacheKeys.has(key)) {
+                    prunedLogCacheRef.current.delete(key);
+                }
+            });
+            clearStreamTimer();
+            workerRef.current.postMessage({ type: 'reset', token: activeToken, totalLogs: logs.length });
             workerRef.current.postMessage({
                 type: 'settings',
+                token: activeToken,
                 payload: {
                     precomputedStats,
                     mvpWeights,
@@ -160,34 +274,85 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                     disruptionMethod
                 }
             });
-            if (streamTimerRef.current) {
-                window.clearTimeout(streamTimerRef.current);
-                streamTimerRef.current = null;
-            }
             let index = 0;
-            const step = () => {
-                if (!workerRef.current) return;
-                const chunkSize = 8;
-                for (let i = 0; i < chunkSize && index < logs.length; i += 1, index += 1) {
-                    workerRef.current.postMessage({ type: 'log', payload: pruneLogForStats(logs[index]) });
+            const totalLogs = logs.length;
+            const publishProgress = (phase: 'streaming' | 'computing', force = false) => {
+                const now = performance.now();
+                if (!force && now - lastStreamProgressUpdateRef.current < 120 && index < totalLogs) return;
+                lastStreamProgressUpdateRef.current = now;
+                const streamed = Math.min(index, totalLogs);
+                setAggregationProgress((prev) => {
+                    if (
+                        prev.active === (totalLogs > 0)
+                        && prev.phase === phase
+                        && prev.streamed === streamed
+                        && prev.total === totalLogs
+                    ) {
+                        return prev;
+                    }
+                    return {
+                        ...prev,
+                        active: totalLogs > 0,
+                        phase,
+                        streamed,
+                        total: totalLogs
+                    };
+                });
+            };
+            const scheduleStep = () => {
+                if (cancelled || streamSessionRef.current !== streamSession || !workerRef.current) return;
+                const requestIdle = (window as any).requestIdleCallback;
+                if (typeof requestIdle === 'function') {
+                    streamIdleCallbackRef.current = requestIdle(
+                        (deadline: any) => {
+                            streamIdleCallbackRef.current = null;
+                            step(deadline);
+                        },
+                        { timeout: 120 }
+                    );
+                    return;
                 }
-                setAggregationProgress((prev) => ({
-                    ...prev,
-                    active: logs.length > 0,
-                    phase: index < logs.length ? 'streaming' : 'computing',
-                    streamed: Math.min(index, logs.length),
-                    total: logs.length
-                }));
-                if (index < logs.length) {
-                    streamTimerRef.current = window.setTimeout(step, 0);
-                } else {
+                streamTimerRef.current = window.setTimeout(() => {
                     streamTimerRef.current = null;
-                    workerRef.current.postMessage({ type: 'flush' });
+                    step();
+                }, 0);
+            };
+            const step = (deadline?: any) => {
+                if (cancelled || streamSessionRef.current !== streamSession || !workerRef.current) return;
+                const hasIdleBudget = Boolean(deadline && typeof deadline.timeRemaining === 'function');
+                const remaining = hasIdleBudget ? Math.max(0, Number(deadline.timeRemaining() || 0)) : 0;
+                const chunkSize = hasIdleBudget
+                    ? (remaining > 12 ? 4 : remaining > 7 ? 2 : 1)
+                    : 1;
+                let processed = 0;
+                while (processed < chunkSize && index < totalLogs) {
+                    workerRef.current.postMessage({
+                        type: 'log',
+                        token: activeToken,
+                        payload: getPrunedLogForWorker(logs[index], index)
+                    });
+                    index += 1;
+                    processed += 1;
+                }
+                if (index < totalLogs) {
+                    publishProgress('streaming');
+                    scheduleStep();
+                } else {
+                    publishProgress('computing', true);
+                    workerRef.current.postMessage({ type: 'flush', token: activeToken });
                 }
             };
-            step();
+            lastStreamProgressUpdateRef.current = 0;
+            if (totalLogs <= 0) {
+                publishProgress('computing', true);
+                workerRef.current.postMessage({ type: 'flush', token: activeToken });
+            } else {
+                publishProgress('streaming', true);
+                scheduleStep();
+            }
         } catch (err) {
             console.warn('[StatsWorker] Failed to postMessage payload. Falling back to main thread.', err);
+            clearStreamTimer();
             workerRef.current?.terminate();
             workerRef.current = null;
             setWorkerFailed(true);
@@ -199,12 +364,22 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                 startedAt: 0,
                 completedAt: 0
             });
+            setAggregationDiagnostics(null);
         }
-    }, [payload, logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod, shouldUseWorker]);
+        return () => {
+            cancelled = true;
+            clearStreamTimer();
+        };
+    }, [logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod, shouldUseWorker, workerFailed]);
 
     const fallback = useMemo(() => {
         if (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker) return null;
-        return computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+        const startedAt = Date.now();
+        const computeStartedAt = performance.now();
+        const result = computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+        const computeMs = Math.max(0, performance.now() - computeStartedAt);
+        const completedAt = Date.now();
+        return { result, computeMs, startedAt, completedAt };
     }, [workerFailed, logs, precomputedStats, mvpWeights, aggregationStatsViewSettings, disruptionMethod, shouldUseWorker]);
     const fallbackComputeKey = useMemo(() => {
         if (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker) return 'worker';
@@ -228,11 +403,24 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         setComputeTick((prev) => prev + 1);
         setLastComputedLogCount(logs.length);
         setLastComputedToken(activeTokenRef.current);
-        setLastComputedAt(Date.now());
-    }, [fallbackComputeKey, workerFailed, logs.length, shouldUseWorker]);
+        const completedAt = Date.now();
+        setLastComputedAt(completedAt);
+        setAggregationDiagnostics({
+            mode: 'fallback',
+            logsInPayload: logs.length,
+            streamedLogs: logs.length,
+            totalLogs: logs.length,
+            startedAt: fallback?.startedAt || completedAt,
+            completedAt,
+            streamMs: 0,
+            computeMs: Math.max(0, Number(fallback?.computeMs || 0)),
+            totalMs: Math.max(0, Number(fallback?.computeMs || 0)),
+            flushId: null
+        });
+    }, [fallbackComputeKey, fallback, workerFailed, logs.length, shouldUseWorker]);
 
     const resolvedResult = (workerFailed || typeof Worker === 'undefined' || !shouldUseWorker)
-        ? (fallback ?? computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod }))
+        ? (fallback?.result ?? computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod }))
         : result;
     const resolvedAggregationProgress = (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker)
         ? aggregationProgress
@@ -254,11 +442,12 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         lastComputedAt,
         lastComputedFlushId,
         aggregationProgress: resolvedAggregationProgress,
+        aggregationDiagnostics,
         requestFlush: () => {
             const flushId = Date.now();
             pendingFlushIdRef.current = flushId;
             if (workerRef.current && !workerFailed) {
-                workerRef.current.postMessage({ type: 'flush', flushId });
+                workerRef.current.postMessage({ type: 'flush', flushId, token: activeTokenRef.current });
             }
             return flushId;
         }

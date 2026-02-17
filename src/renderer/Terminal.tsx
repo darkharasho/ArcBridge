@@ -32,7 +32,11 @@ export function Terminal({ isOpen, onClose }: TerminalProps) {
     }, [logs, isOpen]);
 
     useEffect(() => {
-        // Subscribe to logs from main process
+        if (!isOpen) {
+            window.electronAPI.setConsoleLogForwarding?.(false);
+            return;
+        }
+        window.electronAPI.setConsoleLogForwarding?.(true);
         const cleanup = window.electronAPI.onConsoleLog((log: LogEntry) => {
             setLogs(prev => {
                 const next = [...prev, log];
@@ -43,8 +47,11 @@ export function Terminal({ isOpen, onClose }: TerminalProps) {
             });
         });
 
-        return () => cleanup();
-    }, []);
+        return () => {
+            cleanup();
+            window.electronAPI.setConsoleLogForwarding?.(false);
+        };
+    }, [isOpen]);
 
     const clearLogs = () => {
         setLogs([]);

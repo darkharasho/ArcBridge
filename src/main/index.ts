@@ -89,8 +89,11 @@ function formatLogArgs(args: any[]) {
     }
 }
 
+let forwardConsoleLogsToRenderer = false;
+
 const safeSendToRenderer = (payload: { type: 'info' | 'error'; message: string; timestamp: string }) => {
     try {
+        if (!forwardConsoleLogsToRenderer) return;
         if (!win || win.isDestroyed()) return;
         if (win.webContents.isDestroyed()) return;
         win.webContents.send('console-log', payload);
@@ -207,6 +210,28 @@ process.on('unhandledRejection', (reason: any) => {
 
 const Store = require('electron-store');
 const store = new Store();
+
+const getStatsDiagnosticsLogPath = () => path.join(app.getPath('userData'), 'logs', 'stats-diagnostics.ndjson');
+
+const appendStatsDiagnosticsEntry = (entry: Record<string, any>) => {
+    const filePath = getStatsDiagnosticsLogPath();
+    let line = '';
+    try {
+        line = `${JSON.stringify(entry)}\n`;
+    } catch {
+        line = `${JSON.stringify({
+            timestamp: new Date().toISOString(),
+            source: 'main',
+            level: 'warn',
+            message: '[StatsDiag] failed-to-serialize-entry'
+        })}\n`;
+    }
+    fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+        .then(() => fs.promises.appendFile(filePath, line, 'utf-8'))
+        .catch((err: any) => {
+            originalConsoleWarn(`[Main] Failed to append stats diagnostics log: ${err?.message || err}`);
+        });
+};
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -786,6 +811,63 @@ const pruneDetailsForStats = (details: any) => {
     return pruned;
 };
 
+const buildDashboardSummaryFromDetails = (details: any) => {
+    const players = Array.isArray(details?.players) ? details.players : [];
+    const targets = Array.isArray(details?.targets) ? details.targets : [];
+    let squadCount = 0;
+    let enemyCount = 0;
+    let squadDownsDeaths = 0;
+    let enemyDownsDeaths = 0;
+    let squadDeaths = 0;
+    let enemyDeaths = 0;
+
+    players.forEach((player: any) => {
+        if (player?.notInSquad) return;
+        squadCount += 1;
+        const defenses = player?.defenses?.[0];
+        if (defenses) {
+            const downCount = Number(defenses.downCount || 0);
+            const deadCount = Number(defenses.deadCount || 0);
+            squadDownsDeaths += downCount + deadCount;
+            squadDeaths += deadCount;
+        }
+        const statsTargets = Array.isArray(player?.statsTargets) ? player.statsTargets : [];
+        statsTargets.forEach((targetStats: any) => {
+            const phase = Array.isArray(targetStats) ? targetStats[0] : null;
+            if (!phase) return;
+            const downed = Number(phase.downed || 0);
+            const killed = Number(phase.killed || 0);
+            enemyDownsDeaths += downed + killed;
+            enemyDeaths += killed;
+        });
+    });
+
+    targets.forEach((target: any) => {
+        if (!target?.isFake) enemyCount += 1;
+    });
+
+    let isWin: boolean | null = null;
+    if (players.length > 0) {
+        if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
+            isWin = enemyDownsDeaths > squadDownsDeaths;
+        } else if (typeof details?.success === 'boolean') {
+            isWin = details.success;
+        } else {
+            isWin = false;
+        }
+    }
+
+    return {
+        hasPlayers: players.length > 0,
+        hasTargets: targets.length > 0,
+        squadCount,
+        enemyCount,
+        isWin,
+        squadDeaths,
+        enemyDeaths
+    };
+};
+
 const buildManifestEntry = (details: any, filePath: string, index: number) => {
     const players = Array.isArray(details?.players) ? details.players : [];
     const squadCount = players.filter((p: any) => !p?.notInSquad).length;
@@ -1275,6 +1357,7 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
             const hasDetails = Boolean(jsonDetails && !jsonDetails.error);
             const prunedDetails = hasDetails ? pruneDetailsForStats(jsonDetails) : null;
             const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
+            const dashboardSummary = prunedDetails ? buildDashboardSummaryFromDetails(prunedDetails) : undefined;
             const detailsSummary = {
                 fightName: prunedDetails?.fightName,
                 encounterDuration: prunedDetails?.encounterDuration,
@@ -1292,7 +1375,8 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     filePath,
                     status: hasDetails ? 'calculating' : 'success',
                     detailsAvailable: hasDetails,
-                    playerCount
+                    playerCount,
+                    dashboardSummary
                 });
                 console.log(`[Main] upload-complete (bulk): ${filePath} players=${playerCount ?? 'n/a'}`);
             } else {
@@ -1302,7 +1386,8 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     filePath,
                     status: hasDetails ? 'calculating' : 'success',
                     detailsAvailable: hasDetails,
-                    playerCount
+                    playerCount,
+                    dashboardSummary
                 });
                 console.log(`[Main] upload-complete: ${filePath} summary sent`);
             }
@@ -3334,6 +3419,10 @@ if (!gotTheLock) {
             store.set('discordWebhookUrl', url);
         });
 
+        ipcMain.on('set-console-log-forwarding', (_event, enabled: boolean) => {
+            forwardConsoleLogsToRenderer = Boolean(enabled);
+        });
+
         ipcMain.on('manual-upload', (_event, filePath: string) => {
             processLogFile(filePath);
         });
@@ -3441,17 +3530,43 @@ if (!gotTheLock) {
             return { success: false, error: 'Details not found.' };
         });
 
+        ipcMain.handle('get-stats-diagnostics-log-path', async () => {
+            try {
+                const logPath = getStatsDiagnosticsLogPath();
+                await fs.promises.mkdir(path.dirname(logPath), { recursive: true });
+                return { success: true, path: logPath };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to resolve diagnostics log path.' };
+            }
+        });
+
         ipcMain.on('renderer-log', (_event, payload: { level?: 'info' | 'warn' | 'error'; message: string; meta?: any }) => {
             const level = payload?.level || 'info';
             const meta = payload?.meta;
             const message = payload?.message || '';
             const formatted = meta ? `${message} ${formatLogArgs([meta])}` : message;
             if (level === 'error') {
+                log.error(`[Renderer] ${formatted}`);
+            } else if (level === 'warn') {
+                log.warn(`[Renderer] ${formatted}`);
+            } else {
+                log.info(`[Renderer] ${formatted}`);
+            }
+            if (level === 'error') {
                 console.error(`[Renderer] ${formatted}`);
             } else if (level === 'warn') {
                 console.warn(`[Renderer] ${formatted}`);
             } else {
                 console.log(`[Renderer] ${formatted}`);
+            }
+            if (message.startsWith('[StatsDiag]')) {
+                appendStatsDiagnosticsEntry({
+                    timestamp: new Date().toISOString(),
+                    source: 'renderer',
+                    level,
+                    message,
+                    meta: meta ?? null
+                });
             }
         });
 

@@ -94,6 +94,12 @@ export const PlayerBreakdownSection = ({
     const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({ columnId: '', dir: 'desc' });
     const [subSkillSearchByPlayer, setSubSkillSearchByPlayer] = useState<Record<string, string>>({});
     const [subSkillSearchByClass, setSubSkillSearchByClass] = useState<Record<string, string>>({});
+    const getPlayerSkillEntry = (player: PlayerSkillBreakdown, skillId: string | null | undefined) => {
+        if (!skillId) return null;
+        const mapEntry = player.skillMap?.[skillId];
+        if (mapEntry) return mapEntry;
+        return player.skills.find((skill) => skill.id === skillId) || null;
+    };
     const sidebarBodyClass = isExpanded
         ? 'overflow-y-auto space-y-1 pr-1 flex-1 min-h-0'
         : `${sidebarListClass} max-h-72 overflow-y-auto`;
@@ -101,8 +107,8 @@ export const PlayerBreakdownSection = ({
         if (!activeClassBreakdown || !activeClassSkill) return activeClassRows;
         const rows = [...activeClassRows];
         rows.sort((a, b) => {
-            const aSkill = a.skillMap?.[activeClassSkill.id];
-            const bSkill = b.skillMap?.[activeClassSkill.id];
+            const aSkill = getPlayerSkillEntry(a, activeClassSkill.id);
+            const bSkill = getPlayerSkillEntry(b, activeClassSkill.id);
             const aDown = Number(aSkill?.downContribution || 0);
             const bDown = Number(bSkill?.downContribution || 0);
             const aDamage = Number(aSkill?.damage || 0);
@@ -520,7 +526,7 @@ export const PlayerBreakdownSection = ({
                                                     const values: Record<string, string> = {};
                                                     const numericValues: Record<string, number> = {};
                                                     visibleSkills.forEach((skill) => {
-                                                        const skillEntry = player.skillMap?.[skill.id];
+                                                        const skillEntry = getPlayerSkillEntry(player, skill.id);
                                                         const damage = Number(skillEntry?.damage || 0);
                                                         numericValues[skill.id] = damage;
                                                         values[skill.id] = formatTopStatValue(damage);
@@ -760,7 +766,7 @@ export const PlayerBreakdownSection = ({
                                                     const values: Record<string, string> = {};
                                                     const numericValues: Record<string, number> = {};
                                                     visibleSkills.forEach((skill) => {
-                                                        const skillEntry = player.skillMap?.[skill.id];
+                                                        const skillEntry = getPlayerSkillEntry(player, skill.id);
                                                         const damage = Number(skillEntry?.damage || 0);
                                                         numericValues[skill.id] = damage;
                                                         values[skill.id] = formatTopStatValue(damage);
@@ -858,7 +864,7 @@ export const PlayerBreakdownSection = ({
                                                 </div>
                                                 <div className={`stats-table-shell__rows ${expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-72 overflow-y-auto'}`}>
                                                     {sortedClassRows.map((player) => {
-                                                        const skillEntry = player.skillMap?.[activeClassSkill?.id || ''];
+                                                        const skillEntry = getPlayerSkillEntry(player, activeClassSkill?.id || '');
                                                         const downContribution = Number(skillEntry?.downContribution || 0);
                                                         const damage = Number(skillEntry?.damage || 0);
                                                         const dps = player.totalFightMs > 0 ? damage / (player.totalFightMs / 1000) : 0;

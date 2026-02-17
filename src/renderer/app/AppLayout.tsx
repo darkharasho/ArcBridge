@@ -51,6 +51,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
         computedStats,
         computedSkillUsageData,
         aggregationProgress,
+        aggregationDiagnostics,
         setStatsViewSettings,
         uiTheme,
         dashboardLayout,
@@ -591,7 +592,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                 disruptionMethod={disruptionMethod}
                                 statsViewSettings={statsViewSettings}
                                 precomputedStats={precomputedStats || undefined}
-                                aggregationResult={{ stats: computedStats, skillUsageData: computedSkillUsageData, aggregationProgress }}
+                                aggregationResult={{ stats: computedStats, skillUsageData: computedSkillUsageData, aggregationProgress, aggregationDiagnostics }}
                                 onStatsViewSettingsChange={(next) => {
                                     setStatsViewSettings(next);
                                     window.electronAPI?.saveSettings?.({ statsViewSettings: next });

@@ -64,8 +64,45 @@ export function useDevDatasets({
     const [logsForStats, setLogsForStats] = useState<ILogData[]>(logs);
     const statsBatchTimerRef = useRef<number | null>(null);
     const logsRef = useRef<ILogData[]>(logs);
+    const statsObjectIdMapRef = useRef<WeakMap<object, number>>(new WeakMap());
+    const nextStatsObjectIdRef = useRef(1);
+    const lastPublishedStatsKeyRef = useRef('');
     const [statsViewMounted, setStatsViewMounted] = useState(false);
     const hasPendingStatsDetails = logs.some((log) => log.detailsAvailable && !log.details);
+    const getStatsObjectId = useCallback((value: unknown): number => {
+        if (!value || typeof value !== 'object') return 0;
+        const objectValue = value as object;
+        const existing = statsObjectIdMapRef.current.get(objectValue);
+        if (typeof existing === 'number') return existing;
+        const nextId = nextStatsObjectIdRef.current;
+        nextStatsObjectIdRef.current += 1;
+        statsObjectIdMapRef.current.set(objectValue, nextId);
+        return nextId;
+    }, []);
+    const buildStatsSnapshotKey = useCallback((entries: ILogData[]) => {
+        let key = `len:${entries.length}`;
+        entries.forEach((log, index) => {
+            const details = log?.details && typeof log.details === 'object' ? log.details : null;
+            const detailsId = details ? getStatsObjectId(details) : 0;
+            const logId = details ? 0 : getStatsObjectId(log);
+            const identifier = String(log?.filePath || log?.id || `idx-${index}`);
+            const permalink = String(log?.permalink || (details as any)?.permalink || '');
+            const uploadTime = Number(log?.uploadTime || (details as any)?.uploadTime || 0);
+            const successValue = (details as any)?.success;
+            const successToken = successValue === true ? '1' : successValue === false ? '0' : 'u';
+            key += `|${identifier}:${detailsId}:${logId}:${uploadTime}:${successToken}:${permalink}`;
+        });
+        return key;
+    }, [getStatsObjectId]);
+    const publishLogsForStats = useCallback((entries: ILogData[]) => {
+        const nextKey = buildStatsSnapshotKey(entries);
+        if (nextKey === lastPublishedStatsKeyRef.current) {
+            return false;
+        }
+        lastPublishedStatsKeyRef.current = nextKey;
+        setLogsForStats((prev) => (prev === entries ? [...entries] : entries));
+        return true;
+    }, [buildStatsSnapshotKey]);
 
     const applyDevDatasetSnapshot = useCallback((snapshot: IDevDatasetSnapshot | null | undefined) => {
         const state = snapshot?.state;
@@ -144,14 +181,18 @@ export function useDevDatasets({
     }, [logs]);
 
     useEffect(() => {
-        if (bulkUploadMode && view !== 'stats') {
+        lastPublishedStatsKeyRef.current = buildStatsSnapshotKey(logsForStats);
+    }, [buildStatsSnapshotKey, logsForStats]);
+
+    useEffect(() => {
+        if (view !== 'stats') {
             if (statsBatchTimerRef.current) {
                 window.clearTimeout(statsBatchTimerRef.current);
                 statsBatchTimerRef.current = null;
             }
             return;
         }
-        if (view === 'stats' && hasPendingStatsDetails) {
+        if (bulkUploadMode || hasPendingStatsDetails) {
             if (statsBatchTimerRef.current) {
                 window.clearTimeout(statsBatchTimerRef.current);
                 statsBatchTimerRef.current = null;
@@ -161,9 +202,9 @@ export function useDevDatasets({
         if (statsBatchTimerRef.current) return;
         statsBatchTimerRef.current = window.setTimeout(() => {
             statsBatchTimerRef.current = null;
-            setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
-        }, 5000);
-    }, [logs, view, hasPendingStatsDetails, bulkUploadMode]);
+            publishLogsForStats(logsRef.current);
+        }, 1200);
+    }, [logs, view, hasPendingStatsDetails, bulkUploadMode, publishLogsForStats]);
 
     useEffect(() => {
         logsRef.current = logs;
@@ -182,18 +223,19 @@ export function useDevDatasets({
         if (view === 'stats') {
             setStatsViewMounted(true);
             // During initial hydration, defer refreshes to avoid visibly jumping totals.
-            if (!hasPendingStatsDetails) {
-                setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
+            if (!bulkUploadMode && !hasPendingStatsDetails) {
+                publishLogsForStats(logsRef.current);
             }
         }
-    }, [view, hasPendingStatsDetails]);
+    }, [view, bulkUploadMode, hasPendingStatsDetails, publishLogsForStats]);
 
     useEffect(() => {
         if (view !== 'stats') return;
+        if (bulkUploadMode) return;
         if (hasPendingStatsDetails) return;
         // Publish a single full snapshot when pending detail hydration settles.
-        setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
-    }, [view, hasPendingStatsDetails]);
+        publishLogsForStats(logsRef.current);
+    }, [view, bulkUploadMode, hasPendingStatsDetails, publishLogsForStats]);
 
     useEffect(() => {
         if (!devDatasetsEnabled || !window.electronAPI?.onDevDatasetLogsChunk) return;

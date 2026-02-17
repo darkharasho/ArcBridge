@@ -50,7 +50,7 @@ export interface PlayerSkillBreakdown {
     professionList: string[];
     totalFightMs: number;
     skills: PlayerSkillDamageEntry[];
-    skillMap: Record<string, PlayerSkillDamageEntry>;
+    skillMap?: Record<string, PlayerSkillDamageEntry>;
 }
 
 export interface ApmPlayerRow {

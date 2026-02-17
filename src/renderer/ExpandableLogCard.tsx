@@ -32,13 +32,21 @@ interface ExpandableLogCardProps {
 const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>(
     ({ log, isExpanded, onToggle, onCancel, layoutEnabled = true, motionEnabled = true, screenshotMode, embedStatSettings, disruptionMethod, screenshotSection, useClassIcons }, ref) => {
     const details = log.details || {};
-    const players: Player[] = details.players || [];
-    const targets = details.targets || [];
+    const shouldComputeDetails = isExpanded || screenshotMode || Boolean(screenshotSection);
+    const allPlayers: Player[] = Array.isArray(details.players) ? details.players : [];
+    const allTargets = Array.isArray(details.targets) ? details.targets : [];
+    let squadPlayerCount = 0;
+    let nonSquadPlayerCount = 0;
+    allPlayers.forEach((player: any) => {
+        if (player?.notInSquad) nonSquadPlayerCount += 1;
+        else squadPlayerCount += 1;
+    });
+    const players: Player[] = shouldComputeDetails ? allPlayers : [];
+    const targets = shouldComputeDetails ? allTargets : [];
     const settings = embedStatSettings || DEFAULT_EMBED_STATS;
     const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
-    const squadPlayers = players.filter((p: any) => !p.notInSquad);
-    const nonSquadPlayers = players.filter((p: any) => p.notInSquad);
-    const shouldComputeDetails = isExpanded || screenshotMode || Boolean(screenshotSection);
+    const squadPlayers = shouldComputeDetails ? players.filter((p: any) => !p.notInSquad) : [];
+    const nonSquadPlayers = shouldComputeDetails ? players.filter((p: any) => p.notInSquad) : [];
     const splitEnemiesByTeam = Boolean((log as any)?.splitEnemiesByTeam);
 
     const normalizeTeamId = (raw: any): number | null => {
@@ -63,7 +71,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
     const isCalculating = log.status === 'calculating';
     const hasError = log.status === 'error';
     const isDiscord = log.status === 'discord';
-    const playerCount = details.players?.length ?? log.playerCount ?? 0;
+    const playerCount = allPlayers.length > 0 ? allPlayers.length : (log.playerCount ?? 0);
     const statusLabel = isQueued ? 'Queued'
         : isPending ? 'Pending'
             : isUploading ? 'Parsing with dps.report'
@@ -80,6 +88,8 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                             : hasError ? 'error'
                                 : 'success';
     const isCancellable = Boolean(!log.details && !isExpanded && onCancel && (isQueued || isPending || isUploading || isRetrying));
+    const squadDisplayCount = shouldComputeDetails ? squadPlayers.length : squadPlayerCount;
+    const nonSquadDisplayCount = shouldComputeDetails ? nonSquadPlayers.length : nonSquadPlayerCount;
     const [relativeNow, setRelativeNow] = useState(() => Date.now());
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -820,7 +830,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
         <div className={`bg-white/5 rounded-xl ${compact ? 'p-3' : 'p-4'} border border-white/10 shadow-lg ${fullHeight ? 'h-full' : ''}`}>
             <h5 className={`font-black text-green-400 mb-3 uppercase tracking-widest ${fullHeight ? 'text-base' : 'text-xs'} border-b border-green-400/20 pb-2`}>Squad Summary</h5>
             <div className={`font-mono text-gray-200 space-y-2 text-left ${fullHeight ? 'text-lg' : 'text-sm'}`}>
-                <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{squadPlayers.length} {nonSquadPlayers.length > 0 ? `(+${nonSquadPlayers.length})` : ''}</span></div>
+                <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{squadDisplayCount} {nonSquadDisplayCount > 0 ? `(+${nonSquadDisplayCount})` : ''}</span></div>
                 <div className="flex justify-between"><span>DMG:</span> <span className="text-white font-bold">{squadDmg.toLocaleString()}</span></div>
                 <div className="flex justify-between"><span>DPS:</span> <span className="text-white font-bold">{Math.round(squadDps).toLocaleString()}</span></div>
                 <div className="flex justify-between"><span>Downs:</span> <span className="text-white font-bold">{squadDowns}</span></div>
@@ -966,7 +976,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                                 <span className="text-lg text-blue-400 font-mono font-bold">{encounterDurationLabel}</span>
                             </div>
                             <div className="flex items-center gap-4 mt-2 text-sm font-medium text-gray-400">
-                                <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{players.length} Players {nonSquadPlayers.length > 0 ? `(${squadPlayers.length} Squad + ${nonSquadPlayers.length} Others)` : ''}</span>
+                                <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{playerCount} Players {nonSquadDisplayCount > 0 ? `(${squadDisplayCount} Squad + ${nonSquadDisplayCount} Others)` : ''}</span>
                                 <span className="text-gray-600">•</span>
                                 <span>{formattedTime()}</span>
                             </div>
@@ -983,7 +993,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                                 <div className="bg-white/5 rounded-xl p-4 border border-white/10 shadow-lg">
                                     <h5 className="font-black text-green-400 mb-3 uppercase tracking-widest text-xs border-b border-green-400/20 pb-2">Squad Summary</h5>
                                     <div className="font-mono text-gray-200 space-y-2 text-left text-sm">
-                                        <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{squadPlayers.length} {nonSquadPlayers.length > 0 ? `(+${nonSquadPlayers.length})` : ''}</span></div>
+                                        <div className="flex justify-between"><span>Count:</span> <span className="text-white font-bold">{squadDisplayCount} {nonSquadDisplayCount > 0 ? `(+${nonSquadDisplayCount})` : ''}</span></div>
                                         <div className="flex justify-between"><span>DMG:</span> <span className="text-white font-bold">{squadDmg.toLocaleString()}</span></div>
                                         <div className="flex justify-between"><span>DPS:</span> <span className="text-white font-bold">{Math.round(squadDps).toLocaleString()}</span></div>
                                         <div className="flex justify-between"><span>Downs:</span> <span className="text-white font-bold">{squadDowns}</span></div>
@@ -1103,7 +1113,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         <span className="text-xs text-gray-500 font-mono">{encounterDurationLabel}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        <span>{statusLabel ? statusLabel : `${playerCount || '0'} Players${nonSquadPlayers.length > 0 ? ` (${squadPlayers.length} +${nonSquadPlayers.length})` : ''}`}</span>
+                        <span>{statusLabel ? statusLabel : `${playerCount || '0'} Players${nonSquadDisplayCount > 0 ? ` (${squadDisplayCount} +${nonSquadDisplayCount})` : ''}`}</span>
                         <span>•</span>
                         <span>{formattedTime()}</span>
                     </div>
@@ -1158,7 +1168,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                                         <div className="bg-white/5 rounded-lg p-3 border border-white/5">
                                             <h5 className="font-semibold text-green-400 mb-2 uppercase tracking-wider text-[10px]">Squad Summary</h5>
                                             <div className="font-mono text-gray-300 space-y-1">
-                                                <div className="flex justify-between"><span>Count:</span> <span>{squadPlayers.length} {nonSquadPlayers.length > 0 ? `(+${nonSquadPlayers.length})` : ''}</span></div>
+                                                <div className="flex justify-between"><span>Count:</span> <span>{squadDisplayCount} {nonSquadDisplayCount > 0 ? `(+${nonSquadDisplayCount})` : ''}</span></div>
                                                 <div className="flex justify-between"><span>DMG:</span> <span>{squadDmg.toLocaleString()}</span></div>
                                                 <div className="flex justify-between"><span>DPS:</span> <span>{Math.round(squadDps).toLocaleString()}</span></div>
                                                 <div className="flex justify-between"><span>Downs:</span> <span>{squadDowns}</span></div>

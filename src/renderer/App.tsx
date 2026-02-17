@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type UIEvent } from 'react';
 import { motion } from 'framer-motion';
 import { FolderOpen, UploadCloud, FileText, Settings, Image as ImageIcon, Layout, ChevronDown, Grid3X3, Trash2, FilePlus2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -28,6 +28,117 @@ const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
         buffer[i] = binaryString.charCodeAt(i);
     }
     return buffer;
+};
+
+type DashboardLogSummary = {
+    statusKey: string;
+    hasPlayers: boolean;
+    hasTargets: boolean;
+    squadCount: number;
+    enemyCount: number;
+    isWin: boolean | null;
+    squadDeaths: number;
+    enemyDeaths: number;
+};
+
+type DashboardSummaryCacheEntry = {
+    logRef: ILogData;
+    detailsRef: any;
+    status: ILogData['status'];
+    error: any;
+    detailsAvailable: boolean | undefined;
+    summary: DashboardLogSummary;
+};
+
+const resolveDashboardStatus = (log: ILogData) => {
+    if (log.error || log.status === 'error') return 'error';
+    if (log.status === 'queued' || log.status === 'pending' || log.status === 'uploading' || log.status === 'retrying' || log.status === 'discord') {
+        return log.status;
+    }
+    if (log.detailsAvailable && !log.details) return 'calculating';
+    if (log.status === 'success' || log.details) return 'success';
+    if (log.status === 'calculating') return 'calculating';
+    return log.status || 'queued';
+};
+
+const buildDashboardLogSummary = (log: ILogData): DashboardLogSummary => {
+    const precomputed = (log as any)?.dashboardSummary;
+    if (precomputed && typeof precomputed === 'object') {
+        const hasPlayers = Boolean(precomputed.hasPlayers);
+        const hasTargets = Boolean(precomputed.hasTargets);
+        return {
+            statusKey: resolveDashboardStatus(log),
+            hasPlayers,
+            hasTargets,
+            squadCount: Math.max(0, Number(precomputed.squadCount || 0)),
+            enemyCount: Math.max(0, Number(precomputed.enemyCount || 0)),
+            isWin: precomputed.isWin === true ? true : precomputed.isWin === false ? false : null,
+            squadDeaths: Math.max(0, Number(precomputed.squadDeaths || 0)),
+            enemyDeaths: Math.max(0, Number(precomputed.enemyDeaths || 0))
+        };
+    }
+
+    const details: any = log.details;
+    const players = Array.isArray(details?.players) ? details.players : [];
+    const targets = Array.isArray(details?.targets) ? details.targets : [];
+
+    let squadCount = 0;
+    let enemyCount = 0;
+    let squadDownsDeaths = 0;
+    let enemyDownsDeaths = 0;
+    let squadDeaths = 0;
+    let enemyDeaths = 0;
+
+    for (let i = 0; i < players.length; i += 1) {
+        const player = players[i];
+        if (player?.notInSquad) continue;
+        squadCount += 1;
+
+        const defenses = player?.defenses?.[0];
+        if (defenses) {
+            const downCount = Number(defenses.downCount || 0);
+            const deadCount = Number(defenses.deadCount || 0);
+            squadDownsDeaths += downCount + deadCount;
+            squadDeaths += deadCount;
+        }
+
+        const statsTargets = Array.isArray(player?.statsTargets) ? player.statsTargets : [];
+        for (let targetIndex = 0; targetIndex < statsTargets.length; targetIndex += 1) {
+            const targetStats = statsTargets[targetIndex];
+            const phase = Array.isArray(targetStats) ? targetStats[0] : null;
+            if (!phase) continue;
+            const downed = Number(phase.downed || 0);
+            const killed = Number(phase.killed || 0);
+            enemyDownsDeaths += downed + killed;
+            enemyDeaths += killed;
+        }
+    }
+
+    for (let i = 0; i < targets.length; i += 1) {
+        if (!targets[i]?.isFake) enemyCount += 1;
+    }
+
+    let isWin: boolean | null = null;
+    if (players.length > 0) {
+        if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
+            isWin = enemyDownsDeaths > squadDownsDeaths;
+        } else if (typeof details?.success === 'boolean') {
+            isWin = details.success;
+        } else {
+            isWin = false;
+        }
+    }
+
+    return {
+        statusKey: resolveDashboardStatus(log),
+        hasPlayers: players.length > 0,
+        hasTargets: targets.length > 0,
+        squadCount,
+        enemyCount,
+        isWin,
+        squadDeaths,
+        enemyDeaths
+    };
 };
 
 function App() {
@@ -79,6 +190,7 @@ function App() {
 
     // View State
     const [view, setView] = useState<'dashboard' | 'stats' | 'history' | 'settings'>('dashboard');
+    const viewRef = useRef(view);
 
     // App Version
     const [appVersion, setAppVersion] = useState<string>('...');
@@ -102,6 +214,81 @@ function App() {
     const logsListRef = useRef<HTMLDivElement | null>(null);
     const bulkUploadExpectedRef = useRef<number | null>(null);
     const bulkUploadCompletedRef = useRef(0);
+    const [logsViewportHeight, setLogsViewportHeight] = useState(0);
+    const [logsScrollTop, setLogsScrollTop] = useState(0);
+    const logsScrollRafRef = useRef<number | null>(null);
+    const logsScrollTopRef = useRef(0);
+    const dashboardSummaryCacheRef = useRef<Map<string, DashboardSummaryCacheEntry>>(new Map());
+    const pendingLogUpdatesRef = useRef<Map<string, ILogData>>(new Map());
+    const pendingLogFlushTimerRef = useRef<number | null>(null);
+    const setLogsDeferred = useCallback((updater: (currentLogs: ILogData[]) => ILogData[]) => {
+        startTransition(() => {
+            setLogs(updater);
+        });
+    }, []);
+    const normalizeIncomingStatus = useCallback((candidate: ILogData): ILogData => {
+        if (candidate.status === 'success' && candidate.detailsAvailable && !candidate.details) {
+            return { ...candidate, status: 'calculating' as const };
+        }
+        return candidate;
+    }, []);
+    const hasLogChanges = useCallback((existing: ILogData, merged: ILogData) => {
+        const keys = new Set<string>([
+            ...Object.keys(existing),
+            ...Object.keys(merged)
+        ]);
+        for (const key of keys) {
+            const typedKey = key as keyof ILogData;
+            if (existing[typedKey] !== merged[typedKey]) {
+                return true;
+            }
+        }
+        return false;
+    }, []);
+    const flushQueuedLogUpdates = useCallback(() => {
+        pendingLogFlushTimerRef.current = null;
+        if (pendingLogUpdatesRef.current.size === 0) return;
+        const updatesByIdentity = new Map(pendingLogUpdatesRef.current);
+        pendingLogUpdatesRef.current.clear();
+        setLogsDeferred((currentLogs) => {
+            if (updatesByIdentity.size === 0) return currentLogs;
+            let changed = false;
+            const consumed = new Set<string>();
+            const nextLogs = currentLogs.map((existing) => {
+                const identity = String(existing.filePath || existing.id || '');
+                if (!identity) return existing;
+                const incoming = updatesByIdentity.get(identity);
+                if (!incoming) return existing;
+                consumed.add(identity);
+                const merged = normalizeIncomingStatus({ ...existing, ...incoming });
+                if (!hasLogChanges(existing, merged)) return existing;
+                changed = true;
+                return merged;
+            });
+            const newLogs: ILogData[] = [];
+            updatesByIdentity.forEach((incoming, identity) => {
+                if (consumed.has(identity)) return;
+                newLogs.push(normalizeIncomingStatus(incoming));
+                changed = true;
+            });
+            if (!changed) return currentLogs;
+            if (newLogs.length === 0) return nextLogs;
+            return [...newLogs.reverse(), ...nextLogs];
+        });
+    }, [hasLogChanges, normalizeIncomingStatus, setLogsDeferred]);
+    const queueLogUpdate = useCallback((incoming: ILogData) => {
+        const identity = incoming.filePath || incoming.id;
+        if (!identity) return;
+        pendingLogUpdatesRef.current.set(String(identity), incoming);
+        if (pendingLogFlushTimerRef.current !== null) return;
+        const pendingCount = pendingLogUpdatesRef.current.size;
+        const delayMs = bulkUploadModeRef.current
+            ? (pendingCount > 20 ? 140 : 90)
+            : 16;
+        pendingLogFlushTimerRef.current = window.setTimeout(() => {
+            flushQueuedLogUpdates();
+        }, delayMs);
+    }, [flushQueuedLogUpdates]);
 
     const { webUploadState, setWebUploadState, handleWebUpload } = useWebUpload();
     const devDatasetsState = useDevDatasets({
@@ -214,6 +401,7 @@ function App() {
         lastComputedAt,
         lastComputedFlushId,
         aggregationProgress,
+        aggregationDiagnostics,
         requestFlush
     } = useStatsAggregationWorker({
         logs: logsForStats,
@@ -224,6 +412,9 @@ function App() {
     });
     const { stats: computedStats, skillUsageData: computedSkillUsageData } = aggregationResult;
     const lastRangeErrorLogAtRef = useRef(0);
+    const statsDiagPathLoggedRef = useRef(false);
+    const lastStatsDiagProgressKeyRef = useRef('');
+    const lastStatsDiagCycleKeyRef = useRef('');
 
     useEffect(() => {
         const shouldLog = (name: unknown, message: unknown) => {
@@ -281,6 +472,73 @@ function App() {
         };
     }, []);
 
+    useEffect(() => {
+        if (statsDiagPathLoggedRef.current) return;
+        if (!window.electronAPI?.getStatsDiagnosticsLogPath) return;
+        statsDiagPathLoggedRef.current = true;
+        window.electronAPI.getStatsDiagnosticsLogPath()
+            .then((resp) => {
+                if (!resp?.success || !resp.path) return;
+                window.electronAPI?.logToMain?.({
+                    level: 'info',
+                    message: '[StatsDiag] log-path',
+                    meta: { path: resp.path }
+                });
+            })
+            .catch(() => {
+                // No-op: diagnostics path lookup is best-effort.
+            });
+    }, []);
+
+    useEffect(() => {
+        const logger = window.electronAPI?.logToMain;
+        if (!logger) return;
+        const active = Boolean(aggregationProgress?.active);
+        const phase = String(aggregationProgress?.phase || 'idle');
+        const total = Math.max(0, Number(aggregationProgress?.total || 0));
+        const streamed = Math.min(total, Math.max(0, Number(aggregationProgress?.streamed || 0)));
+        const startedAt = Number(aggregationProgress?.startedAt || 0);
+        const phaseBucket = phase === 'streaming' && total > 0
+            ? Math.min(4, Math.floor((streamed / total) * 4))
+            : -1;
+        const key = `${active ? 1 : 0}|${phase}|${total}|${phaseBucket}|${startedAt}`;
+        if (lastStatsDiagProgressKeyRef.current === key) return;
+        lastStatsDiagProgressKeyRef.current = key;
+        logger({
+            level: 'info',
+            message: '[StatsDiag] progress',
+            meta: {
+                active,
+                phase,
+                streamed,
+                total,
+                startedAt,
+                completedAt: Number(aggregationProgress?.completedAt || 0),
+                phaseBucket
+            }
+        });
+    }, [aggregationProgress]);
+
+    useEffect(() => {
+        const logger = window.electronAPI?.logToMain;
+        if (!logger || !aggregationDiagnostics) return;
+        const key = [
+            aggregationDiagnostics.mode,
+            aggregationDiagnostics.completedAt,
+            aggregationDiagnostics.flushId ?? 'no-flush',
+            aggregationDiagnostics.logsInPayload,
+            aggregationDiagnostics.computeMs,
+            aggregationDiagnostics.totalMs
+        ].join('|');
+        if (lastStatsDiagCycleKeyRef.current === key) return;
+        lastStatsDiagCycleKeyRef.current = key;
+        logger({
+            level: 'info',
+            message: '[StatsDiag] cycle',
+            meta: aggregationDiagnostics
+        });
+    }, [aggregationDiagnostics]);
+
     const lastUploadCompleteAtRef = useRef(0);
     const bulkStatsAwaitingRef = useRef(false);
     const bulkFlushIdRef = useRef<number | null>(null);
@@ -303,7 +561,7 @@ function App() {
         if (lastComputedAt < lastUploadCompleteAtRef.current) {
             return;
         }
-        setLogs((currentLogs) => {
+        setLogsDeferred((currentLogs) => {
             let changed = false;
             const next = currentLogs.map<ILogData>((log) => {
                 if (log.status === 'calculating') {
@@ -319,7 +577,7 @@ function App() {
         });
         bulkStatsAwaitingRef.current = false;
         bulkFlushIdRef.current = null;
-    }, [computeTick, lastComputedLogCount, lastComputedToken, activeToken, lastComputedAt, lastComputedFlushId, logsForStats.length]);
+    }, [computeTick, lastComputedLogCount, lastComputedToken, activeToken, lastComputedAt, lastComputedFlushId, logsForStats.length, setLogsDeferred]);
 
     const enabledTopListCount = [
         embedStatSettings.showDamage,
@@ -370,26 +628,107 @@ function App() {
 
     useEffect(() => {
         bulkUploadActiveRef.current = isBulkUploadActive;
-        if (!isBulkUploadActive) {
+        if (!isBulkUploadActive && view === 'stats') {
             scheduleDetailsHydration();
         }
-    }, [isBulkUploadActive]);
+    }, [isBulkUploadActive, view]);
 
     useEffect(() => {
         bulkUploadModeRef.current = bulkUploadMode;
     }, [bulkUploadMode]);
 
     useEffect(() => {
+        viewRef.current = view;
+    }, [view]);
+
+    useEffect(() => {
+        if (view !== 'stats') return;
         if (!bulkUploadMode) {
             scheduleDetailsHydration();
         }
-    }, [bulkUploadMode, logs]);
+    }, [bulkUploadMode, logs, view]);
 
     useEffect(() => {
         if (view === 'stats') {
             scheduleDetailsHydration(true);
         }
     }, [view]);
+
+    const handleLogsListScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+        logsScrollTopRef.current = event.currentTarget.scrollTop;
+        if (logsScrollRafRef.current !== null) return;
+        logsScrollRafRef.current = window.requestAnimationFrame(() => {
+            logsScrollRafRef.current = null;
+            setLogsScrollTop(logsScrollTopRef.current);
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (logsScrollRafRef.current !== null) {
+                window.cancelAnimationFrame(logsScrollRafRef.current);
+                logsScrollRafRef.current = null;
+            }
+            if (pendingLogFlushTimerRef.current !== null) {
+                window.clearTimeout(pendingLogFlushTimerRef.current);
+                pendingLogFlushTimerRef.current = null;
+            }
+            if (hydrateDetailsQueueRef.current !== null) {
+                const cancelIdle = (window as any).cancelIdleCallback;
+                if (typeof cancelIdle === 'function') {
+                    cancelIdle(hydrateDetailsQueueRef.current);
+                } else {
+                    window.clearTimeout(hydrateDetailsQueueRef.current);
+                }
+                hydrateDetailsQueueRef.current = null;
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const node = logsListRef.current;
+        if (!node) return;
+        const updateViewport = () => {
+            setLogsViewportHeight(node.clientHeight);
+            setLogsScrollTop(node.scrollTop);
+            logsScrollTopRef.current = node.scrollTop;
+        };
+        updateViewport();
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', updateViewport);
+            return () => {
+                window.removeEventListener('resize', updateViewport);
+            };
+        }
+        const observer = new ResizeObserver(() => updateViewport());
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [view, logs.length]);
+
+    const logListVirtualization = useMemo(() => {
+        const rowHeight = 132;
+        const overscan = 6;
+        const canVirtualize = logs.length > 30 && !expandedLogId && !screenshotData;
+        if (!canVirtualize || logsViewportHeight <= 0) {
+            return {
+                enabled: false,
+                startIndex: 0,
+                topSpacer: 0,
+                bottomSpacer: 0,
+                visibleLogs: logs
+            };
+        }
+        const viewportRows = Math.max(1, Math.ceil(logsViewportHeight / rowHeight));
+        const startIndex = Math.max(0, Math.floor(Math.max(0, logsScrollTop) / rowHeight) - overscan);
+        const endIndex = Math.min(logs.length, startIndex + viewportRows + overscan * 2);
+        return {
+            enabled: true,
+            startIndex,
+            topSpacer: startIndex * rowHeight,
+            bottomSpacer: Math.max(0, (logs.length - endIndex) * rowHeight),
+            visibleLogs: logs.slice(startIndex, endIndex)
+        };
+    }, [logs, logsViewportHeight, logsScrollTop, expandedLogId, screenshotData]);
 
     const fetchLogDetails = useCallback(async (log: ILogData) => {
         if (log.details || !log.filePath || !window.electronAPI?.getLogDetails) return;
@@ -428,7 +767,6 @@ function App() {
 
     const pendingDetailsRef = useRef<Set<string>>(new Set());
     const hydrateDetailsQueueRef = useRef<number | null>(null);
-    const incrementalStatsRefreshRef = useRef<number | null>(null);
 
     const scheduleDetailsHydration = useCallback((force = false) => {
         if (hydrateDetailsQueueRef.current !== null && !force) return;
@@ -438,7 +776,8 @@ function App() {
         hydrateDetailsQueueRef.current = schedule(async () => {
             hydrateDetailsQueueRef.current = null;
             if (!window.electronAPI?.getLogDetails) return;
-            const candidates = logsRef.current
+            const statsViewActive = viewRef.current === 'stats';
+            const allCandidates = logsRef.current
                 .filter((log) => log.detailsAvailable && !log.details && log.filePath)
                 .sort((a, b) => {
                     const aTime = a.uploadTime || 0;
@@ -446,8 +785,33 @@ function App() {
                     if (aTime !== bTime) return aTime - bTime;
                     return (a.filePath || '').localeCompare(b.filePath || '');
                 });
-            if (candidates.length === 0) return;
+            if (allCandidates.length === 0) return;
+            const maxPerPass = statsViewActive ? allCandidates.length : Math.min(allCandidates.length, 2);
+            const candidates = allCandidates.slice(0, maxPerPass);
+            const hasMore = allCandidates.length > candidates.length;
+            const hydratedBatch: Array<{ filePath: string; details: any }> = [];
+            const flushHydratedBatch = () => {
+                if (hydratedBatch.length === 0) return;
+                const batch = hydratedBatch.splice(0, hydratedBatch.length);
+                setLogsDeferred((currentLogs) => {
+                    if (batch.length === 0) return currentLogs;
+                    const updatesByPath = new Map(batch.map((entry) => [entry.filePath, entry.details]));
+                    let changed = false;
+                    const next = currentLogs.map((entry) => {
+                        const details = updatesByPath.get(entry.filePath || '');
+                        if (!details) return entry;
+                        changed = true;
+                        return {
+                            ...entry,
+                            details,
+                            status: 'success' as const
+                        };
+                    });
+                    return changed ? next : currentLogs;
+                });
+            };
             const maxConcurrent = 1;
+            const flushThreshold = statsViewActive ? 8 : 2;
             let nextIndex = 0;
             const runWorker = async () => {
                 while (nextIndex < candidates.length) {
@@ -460,18 +824,13 @@ function App() {
                     try {
                         const result = await window.electronAPI.getLogDetails({ filePath });
                         if (result?.success && result.details) {
-                            setLogs((currentLogs) => {
-                                const idx = currentLogs.findIndex((entry) => entry.filePath === filePath);
-                                if (idx < 0) return currentLogs;
-                                const updated = [...currentLogs];
-                                const existing = updated[idx];
-                                updated[idx] = {
-                                    ...existing,
-                                    details: result.details,
-                                    status: 'success'
-                                };
-                                return updated;
-                            });
+                            hydratedBatch.push({ filePath, details: result.details });
+                            if (hydratedBatch.length >= flushThreshold) {
+                                flushHydratedBatch();
+                            }
+                        }
+                        if (!statsViewActive) {
+                            await new Promise((resolve) => window.setTimeout(resolve, 40));
                         }
                     } finally {
                         pendingDetailsRef.current.delete(filePath);
@@ -479,40 +838,32 @@ function App() {
                 }
             };
             await Promise.all(Array.from({ length: Math.min(maxConcurrent, candidates.length) }, () => runWorker()));
+            flushHydratedBatch();
+            if (hasMore) {
+                window.setTimeout(() => scheduleDetailsHydration(true), statsViewActive ? 0 : 180);
+            }
         });
-    }, []);
-
-    const scheduleIncrementalStatsRefresh = useCallback(() => {
-        if (view !== 'stats') return;
-        if (incrementalStatsRefreshRef.current !== null) return;
-        incrementalStatsRefreshRef.current = window.setTimeout(() => {
-            incrementalStatsRefreshRef.current = null;
-            setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
-        }, 1500);
-    }, [view]);
+    }, [setLogsDeferred]);
 
     const endBulkUpload = useCallback(() => {
         bulkUploadExpectedRef.current = null;
         bulkUploadCompletedRef.current = 0;
         setBulkUploadMode(false);
-        bulkStatsAwaitingRef.current = true;
-        setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
-        const flushId = requestFlush?.();
-        if (flushId) {
-            bulkFlushIdRef.current = flushId;
-        }
-        window.setTimeout(() => scheduleDetailsHydration(true), 0);
-        window.setTimeout(() => scheduleDetailsHydration(true), 500);
-    }, [scheduleDetailsHydration, requestFlush]);
-
-    useEffect(() => {
-        return () => {
-            if (incrementalStatsRefreshRef.current !== null) {
-                window.clearTimeout(incrementalStatsRefreshRef.current);
-                incrementalStatsRefreshRef.current = null;
+        if (viewRef.current === 'stats') {
+            bulkStatsAwaitingRef.current = true;
+            setLogsForStats((prev) => (prev === logsRef.current ? [...logsRef.current] : logsRef.current));
+            const flushId = requestFlush?.();
+            if (flushId) {
+                bulkFlushIdRef.current = flushId;
             }
-        };
-    }, []);
+            window.setTimeout(() => scheduleDetailsHydration(true), 0);
+            window.setTimeout(() => scheduleDetailsHydration(true), 500);
+        } else {
+            bulkStatsAwaitingRef.current = false;
+            bulkFlushIdRef.current = null;
+            window.setTimeout(() => scheduleDetailsHydration(), 180);
+        }
+    }, [scheduleDetailsHydration, requestFlush, setLogsForStats]);
 
     useEffect(() => {
         if (!webhookDropdownOpen) return;
@@ -571,21 +922,55 @@ function App() {
     // Stats calculation
     const { totalUploads, statusCounts, uploadPieData, avgSquadSize, avgEnemies, winLoss, squadKdr } = useMemo(() => {
         const totalUploads = logs.length;
-        const resolveDashboardStatus = (log: ILogData) => {
-            if (log.error || log.status === 'error') return 'error';
-            if (log.status === 'queued' || log.status === 'pending' || log.status === 'uploading' || log.status === 'retrying' || log.status === 'discord') {
-                return log.status;
+        const previousCache = dashboardSummaryCacheRef.current;
+        const nextCache = new Map<string, DashboardSummaryCacheEntry>();
+        const statusCounts: Record<string, number> = {};
+        let logsWithPlayerDetails = 0;
+        let logsWithTargetDetails = 0;
+        let totalSquadSize = 0;
+        let totalEnemySize = 0;
+        let wins = 0;
+        let losses = 0;
+        let totalSquadDeaths = 0;
+        let totalEnemyDeaths = 0;
+
+        logs.forEach((log, index) => {
+            const cacheKey = String(log.filePath || log.id || `idx-${index}`);
+            const detailsRef = (log as any)?.details;
+            const cached = previousCache.get(cacheKey);
+            const canReuse = Boolean(
+                cached
+                && cached.logRef === log
+                && cached.detailsRef === detailsRef
+                && cached.status === log.status
+                && cached.error === log.error
+                && cached.detailsAvailable === log.detailsAvailable
+            );
+            const summary = canReuse ? cached!.summary : buildDashboardLogSummary(log);
+            nextCache.set(cacheKey, {
+                logRef: log,
+                detailsRef,
+                status: log.status,
+                error: log.error,
+                detailsAvailable: log.detailsAvailable,
+                summary
+            });
+
+            statusCounts[summary.statusKey] = (statusCounts[summary.statusKey] || 0) + 1;
+            if (summary.hasPlayers) {
+                logsWithPlayerDetails += 1;
+                totalSquadSize += summary.squadCount;
             }
-            if (log.detailsAvailable && !log.details) return 'calculating';
-            if (log.status === 'success' || log.details) return 'success';
-            if (log.status === 'calculating') return 'calculating';
-            return log.status || 'queued';
-        };
-        const statusCounts = logs.reduce<Record<string, number>>((acc, log) => {
-            const key = resolveDashboardStatus(log);
-            acc[key] = (acc[key] || 0) + 1;
-            return acc;
-        }, {});
+            if (summary.hasTargets) {
+                logsWithTargetDetails += 1;
+                totalEnemySize += summary.enemyCount;
+            }
+            if (summary.isWin === true) wins += 1;
+            else if (summary.isWin === false) losses += 1;
+            totalSquadDeaths += summary.squadDeaths;
+            totalEnemyDeaths += summary.enemyDeaths;
+        });
+        dashboardSummaryCacheRef.current = nextCache;
 
         const uploadStatusBreakdown = [
             { key: 'queued', label: 'Queued', color: '#94a3b8' },
@@ -610,76 +995,13 @@ function App() {
             ? uploadStatusBreakdown
             : [{ key: 'none', label: 'No logs', color: '#334155', count: 1 }];
 
-        const logsWithPlayerDetails = logs.filter((log) => Array.isArray(log.details?.players) && log.details.players.length > 0);
-        const logsWithTargetDetails = logs.filter((log) => Array.isArray(log.details?.targets) && log.details.targets.length > 0);
-        const avgSquadSize = logsWithPlayerDetails.length > 0
-            ? Math.round(logsWithPlayerDetails.reduce((acc, log) => acc + (log.details?.players?.filter((p: any) => !p.notInSquad)?.length || 0), 0) / logsWithPlayerDetails.length)
+        const avgSquadSize = logsWithPlayerDetails > 0
+            ? Math.round(totalSquadSize / logsWithPlayerDetails)
             : 0;
-        const avgEnemies = logsWithTargetDetails.length > 0
-            ? Math.round(logsWithTargetDetails.reduce((acc, log) => acc + (log.details?.targets?.filter((t: any) => !t.isFake)?.length || 0), 0) / logsWithTargetDetails.length)
+        const avgEnemies = logsWithTargetDetails > 0
+            ? Math.round(totalEnemySize / logsWithTargetDetails)
             : 0;
-
-        const getFightDownsDeaths = (details: any) => {
-            const players = details?.players || [];
-            const squadPlayers = players.filter((p: any) => !p.notInSquad);
-            let squadDownsDeaths = 0;
-            let enemyDownsDeaths = 0;
-            let squadDeaths = 0;
-            let enemyDeaths = 0;
-
-            squadPlayers.forEach((p: any) => {
-                const defenses = p.defenses?.[0];
-                if (!defenses) return;
-                const downCount = Number(defenses.downCount || 0);
-                const deadCount = Number(defenses.deadCount || 0);
-                squadDownsDeaths += downCount + deadCount;
-                squadDeaths += deadCount;
-            });
-
-            squadPlayers.forEach((p: any) => {
-                if (!p.statsTargets || p.statsTargets.length === 0) return;
-                p.statsTargets.forEach((targetStats: any) => {
-                    const st = targetStats?.[0];
-                    if (!st) return;
-                    const downed = Number(st.downed || 0);
-                    const killed = Number(st.killed || 0);
-                    enemyDownsDeaths += downed + killed;
-                    enemyDeaths += killed;
-                });
-            });
-
-            return { squadDownsDeaths, enemyDownsDeaths, squadDeaths, enemyDeaths };
-        };
-
-        const getFightOutcome = (details: any) => {
-            const { squadDownsDeaths, enemyDownsDeaths } = getFightDownsDeaths(details);
-            if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
-                return enemyDownsDeaths > squadDownsDeaths;
-            }
-            if (typeof details?.success === 'boolean') return details.success;
-            return false;
-        };
-
-        const winLoss = logs.reduce(
-            (acc, log) => {
-                const details: any = log.details;
-                if (!details?.players) return acc;
-                const isWin = getFightOutcome(details);
-                if (isWin) acc.wins += 1;
-                else acc.losses += 1;
-                return acc;
-            },
-            { wins: 0, losses: 0 }
-        );
-
-        let totalSquadDeaths = 0;
-        let totalEnemyDeaths = 0;
-        logs.forEach((log) => {
-            const details: any = log.details;
-            const { squadDeaths, enemyDeaths } = getFightDownsDeaths(details);
-            totalSquadDeaths += squadDeaths;
-            totalEnemyDeaths += enemyDeaths;
-        });
+        const winLoss = { wins, losses };
         const denom = totalSquadDeaths === 0 ? 1 : totalSquadDeaths;
         const squadKdr = Number((totalEnemyDeaths / denom).toFixed(2));
 
@@ -766,37 +1088,13 @@ function App() {
                 setUploadRetryQueue(queue);
             })
             : null;
-        const upsertIncomingLog = (currentLogs: ILogData[], incoming: ILogData) => {
-            const identity = incoming.filePath || incoming.id;
-            if (!identity) return currentLogs;
-            const existingIndex = currentLogs.findIndex((log) => (log.filePath || log.id) === identity);
-            const normalizeStatus = (candidate: ILogData): ILogData => {
-                if (candidate.status === 'success' && candidate.detailsAvailable && !candidate.details) {
-                    return { ...candidate, status: 'calculating' as const };
-                }
-                return candidate;
-            };
-            if (existingIndex < 0) {
-                return [normalizeStatus(incoming), ...currentLogs];
-            }
-            const existing = currentLogs[existingIndex];
-            const merged = normalizeStatus({ ...existing, ...incoming });
-            const hasChanges = Object.keys(merged).some((key) => {
-                const typedKey = key as keyof ILogData;
-                return existing[typedKey] !== merged[typedKey];
-            });
-            if (!hasChanges) return currentLogs;
-            const updated = [...currentLogs];
-            updated[existingIndex] = merged;
-            return updated;
-        };
 
         // Listen for status updates during upload process
         const cleanupStatus = window.electronAPI.onUploadStatus((data: ILogData) => {
             if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
                 return;
             }
-            setLogs((currentLogs) => upsertIncomingLog(currentLogs, data));
+            queueLogUpdate(data);
         });
 
         const cleanupUpload = window.electronAPI.onUploadComplete((data: ILogData) => {
@@ -811,18 +1109,14 @@ function App() {
                 playerCount: data.details?.players?.length
             });
             if (bulkUploadModeRef.current) {
-                setLogs((currentLogs) => upsertIncomingLog(currentLogs, data));
-                if (data.detailsAvailable) {
-                    scheduleDetailsHydration();
-                    scheduleIncrementalStatsRefresh();
-                }
+                queueLogUpdate(data);
                 bulkUploadCompletedRef.current += 1;
                 if (bulkUploadExpectedRef.current !== null && bulkUploadCompletedRef.current >= bulkUploadExpectedRef.current) {
                     endBulkUpload();
                 }
                 return;
             }
-            setLogs((currentLogs) => upsertIncomingLog(currentLogs, data));
+            queueLogUpdate(data);
         });
 
         const cleanupScreenshot = window.electronAPI.onRequestScreenshot(async (data: ILogData) => {
@@ -1038,6 +1332,11 @@ function App() {
         });
 
         return () => {
+            if (pendingLogFlushTimerRef.current !== null) {
+                window.clearTimeout(pendingLogFlushTimerRef.current);
+                pendingLogFlushTimerRef.current = null;
+            }
+            pendingLogUpdatesRef.current.clear();
             cleanupStatus();
             cleanupUpload();
             cleanupScreenshot();
@@ -1743,6 +2042,7 @@ function App() {
             <div
                 className="flex-1 overflow-y-auto pr-2 matte-log-list"
                 ref={logsListRef}
+                onScroll={handleLogsListScroll}
             >
                 {logs.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-20">
@@ -1751,9 +2051,12 @@ function App() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {logs.map((log) => (
+                        {logListVirtualization.enabled && logListVirtualization.topSpacer > 0 && (
+                            <div aria-hidden="true" style={{ height: `${logListVirtualization.topSpacer}px` }} />
+                        )}
+                        {logListVirtualization.visibleLogs.map((log) => (
                             <ExpandableLogCard
-                                key={log.filePath}
+                                key={log.filePath || log.id}
                                 log={log}
                                 isExpanded={expandedLogId === log.filePath}
                                 onToggle={() => {
@@ -1778,6 +2081,9 @@ function App() {
                                 useClassIcons={true}
                             />
                         ))}
+                        {logListVirtualization.enabled && logListVirtualization.bottomSpacer > 0 && (
+                            <div aria-hidden="true" style={{ height: `${logListVirtualization.bottomSpacer}px` }} />
+                        )}
                     </div>
                 )}
             </div>
@@ -1791,7 +2097,7 @@ function App() {
         filePickerOpen, setFilePickerOpen, setFilePickerError, setFilePickerSelected, filePickerError, filePickerSelected, loadLogFiles, logDirectory, selectSinceOpen, setSelectSinceOpen, selectDayOpen, setSelectDayOpen, selectDayDate, setSelectDayDate, setSelectSinceView, setSelectSinceDate, setSelectSinceHour, setSelectSinceMinute, setSelectSinceMeridiem, setSelectSinceMonthOpen, selectSinceDate, selectSinceHour, selectSinceMinute, selectSinceMeridiem, selectSinceView, selectSinceMonthOpen, filePickerFilter, setFilePickerFilter, filePickerLoading, filePickerAvailable, filePickerAll, filePickerListRef, setFilePickerAtBottom, lastPickedIndexRef, filePickerHasMore, filePickerAtBottom, setFilePickerMonthWindow, ensureMonthWindowForSince, handleAddSelectedFiles, uiTheme
     };
     const appLayoutCtx = {
-        shellClassName, isDev, arcbridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, devDatasetsEnabled, setDevDatasetsOpen, webUploadState, isModernTheme, setWebUploadState, statsViewMounted, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, precomputedStats, computedStats, computedSkillUsageData, aggregationProgress, setStatsViewSettings, uiTheme, dashboardLayout, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setUiTheme, setKineticFontStyle, setDashboardLayout, setGithubWebTheme, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, statsTilesPanel, activityPanel, configurationPanel, screenshotData, embedStatSettings, showClassIcons, enabledTopListCount, devDatasetsCtx, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore
+        shellClassName, isDev, arcbridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, devDatasetsEnabled, setDevDatasetsOpen, webUploadState, isModernTheme, setWebUploadState, statsViewMounted, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, precomputedStats, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, setStatsViewSettings, uiTheme, dashboardLayout, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setUiTheme, setKineticFontStyle, setDashboardLayout, setGithubWebTheme, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, statsTilesPanel, activityPanel, configurationPanel, screenshotData, embedStatSettings, showClassIcons, enabledTopListCount, devDatasetsCtx, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore
     };
 
     return <AppLayout ctx={appLayoutCtx} />;
