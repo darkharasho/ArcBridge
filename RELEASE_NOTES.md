@@ -1,20 +1,23 @@
 # Release Notes
 
-Version v1.35.0 — February 15, 2026
+Version v1.35.1 — February 17, 2026
 
 ## 🌟 Highlights
-- New in-app GitHub report viewer lets you review GitHub reports without leaving ArcBridge.
-- Web reports loaded in the app iframe now consistently enforce the same theme for a cohesive look.
-- History navigation has been stabilized for more reliable access to past reports.
+- Fixed: all uploaded fights now stay visible in the dashboard coverage.
+- Quick wins: dashboard aggregates are computed right after bulk uploads finish for faster insights.
+- Stats flow feels more approachable with a smoother timeline and progress UI.
 
 ## 🛠️ Improvements
-- The in-app GitHub report viewer is integrated for easier review inside ArcBridge.
-- Iframe-based web reports now force the selected theme for a uniform appearance.
-- History view navigation refinements help you browse past reports more smoothly.
+- More robust caching to improve performance and resilience.
+- Stabilized the stats aggregation pipeline to make timeline progress more predictable.
+- Slowed-heavy log processing is smoothed to keep the UI responsive during long tasks.
 
 ## 🧯 Fixes
-- Stabilized in-app report navigation URLs to prevent broken links.
-- Removed the cookie override that could affect how reports load.
+- Fixed an issue where some uploaded fights could disappear from dashboard coverage; all fights now show up reliably.
+- Deduplicated concurrent requests for the same detailed fight data to avoid extra network calls.
+- Cached terminal parse failures to prevent repeated heavy retries after errors.
+- Prevented empty-log hydration deadlocks during dashboard preparation.
+- Hardened stats syncing with regression coverage to improve reliability.
 
 ## ⚠️ Breaking Changes
 None.
