@@ -698,12 +698,14 @@ type SpikeFight = {
     const normalizeSpikeValueEntry = (entry: any) => {
         if (entry && typeof entry === 'object') {
             const legacyDamage = Number(entry?.damage || 0);
+            const skillRows = Array.isArray(entry?.skillRows) ? entry.skillRows : undefined;
+            const downFromRows = (skillRows || []).reduce((sum: number, row: any) => sum + Number(row?.downContribution || 0), 0);
             return {
                 hit: Number(entry?.hit ?? legacyDamage),
                 burst1s: Number(entry?.burst1s || 0),
                 burst5s: Number(entry?.burst5s || 0),
                 burst30s: Number(entry?.burst30s || 0),
-                hitDown: Number(entry?.hitDown || 0),
+                hitDown: Number(entry?.hitDown || downFromRows || 0),
                 burst1sDown: Number(entry?.burst1sDown || 0),
                 burst5sDown: Number(entry?.burst5sDown || 0),
                 burst30sDown: Number(entry?.burst30sDown || 0),
@@ -712,7 +714,7 @@ type SpikeFight = {
                 buckets5sDown: Array.isArray(entry?.buckets5sDown) ? entry.buckets5sDown : undefined,
                 downIndices5s: Array.isArray(entry?.downIndices5s) ? entry.downIndices5s : undefined,
                 deathIndices5s: Array.isArray(entry?.deathIndices5s) ? entry.deathIndices5s : undefined,
-                skillRows: Array.isArray(entry?.skillRows) ? entry.skillRows : undefined
+                skillRows
             };
         }
         const legacyDamage = Number(entry || 0);

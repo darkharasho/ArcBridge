@@ -2112,6 +2112,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             const skillMap = details?.skillMap || {};
             const buffMap = details?.buffMap || {};
             let bestValue = 0;
+            let bestDownContribution = 0;
             let bestName = '';
             const resolveSkillName = (rawId: any) => {
                 const idNum = Number(rawId);
@@ -2134,6 +2135,10 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     bestValue = peak;
                     bestName = resolveSkillName(entry.id);
                 }
+                const downContribution = Number(entry.downContribution || 0);
+                if (downContribution > bestDownContribution) {
+                    bestDownContribution = downContribution;
+                }
             };
             let sawTargetEntry = false;
             if (Array.isArray(player?.targetDamageDist)) {
@@ -2154,7 +2159,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     list.forEach((entry: any) => readEntryPeak(entry));
                 });
             }
-            return { peak: bestValue, skillName: bestName || 'Unknown Skill' };
+            return { peak: bestValue, peakDownContribution: bestDownContribution, skillName: bestName || 'Unknown Skill' };
         };
 
         const spikeDamage = (() => {
@@ -2193,16 +2198,25 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     burst1s: number;
                     burst5s: number;
                     burst30s: number;
+                    hitDown: number;
+                    burst1sDown: number;
+                    burst5sDown: number;
+                    burst30sDown: number;
                     skillName: string;
                     buckets5s: number[];
+                    buckets5sDown: number[];
                     downIndices5s: number[];
                     deathIndices5s: number[];
-                    skillRows?: Array<{ skillName: string; damage: number; hits: number; icon?: string }>;
+                    skillRows?: Array<{ skillName: string; damage: number; downContribution?: number; hits: number; icon?: string }>;
                 }>;
                 maxHit: number;
                 max1s: number;
                 max5s: number;
                 max30s: number;
+                maxHitDown: number;
+                max1sDown: number;
+                max5sDown: number;
+                max30sDown: number;
             }> = [];
             const playerMap = new Map<string, {
                 key: string;
@@ -2216,6 +2230,10 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 peak1s: number;
                 peak5s: number;
                 peak30s: number;
+                peakHitDown: number;
+                peak1sDown: number;
+                peak5sDown: number;
+                peak30sDown: number;
                 peakFightLabel: string;
                 peakSkillName: string;
             }>();
@@ -2300,6 +2318,68 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 }
                 return out;
             };
+            const getDamageAndDownContributionTotals = (player: any, details: any) => {
+                let damageTotal = 0;
+                let downContributionTotal = 0;
+                const totalsBySkill = new Map<number, { damage: number; downContribution: number }>();
+                const consume = (entry: any) => {
+                    if (!entry || typeof entry !== 'object') return;
+                    if (entry.indirectDamage) return;
+                    const damage = Number(entry.totalDamage || 0);
+                    const downContribution = Number(entry.downContribution || 0);
+                    if (!Number.isFinite(damage) && !Number.isFinite(downContribution)) return;
+                    damageTotal += Number.isFinite(damage) ? damage : 0;
+                    downContributionTotal += Number.isFinite(downContribution) ? downContribution : 0;
+                };
+                if (Array.isArray(player?.targetDamageDist)) {
+                    player.targetDamageDist.forEach((targetGroup: any) => {
+                        if (!Array.isArray(targetGroup)) return;
+                        targetGroup.forEach((list: any) => {
+                            if (!Array.isArray(list)) return;
+                            list.forEach((entry: any) => {
+                                const skillId = Number(entry?.id);
+                                if (Number.isFinite(skillId)) {
+                                    const existing = totalsBySkill.get(skillId) || { damage: 0, downContribution: 0 };
+                                    existing.damage += Number(entry?.totalDamage || 0);
+                                    existing.downContribution += Number(entry?.downContribution || 0);
+                                    totalsBySkill.set(skillId, existing);
+                                }
+                                consume(entry);
+                            });
+                        });
+                    });
+                }
+                const allowTotalSupplement = !details?.detailedWvW;
+                if (allowTotalSupplement && Array.isArray(player?.totalDamageDist)) {
+                    player.totalDamageDist.forEach((list: any) => {
+                        if (!Array.isArray(list)) return;
+                        list.forEach((entry: any) => {
+                            const skillId = Number(entry?.id);
+                            if (!Number.isFinite(skillId)) {
+                                consume(entry);
+                                return;
+                            }
+                            const existing = totalsBySkill.get(skillId);
+                            if (!existing) {
+                                consume(entry);
+                                return;
+                            }
+                            const deltaDamage = Number(entry?.totalDamage || 0) - Number(existing.damage || 0);
+                            const deltaDown = Number(entry?.downContribution || 0) - Number(existing.downContribution || 0);
+                            if (deltaDamage <= 0 && deltaDown <= 0) return;
+                            consume({
+                                ...entry,
+                                totalDamage: Math.max(0, deltaDamage),
+                                downContribution: Math.max(0, deltaDown)
+                            });
+                        });
+                    });
+                }
+                return {
+                    damageTotal: Math.max(0, damageTotal),
+                    downContributionTotal: Math.max(0, downContributionTotal)
+                };
+            };
             const resolveSkillMeta = (rawId: any, details: any) => {
                 const idNum = Number(rawId);
                 if (!Number.isFinite(idNum)) return { name: String(rawId || 'Unknown Skill'), icon: undefined as string | undefined };
@@ -2380,11 +2460,16 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         burst1s: number;
                         burst5s: number;
                         burst30s: number;
+                        hitDown: number;
+                        burst1sDown: number;
+                        burst5sDown: number;
+                        burst30sDown: number;
                         skillName: string;
                         buckets5s: number[];
+                        buckets5sDown: number[];
                         downIndices5s: number[];
                         deathIndices5s: number[];
-                        skillRows?: Array<{ skillName: string; damage: number; hits: number; icon?: string }>;
+                        skillRows?: Array<{ skillName: string; damage: number; downContribution?: number; hits: number; icon?: string }>;
                     }> = {};
                     const players = Array.isArray(details.players) ? details.players : [];
                     const allReplayStarts = players
@@ -2402,31 +2487,43 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         const key = `${account}|${profession}`;
                         const spike = getHighestSingleHit(player, details);
                         const hit = Number(spike.peak || 0);
+                        const hitDown = Number(spike.peakDownContribution || 0);
                         const perSecond = getPerSecondDamageSeries(player);
+                        const { damageTotal, downContributionTotal } = getDamageAndDownContributionTotals(player, details);
+                        const downRatio = damageTotal > 0 ? Math.min(1, Math.max(0, downContributionTotal / damageTotal)) : 0;
+                        const perSecondDown = perSecond.map((value) => Number(value || 0) * downRatio);
                         const burst1s = Number(getMaxRollingDamage(perSecond, 1) || 0);
                         const burst5s = Number(getMaxRollingDamage(perSecond, 5) || 0);
                         const burst30s = Number(getMaxRollingDamage(perSecond, 30) || 0);
+                        const burst1sDown = Number(getMaxRollingDamage(perSecondDown, 1) || 0);
+                        const burst5sDown = Number(getMaxRollingDamage(perSecondDown, 5) || 0);
+                        const burst30sDown = Number(getMaxRollingDamage(perSecondDown, 30) || 0);
                         const durationBuckets = Math.max(0, Math.ceil(Number(details?.durationMS || 0) / 5000));
                         const damageBuckets = Math.max(0, Math.ceil(perSecond.length / 5));
-                        const bucketCount = Math.max(durationBuckets, damageBuckets);
+                        const downBuckets = Math.max(0, Math.ceil(perSecondDown.length / 5));
+                        const bucketCount = Math.max(durationBuckets, damageBuckets, downBuckets);
                         const rawBuckets = getBuckets(perSecond, 5);
+                        const rawBucketsDown = getBuckets(perSecondDown, 5);
                         const buckets5s = Array.from({ length: bucketCount }, (_, idx) => Number(rawBuckets[idx] || 0));
-                        const skillRowsMap = new Map<string, { skillName: string; damage: number; hits: number; icon?: string }>();
+                        const buckets5sDown = Array.from({ length: bucketCount }, (_, idx) => Number(rawBucketsDown[idx] || 0));
+                        const skillRowsMap = new Map<string, { skillName: string; damage: number; downContribution: number; hits: number; icon?: string }>();
                         const consumeDamageEntry = (entry: any) => {
                             if (!entry || typeof entry !== 'object') return;
                             if (entry.indirectDamage) return;
                             const damage = Number(entry.totalDamage || 0);
-                            if (!Number.isFinite(damage) || damage <= 0) return;
+                            const downContribution = Number(entry.downContribution || 0);
+                            if ((!Number.isFinite(damage) || damage <= 0) && (!Number.isFinite(downContribution) || downContribution <= 0)) return;
                             const hits = Number(entry.connectedHits || entry.hits || 0);
                             const skillMeta = resolveSkillMeta(entry.id, details);
                             const skillName = skillMeta.name;
-                            const row = skillRowsMap.get(skillName) || { skillName, damage: 0, hits: 0, icon: skillMeta.icon };
-                            row.damage += damage;
+                            const row = skillRowsMap.get(skillName) || { skillName, damage: 0, downContribution: 0, hits: 0, icon: skillMeta.icon };
+                            row.damage += Number.isFinite(damage) ? damage : 0;
+                            row.downContribution += Number.isFinite(downContribution) ? downContribution : 0;
                             row.hits += Number.isFinite(hits) ? hits : 0;
                             if (!row.icon && skillMeta.icon) row.icon = skillMeta.icon;
                             skillRowsMap.set(skillName, row);
                         };
-                        const targetSkillTotals = new Map<number, { damage: number; hits: number }>();
+                        const targetSkillTotals = new Map<number, { damage: number; downContribution: number; hits: number }>();
                         if (Array.isArray(player?.targetDamageDist)) {
                             player.targetDamageDist.forEach((targetGroup: any) => {
                                 if (!Array.isArray(targetGroup)) return;
@@ -2435,9 +2532,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                                     list.forEach((entry: any) => {
                                         const skillId = Number(entry?.id);
                                         const damage = Number(entry?.totalDamage || 0);
+                                        const downContribution = Number(entry?.downContribution || 0);
                                         if (Number.isFinite(skillId)) {
-                                            const existing = targetSkillTotals.get(skillId) || { damage: 0, hits: 0 };
+                                            const existing = targetSkillTotals.get(skillId) || { damage: 0, downContribution: 0, hits: 0 };
                                             existing.damage += Number.isFinite(damage) ? damage : 0;
+                                            existing.downContribution += Number.isFinite(downContribution) ? downContribution : 0;
                                             existing.hits += Number(entry?.connectedHits || entry?.hits || 0);
                                             targetSkillTotals.set(skillId, existing);
                                         }
@@ -2462,13 +2561,16 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                                         return;
                                     }
                                     const totalDamage = Number(entry?.totalDamage || 0);
+                                    const totalDownContribution = Number(entry?.downContribution || 0);
                                     const totalHits = Number(entry?.connectedHits || entry?.hits || 0);
                                     const deltaDamage = totalDamage - Number(target.damage || 0);
+                                    const deltaDownContribution = totalDownContribution - Number(target.downContribution || 0);
                                     const deltaHits = totalHits - Number(target.hits || 0);
-                                    if (deltaDamage <= 0 && deltaHits <= 0) return;
+                                    if (deltaDamage <= 0 && deltaDownContribution <= 0 && deltaHits <= 0) return;
                                     consumeDamageEntry({
                                         ...entry,
                                         totalDamage: Math.max(0, deltaDamage),
+                                        downContribution: Math.max(0, deltaDownContribution),
                                         connectedHits: Math.max(0, deltaHits),
                                         hits: Math.max(0, deltaHits)
                                     });
@@ -2490,8 +2592,13 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             burst1s,
                             burst5s,
                             burst30s,
+                            hitDown,
+                            burst1sDown,
+                            burst5sDown,
+                            burst30sDown,
                             skillName: spike.skillName || 'Unknown Skill',
                             buckets5s,
+                            buckets5sDown,
                             downIndices5s: markerIndicesFromTimes(downTimes, replayStarts, allReplayStarts, bucketCount, Number(details?.durationMS || 0)),
                             deathIndices5s: markerIndicesFromTimes(deathTimes, replayStarts, allReplayStarts, bucketCount, Number(details?.durationMS || 0)),
                             skillRows: Array.from(skillRowsMap.values())
@@ -2511,6 +2618,10 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                             peak1s: 0,
                             peak5s: 0,
                             peak30s: 0,
+                            peakHitDown: 0,
+                            peak1sDown: 0,
+                            peak5sDown: 0,
+                            peak30sDown: 0,
                             peakFightLabel: '',
                             peakSkillName: ''
                         };
@@ -2529,6 +2640,10 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         if (burst1s > existing.peak1s) existing.peak1s = burst1s;
                         if (burst5s > existing.peak5s) existing.peak5s = burst5s;
                         if (burst30s > existing.peak30s) existing.peak30s = burst30s;
+                        if (hitDown > existing.peakHitDown) existing.peakHitDown = hitDown;
+                        if (burst1sDown > existing.peak1sDown) existing.peak1sDown = burst1sDown;
+                        if (burst5sDown > existing.peak5sDown) existing.peak5sDown = burst5sDown;
+                        if (burst30sDown > existing.peak30sDown) existing.peak30sDown = burst30sDown;
                         playerMap.set(key, existing);
                     });
 
@@ -2536,6 +2651,10 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     const max1s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst1s || 0)), 0);
                     const max5s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst5s || 0)), 0);
                     const max30s = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst30s || 0)), 0);
+                    const maxHitDown = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.hitDown || 0)), 0);
+                    const max1sDown = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst1sDown || 0)), 0);
+                    const max5sDown = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst5sDown || 0)), 0);
+                    const max30sDown = Object.values(values).reduce((best, value) => Math.max(best, Number(value?.burst30sDown || 0)), 0);
                     fights.push({
                         id: log.filePath || log.id || `fight-${index + 1}`,
                         shortLabel: `F${index + 1}`,
@@ -2545,7 +2664,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         maxHit,
                         max1s,
                         max5s,
-                        max30s
+                        max30s,
+                        maxHitDown,
+                        max1sDown,
+                        max5sDown,
+                        max30sDown
                     });
                 });
 
