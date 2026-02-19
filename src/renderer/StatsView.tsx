@@ -22,6 +22,7 @@ import { ApmSection } from './stats/sections/ApmSection';
 import { PlayerBreakdownSection } from './stats/sections/PlayerBreakdownSection';
 import { DamageBreakdownSection } from './stats/sections/DamageBreakdownSection';
 import { BoonTimelineSection } from './stats/sections/BoonTimelineSection';
+import { BoonUptimeSection } from './stats/sections/BoonUptimeSection';
 import { OffenseSection } from './stats/sections/OffenseSection';
 import { ConditionsSection } from './stats/sections/ConditionsSection';
 import { BoonOutputSection } from './stats/sections/BoonOutputSection';
@@ -93,6 +94,7 @@ const ORDERED_SECTION_IDS = [
     'map-distribution',
     'boon-output',
     'boon-timeline',
+    'boon-uptime',
     'offense-detailed',
     'player-breakdown',
     'damage-breakdown',
@@ -333,6 +335,7 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
             healingPlayers: asArray((source as any).healingPlayers),
             boonTables: asArray((source as any).boonTables),
             boonTimeline: asArray((source as any).boonTimeline),
+            boonUptimeTimeline: asArray((source as any).boonUptimeTimeline),
             specialTables: asArray((source as any).specialTables),
             outgoingConditionSummary: asArray((source as any).outgoingConditionSummary),
             outgoingConditionPlayers: asArray((source as any).outgoingConditionPlayers),
@@ -516,6 +519,11 @@ export function StatsView({ logs, onBack, mvpWeights, statsViewSettings, onStats
     const [boonTimelinePlayerFilter, setBoonTimelinePlayerFilter] = useState('');
     const [selectedBoonTimelinePlayerKey, setSelectedBoonTimelinePlayerKey] = useState<string | null>(null);
     const [selectedBoonTimelineFightIndex, setSelectedBoonTimelineFightIndex] = useState<number | null>(null);
+    const [boonUptimeSearch, setBoonUptimeSearch] = useState('');
+    const [activeBoonUptimeId, setActiveBoonUptimeId] = useState<string | null>(null);
+    const [boonUptimePlayerFilter, setBoonUptimePlayerFilter] = useState('');
+    const [selectedBoonUptimePlayerKey, setSelectedBoonUptimePlayerKey] = useState<string | null>(null);
+    const [selectedBoonUptimeFightIndex, setSelectedBoonUptimeFightIndex] = useState<number | null>(null);
     const [activeSpecialTab, setActiveSpecialTab] = useState<string | null>(null);
     const [specialSearch, setSpecialSearch] = useState('');
     const [activeSigilRelicTab, setActiveSigilRelicTab] = useState<string | null>(null);
@@ -2730,6 +2738,156 @@ type SpikeFight = {
             data
         };
     }, [selectedBoonTimelineFightIndex, boonTimelineChartData, activeBoonTimeline, selectedBoonTimelinePlayerKey, boonTimelineScope, boonTimelineScopeLabel]);
+    const boonUptimeBoons = useMemo(() => {
+        const source = Array.isArray((safeStats as any)?.boonUptimeTimeline) ? (safeStats as any).boonUptimeTimeline : [];
+        return source.map((boon: any) => ({
+            id: String(boon?.id || ''),
+            name: String(boon?.name || boon?.id || 'Unknown Boon'),
+            icon: typeof boon?.icon === 'string' ? boon.icon : undefined,
+            stacking: Boolean(boon?.stacking),
+            players: (Array.isArray(boon?.players) ? boon.players : [])
+                .map((player: any) => ({
+                    key: String(player?.key || ''),
+                    account: String(player?.account || player?.displayName || 'Unknown'),
+                    displayName: String(player?.displayName || player?.account || 'Unknown'),
+                    profession: String(player?.profession || 'Unknown'),
+                    professionList: Array.isArray(player?.professionList) ? player.professionList.map((entry: any) => String(entry || '')) : [],
+                    logs: Number(player?.logs || 0),
+                    total: Math.max(0, Number(player?.total || 0)),
+                    peak: Math.max(0, Number(player?.peak || 0))
+                }))
+                .filter((player: any) => player.key && player.key !== '__all__'),
+            fights: (Array.isArray(boon?.fights) ? boon.fights : []).map((fight: any, index: number) => ({
+                id: String(fight?.id || `fight-${index + 1}`),
+                shortLabel: String(fight?.shortLabel || `F${index + 1}`),
+                fullLabel: String(fight?.fullLabel || `Fight ${index + 1}`),
+                timestamp: Number(fight?.timestamp || 0),
+                durationMs: Number(fight?.durationMs || 0),
+                maxTotal: Math.max(0, Number(fight?.maxTotal || 0)),
+                values: (fight?.values && typeof fight.values === 'object')
+                    ? Object.fromEntries(Object.entries(fight.values).map(([key, value]: [string, any]) => [
+                        String(key || ''),
+                        {
+                            total: Math.max(0, Number(value?.total || 0)),
+                            peak: Math.max(0, Number(value?.peak || 0)),
+                            buckets5s: Array.isArray(value?.buckets5s) ? value.buckets5s.map((entry: any) => Math.max(0, Number(entry || 0))) : []
+                        }
+                    ]))
+                    : {}
+            }))
+        })).filter((boon: any) => boon.id && boon.players.length > 0 && boon.fights.length > 0);
+    }, [safeStats.boonUptimeTimeline]);
+    const filteredBoonUptimeBoons = useMemo(() => {
+        const term = boonUptimeSearch.trim().toLowerCase();
+        if (!term) return boonUptimeBoons;
+        return boonUptimeBoons.filter((boon: any) => String(boon?.name || '').toLowerCase().includes(term));
+    }, [boonUptimeBoons, boonUptimeSearch]);
+    const activeBoonUptime = useMemo(() => {
+        if (!activeBoonUptimeId) return null;
+        return boonUptimeBoons.find((boon: any) => boon.id === activeBoonUptimeId) || null;
+    }, [boonUptimeBoons, activeBoonUptimeId]);
+    const boonUptimePlayers = useMemo(() => {
+        const players = Array.isArray(activeBoonUptime?.players) ? activeBoonUptime.players : [];
+        return [...players].sort((a, b) =>
+            Number(b.peak || 0) - Number(a.peak || 0)
+            || Number(b.total || 0) - Number(a.total || 0)
+            || String(a.displayName || '').localeCompare(String(b.displayName || ''))
+        );
+    }, [activeBoonUptime]);
+    const filteredBoonUptimePlayers = useMemo(() => {
+        const term = boonUptimePlayerFilter.trim().toLowerCase();
+        if (!term) return boonUptimePlayers;
+        return boonUptimePlayers.filter((player: any) => (
+            String(player?.displayName || '').toLowerCase().includes(term)
+            || String(player?.account || '').toLowerCase().includes(term)
+            || String(player?.profession || '').toLowerCase().includes(term)
+        ));
+    }, [boonUptimePlayers, boonUptimePlayerFilter]);
+    const boonUptimePlayerMap = useMemo(() => {
+        const map = new Map<string, any>();
+        boonUptimePlayers.forEach((player: any) => {
+            map.set(String(player?.key || ''), player);
+        });
+        return map;
+    }, [boonUptimePlayers]);
+    const selectedBoonUptimePlayer = selectedBoonUptimePlayerKey
+        ? boonUptimePlayerMap.get(selectedBoonUptimePlayerKey) || null
+        : null;
+    const boonUptimeChartData = useMemo<Array<{
+        index: number;
+        fightId: string;
+        shortLabel: string;
+        fullLabel: string;
+        timestamp: number;
+        durationMs: number;
+        total: number;
+        peak: number;
+        maxTotal: number;
+    }>>(() => {
+        if (!activeBoonUptime || !selectedBoonUptimePlayerKey) return [];
+        return (activeBoonUptime.fights || []).map((fight: any, index: number) => {
+            const playerValue = fight?.values?.[selectedBoonUptimePlayerKey] || { total: 0, peak: 0 };
+            const computedFightMax = Object.entries((fight?.values && typeof fight.values === 'object') ? fight.values : {})
+                .filter(([key]) => String(key || '') !== '__all__')
+                .reduce((best: number, [, value]: [string, any]) => Math.max(best, Math.max(0, Number(value?.peak || 0))), 0);
+            return {
+                index,
+                fightId: String(fight?.id || ''),
+                shortLabel: String(fight?.shortLabel || `F${index + 1}`),
+                fullLabel: String(fight?.fullLabel || `Fight ${index + 1}`),
+                timestamp: Number(fight?.timestamp || 0),
+                durationMs: Number(fight?.durationMs || 0),
+                total: Math.max(0, Number(playerValue?.total || 0)),
+                peak: Math.max(0, Number(playerValue?.peak || 0)),
+                maxTotal: computedFightMax > 0 ? computedFightMax : Math.max(0, Number(fight?.maxTotal || 0))
+            };
+        });
+    }, [activeBoonUptime, selectedBoonUptimePlayerKey]);
+    const boonUptimeChartMaxY = useMemo(() => {
+        const selectedPeak = boonUptimeChartData.reduce((best: number, entry) => Math.max(best, Number(entry?.peak || 0)), 0);
+        const fightPeak = boonUptimeChartData.reduce((best: number, entry) => Math.max(best, Number(entry?.maxTotal || 0)), 0);
+        const stackCap = activeBoonUptime?.stacking ? 25 : 0;
+        return Math.max(1, selectedPeak, fightPeak, stackCap);
+    }, [boonUptimeChartData, activeBoonUptime?.stacking]);
+    const boonUptimeDrilldown = useMemo(() => {
+        const selectedPoint = selectedBoonUptimeFightIndex === null
+            ? null
+            : boonUptimeChartData.find((entry) => entry.index === selectedBoonUptimeFightIndex) || null;
+        if (!selectedPoint || !activeBoonUptime || !selectedBoonUptimePlayerKey) {
+            return {
+                title: 'Fight Breakdown',
+                data: [] as Array<{ label: string; value: number; maxValue: number }>
+            };
+        }
+        const selectedFight = activeBoonUptime.fights?.[selectedPoint.index];
+        if (!selectedFight) {
+            return {
+                title: 'Fight Breakdown',
+                data: [] as Array<{ label: string; value: number; maxValue: number }>
+            };
+        }
+        const selectedValue = selectedFight?.values?.[selectedBoonUptimePlayerKey];
+        const selectedBuckets = Array.isArray(selectedValue?.buckets5s) ? selectedValue.buckets5s : [];
+        const bucketCount = Math.max(
+            selectedBuckets.length,
+            Math.ceil(Math.max(0, Number(selectedFight?.durationMs || 0)) / 5000),
+            1
+        );
+        const data = Array.from({ length: bucketCount }, (_, index) => {
+            const maxValue = Object.entries((selectedFight?.values && typeof selectedFight.values === 'object') ? selectedFight.values : {})
+                .filter(([key]) => String(key || '') !== '__all__')
+                .reduce((best: number, [, value]: [string, any]) => Math.max(best, Math.max(0, Number(value?.buckets5s?.[index] || 0))), 0);
+            return {
+                label: `${index * 5}s-${(index + 1) * 5}s`,
+                value: Math.max(0, Number(selectedBuckets[index] || 0)),
+                maxValue
+            };
+        });
+        return {
+            title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Stack Buckets)`,
+            data
+        };
+    }, [selectedBoonUptimeFightIndex, boonUptimeChartData, activeBoonUptime, selectedBoonUptimePlayerKey]);
     const filteredSpecialTables = useMemo(() => {
         const term = specialSearch.trim().toLowerCase();
         const sorted = [...(safeStats.specialTables || [])].sort((a: any, b: any) => a.name.localeCompare(b.name));
@@ -2785,6 +2943,37 @@ type SpikeFight = {
     useEffect(() => {
         setSelectedBoonTimelineFightIndex(null);
     }, [activeBoonTimelineId, selectedBoonTimelinePlayerKey]);
+    useEffect(() => {
+        if (boonUptimeBoons.length === 0) {
+            if (activeBoonUptimeId !== null) setActiveBoonUptimeId(null);
+            return;
+        }
+        if (!activeBoonUptimeId || !boonUptimeBoons.some((boon: any) => boon.id === activeBoonUptimeId)) {
+            setActiveBoonUptimeId(boonUptimeBoons[0].id);
+        }
+    }, [boonUptimeBoons, activeBoonUptimeId]);
+    useEffect(() => {
+        const players = activeBoonUptime?.players || [];
+        if (players.length === 0) {
+            if (selectedBoonUptimePlayerKey !== null) setSelectedBoonUptimePlayerKey(null);
+            return;
+        }
+        const preferred = players.find((player: any) => player.key === '__all__')?.key || players[0].key;
+        if (!selectedBoonUptimePlayerKey || !players.some((player: any) => player.key === selectedBoonUptimePlayerKey)) {
+            setSelectedBoonUptimePlayerKey(preferred);
+        }
+    }, [activeBoonUptime, selectedBoonUptimePlayerKey]);
+    useEffect(() => {
+        if (
+            selectedBoonUptimeFightIndex !== null
+            && (selectedBoonUptimeFightIndex < 0 || selectedBoonUptimeFightIndex >= boonUptimeChartData.length)
+        ) {
+            setSelectedBoonUptimeFightIndex(null);
+        }
+    }, [boonUptimeChartData, selectedBoonUptimeFightIndex]);
+    useEffect(() => {
+        setSelectedBoonUptimeFightIndex(null);
+    }, [activeBoonUptimeId, selectedBoonUptimePlayerKey]);
 
     useEffect(() => {
         if (!safeStats.specialTables || safeStats.specialTables.length === 0) return;
@@ -3108,6 +3297,35 @@ type SpikeFight = {
                                 setSelectedFightIndex={setSelectedBoonTimelineFightIndex}
                                 drilldownTitle={boonTimelineDrilldown.title}
                                 drilldownData={boonTimelineDrilldown.data}
+                                formatWithCommas={formatWithCommas}
+                                renderProfessionIcon={renderProfessionIcon}
+                            />
+                            <BoonUptimeSection
+                                expandedSection={expandedSection}
+                                expandedSectionClosing={expandedSectionClosing}
+                                openExpandedSection={openExpandedSection}
+                                closeExpandedSection={closeExpandedSection}
+                                isSectionVisible={isSectionVisible}
+                                isFirstVisibleSection={isFirstVisibleSection}
+                                sectionClass={sectionClass}
+                                boonSearch={boonUptimeSearch}
+                                setBoonSearch={setBoonUptimeSearch}
+                                boons={filteredBoonUptimeBoons}
+                                activeBoonId={activeBoonUptimeId}
+                                setActiveBoonId={setActiveBoonUptimeId}
+                                playerFilter={boonUptimePlayerFilter}
+                                setPlayerFilter={setBoonUptimePlayerFilter}
+                                players={filteredBoonUptimePlayers}
+                                selectedPlayerKey={selectedBoonUptimePlayerKey}
+                                setSelectedPlayerKey={setSelectedBoonUptimePlayerKey}
+                                selectedPlayer={selectedBoonUptimePlayer}
+                                chartData={boonUptimeChartData}
+                                chartMaxY={boonUptimeChartMaxY}
+                                selectedFightIndex={selectedBoonUptimeFightIndex}
+                                setSelectedFightIndex={setSelectedBoonUptimeFightIndex}
+                                drilldownTitle={boonUptimeDrilldown.title}
+                                drilldownData={boonUptimeDrilldown.data}
+                                showStackCapLine={Boolean(activeBoonUptime?.stacking)}
                                 formatWithCommas={formatWithCommas}
                                 renderProfessionIcon={renderProfessionIcon}
                             />
@@ -3893,6 +4111,35 @@ type SpikeFight = {
                             setSelectedFightIndex={setSelectedBoonTimelineFightIndex}
                             drilldownTitle={boonTimelineDrilldown.title}
                             drilldownData={boonTimelineDrilldown.data}
+                            formatWithCommas={formatWithCommas}
+                            renderProfessionIcon={renderProfessionIcon}
+                        />}
+                        {isSectionVisible('boon-uptime') && <BoonUptimeSection
+                            expandedSection={expandedSection}
+                            expandedSectionClosing={expandedSectionClosing}
+                            openExpandedSection={openExpandedSection}
+                            closeExpandedSection={closeExpandedSection}
+                            isSectionVisible={isSectionVisible}
+                            isFirstVisibleSection={isFirstVisibleSection}
+                            sectionClass={sectionClass}
+                            boonSearch={boonUptimeSearch}
+                            setBoonSearch={setBoonUptimeSearch}
+                            boons={filteredBoonUptimeBoons}
+                            activeBoonId={activeBoonUptimeId}
+                            setActiveBoonId={setActiveBoonUptimeId}
+                            playerFilter={boonUptimePlayerFilter}
+                            setPlayerFilter={setBoonUptimePlayerFilter}
+                            players={filteredBoonUptimePlayers}
+                            selectedPlayerKey={selectedBoonUptimePlayerKey}
+                            setSelectedPlayerKey={setSelectedBoonUptimePlayerKey}
+                            selectedPlayer={selectedBoonUptimePlayer}
+                            chartData={boonUptimeChartData}
+                            chartMaxY={boonUptimeChartMaxY}
+                            selectedFightIndex={selectedBoonUptimeFightIndex}
+                            setSelectedFightIndex={setSelectedBoonUptimeFightIndex}
+                            drilldownTitle={boonUptimeDrilldown.title}
+                            drilldownData={boonUptimeDrilldown.data}
+                            showStackCapLine={Boolean(activeBoonUptime?.stacking)}
                             formatWithCommas={formatWithCommas}
                             renderProfessionIcon={renderProfessionIcon}
                         />}
