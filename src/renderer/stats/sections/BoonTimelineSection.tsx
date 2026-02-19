@@ -1,5 +1,6 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Maximize2, X } from 'lucide-react';
+import { Gw2AegisIcon } from '../../ui/Gw2AegisIcon';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
 import { getProfessionColor } from '../../../shared/professionUtils';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
@@ -140,7 +141,7 @@ export const BoonTimelineSection = ({
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4 relative">
                 <div className={isExpanded ? 'pr-10 md:pr-0' : ''}>
                     <h3 className="text-lg font-bold text-gray-200 flex items-center gap-2">
-                        <Gw2BoonIcon className="w-5 h-5 text-cyan-300" />
+                        <Gw2AegisIcon className="w-5 h-5 text-cyan-300" />
                         Boon Timeline
                     </h3>
                     <p className="text-xs text-gray-400">

@@ -9,6 +9,7 @@ import { ProofOfWorkModal } from '../renderer/ui/ProofOfWorkModal';
 import { SupportPlusIcon } from '../renderer/ui/SupportPlusIcon';
 import { OffenseSwordIcon } from '../renderer/ui/OffenseSwordIcon';
 import { Gw2ApmIcon } from '../renderer/ui/Gw2ApmIcon';
+import { Gw2AegisIcon } from '../renderer/ui/Gw2AegisIcon';
 import { Gw2BoonIcon } from '../renderer/ui/Gw2BoonIcon';
 import { Gw2DamMitIcon } from '../renderer/ui/Gw2DamMitIcon';
 import { Gw2SigilIcon } from '../renderer/ui/Gw2SigilIcon';
@@ -651,7 +652,7 @@ export function ReportApp() {
                 { id: 'incoming-strike-damage', label: 'Incoming Strike Damage', icon: Zap },
                 { id: 'defense-mitigation', label: 'Damage Mitigation', icon: Gw2DamMitIcon },
                 { id: 'boon-output', label: 'Boon Output', icon: Gw2BoonIcon },
-                { id: 'boon-timeline', label: 'Boon Timeline', icon: Gw2BoonIcon },
+                { id: 'boon-timeline', label: 'Boon Timeline', icon: Gw2AegisIcon },
                 { id: 'support-detailed', label: 'Support Detailed', icon: SupportPlusIcon },
                 { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse }
             ]
