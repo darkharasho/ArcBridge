@@ -1,18 +1,21 @@
 # Release Notes
 
-Version v1.36.0 — February 18, 2026
+Version v1.37.0 — February 18, 2026
 
 ## 🌟 Highlights
-- Boon timeline scope toggle added; timeline calculations now align with boon output for more accurate visuals.
-- New Damage Breakdown section for a clearer view of damage sources.
-- Spike Damage section is enhanced for easier interpretation of spikes in damage.
+- New Boon Uptime section added, detailing stack semantics and UI behavior
+- Boon Uptime timelines now show stack-aware timing for better tracking
+- Gw2AegisIcon component introduced to improve boon visuals
+- Boon Timeline references updated across the UI for consistency
 
 ## 🛠️ Improvements
-None.
+- Boon Uptime panel provides clearer explanations of how boon stacks affect uptime
+- Timelines adjust to boon stacks, giving more accurate readings at a glance
+- New Gw2AegisIcon integrates with the UI to represent aegis-related boons
+- UI references to Boon Timeline refreshed to align with the new behavior
 
 ## 🧯 Fixes
-- Fixed spike-down contributions not displaying correctly in web reports.
-- Discord: emoji handling improved with a base profession check to show the right icons.
+None.
 
 ## ⚠️ Breaking Changes
 None.
