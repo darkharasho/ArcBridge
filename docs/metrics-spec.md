@@ -36,7 +36,7 @@ minimum fields consumed are:
 - `players[*].selfBuffs`, `players[*].groupBuffs`, `players[*].squadBuffs`
 - `players[*].selfBuffsActive`, `players[*].groupBuffsActive`, `players[*].squadBuffsActive`
 - `players[*].group`
-- `buffMap`, `skillMap`, and `durationMS` for stability generation, boon output, and skill labeling
+- `buffMap`, `skillMap`, and `durationMS` for stability generation, boon output/uptime, and skill labeling
 - `targets[*].buffs[*].statesPerSource` when available for condition application counts
 - `details.fightName`, `details.uploadTime` (or `details.timeStartStd` / `details.timeStart` fallback),
   `details.zone`/`mapName`/`map`/`location`, `details.success`,
@@ -507,6 +507,48 @@ grouping across profession swaps.
 
 Implementation: `src/renderer/stats/computeStatsAggregation.ts`,
 `src/renderer/StatsView.tsx`.
+
+### Boon Uptime (Defense)
+
+The Boon Uptime section is derived from `players[*].buffUptimes[*].statesPerSource`
+for boon-classified buffs and reports **stack state over time on the selected
+player**, not outgoing generation.
+
+Source/eligibility:
+- include only `players[*].buffUptimes[*]` entries where `buffMap[b{id}]` (or fallback)
+  has `classification === "Boon"` (or empty classification treated as boon-compatible)
+- use `buffMap` metadata for `name`, `icon`, and `stacking`
+
+Per-fight timeline buckets:
+- sample every 5 seconds (`t = 0, 5, 10, ...`) and read current state value from
+  each source timeline in `statesPerSource`
+- sum active source values for that sample into the player bucket
+
+Stack semantics (enforced):
+- non-stacking boons: binary only
+  - `bucket = 1` when sampled value is `> 0`
+  - `bucket = 0` otherwise
+  - no fractional values are permitted
+- stacking boons: integer stack counts only
+  - sampled values are rounded to whole stacks
+  - stacks are clamped to a max cap
+
+Stack caps:
+- `Might`: `25`
+- `Stability`: `25`
+- current implementation applies cap `25` for stacking boons
+
+UI behavior:
+- main chart: per-fight **peak stack** value for selected boon/player
+- drilldown chart: selected fight 5-second stack buckets
+- for stacking boons, UI may render a reference line at stack cap (`25`)
+
+Aggregation notes:
+- uptime view is account-keyed per player and does not use an aggregated `__all__`
+  synthetic row for timeline values
+
+Implementation: `src/renderer/stats/computeStatsAggregation.ts`,
+`src/renderer/StatsView.tsx`, `src/renderer/stats/sections/BoonUptimeSection.tsx`.
 
 ## Special Buffs
 
