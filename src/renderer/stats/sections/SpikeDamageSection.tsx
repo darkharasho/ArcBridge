@@ -16,6 +16,10 @@ type SpikeDamagePlayer = {
     peak1s: number;
     peak5s: number;
     peak30s: number;
+    peakHitDown: number;
+    peak1sDown: number;
+    peak5sDown: number;
+    peak30sDown: number;
     peakFightLabel: string;
     peakSkillName: string;
 };
@@ -37,6 +41,7 @@ type SpikeDrilldownPoint = {
 type SpikeSkillRow = {
     skillName: string;
     damage: number;
+    downContribution?: number;
     hits: number;
     icon?: string;
 };
@@ -60,6 +65,9 @@ type SpikeDamageSectionProps = {
     groupedSpikePlayers: Array<{ profession: string; players: SpikeDamagePlayer[] }>;
     spikeMode: 'hit' | '1s' | '5s' | '30s';
     setSpikeMode: (value: 'hit' | '1s' | '5s' | '30s') => void;
+    damageBasis?: 'all' | 'downContribution';
+    setDamageBasis?: (value: 'all' | 'downContribution') => void;
+    showDamageBasisToggle?: boolean;
     selectedSpikePlayerKey: string | null;
     setSelectedSpikePlayerKey: (value: string | null) => void;
     selectedSpikePlayer: SpikeDamagePlayer | null;
@@ -96,6 +104,9 @@ export const SpikeDamageSection = ({
     groupedSpikePlayers,
     spikeMode,
     setSpikeMode,
+    damageBasis = 'all',
+    setDamageBasis,
+    showDamageBasisToggle = false,
     selectedSpikePlayerKey,
     setSelectedSpikePlayerKey,
     selectedSpikePlayer,
@@ -128,9 +139,22 @@ export const SpikeDamageSection = ({
     const selectedLineColor = selectedSpikePlayer
         ? (getProfessionColor(selectedSpikePlayer.profession) || '#fda4af')
         : '#fda4af';
-    const modeLabel = spikeMode === 'hit' ? 'Highest Damage' : spikeMode === '1s' ? '1s Burst' : spikeMode === '5s' ? '5s Burst' : '30s Burst';
+    const isDownContributionMode = damageBasis === 'downContribution';
+    const modeLabel = spikeMode === 'hit'
+        ? (isDownContributionMode ? 'Highest Down Contribution' : 'Highest Damage')
+        : spikeMode === '1s'
+            ? '1s Burst'
+            : spikeMode === '5s'
+                ? '5s Burst'
+                : '30s Burst';
     const peakValueForPlayer = (player: SpikeDamagePlayer) => (
-        spikeMode === 'hit' ? player.peakHit : spikeMode === '1s' ? player.peak1s : spikeMode === '5s' ? player.peak5s : player.peak30s
+        spikeMode === 'hit'
+            ? (isDownContributionMode ? player.peakHitDown : player.peakHit)
+            : spikeMode === '1s'
+                ? (isDownContributionMode ? player.peak1sDown : player.peak1s)
+                : spikeMode === '5s'
+                    ? (isDownContributionMode ? player.peak5sDown : player.peak5s)
+                    : (isDownContributionMode ? player.peak30sDown : player.peak30s)
     );
     const flatSpikePlayers = groupedSpikePlayers
         .flatMap((group) => group.players.map((player) => ({ ...player, groupProfession: group.profession })))
@@ -221,6 +245,18 @@ export const SpikeDamageSection = ({
                     </p>
                 </div>
                 <div className={`flex items-center gap-3 ${isExpanded ? 'pr-10 md:pr-0' : ''}`}>
+                    {showDamageBasisToggle && setDamageBasis && (
+                        <PillToggleGroup
+                            value={damageBasis}
+                            onChange={(value) => setDamageBasis(value as 'all' | 'downContribution')}
+                            options={[
+                                { value: 'all', label: 'Damage' },
+                                { value: 'downContribution', label: 'Down Contrib' }
+                            ]}
+                            activeClassName="bg-rose-500/20 text-rose-200 border border-rose-500/40"
+                            inactiveClassName="border border-transparent text-gray-400 hover:text-white"
+                        />
+                    )}
                     <PillToggleGroup
                         value={spikeMode}
                         onChange={(value) => setSpikeMode(value as 'hit' | '1s' | '5s' | '30s')}
@@ -313,7 +349,7 @@ export const SpikeDamageSection = ({
                     <div className="rounded-2xl border border-white/10 bg-black/30 p-4 flex-1 min-h-0">
                         {!selectedSpikePlayer || spikeChartData.length === 0 ? (
                             <div className="h-full flex items-center justify-center text-xs text-gray-500">
-                                Select one player to view burst damage by fight.
+                                Select one player to view burst values by fight.
                             </div>
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
@@ -412,7 +448,9 @@ export const SpikeDamageSection = ({
                     </div>
                     <div>
                         <div className="text-[10px] uppercase tracking-[0.35em] text-gray-500">
-                            {spikeMode === 'hit' ? 'Peak Highest Skill Damage' : `Peak ${modeLabel}`}
+                            {spikeMode === 'hit'
+                                ? (isDownContributionMode ? 'Peak Highest Skill Down Contribution' : 'Peak Highest Skill Damage')
+                                : `Peak ${modeLabel}`}
                         </div>
                         <div className="mt-1 text-lg font-black text-rose-200 font-mono">
                             {formatWithCommas(peakValueForPlayer(selectedSpikePlayer) || 0, 0)}
@@ -526,13 +564,23 @@ export const SpikeDamageSection = ({
             )}
             {selectedSpikePlayer && selectedSpikeFightIndex !== null && (
                 <div className={`mt-4 transition-all duration-300 ${spikeFightSkillRows.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-90'}`}>
+                    {(() => {
+                        const metricValue = (row: SpikeSkillRow) => isDownContributionMode
+                            ? Number(row.downContribution || 0)
+                            : Number(row.damage || 0);
+                        const displayRows = [...spikeFightSkillRows]
+                            .filter((row) => metricValue(row) > 0)
+                            .sort((a, b) => metricValue(b) - metricValue(a) || Number(b.hits || 0) - Number(a.hits || 0))
+                            .slice(0, 30);
+                        return (
+                            <>
                     <div className="flex items-center justify-between mb-2">
                         <div className="text-[10px] uppercase tracking-[0.35em] text-gray-500">{spikeFightSkillTitle}</div>
                         <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">
-                            {spikeFightSkillRows.length} {spikeFightSkillRows.length === 1 ? 'skill' : 'skills'}
+                            {displayRows.length} {displayRows.length === 1 ? 'skill' : 'skills'}
                         </div>
                     </div>
-                    {spikeFightSkillRows.length === 0 ? (
+                    {displayRows.length === 0 ? (
                         <div className="text-xs text-gray-500 italic py-4">
                             No skill-level breakdown available for this fight.
                         </div>
@@ -540,11 +588,11 @@ export const SpikeDamageSection = ({
                         <div className="incoming-skill-table-container rounded-lg border border-white/10 bg-black/35 overflow-hidden">
                             <div className="grid grid-cols-[2fr_0.8fr_0.8fr] gap-2 px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-gray-400 border-b border-white/10">
                                 <div>Skill</div>
-                                <div className="text-right">Damage</div>
+                                <div className="text-right">{isDownContributionMode ? 'Down Contrib' : 'Damage'}</div>
                                 <div className="text-right">Hits</div>
                             </div>
                             <div className="max-h-[260px] overflow-y-auto">
-                                {spikeFightSkillRows.map((row, idx) => (
+                                {displayRows.map((row, idx) => (
                                     <div
                                         key={`${row.skillName}-${idx}`}
                                         className="grid grid-cols-[2fr_0.8fr_0.8fr] gap-2 px-3 py-2.5 text-sm text-gray-200 border-b border-white/[0.05] last:border-b-0"
@@ -562,13 +610,16 @@ export const SpikeDamageSection = ({
                                             )}
                                             <div className="truncate leading-[1.45] pt-[1px] pb-[2px]" title={row.skillName}>{row.skillName}</div>
                                         </div>
-                                        <div className="text-right font-mono text-rose-200">{formatWithCommas(Number(row.damage || 0), 0)}</div>
+                                        <div className="text-right font-mono text-rose-200">{formatWithCommas(isDownContributionMode ? Number(row.downContribution || 0) : Number(row.damage || 0), 0)}</div>
                                         <div className="text-right font-mono text-gray-300">{formatWithCommas(Number(row.hits || 0), 0)}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
         </div>

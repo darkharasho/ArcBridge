@@ -6432,6 +6432,23 @@ body.web-report.theme-kinetic.theme-kinetic-dark #player-breakdown .lucide-list-
     color: #f0debe !important;
 }
 
+body.web-report.theme-kinetic.theme-kinetic-dark .report-nav-item-btn .lucide-bar-chart-3,
+body.web-report.theme-kinetic.theme-kinetic-dark #damage-breakdown .lucide-bar-chart-3 {
+    color: #dbe8ff !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #damage-breakdown .text-sky-300,
+body.web-report.theme-kinetic.theme-kinetic-dark #damage-breakdown .text-sky-300,
+body.theme-kinetic.theme-kinetic-dark #damage-breakdown .lucide-bar-chart-3,
+body.web-report.theme-kinetic.theme-kinetic-dark #damage-breakdown .lucide-bar-chart-3 {
+    color: #f0debe !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #damage-breakdown .text-sky-200,
+body.web-report.theme-kinetic.theme-kinetic-dark #damage-breakdown .text-sky-200 {
+    color: #e8efff !important;
+}
+
 body.theme-kinetic.theme-kinetic-dark #healing-stats > div:first-child h3 svg,
 body.web-report.theme-kinetic.theme-kinetic-dark #healing-stats > div:first-child h3 svg,
 body.theme-kinetic.theme-kinetic-dark #healing-stats .text-lime-300,

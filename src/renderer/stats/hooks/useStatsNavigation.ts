@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { Trophy, Shield, ShieldAlert, Zap, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, ArrowBigUp, FileText, Swords, GitCompareArrows } from 'lucide-react';
+import { Trophy, Shield, ShieldAlert, Zap, Map as MapIcon, Users, Skull, Star, HeartPulse, Keyboard, ListTree, BarChart3, ArrowBigUp, FileText, Swords, GitCompareArrows } from 'lucide-react';
 import { SupportPlusIcon } from '../../ui/SupportPlusIcon';
 import { Gw2ApmIcon } from '../../ui/Gw2ApmIcon';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
@@ -63,10 +63,11 @@ export const STATS_TOC_GROUPS: readonly StatsTocGroup[] = [
         id: 'offense',
         label: 'Offensive Stats',
         icon: Swords,
-        sectionIds: ['offense-detailed', 'player-breakdown', 'spike-damage', 'conditions-outgoing'],
+        sectionIds: ['offense-detailed', 'player-breakdown', 'damage-breakdown', 'spike-damage', 'conditions-outgoing'],
         items: [
             { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
             { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
+            { id: 'damage-breakdown', label: 'Damage Breakdown', icon: BarChart3 },
             { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
             { id: 'conditions-outgoing', label: 'Conditions', icon: Skull }
         ]

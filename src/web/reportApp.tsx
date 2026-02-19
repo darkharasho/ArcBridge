@@ -33,6 +33,7 @@ import {
     ArrowBigUp,
     FileText,
     ListTree,
+    BarChart3,
     Keyboard,
     ChevronDown,
     GitCompareArrows
@@ -631,10 +632,11 @@ export function ReportApp() {
             id: 'offense',
             label: 'Offensive Stats',
             icon: Swords,
-            sectionIds: ['offense-detailed', 'player-breakdown', 'spike-damage', 'conditions-outgoing'],
+            sectionIds: ['offense-detailed', 'player-breakdown', 'damage-breakdown', 'spike-damage', 'conditions-outgoing'],
             items: [
                 { id: 'offense-detailed', label: 'Offense Detailed', icon: OffenseSwordIcon },
                 { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
+                { id: 'damage-breakdown', label: 'Damage Breakdown', icon: BarChart3 },
                 { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
                 { id: 'conditions-outgoing', label: 'Conditions', icon: Skull }
             ]
