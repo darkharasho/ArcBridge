@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useRef, useState, type RefObject } from 'react';
+import { CSSProperties, useEffect, useRef, useState, type RefObject, type WheelEvent as ReactWheelEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { getProfessionColor, getProfessionIconPath } from '../../../shared/professionUtils';
 
@@ -392,35 +392,72 @@ export const SkillBreakdownTooltip = ({
     const [open, setOpen] = useState(false);
     const wrapperRef = useRef<HTMLSpanElement | null>(null);
     const tooltipRef = useRef<HTMLDivElement | null>(null);
+    const closeTimeoutRef = useRef<number | null>(null);
     const tooltipStyle = useFixedTooltipPosition(
         open,
         [items.length],
         wrapperRef,
         tooltipRef
     );
+    const cancelClose = () => {
+        if (closeTimeoutRef.current !== null) {
+            window.clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+        }
+    };
+    const scheduleClose = () => {
+        cancelClose();
+        closeTimeoutRef.current = window.setTimeout(() => {
+            setOpen(false);
+            closeTimeoutRef.current = null;
+        }, 140);
+    };
+    const handleTooltipWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+        const el = event.currentTarget;
+        if (el.scrollHeight <= el.clientHeight) return;
+        const deltaY = event.deltaY;
+        if (deltaY === 0) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        el.scrollTop += deltaY;
+    };
+
+    useEffect(() => () => cancelClose(), []);
 
     return (
         <span
             ref={wrapperRef}
             className={`relative inline-flex items-center justify-end ${hasTooltip ? 'group cursor-help' : ''} ${className || ''}`}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
+            onMouseEnter={() => {
+                cancelClose();
+                setOpen(true);
+            }}
+            onMouseLeave={() => {
+                scheduleClose();
+            }}
         >
             <span>{value}</span>
             {hasTooltip && typeof document !== 'undefined' && createPortal(
                 <div
                     ref={tooltipRef}
                     style={tooltipStyle}
-                    className={`skill-breakdown-tooltip z-[9999] w-64 rounded-md border border-white/10 bg-black/70 px-3 py-2 text-[10px] text-gray-200 shadow-lg pointer-events-none ${open ? 'block' : 'hidden'}`}
+                    onMouseEnter={cancelClose}
+                    onMouseLeave={scheduleClose}
+                    className={`skill-breakdown-tooltip z-[9999] w-64 rounded-md border border-white/10 bg-black/70 px-3 py-2 text-[10px] text-gray-100 shadow-lg pointer-events-auto ${open ? 'block' : 'hidden'}`}
                 >
                     <div className="text-[9px] uppercase tracking-wider text-amber-200 mb-1">{label}</div>
-                    <div className="max-h-40 overflow-y-auto space-y-1">
+                    <div
+                        className="max-h-40 overflow-y-auto space-y-1 pr-2"
+                        style={{ scrollbarGutter: 'stable', overscrollBehavior: 'contain' }}
+                        onWheel={handleTooltipWheel}
+                    >
                         {items.map((item) => (
                             <div key={item.name} className="flex items-center justify-between gap-2">
-                                <span className="truncate text-gray-100">
+                                <span className="truncate text-white">
                                     <InlineIconLabel name={item.name} iconUrl={item.iconUrl} iconClassName="h-6 w-6" />
                                 </span>
-                                <span className="text-gray-300 font-mono">{item.value}</span>
+                                <span className="text-gray-100 font-mono">{item.value}</span>
                             </div>
                         ))}
                     </div>

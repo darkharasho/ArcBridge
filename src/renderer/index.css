@@ -4452,6 +4452,51 @@ body.web-report.theme-kinetic .count-class-tooltip .space-y-1 > div > span {
     color: #3f372f !important;
 }
 
+/* Light kinetic: keep condition source tooltip text brighter for readability. */
+body.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip,
+body.web-report.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip {
+    color: #5e5448 !important;
+}
+
+body.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-100,
+body.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-200,
+body.web-report.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-100,
+body.web-report.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-200 {
+    color: #5e5448 !important;
+}
+
+body.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-300,
+body.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-400,
+body.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-amber-200,
+body.web-report.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-300,
+body.web-report.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-gray-400,
+body.web-report.theme-kinetic:not(.theme-kinetic-dark) .skill-breakdown-tooltip .text-amber-200 {
+    color: #7a6f60 !important;
+}
+
+/* Web report: condition-source tooltip should be opaque with high-contrast text. */
+body.web-report.theme-kinetic .skill-breakdown-tooltip {
+    background: #3b4365 !important;
+    background-color: #3b4365 !important;
+    border-color: rgba(236, 201, 145, 0.48) !important;
+    color: #f2e6cf !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.web-report.theme-kinetic .skill-breakdown-tooltip .text-gray-100,
+body.web-report.theme-kinetic .skill-breakdown-tooltip .text-gray-200,
+body.web-report.theme-kinetic .skill-breakdown-tooltip .text-white {
+    color: #f6ecd9 !important;
+}
+
+body.web-report.theme-kinetic .skill-breakdown-tooltip .text-gray-300,
+body.web-report.theme-kinetic .skill-breakdown-tooltip .text-gray-400,
+body.web-report.theme-kinetic .skill-breakdown-tooltip .text-amber-200 {
+    color: #e5d4b4 !important;
+}
+
 body.theme-kinetic img[src*="/svg/class-icons/"],
 body.theme-kinetic img[src*="./svg/class-icons/"],
 body.web-report.theme-kinetic img[src*="/svg/class-icons/"],
@@ -4847,6 +4892,44 @@ body.web-report.theme-kinetic.theme-kinetic-dark .recharts-tooltip-wrapper .rech
     background: var(--bg-card) !important;
     background-color: var(--bg-card) !important;
     border-color: var(--border-default) !important;
+}
+
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip {
+    background: #39405d !important;
+    background-color: #39405d !important;
+    border-color: rgba(236, 201, 145, 0.46) !important;
+    color: #f2e6cf !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip {
+    background: #3d4464 !important;
+    background-color: #3d4464 !important;
+    border-color: rgba(236, 201, 145, 0.46) !important;
+    color: #f2e6cf !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-100,
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-200,
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-white,
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-100,
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-white {
+    color: #f6e7cb !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-300,
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-400,
+body.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-amber-200,
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-300,
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-gray-400,
+body.web-report.theme-kinetic.theme-kinetic-dark .skill-breakdown-tooltip .text-amber-200 {
+    color: #e5d4b4 !important;
 }
 
 body.web-report.theme-kinetic.theme-kinetic-dark .recharts-text,
