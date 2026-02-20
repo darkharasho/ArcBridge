@@ -44,14 +44,14 @@ const parseTimestamp = (value: any): number => {
 
 const resolveFightTimestamp = (details: any, log: any): number => {
     return parseTimestamp(
-        details?.uploadTime
-        ?? log?.uploadTime
-        ?? details?.timeStartStd
+        details?.timeStartStd
         ?? details?.timeStart
         ?? details?.timeEndStd
         ?? details?.timeEnd
         ?? details?.timeStartText
         ?? details?.timeEndText
+        ?? details?.uploadTime
+        ?? log?.uploadTime
     );
 };
 
