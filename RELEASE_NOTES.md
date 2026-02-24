@@ -1,14 +1,16 @@
 # Release Notes
 
-Version v1.37.4 — February 23, 2026
+Version v1.37.5 — February 24, 2026
 
 ## 🌟 Highlights
-- Skill damage calculations are now more accurate by properly resolving buff metadata.
-- Web assets refreshed to reflect the latest visuals.
+- Gate actions during settling to prevent unintended interactions.
+- Unified loading blur for a cleaner, more consistent visual.
+- WvW loading screens now shuffle a 150-line set of light jokes to brighten waits.
 
 ## 🛠️ Improvements
-- Stats computations updated to better integrate buff metadata with damage numbers.
-- Web bundle and assets updated to include the latest UI/data changes.
+- Fight headers now show total squad and total enemy counts for the selected fight.
+- Fight components gain win/loss indicators with refreshed styling for clearer results.
+- Left navigation spacing on the web view is now denser to better match the app layout.
 
 ## 🧯 Fixes
 None.
