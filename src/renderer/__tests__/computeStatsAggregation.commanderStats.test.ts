@@ -40,7 +40,14 @@ describe('computeStatsAggregation (commander stats)', () => {
                             support: [{}]
                         }
                     ],
-                    targets: [{ profession: 'Necromancer', isFake: false }]
+                    targets: [{
+                        profession: 'Necromancer',
+                        isFake: false,
+                        combatReplayData: {
+                            down: [[10_000, 0], [22_000, 0]],
+                            dead: [[18_000, 0], [28_000, 0]]
+                        }
+                    }]
                 }
             },
             {
@@ -78,7 +85,14 @@ describe('computeStatsAggregation (commander stats)', () => {
                             support: [{}]
                         }
                     ],
-                    targets: [{ profession: 'Guardian', isFake: false }]
+                    targets: [{
+                        profession: 'Guardian',
+                        isFake: false,
+                        combatReplayData: {
+                            down: [[8_000, 0], [31_000, 0]],
+                            dead: [[21_000, 0], [40_000, 0]]
+                        }
+                    }]
                 }
             }
         ];
@@ -94,6 +108,11 @@ describe('computeStatsAggregation (commander stats)', () => {
         expect(row.downs).toBe(11);
         expect(row.commanderDeaths).toBe(1);
         expect(Number(row.kdr || 0)).toBeCloseTo(8, 5);
+        expect(row.avgTimeToFirstEnemyDownMs).toBe(9_000);
+        expect(row.avgTimeToFirstEnemyDeathMs).toBe(19_500);
+        expect(row.avgDownToKillConversionMs).toBe(10_500);
+        expect(Number(row.pushesWithEarlyDownPct || 0)).toBe(100);
+        expect(Number(row.stalledPushPct || 0)).toBe(0);
         expect(row.alliesDown).toBe(4);
         expect(row.alliesDead).toBe(4);
         expect(Number(row.boonUptimePct || 0)).toBeCloseTo(83.333, 2);
@@ -102,5 +121,7 @@ describe('computeStatsAggregation (commander stats)', () => {
         expect(row.fightsData).toHaveLength(2);
         expect(Number(row.fightsData[0]?.damageTakenPerMinute || 0)).toBeGreaterThan(0);
         expect(Number(row.fightsData[1]?.boonUptimePct || 0)).toBe(100);
+        expect(row.fightsData[0]?.timeToFirstEnemyDownMs).toBe(10_000);
+        expect(row.fightsData[1]?.timeToFirstEnemyDeathMs).toBe(21_000);
     });
 });

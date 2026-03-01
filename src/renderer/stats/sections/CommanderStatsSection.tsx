@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Clock3 } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CommanderTagIcon } from '../../ui/CommanderTagIcon';
 
@@ -27,6 +28,11 @@ type CommanderFightRow = {
     incomingStripsPerMinute: number;
     incomingCC: number;
     incomingCCPerMinute: number;
+    timeToFirstEnemyDownMs: number | null;
+    timeToFirstEnemyDeathMs: number | null;
+    downToKillConversionMs: number | null;
+    hadEarlyDown: boolean | null;
+    wasStalledPush: boolean | null;
     boonUptimePct: number;
     boonEntries: number;
     incomingDamageBySkill: Array<{ id: string; name: string; icon?: string; damage: number; hits: number }>;
@@ -63,6 +69,11 @@ type CommanderSummaryRow = {
     incomingStripsPerMinute: number;
     incomingCC: number;
     incomingCCPerMinute: number;
+    avgTimeToFirstEnemyDownMs: number | null;
+    avgTimeToFirstEnemyDeathMs: number | null;
+    avgDownToKillConversionMs: number | null;
+    pushesWithEarlyDownPct: number | null;
+    stalledPushPct: number | null;
     boonUptimePct: number;
     boonEntries: number;
     incomingSkillBreakdown: Array<{ id: string; name: string; icon?: string; damage: number; hits: number }>;
@@ -94,6 +105,148 @@ const formatRate = (value: number, digits = 1) => Number(value || 0).toLocaleStr
 });
 
 const formatInt = (value: number) => Math.round(Number(value || 0)).toLocaleString();
+const formatNullableDuration = (value: number | null | undefined) => (
+    typeof value === 'number' && Number.isFinite(value) ? formatDuration(value) : 'N/A'
+);
+const formatNullablePct = (value: number | null | undefined, digits = 1) => (
+    typeof value === 'number' && Number.isFinite(value) ? `${formatRate(value, digits)}%` : 'N/A'
+);
+const pushTimingStatus = (fight: CommanderFightRow) => {
+    if (fight.hadEarlyDown === null) return 'N/A';
+    if (fight.wasStalledPush === true) return 'Stalled';
+    if (fight.hadEarlyDown === true) return 'Early Down';
+    return 'Slow Start';
+};
+
+export const CommanderPushTimingSection = ({
+    commanderStats,
+    isSectionVisible,
+    isFirstVisibleSection,
+    sectionClass
+}: Omit<CommanderStatsSectionProps, 'getProfessionIconPath'>) => {
+    const rows = useMemo(
+        () => (Array.isArray(commanderStats?.rows) ? commanderStats?.rows || [] : []),
+        [commanderStats]
+    );
+    const [selectedCommanderKey, setSelectedCommanderKey] = useState<string>('');
+
+    useEffect(() => {
+        if (rows.length === 0) {
+            setSelectedCommanderKey('');
+            return;
+        }
+        if (!selectedCommanderKey || !rows.some((row) => row.key === selectedCommanderKey)) {
+            setSelectedCommanderKey(rows[0].key);
+        }
+    }, [rows, selectedCommanderKey]);
+
+    const selectedCommander = useMemo(
+        () => rows.find((row) => row.key === selectedCommanderKey) || rows[0] || null,
+        [rows, selectedCommanderKey]
+    );
+    const hasAnyTimingData = useMemo(
+        () => rows.some((row) => (
+            row.avgTimeToFirstEnemyDownMs !== null
+            || row.avgTimeToFirstEnemyDeathMs !== null
+            || row.avgDownToKillConversionMs !== null
+        )),
+        [rows]
+    );
+
+    return (
+        <section
+            id="commander-push-timing"
+            data-section-visible={isSectionVisible('commander-push-timing')}
+            data-section-first={isFirstVisibleSection('commander-push-timing')}
+            className={sectionClass('commander-push-timing', 'bg-white/5 border border-amber-300/20 rounded-2xl p-6 page-break-avoid scroll-mt-24')}
+        >
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <h3 className="text-lg font-bold text-amber-100 flex items-center gap-2">
+                    <Clock3 className="w-5 h-5 text-amber-300" />
+                    Push Timing
+                </h3>
+                <span className="text-[10px] uppercase tracking-widest text-amber-200/70">
+                    {rows.length} Commanders
+                </span>
+            </div>
+
+            {rows.length === 0 ? (
+                <div className="text-center text-gray-500 italic py-8">No push timing data available.</div>
+            ) : (
+                <div className="space-y-4 min-w-0">
+                    {!hasAnyTimingData ? (
+                        <div className="rounded-lg border border-amber-200/10 bg-black/25 px-3 py-2 text-xs text-amber-100/80">
+                            Exact push timing is unavailable for these logs because enemy replay down/death timestamps were not present.
+                        </div>
+                    ) : null}
+                    <div className="w-full max-w-full overflow-x-auto pb-1">
+                        <table className="w-full min-w-[640px] text-xs table-auto">
+                            <thead>
+                                <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
+                                    <th className="text-left py-2 px-2">Commander</th>
+                                    <th className="text-right py-2 px-2">Avg To First Down</th>
+                                    <th className="text-right py-2 px-2">Avg To First Kill</th>
+                                    <th className="text-right py-2 px-2">Avg Down To Kill</th>
+                                    <th className="text-right py-2 px-2">Early Push %</th>
+                                    <th className="text-right py-2 px-2">Stalled %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row) => (
+                                    <tr
+                                        key={`${row.key}-push-summary`}
+                                        onClick={() => setSelectedCommanderKey(row.key)}
+                                        className={`border-b border-white/5 cursor-pointer transition-colors ${
+                                            selectedCommander?.key === row.key ? 'bg-amber-500/10' : 'hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <td className="py-2 px-2 text-gray-100 font-semibold truncate">{row.account}</td>
+                                        <td className="py-2 px-2 text-right font-mono text-gray-200">{formatNullableDuration(row.avgTimeToFirstEnemyDownMs)}</td>
+                                        <td className="py-2 px-2 text-right font-mono text-gray-200">{formatNullableDuration(row.avgTimeToFirstEnemyDeathMs)}</td>
+                                        <td className="py-2 px-2 text-right font-mono text-gray-200">{formatNullableDuration(row.avgDownToKillConversionMs)}</td>
+                                        <td className="py-2 px-2 text-right font-mono text-gray-200">{formatNullablePct(row.pushesWithEarlyDownPct)}</td>
+                                        <td className="py-2 px-2 text-right font-mono text-gray-200">{formatNullablePct(row.stalledPushPct)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {selectedCommander && (
+                        <div className="overflow-x-auto min-w-0">
+                            <table className="w-full min-w-[560px] text-xs table-auto">
+                                <thead>
+                                    <tr className="text-gray-400 uppercase tracking-widest text-[10px] border-b border-white/10">
+                                        <th className="text-left py-2 px-2">Fight</th>
+                                        <th className="text-right py-2 px-2">Result</th>
+                                        <th className="text-right py-2 px-2">To First Down</th>
+                                        <th className="text-right py-2 px-2">To First Kill</th>
+                                        <th className="text-right py-2 px-2">Down To Kill</th>
+                                        <th className="text-right py-2 px-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(selectedCommander.fightsData || []).map((fight) => (
+                                        <tr key={`${fight.id}-push-timing`} className="border-b border-white/5">
+                                            <td className="py-1.5 px-2 text-gray-200">{fight.shortLabel} • {fight.mapName || 'Unknown'}</td>
+                                            <td className={`py-1.5 px-2 text-right font-semibold ${fight.isWin ? 'text-emerald-300' : 'text-rose-300'}`}>
+                                                {fight.isWin ? 'Win' : 'Loss'}
+                                            </td>
+                                            <td className="py-1.5 px-2 text-right font-mono text-gray-200">{formatNullableDuration(fight.timeToFirstEnemyDownMs)}</td>
+                                            <td className="py-1.5 px-2 text-right font-mono text-gray-200">{formatNullableDuration(fight.timeToFirstEnemyDeathMs)}</td>
+                                            <td className="py-1.5 px-2 text-right font-mono text-gray-200">{formatNullableDuration(fight.downToKillConversionMs)}</td>
+                                            <td className="py-1.5 px-2 text-right font-semibold text-gray-200">{pushTimingStatus(fight)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+        </section>
+    );
+};
 
 export const CommanderStatsSection = ({
     commanderStats,

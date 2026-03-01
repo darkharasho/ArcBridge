@@ -2740,6 +2740,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     incomingStripsPerMinute: number;
                     incomingCC: number;
                     incomingCCPerMinute: number;
+                    timeToFirstEnemyDownMs: number | null;
+                    timeToFirstEnemyDeathMs: number | null;
+                    downToKillConversionMs: number | null;
+                    hadEarlyDown: boolean | null;
+                    wasStalledPush: boolean | null;
                     boonUptimePct: number;
                     boonEntries: number;
                     incomingDamageBySkill: Array<{ id: string; name: string; icon?: string; damage: number; hits: number }>;
@@ -2748,6 +2753,40 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     incomingBoonBuckets5s: number[];
                 }>;
             }>();
+            const EARLY_PUSH_WINDOW_MS = 15_000;
+            const STALLED_PUSH_WINDOW_MS = 15_000;
+            const toReplayPairs = (value: any): Array<[number, number]> => {
+                if (!Array.isArray(value)) return [];
+                return value
+                    .map((entry: any) => (Array.isArray(entry) ? [Number(entry[0]), Number(entry[1])] as [number, number] : null))
+                    .filter((entry: [number, number] | null): entry is [number, number] => !!entry && Number.isFinite(entry[0]));
+            };
+            const getReplayTimes = (entity: any, key: 'down' | 'dead') => {
+                const replay = entity?.combatReplayData;
+                const segments = Array.isArray(replay) ? replay : (replay ? [replay] : []);
+                return segments
+                    .flatMap((segment: any) => toReplayPairs(segment?.[key]).map(([time]) => Number(time || 0)))
+                    .filter((value: number) => Number.isFinite(value) && value >= 0);
+            };
+            const getFirstReplayTime = (entities: any[], key: 'down' | 'dead') => {
+                if (!Array.isArray(entities) || entities.length === 0) return null;
+                const times = entities.flatMap((entity: any) => getReplayTimes(entity, key));
+                if (times.length === 0) return null;
+                return Math.min(...times);
+            };
+            const averageDefined = (values: Array<number | null | undefined>) => {
+                const filtered = values.filter((value): value is number => (
+                    typeof value === 'number' && Number.isFinite(value)
+                ));
+                if (filtered.length === 0) return null;
+                return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+            };
+            const percentFromFlags = (values: Array<boolean | null | undefined>) => {
+                const filtered = values.filter((value): value is boolean => typeof value === 'boolean');
+                if (filtered.length === 0) return null;
+                const positive = filtered.reduce((sum, value) => sum + (value ? 1 : 0), 0);
+                return (positive / filtered.length) * 100;
+            };
 
             sortedFightLogsWithDetails.forEach(({ log }, idx) => {
                 const details = log?.details;
@@ -2786,6 +2825,9 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const summary = log?.dashboardSummary && typeof log.dashboardSummary === 'object'
                     ? log.dashboardSummary
                     : null;
+                const enemyTargets = Array.isArray(details?.targets)
+                    ? details.targets.filter((target: any) => !target?.isFake)
+                    : [];
                 const enemyTargetsPresent = Array.isArray(details?.targets)
                     ? details.targets.some((target: any) => !target?.isFake)
                     : false;
@@ -2796,6 +2838,20 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 const downs = enemyTargetsPresent || squadPlayers.length > 0
                     ? Math.max(0, enemyDownsDeaths - enemyDeaths)
                     : Math.max(0, Number(summary?.enemyDowns || 0));
+                const timeToFirstEnemyDownMs = getFirstReplayTime(enemyTargets, 'down');
+                const timeToFirstEnemyDeathMs = getFirstReplayTime(enemyTargets, 'dead');
+                const downToKillConversionMs = timeToFirstEnemyDownMs !== null
+                    && timeToFirstEnemyDeathMs !== null
+                    && timeToFirstEnemyDeathMs >= timeToFirstEnemyDownMs
+                    ? timeToFirstEnemyDeathMs - timeToFirstEnemyDownMs
+                    : null;
+                const hadEarlyDown = timeToFirstEnemyDownMs !== null
+                    ? timeToFirstEnemyDownMs <= EARLY_PUSH_WINDOW_MS
+                    : null;
+                const wasStalledPush = timeToFirstEnemyDownMs !== null
+                    ? (timeToFirstEnemyDeathMs === null
+                        || (timeToFirstEnemyDeathMs - timeToFirstEnemyDownMs) > STALLED_PUSH_WINDOW_MS)
+                    : null;
                 const alliesDown = squadPlayers.reduce((sum: number, p: any) => sum + Math.max(0, Number(p?.defenses?.[0]?.downCount || 0)), 0);
                 const alliesDead = squadPlayers.reduce((sum: number, p: any) => sum + Math.max(0, Number(p?.defenses?.[0]?.deadCount || 0)), 0);
                 const buffMap = details?.buffMap && typeof details?.buffMap === 'object' ? details.buffMap : {};
@@ -2926,6 +2982,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     incomingStripsPerMinute: asRatePerMinute(incomingStrips, durationMs),
                     incomingCC,
                     incomingCCPerMinute: asRatePerMinute(incomingCC, durationMs),
+                    timeToFirstEnemyDownMs,
+                    timeToFirstEnemyDeathMs,
+                    downToKillConversionMs,
+                    hadEarlyDown,
+                    wasStalledPush,
                     boonUptimePct,
                     boonEntries: boonCount,
                     incomingDamageBySkill,
@@ -2952,6 +3013,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         if (a.timestamp > 0 && b.timestamp > 0 && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
                         return a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true });
                     });
+                    const avgTimeToFirstEnemyDownMs = averageDefined(fights.map((fight) => fight.timeToFirstEnemyDownMs));
+                    const avgTimeToFirstEnemyDeathMs = averageDefined(fights.map((fight) => fight.timeToFirstEnemyDeathMs));
+                    const avgDownToKillConversionMs = averageDefined(fights.map((fight) => fight.downToKillConversionMs));
+                    const pushesWithEarlyDownPct = percentFromFlags(fights.map((fight) => fight.hadEarlyDown));
+                    const stalledPushPct = percentFromFlags(fights.map((fight) => fight.wasStalledPush));
                     return {
                         key: entry.key,
                         account: entry.account,
@@ -2980,6 +3046,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                         incomingStripsPerMinute: entry.totalIncomingStrips / totalMinutes,
                         incomingCC: entry.totalIncomingCC,
                         incomingCCPerMinute: entry.totalIncomingCC / totalMinutes,
+                        avgTimeToFirstEnemyDownMs,
+                        avgTimeToFirstEnemyDeathMs,
+                        avgDownToKillConversionMs,
+                        pushesWithEarlyDownPct,
+                        stalledPushPct,
                         boonUptimePct: weightedBoonUptimePct,
                         boonEntries: entry.boonEntriesSeen,
                         incomingSkillBreakdown: Array.from(entry.incomingSkillMap.values())

@@ -156,8 +156,8 @@ export const pruneDetailsForStats = (details: any) => {
         });
     }
     if (Array.isArray(pruned.targets)) {
-        pruned.targets = pruned.targets.map((target: any) =>
-            pick(target, [
+        pruned.targets = pruned.targets.map((target: any) => {
+            const out = pick(target, [
                 'id',
                 'name',
                 'isFake',
@@ -179,8 +179,10 @@ export const pruneDetailsForStats = (details: any) => {
                 'team',
                 'teamColor',
                 'team_color'
-            ])
-        );
+            ]);
+            out.combatReplayData = pruneCombatReplayData(target?.combatReplayData, false);
+            return out;
+        });
     }
     return pruned;
 };
