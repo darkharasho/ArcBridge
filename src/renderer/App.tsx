@@ -1949,10 +1949,10 @@ function App() {
                 <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 matte-stat-card uploader-kpi-card">
                     <div>
                         <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">W / L</div>
-                        <div className="text-2xl font-bold text-white leading-none">
-                            <span className="text-emerald-300">{winLoss.wins}</span>
+                        <div className="inline-flex items-baseline text-2xl font-bold leading-none">
+                            <span style={{ color: '#86efac' }}>{winLoss.wins}</span>
                             <span className="text-gray-500 mx-2">/</span>
-                            <span className="text-red-400">{winLoss.losses}</span>
+                            <span style={{ color: '#fca5a5' }}>{winLoss.losses}</span>
                         </div>
                         <div className="text-[11px] text-gray-500">Totals</div>
                     </div>
@@ -1965,10 +1965,10 @@ function App() {
                 <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 matte-stat-card uploader-kpi-card">
                     <div>
                         <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Avg Players</div>
-                        <div className="text-2xl font-bold text-white leading-none">
-                            <span className="text-emerald-300">{avgSquadSize}</span>
+                        <div className="inline-flex items-baseline text-2xl font-bold leading-none">
+                            <span style={{ color: '#86efac' }}>{avgSquadSize}</span>
                             <span className="text-gray-500 mx-2">/</span>
-                            <span className="text-red-400">{avgEnemies}</span>
+                            <span style={{ color: '#fca5a5' }}>{avgEnemies}</span>
                         </div>
                         <div className="text-[11px] text-gray-500">Squad / Enemy</div>
                     </div>
@@ -1999,10 +1999,10 @@ function App() {
             transition={{ delay: 0.2 }}
             className="grid grid-cols-2 gap-4 matte-tiles-shell"
         >
-            <div className="h-24 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex flex-col matte-upload-card matte-stat-card">
-                <div className="text-blue-200 text-xs font-medium uppercase tracking-wider">Upload Status</div>
-                <div className="flex-1 min-h-0 flex items-center justify-center">
-                    <div className="w-full h-full max-h-[63px]">
+            <div className="relative h-24 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2 matte-upload-card matte-stat-card">
+                <div className="absolute left-3 top-2 text-blue-200 text-[11px] font-medium uppercase tracking-wider">Upload Status</div>
+                <div className="absolute inset-x-2 bottom-2 top-6 flex items-center justify-center">
+                    <div className="w-full h-full max-h-[68px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -2027,7 +2027,7 @@ function App() {
                                     y="50%"
                                     textAnchor="middle"
                                     dominantBaseline="middle"
-                                    className="fill-white text-[11px] font-semibold"
+                                    className="fill-white text-[14px] font-bold"
                                 >
                                     {totalUploads}
                                 </text>
@@ -2045,30 +2045,30 @@ function App() {
                     </div>
                 </div>
             </div>
-            <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col matte-stat-card uploader-kpi-card">
-                <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">W / L</div>
-                <div className="flex-1 flex items-center">
-                    <div className="text-2xl font-bold text-white leading-none">
-                        <span className="text-emerald-300">{winLoss.wins}</span>
+            <div className="relative h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2 matte-stat-card uploader-kpi-card">
+                <div className="absolute left-3 top-2 text-gray-400 text-[11px] font-medium uppercase tracking-wider">W / L</div>
+                <div className="absolute inset-x-3 bottom-2 top-6 flex items-center justify-center">
+                    <div className="inline-flex translate-y-2 items-baseline text-[2rem] font-bold leading-none">
+                        <span style={{ color: '#86efac' }}>{winLoss.wins}</span>
                         <span className="text-gray-500 mx-2">/</span>
-                        <span className="text-red-400">{winLoss.losses}</span>
+                        <span style={{ color: '#fca5a5' }}>{winLoss.losses}</span>
                     </div>
                 </div>
             </div>
-            <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col matte-stat-card uploader-kpi-card">
-                <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Avg Players</div>
-                <div className="flex-1 flex items-center">
-                    <div className="text-2xl font-bold text-white leading-none">
-                        <span className="text-emerald-300">{avgSquadSize}</span>
+            <div className="relative h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2 matte-stat-card uploader-kpi-card">
+                <div className="absolute left-3 top-2 text-gray-400 text-[11px] font-medium uppercase tracking-wider">Avg Players</div>
+                <div className="absolute inset-x-3 bottom-2 top-6 flex items-center justify-center">
+                    <div className="inline-flex translate-y-2 items-baseline text-[2rem] font-bold leading-none">
+                        <span style={{ color: '#86efac' }}>{avgSquadSize}</span>
                         <span className="text-gray-500 mx-2">/</span>
-                        <span className="text-red-400">{avgEnemies}</span>
+                        <span style={{ color: '#fca5a5' }}>{avgEnemies}</span>
                     </div>
                 </div>
             </div>
-            <div className="h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-3 flex flex-col matte-stat-card uploader-kpi-card">
-                <div className="text-gray-400 text-xs font-medium uppercase tracking-wider">Squad KDR</div>
-                <div className="flex-1 flex items-center">
-                    <div className="text-2xl font-bold text-emerald-300 leading-none">{squadKdr}</div>
+            <div className="relative h-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2 matte-stat-card uploader-kpi-card">
+                <div className="absolute left-3 top-2 text-gray-400 text-[11px] font-medium uppercase tracking-wider">Squad KDR</div>
+                <div className="absolute inset-x-3 bottom-2 top-6 flex items-center justify-center">
+                    <div className="translate-y-2 text-[2.1rem] font-bold text-emerald-300 leading-none">{squadKdr}</div>
                 </div>
             </div>
         </motion.div>
