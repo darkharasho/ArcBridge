@@ -1,5 +1,5 @@
 import { Player } from './dpsReportTypes';
-import { applySquadStabilityGeneration, computeDownContribution, computeIncomingDisruptions, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing, resolveDisruptionValue } from './combatMetrics';
+import { computeDownContribution, computeOutgoingCrowdControl, computeSquadBarrier, computeSquadHealing, resolveDisruptionValue } from './combatMetrics';
 import { DisruptionMethod, DEFAULT_DISRUPTION_METHOD } from './metricsSettings';
 
 export const getPlayerDamage = (player: Player) =>
@@ -74,22 +74,11 @@ export const getPlayerDashboardTotals = (player: Player, method: DisruptionMetho
     cc: computeOutgoingCrowdControl(player, method),
 });
 
-export const getIncomingDisruptions = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) =>
-    computeIncomingDisruptions(player, method);
-
-export const getPlayerDownContribution = (player: Player) =>
-    computeDownContribution(player);
-
-export const getPlayerSquadHealing = (player: Player) =>
-    computeSquadHealing(player);
-
-export const getPlayerSquadBarrier = (player: Player) =>
-    computeSquadBarrier(player);
-
-export const getPlayerOutgoingCrowdControl = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) =>
-    computeOutgoingCrowdControl(player, method);
-
-export const applyStabilityGeneration = (
-    players: Player[],
-    context?: { durationMS?: number; buffMap?: Record<string, any> }
-) => applySquadStabilityGeneration(players, context);
+export {
+    computeIncomingDisruptions as getIncomingDisruptions,
+    computeDownContribution as getPlayerDownContribution,
+    computeSquadHealing as getPlayerSquadHealing,
+    computeSquadBarrier as getPlayerSquadBarrier,
+    computeOutgoingCrowdControl as getPlayerOutgoingCrowdControl,
+    applySquadStabilityGeneration as applyStabilityGeneration,
+} from './combatMetrics';

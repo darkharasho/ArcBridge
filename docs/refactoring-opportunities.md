@@ -24,20 +24,23 @@ The entire Electron main process lives in one file: app lifecycle, console loggi
 
 **Design constraint:** store-dependent functions should accept a minimal `StoreAdapter` interface (see `uploadRetryQueue.ts`) so they can be tested without Electron.
 
-**Status:** `uploadRetryQueue.ts`, `detailsProcessing.ts`, and `versionUtils.ts` extracted. Within the renderer, `parseTimestamp`/`resolveFightTimestamp` extracted to `stats/utils/timestampUtils.ts` and `computeSkillUsageData` extracted to `stats/computeSkillUsageData.ts`; `enrichPrecomputedStats` lifted to module level in `computeStatsAggregation.ts`.
+**Status:** All planned module extractions complete. `uploadRetryQueue.ts`, `detailsProcessing.ts`, `versionUtils.ts`, `imageFetcher.ts`, `consoleLogger.ts`, `dpsReportCache.ts`, and `devDatasets.ts` extracted. `index.ts` reduced from ~4871 to ~3919 lines. Remaining: `handlers/` grouping (IPC handler registration by domain). Within the renderer, `parseTimestamp`/`resolveFightTimestamp` extracted to `stats/utils/timestampUtils.ts` and `computeSkillUsageData` extracted to `stats/computeSkillUsageData.ts`; `enrichPrecomputedStats` lifted to module level in `computeStatsAggregation.ts`. Also extracted: `useAppUpdater`, `useDashboardStats`, `useStatsDataProgress` hooks from App.tsx.
 
 ---
 
-### 2. Decompose `src/renderer/stats/computeStatsAggregation.ts` (~4734 lines)
+### 2. Decompose `src/renderer/stats/computeStatsAggregation.ts` (~4734 lines → ~2209 lines)
 
 A single monolithic function handles player aggregation, damage, conditions, boons, skill breakdowns, and fight diff mode — with 3–4 levels of nested loops and 15+ helpers defined inline.
 
-Each concern should become its own named function:
-- `aggregatePlayerStats()`
-- `calculateDamageMetrics()`
-- `aggregateConditions()`
-- `buildPlayerSkillBreakdowns()`
-- `calculateFightDiffMode()`
+**Status:** Six major IIFEs extracted as standalone modules:
+- `computeSkillUsageData.ts` — skill usage aggregation
+- `computeSpikeDamageData.ts` — outgoing spike damage
+- `computeIncomingStrikeDamageData.ts` — incoming strike damage by enemy class
+- `computeBoonTimeline.ts` — boon generation timeline
+- `computeBoonUptimeTimeline.ts` — boon uptime timeline
+- `computeCommanderStats.ts` — per-commander statistics
+
+Remaining: player aggregation core (lines 241–1616 of the outer IIFE), `fightDiffMode`, `timelineData`, and `specialTables` sections.
 
 ---
 

@@ -3,6 +3,7 @@ import { Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { CountClassTooltip } from '../ui/StatsViewShared';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
+import { parseTimestamp } from '../utils/timestampUtils';
 
 type FightBreakdownSectionProps = {
     stats: any;
@@ -54,19 +55,7 @@ export const FightBreakdownSection = ({
     }, [fights]);
 
     const formatReportLabel = (fight: any) => {
-        const rawTs = fight?.timestamp;
-        let tsMs = 0;
-        if (typeof rawTs === 'number') {
-            tsMs = rawTs > 1e12 ? rawTs : rawTs * 1000;
-        } else if (typeof rawTs === 'string' && rawTs.trim()) {
-            const numeric = Number(rawTs);
-            if (Number.isFinite(numeric) && numeric > 0) {
-                tsMs = numeric > 1e12 ? numeric : numeric * 1000;
-            } else {
-                const parsed = Date.parse(rawTs);
-                if (Number.isFinite(parsed) && parsed > 0) tsMs = parsed;
-            }
-        }
+        const tsMs = parseTimestamp(fight?.timestamp);
         const dateLabel = tsMs > 0
             ? new Date(tsMs).toLocaleDateString(undefined, {
                 month: '2-digit',

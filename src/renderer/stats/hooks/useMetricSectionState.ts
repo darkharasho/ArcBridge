@@ -162,7 +162,6 @@ export function useMetricSectionState<M extends MetricItem>(
                 label: row.account,
                 icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3'),
             })),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [rows, renderProfessionIcon]
     );
 

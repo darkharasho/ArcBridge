@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'node:path'
 import https from 'node:https'
 import { createHash } from 'node:crypto'
-import util from 'node:util'
+
 import { spawn } from 'node:child_process'
 import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, KINETIC_DARK_WEB_THEME, KINETIC_DARK_WEB_THEME_ID, KINETIC_SLATE_WEB_THEME, KINETIC_SLATE_WEB_THEME_ID, KINETIC_WEB_THEME, KINETIC_WEB_THEME_ID, MATTE_WEB_THEME, MATTE_WEB_THEME_ID, type WebTheme } from '../shared/webThemes';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
@@ -43,6 +43,52 @@ import {
     compareVersion,
     extractReleaseNotesRangeFromFile,
 } from './versionUtils';
+import { fetchImageBuffer } from './imageFetcher';
+import { setupConsoleLogger } from './consoleLogger';
+import {
+    getDevDatasetsDir,
+    ensureDevDatasetsDir,
+    sanitizeDevDatasetId,
+    sanitizeDevDatasetName,
+    devDatasetFolderCache,
+    devDatasetFinalFolderCache,
+    devDatasetManifestCache,
+    MAX_DEV_DATASET_REPORT_BYTES,
+    DEV_DATASET_SNAPSHOT_SCHEMA_VERSION,
+    DEV_DATASET_TEMP_PREFIX,
+    DEV_DATASET_STATUS_FILE,
+    DEV_DATASET_INTEGRITY_FILE,
+    DEV_DATASET_INTEGRITY_SCHEMA_VERSION,
+    MAX_GITHUB_BLOB_BYTES,
+    MAX_GITHUB_REPORT_JSON_BYTES,
+    getDevDatasetFolderName,
+    getDevDatasetTempFolderName,
+    isDevDatasetTempFolder,
+    normalizeDevDatasetSnapshot,
+    writeDevDatasetStatus,
+    readDevDatasetStatus,
+    getDatasetRelativeLogPath,
+    normalizeDatasetRelativePath,
+    resolveDatasetLogPath,
+    resolveOrderedDatasetLogPaths,
+    buildDatasetIntegrity,
+    validateDatasetIntegrity,
+    readJsonFilesWithLimit,
+    writeJsonFilesWithLimit,
+} from './devDatasets';
+import {
+    computeFileHash,
+    pruneDpsReportCacheIndex,
+    removeDpsReportCacheEntry,
+    loadDpsReportCacheIndex as loadDpsReportCacheIndexFn,
+    saveDpsReportCacheIndex as saveDpsReportCacheIndexFn,
+    clearDpsReportCache as clearDpsReportCacheFn,
+    invalidateDpsReportCacheEntry as invalidateDpsReportCacheEntryFn,
+    loadDpsReportCacheEntry as loadDpsReportCacheEntryFn,
+    saveDpsReportCacheEntry as saveDpsReportCacheEntryFn,
+    updateDpsReportCacheDetails as updateDpsReportCacheDetailsFn,
+    type DpsReportCacheEntry,
+} from './dpsReportCache';
 
 // Increase V8 heap for packaged and dev builds to avoid OOM on large datasets.
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=6144');
@@ -62,170 +108,17 @@ process.stderr?.on?.('error', (err: NodeJS.ErrnoException) => {
 log.transports.file.level = 'info';
 autoUpdater.logger = log;
 
-// Hook console logging to send to renderer
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
 if (!app.isPackaged) {
     const devUserDataDir = path.join(app.getPath('appData'), 'ArcBridge-Dev');
     app.setPath('userData', devUserDataDir);
 }
 
-function formatLogArg(arg: any): string {
-    try {
-        if (arg instanceof Error) {
-            try {
-                if (typeof arg.stack === 'string' && arg.stack.length > 0) {
-                    return arg.stack;
-                }
-            } catch {
-                // Some stack getters can throw; fall through to message.
-            }
-            const errorName = typeof arg.name === 'string' && arg.name.length > 0 ? arg.name : 'Error';
-            const errorMessage = typeof arg.message === 'string' && arg.message.length > 0 ? arg.message : '[no message]';
-            return `${errorName}: ${errorMessage}`;
-        }
-        if (typeof arg === 'object' && arg !== null) {
-            try {
-                return util.inspect(arg, {
-                    depth: 3,
-                    maxArrayLength: 50,
-                    maxStringLength: 5000,
-                    breakLength: 120,
-                    customInspect: false,
-                    getters: false
-                });
-            } catch {
-                try {
-                    return Object.prototype.toString.call(arg);
-                } catch {
-                    return '[Unserializable object]';
-                }
-            }
-        }
-        return String(arg);
-    } catch {
-        return '[Unserializable argument]';
-    }
-}
-
-function formatLogArgs(args: any[]) {
-    try {
-        return args.map((arg) => formatLogArg(arg)).join(' ');
-    } catch {
-        return '[Log formatting failed]';
-    }
-}
-
-let forwardConsoleLogsToRenderer = false;
-const CONSOLE_LOG_HISTORY_MAX = 500;
-let consoleLogHistory: Array<{ type: 'info' | 'error'; message: string; timestamp: string }> = [];
-
-const recordConsoleLog = (payload: { type: 'info' | 'error'; message: string; timestamp: string }) => {
-    consoleLogHistory.push(payload);
-    if (consoleLogHistory.length > CONSOLE_LOG_HISTORY_MAX) {
-        consoleLogHistory = consoleLogHistory.slice(consoleLogHistory.length - CONSOLE_LOG_HISTORY_MAX);
-    }
-};
-
-const safeSendToRenderer = (payload: { type: 'info' | 'error'; message: string; timestamp: string }) => {
-    try {
-        if (!forwardConsoleLogsToRenderer) return;
-        if (!win || win.isDestroyed()) return;
-        if (win.webContents.isDestroyed()) return;
-        win.webContents.send('console-log', payload);
-    } catch {
-        // Swallow send errors to avoid recursive console errors when the renderer is gone.
-    }
-};
-
-console.log = (...args) => {
-    const message = formatLogArgs(args);
-    originalConsoleLog(message);
-    const payload = { type: 'info' as const, message, timestamp: new Date().toISOString() };
-    recordConsoleLog(payload);
-    safeSendToRenderer(payload);
-};
-
-console.warn = (...args) => {
-    const message = formatLogArgs(args);
-    originalConsoleWarn(message);
-    const payload = { type: 'info' as const, message, timestamp: new Date().toISOString() };
-    recordConsoleLog(payload);
-    safeSendToRenderer(payload);
-};
-
-console.error = (...args) => {
-    const message = formatLogArgs(args);
-    originalConsoleError(message);
-    const payload = { type: 'error' as const, message, timestamp: new Date().toISOString() };
-    recordConsoleLog(payload);
-    safeSendToRenderer(payload);
-};
+const { setForwarding: setConsoleLogForwarding, getHistory: getConsoleLogHistory } = setupConsoleLogger(() => win);
 
 const Store = require('electron-store');
 const store = new Store();
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
-const IMAGE_REQUEST_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-    'Referer': 'https://wiki.guildwars2.com/'
-};
-
-const fetchImageBuffer = (url: string, redirectCount = 0): Promise<{ buffer: Buffer; contentType: string }> => {
-    if (redirectCount > 5) {
-        return Promise.reject(new Error('Too many redirects'));
-    }
-    return new Promise((resolve, reject) => {
-        const req = https.get(url, { headers: IMAGE_REQUEST_HEADERS }, (res) => {
-            const statusCode = res.statusCode || 0;
-            if (statusCode >= 300 && statusCode < 400 && res.headers.location) {
-                const nextUrl = new URL(res.headers.location, url).toString();
-                res.resume();
-                fetchImageBuffer(nextUrl, redirectCount + 1).then(resolve).catch(reject);
-                return;
-            }
-            if (statusCode >= 400) {
-                res.resume();
-                reject(new Error(`Request failed with status ${statusCode}`));
-                return;
-            }
-            const chunks: Buffer[] = [];
-            let total = 0;
-            res.on('data', (chunk: Buffer) => {
-                total += chunk.length;
-                if (total > MAX_IMAGE_BYTES) {
-                    req.destroy();
-                    reject(new Error('Image too large'));
-                    return;
-                }
-                chunks.push(chunk);
-            });
-            res.on('end', () => {
-                const contentType = typeof res.headers['content-type'] === 'string'
-                    ? res.headers['content-type']
-                    : 'application/octet-stream';
-                resolve({ buffer: Buffer.concat(chunks), contentType });
-            });
-        });
-        req.on('error', (err) => reject(err));
-    });
-};
-
-
-type DpsReportCacheEntry = {
-    hash: string;
-    createdAt: number;
-    result: UploadResult;
-    detailsPath?: string | null;
-    detailsCachedAt?: number | null;
-};
-
-const DPS_REPORT_CACHE_KEY = 'dpsReportCacheIndex';
-const DPS_REPORT_DETAILS_TTL_MS = 24 * 60 * 60 * 1000;
 // Local wrappers bind the store-injected functions from uploadRetryQueue.ts to
 // the module-level electron-store instance, preserving all existing call sites.
 const loadUploadRetryQueue = (): Record<string, UploadRetryQueueEntry> => loadUploadRetryQueueFromStore(store);
@@ -236,468 +129,17 @@ const saveUploadRetryState = (state: UploadRetryRuntimeState) => saveUploadRetry
 const getLegacyDpsReportCacheDir = () => path.join(app.getPath('userData'), 'dps-report-cache');
 const getDpsReportCacheDir = () => path.join(app.getPath('temp'), 'arcbridge-dps-report-cache');
 
-const loadDpsReportCacheIndex = (): Record<string, DpsReportCacheEntry> => {
-    const raw = store.get(DPS_REPORT_CACHE_KEY, {});
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-    return raw as Record<string, DpsReportCacheEntry>;
-};
-
-const saveDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => {
-    store.set(DPS_REPORT_CACHE_KEY, index);
-};
-
+// Local wrappers bind the store- and dir-injected cache functions to this process context.
+const loadDpsReportCacheIndex = () => loadDpsReportCacheIndexFn(store);
+const saveDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => saveDpsReportCacheIndexFn(store, index);
 const clearDpsReportCache = (
     onProgress?: (data: { stage?: string; message?: string; progress?: number; current?: number; total?: number }) => void
-) => {
-    onProgress?.({ stage: 'start', message: 'Preparing cache cleanup…', progress: 0 });
-    const index = loadDpsReportCacheIndex();
-    const clearedEntries = Object.keys(index).length;
-    store.delete(DPS_REPORT_CACHE_KEY);
-    onProgress?.({ stage: 'index', message: 'Cache index cleared.', progress: 20, current: 0, total: 0 });
+) => clearDpsReportCacheFn(store, getDpsReportCacheDir, getLegacyDpsReportCacheDir, onProgress);
+const invalidateDpsReportCacheEntry = (hash: string, reason: string) => invalidateDpsReportCacheEntryFn(store, hash, reason);
+const loadDpsReportCacheEntry = (hash: string) => loadDpsReportCacheEntryFn(store, hash);
+const saveDpsReportCacheEntry = (hash: string, result: UploadResult, jsonDetails: any | null) => saveDpsReportCacheEntryFn(store, getDpsReportCacheDir, hash, result, jsonDetails);
+const updateDpsReportCacheDetails = (hash: string, jsonDetails: any) => updateDpsReportCacheDetailsFn(store, getDpsReportCacheDir, hash, jsonDetails);
 
-    const cacheDirs = [getDpsReportCacheDir(), getLegacyDpsReportCacheDir()];
-    try {
-        const existingDirs = cacheDirs.filter((dir) => fs.existsSync(dir));
-        const entriesByDir = existingDirs.map((dir) => ({ dir, entries: fs.readdirSync(dir) }));
-        const total = entriesByDir.reduce((sum, item) => sum + item.entries.length, 0);
-        let current = 0;
-        entriesByDir.forEach(({ dir, entries }) => {
-            entries.forEach((entry) => {
-                fs.rmSync(path.join(dir, entry), { recursive: true, force: true });
-                current += 1;
-                const progress = total > 0 ? 20 + Math.round((current / total) * 75) : 95;
-                onProgress?.({
-                    stage: 'files',
-                    message: `Removing cached files (${current}/${total})…`,
-                    progress,
-                    current,
-                    total
-                });
-            });
-            fs.rmSync(dir, { recursive: true, force: true });
-        });
-    } catch (err: any) {
-        console.warn('[Main] Failed to remove dps.report cache directory:', err?.message || err);
-        return { success: false, clearedEntries, error: 'Failed to remove cache directory.' };
-    }
-
-    onProgress?.({ stage: 'done', message: 'Cache cleared.', progress: 100 });
-    return { success: true, clearedEntries };
-};
-
-const removeDpsReportCacheEntry = (index: Record<string, DpsReportCacheEntry>, key: string) => {
-    const entry = index[key];
-    if (entry?.detailsPath) {
-        try {
-            fs.unlinkSync(entry.detailsPath);
-        } catch {
-            // Ignore cache cleanup errors.
-        }
-    }
-    delete index[key];
-};
-
-const invalidateDpsReportCacheEntry = (hash: string, reason: string) => {
-    if (!hash) return;
-    const index = loadDpsReportCacheIndex();
-    if (!index[hash]) return;
-    console.log(`[Cache] Invalidating ${hash} (${reason}).`);
-    removeDpsReportCacheEntry(index, hash);
-    saveDpsReportCacheIndex(index);
-};
-
-const getDevDatasetsDir = () => path.join(process.cwd(), 'dev', 'datasets');
-
-const ensureDevDatasetsDir = async () => {
-    const dir = getDevDatasetsDir();
-    await fs.promises.mkdir(dir, { recursive: true });
-    return dir;
-};
-
-const sanitizeDevDatasetId = (id: string) => id.replace(/[^a-zA-Z0-9-_]/g, '');
-const sanitizeDevDatasetName = (name: string) => name.replace(/[^a-zA-Z0-9-_ ]/g, '').trim() || 'dataset';
-const devDatasetFolderCache = new Map<string, string>();
-const devDatasetFinalFolderCache = new Map<string, string>();
-const devDatasetManifestCache = new Map<string, { meta: { id: string; name: string; createdAt: string; folder: string }; logs: any[] }>();
-const MAX_DEV_DATASET_REPORT_BYTES = 50 * 1024 * 1024;
-const DEV_DATASET_SNAPSHOT_SCHEMA_VERSION = 1;
-const DEV_DATASET_TEMP_PREFIX = '.tmp-';
-const DEV_DATASET_STATUS_FILE = 'status.json';
-const DEV_DATASET_INTEGRITY_FILE = 'integrity.json';
-const DEV_DATASET_INTEGRITY_SCHEMA_VERSION = 1;
-const MAX_GITHUB_BLOB_BYTES = 90 * 1024 * 1024;
-const MAX_GITHUB_REPORT_JSON_BYTES = 32 * 1024 * 1024;
-
-const getDevDatasetFolderName = (id: string, name: string) => `${id}-${sanitizeDevDatasetName(name).replace(/\s+/g, '-').toLowerCase()}`;
-const getDevDatasetTempFolderName = (folderName: string) => `${DEV_DATASET_TEMP_PREFIX}${folderName}`;
-const isDevDatasetTempFolder = (folderName: string) => folderName.startsWith(DEV_DATASET_TEMP_PREFIX);
-
-const normalizeDevDatasetSnapshot = (snapshot: any) => {
-    const state = snapshot && typeof snapshot === 'object' && snapshot.state && typeof snapshot.state === 'object'
-        ? snapshot.state
-        : {};
-    const parsedSchemaVersion = Number(snapshot?.schemaVersion);
-    return {
-        schemaVersion: Number.isFinite(parsedSchemaVersion) && parsedSchemaVersion > 0
-            ? Math.floor(parsedSchemaVersion)
-            : DEV_DATASET_SNAPSHOT_SCHEMA_VERSION,
-        capturedAt: typeof snapshot?.capturedAt === 'string' ? snapshot.capturedAt : new Date().toISOString(),
-        appVersion: typeof snapshot?.appVersion === 'string' ? snapshot.appVersion : app.getVersion(),
-        state
-    };
-};
-
-const writeDevDatasetStatus = async (datasetDir: string, status: { complete: boolean; createdAt?: string; completedAt?: string; totalLogs?: number }) => {
-    await fs.promises.writeFile(path.join(datasetDir, DEV_DATASET_STATUS_FILE), JSON.stringify(status, null, 2), 'utf-8');
-};
-
-const readDevDatasetStatus = async (datasetDir: string) => {
-    const statusPath = path.join(datasetDir, DEV_DATASET_STATUS_FILE);
-    if (!fs.existsSync(statusPath)) return null;
-    const raw = await fs.promises.readFile(statusPath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
-    return parsed as { complete?: boolean; createdAt?: string; completedAt?: string; totalLogs?: number };
-};
-
-const getDatasetRelativeLogPath = (index: number) => `logs/log-${index + 1}.json`;
-
-const normalizeDatasetRelativePath = (value: string) => value.replace(/\\/g, '/');
-
-const resolveDatasetLogPath = (datasetDir: string, logsDir: string, value: string): string | null => {
-    if (!value || typeof value !== 'string') return null;
-    const normalizedRaw = normalizeDatasetRelativePath(value);
-    const candidate = path.isAbsolute(normalizedRaw)
-        ? normalizedRaw
-        : path.join(datasetDir, normalizedRaw);
-    const normalizedCandidate = path.normalize(candidate);
-    const normalizedLogsDir = path.normalize(logsDir + path.sep);
-    if (!normalizedCandidate.startsWith(normalizedLogsDir)) return null;
-    return normalizedCandidate;
-};
-
-const resolveOrderedDatasetLogPaths = async (datasetDir: string, logsDir: string, manifest: any, snapshot: any) => {
-    const names = (await fs.promises.readdir(logsDir))
-        .filter((name) => name.endsWith('.json'))
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    const fallbackPaths = names.map((name) => path.join(logsDir, name));
-    const seen = new Set<string>();
-    const ordered: string[] = [];
-    const addPath = (candidate: string | null) => {
-        if (!candidate) return;
-        if (!fs.existsSync(candidate)) return;
-        if (seen.has(candidate)) return;
-        seen.add(candidate);
-        ordered.push(candidate);
-    };
-
-    const snapshotOrderRaw = snapshot?.state?.datasetLogOrder;
-    if (Array.isArray(snapshotOrderRaw)) {
-        snapshotOrderRaw.forEach((entry: any) => {
-            if (typeof entry !== 'string') return;
-            addPath(resolveDatasetLogPath(datasetDir, logsDir, entry));
-        });
-    }
-
-    const manifestOrderRaw = manifest?.logs;
-    if (Array.isArray(manifestOrderRaw)) {
-        manifestOrderRaw.forEach((entry: any) => {
-            if (!entry || typeof entry !== 'object') return;
-            if (typeof entry.filePath !== 'string') return;
-            addPath(resolveDatasetLogPath(datasetDir, logsDir, entry.filePath));
-        });
-    }
-
-    fallbackPaths.forEach((filePath) => addPath(filePath));
-    return ordered;
-};
-
-const hashFileSha256 = async (filePath: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const hash = createHash('sha256');
-        const stream = fs.createReadStream(filePath);
-        stream.on('data', (chunk) => hash.update(chunk));
-        stream.on('error', reject);
-        stream.on('end', () => resolve(hash.digest('hex')));
-    });
-};
-
-const buildDatasetIntegrity = async (datasetDir: string) => {
-    const logsDir = path.join(datasetDir, 'logs');
-    const manifestPath = path.join(datasetDir, 'manifest.json');
-    const reportPath = path.join(datasetDir, 'report.json');
-    const snapshotPath = path.join(datasetDir, 'snapshot.json');
-    const manifest = fs.existsSync(manifestPath)
-        ? JSON.parse(await fs.promises.readFile(manifestPath, 'utf-8'))
-        : null;
-    const snapshot = fs.existsSync(snapshotPath)
-        ? JSON.parse(await fs.promises.readFile(snapshotPath, 'utf-8'))
-        : null;
-    const logPaths = await resolveOrderedDatasetLogPaths(datasetDir, logsDir, manifest, snapshot);
-    const logs = [];
-    for (let i = 0; i < logPaths.length; i += 1) {
-        const absolute = logPaths[i];
-        const relative = path.relative(datasetDir, absolute).replace(/\\/g, '/');
-        logs.push({
-            path: relative,
-            sha256: await hashFileSha256(absolute)
-        });
-    }
-    return {
-        schemaVersion: DEV_DATASET_INTEGRITY_SCHEMA_VERSION,
-        generatedAt: new Date().toISOString(),
-        snapshotSchemaVersion: Number.isFinite(Number(snapshot?.schemaVersion)) ? Number(snapshot?.schemaVersion) : null,
-        files: {
-            manifest: { path: 'manifest.json', sha256: await hashFileSha256(manifestPath) },
-            report: { path: 'report.json', sha256: await hashFileSha256(reportPath) },
-            snapshot: { path: 'snapshot.json', sha256: await hashFileSha256(snapshotPath) },
-            logs
-        }
-    };
-};
-
-const validateDatasetIntegrity = async (datasetDir: string) => {
-    const issues: string[] = [];
-    const integrityPath = path.join(datasetDir, DEV_DATASET_INTEGRITY_FILE);
-    const snapshotPath = path.join(datasetDir, 'snapshot.json');
-    let snapshotSchemaVersion: number | null = null;
-    try {
-        if (fs.existsSync(snapshotPath)) {
-            const snapshot = JSON.parse(await fs.promises.readFile(snapshotPath, 'utf-8'));
-            const schemaVersion = Number(snapshot?.schemaVersion);
-            if (Number.isFinite(schemaVersion)) {
-                snapshotSchemaVersion = Math.floor(schemaVersion);
-                if (snapshotSchemaVersion > DEV_DATASET_SNAPSHOT_SCHEMA_VERSION) {
-                    issues.push(`Unsupported snapshot schema version ${snapshotSchemaVersion}.`);
-                }
-            }
-        }
-    } catch (err: any) {
-        issues.push(`Failed to read snapshot.json: ${err?.message || err}`);
-    }
-
-    if (!fs.existsSync(integrityPath)) {
-        return { ok: issues.length === 0, issues, hasIntegrityFile: false, snapshotSchemaVersion };
-    }
-
-    let integrity: any = null;
-    try {
-        integrity = JSON.parse(await fs.promises.readFile(integrityPath, 'utf-8'));
-    } catch (err: any) {
-        issues.push(`Failed to read integrity.json: ${err?.message || err}`);
-        return { ok: false, issues, hasIntegrityFile: true, snapshotSchemaVersion };
-    }
-
-    const schemaVersion = Number(integrity?.schemaVersion);
-    if (!Number.isFinite(schemaVersion) || schemaVersion !== DEV_DATASET_INTEGRITY_SCHEMA_VERSION) {
-        issues.push('Unsupported integrity schema version.');
-    }
-
-    const files = integrity?.files || {};
-    const verifyFile = async (entry: any, label: string) => {
-        if (!entry || typeof entry !== 'object' || typeof entry.path !== 'string' || typeof entry.sha256 !== 'string') {
-            issues.push(`Missing checksum entry for ${label}.`);
-            return;
-        }
-        const filePath = path.join(datasetDir, entry.path);
-        if (!fs.existsSync(filePath)) {
-            issues.push(`Missing file for ${label}: ${entry.path}`);
-            return;
-        }
-        const checksum = await hashFileSha256(filePath);
-        if (checksum !== entry.sha256) {
-            issues.push(`Checksum mismatch for ${entry.path}`);
-        }
-    };
-
-    await verifyFile(files.manifest, 'manifest');
-    await verifyFile(files.report, 'report');
-    await verifyFile(files.snapshot, 'snapshot');
-
-    const logEntries = Array.isArray(files.logs) ? files.logs : [];
-    if (logEntries.length === 0) {
-        issues.push('Missing log checksum entries.');
-    } else {
-        for (let i = 0; i < logEntries.length; i += 1) {
-            const entry = logEntries[i];
-            await verifyFile(entry, `log #${i + 1}`);
-        }
-    }
-
-    return { ok: issues.length === 0, issues, hasIntegrityFile: true, snapshotSchemaVersion };
-};
-
-const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Promise<T[]> => {
-    const results: T[] = new Array(paths.length);
-    let index = 0;
-
-    const worker = async () => {
-        while (index < paths.length) {
-            const current = index;
-            index += 1;
-            const raw = await fs.promises.readFile(paths[current], 'utf-8');
-            results[current] = JSON.parse(raw) as T;
-        }
-    };
-
-    const workers = Array.from({ length: Math.min(limit, paths.length) }, () => worker());
-    await Promise.all(workers);
-    return results;
-};
-
-const writeJsonFilesWithLimit = async (
-    entries: Array<{ path: string; data: any }>,
-    limit = 8,
-    onProgress?: (written: number, total: number) => void
-) => {
-    let index = 0;
-    let written = 0;
-    const total = entries.length;
-
-    const worker = async () => {
-        while (index < entries.length) {
-            const current = index;
-            index += 1;
-            const entry = entries[current];
-            await fs.promises.writeFile(entry.path, JSON.stringify(entry.data), 'utf-8');
-            written += 1;
-            onProgress?.(written, total);
-        }
-    };
-
-    const workers = Array.from({ length: Math.min(limit, entries.length) }, () => worker());
-    await Promise.all(workers);
-};
-
-const pruneDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => {
-    let changed = false;
-
-    Object.keys(index).forEach((key) => {
-        const entry = index[key];
-        if (!entry || typeof entry.createdAt !== 'number' || !entry.result?.permalink) {
-            console.log(`[Cache] Removing invalid cache entry for ${key}.`);
-            removeDpsReportCacheEntry(index, key);
-            changed = true;
-            return;
-        }
-        if (entry.detailsPath && !fs.existsSync(entry.detailsPath)) {
-            console.log(`[Cache] Cache details missing for ${key}; will refetch JSON.`);
-            entry.detailsPath = null;
-            entry.detailsCachedAt = null;
-            changed = true;
-        }
-    });
-
-    return changed;
-};
-
-const computeFileHash = (filePath: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const hash = createHash('sha256');
-        const stream = fs.createReadStream(filePath);
-        stream.on('data', (chunk) => hash.update(chunk));
-        stream.on('error', reject);
-        stream.on('end', () => resolve(hash.digest('hex')));
-    });
-};
-
-const loadDpsReportCacheEntry = async (hash: string) => {
-    const index = loadDpsReportCacheIndex();
-    let changed = pruneDpsReportCacheIndex(index);
-    if (changed) saveDpsReportCacheIndex(index);
-
-    const entry = index[hash];
-    if (!entry) return null;
-
-    let jsonDetails: any | null = null;
-    const detailsCachedAt = Number(entry.detailsCachedAt || entry.createdAt || 0);
-    const detailsExpired = detailsCachedAt > 0 && Date.now() - detailsCachedAt > DPS_REPORT_DETAILS_TTL_MS;
-    if (entry.detailsPath) {
-        if (detailsExpired) {
-            try {
-                fs.unlinkSync(entry.detailsPath);
-            } catch {
-                // Ignore file cleanup errors.
-            }
-            entry.detailsPath = null;
-            entry.detailsCachedAt = null;
-            index[hash] = entry;
-            changed = true;
-        } else {
-            try {
-                const raw = await fs.promises.readFile(entry.detailsPath, 'utf8');
-                jsonDetails = JSON.parse(raw);
-            } catch {
-                jsonDetails = null;
-                entry.detailsPath = null;
-                entry.detailsCachedAt = null;
-                index[hash] = entry;
-                changed = true;
-            }
-        }
-    }
-    if (changed) saveDpsReportCacheIndex(index);
-
-    return { entry, jsonDetails };
-};
-
-const saveDpsReportCacheEntry = async (hash: string, result: UploadResult, jsonDetails: any | null) => {
-    const cacheDir = getDpsReportCacheDir();
-    try {
-        fs.mkdirSync(cacheDir, { recursive: true });
-    } catch {
-        // Cache directory creation failures should not block uploads.
-    }
-
-    const index = loadDpsReportCacheIndex();
-    const entry: DpsReportCacheEntry = {
-        hash,
-        createdAt: Date.now(),
-        result,
-        detailsPath: null,
-        detailsCachedAt: null
-    };
-
-    if (jsonDetails) {
-        const detailsPath = path.join(cacheDir, `${hash}.json`);
-        try {
-            await fs.promises.writeFile(detailsPath, JSON.stringify(jsonDetails));
-            entry.detailsPath = detailsPath;
-            entry.detailsCachedAt = Date.now();
-        } catch {
-            entry.detailsPath = null;
-            entry.detailsCachedAt = null;
-        }
-    }
-
-    index[hash] = entry;
-    pruneDpsReportCacheIndex(index);
-    saveDpsReportCacheIndex(index);
-};
-
-const updateDpsReportCacheDetails = async (hash: string, jsonDetails: any) => {
-    const cacheDir = getDpsReportCacheDir();
-    try {
-        fs.mkdirSync(cacheDir, { recursive: true });
-    } catch {
-        return;
-    }
-
-    const index = loadDpsReportCacheIndex();
-    const entry = index[hash];
-    if (!entry) return;
-
-    const detailsPath = path.join(cacheDir, `${hash}.json`);
-    try {
-        await fs.promises.writeFile(detailsPath, JSON.stringify(jsonDetails));
-        entry.detailsPath = detailsPath;
-        entry.detailsCachedAt = Date.now();
-        index[hash] = entry;
-        saveDpsReportCacheIndex(index);
-    } catch {
-        // Ignore cache write errors.
-    }
-};
 
 process.env.DIST = path.join(__dirname, '../../')
 process.env.VITE_PUBLIC = app.isPackaged ? path.join(process.env.DIST, 'dist-react') : path.join(process.env.DIST, 'public')
@@ -2808,7 +2250,7 @@ if (!gotTheLock) {
                 const meta = { id, name, createdAt, folder: folderName };
                 await fs.promises.writeFile(path.join(datasetDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
                 await fs.promises.writeFile(path.join(datasetDir, 'report.json'), JSON.stringify(payload.report || null), 'utf-8');
-                await fs.promises.writeFile(path.join(datasetDir, 'snapshot.json'), JSON.stringify(normalizeDevDatasetSnapshot(payload.snapshot), null, 2), 'utf-8');
+                await fs.promises.writeFile(path.join(datasetDir, 'snapshot.json'), JSON.stringify(normalizeDevDatasetSnapshot(payload.snapshot, app.getVersion()), null, 2), 'utf-8');
                 await fs.promises.writeFile(path.join(datasetDir, 'manifest.json'), JSON.stringify({ ...meta, logs: [] }, null, 2), 'utf-8');
                 await writeDevDatasetStatus(datasetDir, { complete: false, createdAt });
                 const logs = Array.isArray(payload.logs) ? payload.logs : [];
@@ -2869,7 +2311,7 @@ if (!gotTheLock) {
                 const meta = { id, name, createdAt, folder: folderName };
                 await fs.promises.writeFile(path.join(datasetDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
                 await fs.promises.writeFile(path.join(datasetDir, 'report.json'), JSON.stringify(payload.report || null), 'utf-8');
-                await fs.promises.writeFile(path.join(datasetDir, 'snapshot.json'), JSON.stringify(normalizeDevDatasetSnapshot(payload.snapshot), null, 2), 'utf-8');
+                await fs.promises.writeFile(path.join(datasetDir, 'snapshot.json'), JSON.stringify(normalizeDevDatasetSnapshot(payload.snapshot, app.getVersion()), null, 2), 'utf-8');
                 await fs.promises.writeFile(path.join(datasetDir, 'manifest.json'), JSON.stringify({ ...meta, logs: [] }, null, 2), 'utf-8');
                 await writeDevDatasetStatus(datasetDir, { complete: false, createdAt });
                 devDatasetFolderCache.set(id, datasetDir);
@@ -3024,7 +2466,7 @@ if (!gotTheLock) {
                     try {
                         if (fs.existsSync(snapshotPath)) {
                             const snapshotRaw = await fs.promises.readFile(snapshotPath, 'utf-8');
-                            snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw));
+                            snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw), app.getVersion());
                         }
                     } catch (snapshotError: any) {
                         console.warn('[Main] Failed to read dev dataset snapshot.json:', snapshotError?.message || snapshotError);
@@ -3112,7 +2554,7 @@ if (!gotTheLock) {
                     try {
                         if (fs.existsSync(snapshotPath)) {
                             const snapshotRaw = await fs.promises.readFile(snapshotPath, 'utf-8');
-                            snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw));
+                            snapshot = normalizeDevDatasetSnapshot(JSON.parse(snapshotRaw), app.getVersion());
                         }
                     } catch (snapshotError: any) {
                         console.warn('[Main] Failed to read dev dataset snapshot.json:', snapshotError?.message || snapshotError);
@@ -3249,10 +2691,9 @@ if (!gotTheLock) {
         });
 
         ipcMain.on('set-console-log-forwarding', (_event, enabled: boolean) => {
-            forwardConsoleLogsToRenderer = Boolean(enabled);
-            if (forwardConsoleLogsToRenderer) {
-                const snapshot = consoleLogHistory.slice(-CONSOLE_LOG_HISTORY_MAX);
-                _event.sender.send('console-log-history', snapshot);
+            setConsoleLogForwarding(Boolean(enabled));
+            if (enabled) {
+                _event.sender.send('console-log-history', getConsoleLogHistory());
             }
         });
 

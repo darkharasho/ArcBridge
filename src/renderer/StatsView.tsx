@@ -3,7 +3,9 @@ import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from
 
 
 import { formatTopStatValue, formatWithCommas } from './stats/utils/dashboardUtils';
-import { OFFENSE_METRICS, DEFENSE_METRICS, DAMAGE_MITIGATION_METRICS, SUPPORT_METRICS, HEALING_METRICS } from './stats/statsMetrics';
+import { sanitizeWvwLabel, buildFightLabel } from './stats/utils/labelUtils';
+import { parseTimestamp } from './stats/utils/timestampUtils';
+import { OFFENSE_METRICS, DEFENSE_METRICS, DAMAGE_MITIGATION_METRICS, SUPPORT_METRICS, HEALING_METRICS, NON_DAMAGING_CONDITIONS } from './stats/statsMetrics';
 import { useStatsNavigation } from './stats/hooks/useStatsNavigation';
 import { useStatsUploads } from './stats/hooks/useStatsUploads';
 import { useStatsScreenshot } from './stats/hooks/useStatsScreenshot';
@@ -82,7 +84,6 @@ interface StatsViewProps {
 }
 
 const sidebarListClass = 'space-y-1 pr-1 max-h-72 overflow-y-auto';
-const NON_DAMAGING_CONDITIONS = new Set(['Vulnerability', 'Weakness', 'Blind', 'Chill', 'Cripple', 'Slow', 'Taunt', 'Fear', 'Immobilize']);
 const ORDERED_SECTION_IDS = [
     'overview',
     'fight-breakdown',
@@ -815,54 +816,7 @@ type SpikeFight = {
         if (!needsSpikeData) {
             return { fights: [], players: [] };
         }
-        const sanitizeWvwLabel = (value: any) => String(value || '')
-            .replace(/^Detailed\s*WvW\s*-\s*/i, '')
-            .replace(/^World\s*vs\s*World\s*-\s*/i, '')
-            .replace(/^WvW\s*-\s*/i, '')
-            .trim();
-        const tokenizeLabel = (value: string) => sanitizeWvwLabel(value)
-            .toLowerCase()
-            .split(/[^a-z0-9]+/i)
-            .map((token) => token.trim())
-            .filter(Boolean)
-            .map((token) => (token.length > 3 && token.endsWith('s') ? token.slice(0, -1) : token));
-        const buildFightLabel = (fightNameRaw: string, mapNameRaw: string) => {
-            const fightName = sanitizeWvwLabel(fightNameRaw);
-            const mapName = sanitizeWvwLabel(mapNameRaw);
-            if (!mapName) return fightName;
-            if (!fightName) return mapName;
-            const fightTokens = tokenizeLabel(fightName);
-            const mapTokens = tokenizeLabel(mapName);
-            const fightSet = new Set(fightTokens);
-            const mapSet = new Set(mapTokens);
-            const mapCovered = mapTokens.length > 0 && mapTokens.every((token) => fightSet.has(token));
-            const fightCovered = fightTokens.length > 0 && fightTokens.every((token) => mapSet.has(token));
-            if (mapCovered || fightCovered) return fightName;
-            return `${fightName} - ${mapName}`;
-        };
-        const parseTimestampMs = (value: any): number => {
-            if (value === undefined || value === null || value === '') return 0;
-            if (typeof value === 'number') {
-                if (!Number.isFinite(value) || value <= 0) return 0;
-                return value > 1e12 ? value : value * 1000;
-            }
-            if (value instanceof Date) {
-                const ms = value.getTime();
-                return Number.isFinite(ms) && ms > 0 ? ms : 0;
-            }
-            const raw = String(value).trim();
-            if (!raw) return 0;
-            const numeric = Number(raw);
-            if (Number.isFinite(numeric) && numeric > 0) {
-                return numeric > 1e12 ? numeric : numeric * 1000;
-            }
-            const parsed = Date.parse(raw);
-            if (Number.isFinite(parsed) && parsed > 0) return parsed;
-            const normalized = raw.replace(/([+-]\d{2})$/, '$1:00');
-            const reparsed = Date.parse(normalized);
-            return Number.isFinite(reparsed) && reparsed > 0 ? reparsed : 0;
-        };
-        const resolveFightTimestampMs = (details: any, fallback?: any) => parseTimestampMs(
+        const resolveFightTimestampMs = (details: any, fallback?: any) => parseTimestamp(
             details?.uploadTime
             ?? fallback?.uploadTime
             ?? details?.timeStartStd
@@ -1286,11 +1240,6 @@ type SpikeFight = {
         if (!needsIncomingStrikeData) {
             return { fights: [], players: [] };
         }
-        const sanitizeWvwLabel = (value: any) => String(value || '')
-            .replace(/^Detailed\s*WvW\s*-\s*/i, '')
-            .replace(/^World\s*vs\s*World\s*-\s*/i, '')
-            .replace(/^WvW\s*-\s*/i, '')
-            .trim();
         const precomputedIncoming = (safeStats as any)?.incomingStrikeDamage;
         const precomputedFights = Array.isArray(precomputedIncoming?.fights) ? precomputedIncoming.fights : [];
         const precomputedPlayers = Array.isArray(precomputedIncoming?.players) ? precomputedIncoming.players : [];
