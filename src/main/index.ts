@@ -6,7 +6,6 @@ import { createHash } from 'node:crypto'
 import util from 'node:util'
 import { spawn } from 'node:child_process'
 import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, KINETIC_DARK_WEB_THEME, KINETIC_DARK_WEB_THEME_ID, KINETIC_SLATE_WEB_THEME, KINETIC_SLATE_WEB_THEME_ID, KINETIC_WEB_THEME, KINETIC_WEB_THEME_ID, MATTE_WEB_THEME, MATTE_WEB_THEME_ID, type WebTheme } from '../shared/webThemes';
-import { computeOutgoingConditions } from '../shared/conditionsMetrics';
 import { DEFAULT_DISRUPTION_METHOD, DisruptionMethod } from '../shared/metricsSettings';
 import { LogWatcher } from './watcher'
 import { Uploader, UploadResult } from './uploader'
@@ -14,6 +13,36 @@ import { DiscordNotifier } from './discord';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { DesktopIntegrator } from './integration';
+import {
+    inferUploadRetryFailureCategory,
+    trimUploadRetryQueue,
+    buildUploadRetryPauseState,
+    buildUploadRetryQueuePayload as buildUploadRetryQueuePayloadRaw,
+    loadUploadRetryQueue as loadUploadRetryQueueFromStore,
+    saveUploadRetryQueue as saveUploadRetryQueueToStore,
+    loadUploadRetryState as loadUploadRetryStateFromStore,
+    saveUploadRetryState as saveUploadRetryStateToStore,
+    UPLOAD_RETRY_QUEUE_KEY,
+    UPLOAD_RETRY_STATE_KEY,
+    AUTH_RETRY_PAUSE_THRESHOLD,
+    type UploadRetryQueueEntry,
+    type UploadRetryRuntimeState,
+    type UploadRetryQueuePayload,
+} from './uploadRetryQueue';
+import {
+    resolveDetailsUploadTime,
+    pruneDetailsForStats,
+    buildDashboardSummaryFromDetails,
+    buildManifestEntry,
+    attachConditionMetrics,
+    hasUsableFightDetails,
+    isDetailsPermalinkNotFound,
+} from './detailsProcessing';
+import {
+    parseVersion,
+    compareVersion,
+    extractReleaseNotesRangeFromFile,
+} from './versionUtils';
 
 // Increase V8 heap for packaged and dev builds to avoid OOM on large datasets.
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=6144');
@@ -197,38 +226,12 @@ type DpsReportCacheEntry = {
 
 const DPS_REPORT_CACHE_KEY = 'dpsReportCacheIndex';
 const DPS_REPORT_DETAILS_TTL_MS = 24 * 60 * 60 * 1000;
-const UPLOAD_RETRY_QUEUE_KEY = 'uploadRetryQueue';
-const UPLOAD_RETRY_STATE_KEY = 'uploadRetryQueueState';
-const MAX_UPLOAD_RETRY_QUEUE_ENTRIES = 200;
-const AUTH_RETRY_PAUSE_THRESHOLD = 3;
-
-type UploadRetryFailureCategory = 'network' | 'auth' | 'rate-limit' | 'file' | 'unknown';
-
-type UploadRetryQueueEntry = {
-    filePath: string;
-    error: string;
-    statusCode?: number;
-    category: UploadRetryFailureCategory;
-    failedAt: string;
-    attempts: number;
-    state: 'failed' | 'retrying';
-};
-
-type UploadRetryRuntimeState = {
-    paused: boolean;
-    pauseReason: string | null;
-    pausedAt: string | null;
-};
-
-type UploadRetryQueuePayload = {
-    failed: number;
-    retrying: number;
-    resolved: number;
-    paused: boolean;
-    pauseReason: string | null;
-    pausedAt: string | null;
-    entries: UploadRetryQueueEntry[];
-};
+// Local wrappers bind the store-injected functions from uploadRetryQueue.ts to
+// the module-level electron-store instance, preserving all existing call sites.
+const loadUploadRetryQueue = (): Record<string, UploadRetryQueueEntry> => loadUploadRetryQueueFromStore(store);
+const saveUploadRetryQueue = (queue: Record<string, UploadRetryQueueEntry>) => saveUploadRetryQueueToStore(store, queue);
+const loadUploadRetryState = (): UploadRetryRuntimeState => loadUploadRetryStateFromStore(store);
+const saveUploadRetryState = (state: UploadRetryRuntimeState) => saveUploadRetryStateToStore(store, state);
 
 const getLegacyDpsReportCacheDir = () => path.join(app.getPath('userData'), 'dps-report-cache');
 const getDpsReportCacheDir = () => path.join(app.getPath('temp'), 'arcbridge-dps-report-cache');
@@ -241,46 +244,6 @@ const loadDpsReportCacheIndex = (): Record<string, DpsReportCacheEntry> => {
 
 const saveDpsReportCacheIndex = (index: Record<string, DpsReportCacheEntry>) => {
     store.set(DPS_REPORT_CACHE_KEY, index);
-};
-
-const loadUploadRetryQueue = (): Record<string, UploadRetryQueueEntry> => {
-    const raw = store.get(UPLOAD_RETRY_QUEUE_KEY, {});
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-    const parsed = raw as Record<string, any>;
-    const normalized: Record<string, UploadRetryQueueEntry> = {};
-    Object.entries(parsed).forEach(([key, value]) => {
-        if (!value || typeof value !== 'object') return;
-        normalized[key] = {
-            filePath: typeof value.filePath === 'string' ? value.filePath : key,
-            error: typeof value.error === 'string' ? value.error : 'Unknown upload error',
-            statusCode: typeof value.statusCode === 'number' ? value.statusCode : undefined,
-            category: value.category === 'network' || value.category === 'auth' || value.category === 'rate-limit' || value.category === 'file'
-                ? value.category
-                : 'unknown',
-            failedAt: typeof value.failedAt === 'string' ? value.failedAt : new Date().toISOString(),
-            attempts: Number.isFinite(Number(value.attempts)) ? Math.max(1, Number(value.attempts)) : 1,
-            state: value.state === 'retrying' ? 'retrying' : 'failed'
-        };
-    });
-    return normalized;
-};
-
-const saveUploadRetryQueue = (queue: Record<string, UploadRetryQueueEntry>) => {
-    store.set(UPLOAD_RETRY_QUEUE_KEY, queue);
-};
-
-const loadUploadRetryState = (): UploadRetryRuntimeState => {
-    const raw = store.get(UPLOAD_RETRY_STATE_KEY, {});
-    const parsed = (!raw || typeof raw !== 'object' || Array.isArray(raw)) ? {} : raw as any;
-    return {
-        paused: parsed.paused === true,
-        pauseReason: typeof parsed.pauseReason === 'string' ? parsed.pauseReason : null,
-        pausedAt: typeof parsed.pausedAt === 'string' ? parsed.pausedAt : null
-    };
-};
-
-const saveUploadRetryState = (state: UploadRetryRuntimeState) => {
-    store.set(UPLOAD_RETRY_STATE_KEY, state);
 };
 
 const clearDpsReportCache = (
@@ -582,249 +545,6 @@ const readJsonFilesWithLimit = async <T = any>(paths: string[], limit = 8): Prom
     return results;
 };
 
-const resolveTimestampSeconds = (value: any): number | undefined => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value) || value <= 0) return undefined;
-        return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
-    }
-    const raw = String(value).trim();
-    if (!raw) return undefined;
-    const numeric = Number(raw);
-    if (Number.isFinite(numeric) && numeric > 0) {
-        return numeric > 1e12 ? Math.floor(numeric / 1000) : Math.floor(numeric);
-    }
-    const parsed = Date.parse(raw);
-    if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed / 1000);
-    const normalized = raw.replace(/([+-]\d{2})$/, '$1:00');
-    const reparsed = Date.parse(normalized);
-    if (Number.isFinite(reparsed) && reparsed > 0) return Math.floor(reparsed / 1000);
-    return undefined;
-};
-
-const resolveDetailsUploadTime = (details: any, fallback?: any): number | undefined => {
-    return resolveTimestampSeconds(
-        details?.uploadTime
-        ?? fallback?.uploadTime
-        ?? details?.timeStartStd
-        ?? details?.timeStart
-        ?? details?.timeEndStd
-        ?? details?.timeEnd
-    );
-};
-
-const pruneDetailsForStats = (details: any) => {
-    if (!details || typeof details !== 'object') return details;
-    const pick = (obj: any, keys: string[]) => {
-        const out: any = {};
-        keys.forEach((key) => {
-            if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
-                out[key] = obj[key];
-            }
-        });
-        return out;
-    };
-    const pruneCombatReplayData = (value: any) => {
-        const pruneEntry = (entry: any) => {
-            if (!entry || typeof entry !== 'object') return null;
-            return pick(entry, ['start', 'down', 'dead']);
-        };
-        if (Array.isArray(value)) {
-            return value
-                .map((entry) => pruneEntry(entry))
-                .filter((entry): entry is Record<string, any> => Boolean(entry));
-        }
-        if (value && typeof value === 'object') {
-            return pruneEntry(value);
-        }
-        return value;
-    };
-    const pruned: any = pick(details, [
-        'players',
-        'targets',
-        'durationMS',
-        'uploadTime',
-        'timeStart',
-        'timeStartStd',
-        'timeEnd',
-        'timeEndStd',
-        'fightName',
-        'zone',
-        'mapName',
-        'map',
-        'location',
-        'permalink',
-        'uploadLinks',
-        'success',
-        'teamBreakdown',
-        'teamCounts',
-        'combatReplayMetaData',
-        'skillMap',
-        'buffMap',
-        'encounterDuration',
-        'player_damage_mitigation',
-        'player_minion_damage_mitigation',
-        'playerDamageMitigation',
-        'playerMinionDamageMitigation'
-    ]);
-    if (Array.isArray(pruned.players)) {
-        pruned.players = pruned.players.map((player: any) => {
-            const base = pick(player, [
-                'name',
-                'display_name',
-                'character_name',
-                'profession',
-                'elite_spec',
-                'group',
-                'dpsAll',
-                'statsAll',
-                'dpsTargets',
-                'statsTargets',
-                'defenses',
-                'support',
-                'rotation',
-                'extHealingStats',
-                'extBarrierStats',
-                'squadBuffVolumes',
-                'selfBuffs',
-                'groupBuffs',
-                'squadBuffs',
-                'selfBuffsActive',
-                'groupBuffsActive',
-                'squadBuffsActive',
-                'buffUptimes',
-                'totalDamageDist',
-                'targetDamageDist',
-                'damage1S',
-                'targetDamage1S',
-                'powerDamageTaken1S',
-                'targetPowerDamage1S',
-                'totalDamageTaken',
-                'totalDamageTakenDist',
-                'minions',
-                'combatReplayData',
-                'hasCommanderTag',
-                'notInSquad',
-                'account',
-                'activeTimes',
-                'teamID',
-                'teamId',
-                'team',
-                'teamColor',
-                'team_color'
-            ]);
-            return base;
-        });
-    }
-    if (Array.isArray(pruned.targets)) {
-        pruned.targets = pruned.targets.map((target: any) => {
-            const base = pick(target, [
-                'id',
-                'name',
-                'isFake',
-                'dpsAll',
-                'statsAll',
-                'defenses',
-                'totalHealth',
-                'healthPercentBurned',
-                'enemyPlayer',
-                'totalDamageDist',
-                'totalDamageTaken',
-                'totalDamageTakenDist',
-                'damageTaken',
-                'powerDamage1S',
-                'damage1S',
-                'profession',
-                'teamID',
-                'teamId',
-                'team',
-                'teamColor',
-                'team_color'
-            ]);
-            base.combatReplayData = pruneCombatReplayData(target?.combatReplayData);
-            return base;
-        });
-    }
-    return pruned;
-};
-
-const buildDashboardSummaryFromDetails = (details: any) => {
-    const players = Array.isArray(details?.players) ? details.players : [];
-    const targets = Array.isArray(details?.targets) ? details.targets : [];
-    let squadCount = 0;
-    let enemyCount = 0;
-    let squadDownsDeaths = 0;
-    let enemyDownsDeaths = 0;
-    let squadDeaths = 0;
-    let enemyDeaths = 0;
-
-    players.forEach((player: any) => {
-        if (player?.notInSquad) return;
-        squadCount += 1;
-        const defenses = player?.defenses?.[0];
-        if (defenses) {
-            const downCount = Number(defenses.downCount || 0);
-            const deadCount = Number(defenses.deadCount || 0);
-            squadDownsDeaths += downCount + deadCount;
-            squadDeaths += deadCount;
-        }
-        const statsTargets = Array.isArray(player?.statsTargets) ? player.statsTargets : [];
-        statsTargets.forEach((targetStats: any) => {
-            const phase = Array.isArray(targetStats) ? targetStats[0] : null;
-            if (!phase) return;
-            const downed = Number(phase.downed || 0);
-            const killed = Number(phase.killed || 0);
-            enemyDownsDeaths += downed + killed;
-            enemyDeaths += killed;
-        });
-    });
-
-    targets.forEach((target: any) => {
-        if (!target?.isFake) enemyCount += 1;
-    });
-
-    let isWin: boolean | null = null;
-    if (players.length > 0) {
-        if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
-            isWin = enemyDownsDeaths > squadDownsDeaths;
-        } else if (typeof details?.success === 'boolean') {
-            isWin = details.success;
-        } else {
-            isWin = false;
-        }
-    }
-
-    return {
-        hasPlayers: players.length > 0,
-        hasTargets: targets.length > 0,
-        squadCount,
-        enemyCount,
-        isWin,
-        squadDeaths,
-        enemyDeaths
-    };
-};
-
-const buildManifestEntry = (details: any, filePath: string, index: number) => {
-    const players = Array.isArray(details?.players) ? details.players : [];
-    const squadCount = players.filter((p: any) => !p?.notInSquad).length;
-    const nonSquadCount = players.filter((p: any) => p?.notInSquad).length;
-    return {
-        id: details?.id || `dev-log-${index + 1}`,
-        filePath,
-        fightName: details?.fightName,
-        encounterDuration: details?.encounterDuration,
-        uploadTime: resolveDetailsUploadTime(details),
-        timeStart: details?.timeStart,
-        timeStartStd: details?.timeStartStd,
-        durationMS: details?.durationMS,
-        success: details?.success,
-        playerCount: players.length,
-        squadCount,
-        nonSquadCount
-    };
-};
-
 const writeJsonFilesWithLimit = async (
     entries: Array<{ path: string; data: any }>,
     limit = 8,
@@ -879,24 +599,6 @@ const computeFileHash = (filePath: string): Promise<string> => {
         stream.on('error', reject);
         stream.on('end', () => resolve(hash.digest('hex')));
     });
-};
-
-const attachConditionMetrics = (details: any) => {
-    if (!details || details.conditionMetrics) return details;
-    const players = Array.isArray(details.players) ? details.players : [];
-    const targets = Array.isArray(details.targets) ? details.targets : [];
-    if (!players.length || !targets.length) return details;
-    try {
-        details.conditionMetrics = computeOutgoingConditions({
-            players,
-            targets,
-            skillMap: details.skillMap,
-            buffMap: details.buffMap
-        });
-    } catch (err: any) {
-        console.warn('[Main] Condition metrics failed:', err?.message || err);
-    }
-    return details;
 };
 
 const loadDpsReportCacheEntry = async (hash: string) => {
@@ -1076,15 +778,6 @@ const getBulkLogDetails = (filePath: string) => {
     if (!baseName) return null;
     return bulkLogDetailsByBaseName.get(baseName) || null;
 };
-const hasUsableFightDetails = (details: any) => {
-    const players = Array.isArray(details?.players) ? details.players : [];
-    return players.length > 0;
-};
-const isDetailsPermalinkNotFound = (payload: any) => {
-    const code = String(payload?.error || '').toLowerCase();
-    const statusCode = Number(payload?.statusCode || 0);
-    return code === 'details-http-error' && statusCode === 404;
-};
 const pendingDetailsRefreshByPermalink = new Map<string, Promise<{ details: any | null; terminal: boolean; errorCode?: string }>>();
 const missingDetailsLogByPath = new Map<string, number>();
 const fetchDetailsFromPermalinkWithRetry = async (permalink: string) => {
@@ -1138,57 +831,16 @@ const GITHUB_DEVICE_CLIENT_ID = process.env.GITHUB_DEVICE_CLIENT_ID || 'Ov23liFh
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] || 'http://localhost:5173';
 
-const getUploadRetryQueuePayload = (): UploadRetryQueuePayload => {
-    const queue = loadUploadRetryQueue();
-    const state = loadUploadRetryState();
-    const entries = Object.values(queue).sort((a, b) => b.failedAt.localeCompare(a.failedAt));
-    return {
-        failed: entries.filter((entry) => entry.state === 'failed').length,
-        retrying: entries.filter((entry) => entry.state === 'retrying').length,
-        resolved: resolvedRetryCount,
-        paused: state.paused,
-        pauseReason: state.pauseReason,
-        pausedAt: state.pausedAt,
-        entries
-    };
-};
+const getUploadRetryQueuePayload = (): UploadRetryQueuePayload =>
+    buildUploadRetryQueuePayloadRaw(loadUploadRetryQueue(), loadUploadRetryState(), resolvedRetryCount);
 
 const sendUploadRetryQueueUpdate = () => {
     if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
     win.webContents.send('upload-retry-queue-updated', getUploadRetryQueuePayload());
 };
 
-const trimUploadRetryQueue = (queue: Record<string, UploadRetryQueueEntry>) => {
-    const entries = Object.values(queue);
-    if (entries.length <= MAX_UPLOAD_RETRY_QUEUE_ENTRIES) return queue;
-    const sorted = entries.sort((a, b) => a.failedAt.localeCompare(b.failedAt));
-    const overflow = sorted.length - MAX_UPLOAD_RETRY_QUEUE_ENTRIES;
-    for (let i = 0; i < overflow; i += 1) {
-        delete queue[sorted[i].filePath];
-    }
-    return queue;
-};
-
-const inferUploadRetryFailureCategory = (error: string, statusCode?: number): UploadRetryFailureCategory => {
-    const text = String(error || '').toLowerCase();
-    if (statusCode === 429 || text.includes('rate limit')) return 'rate-limit';
-    if (statusCode === 401 || statusCode === 403 || text.includes('unauthorized') || text.includes('forbidden') || text.includes('token') || text.includes('auth')) return 'auth';
-    if (statusCode === 400 || statusCode === 413 || statusCode === 415 || statusCode === 422 || text.includes('enoent') || text.includes('eacces') || text.includes('eperm') || text.includes('file')) return 'file';
-    if (statusCode === undefined || statusCode === null) {
-        if (text.includes('timeout') || text.includes('network') || text.includes('socket') || text.includes('econnreset') || text.includes('econnrefused') || text.includes('enotfound') || text.includes('eai_again') || text.includes('etimedout')) {
-            return 'network';
-        }
-    }
-    return 'unknown';
-};
-
 const setUploadRetryPaused = (paused: boolean, reason: string | null = null) => {
-    const nextState: UploadRetryRuntimeState = {
-        paused,
-        pauseReason: paused ? (reason || 'Retries paused.') : null,
-        pausedAt: paused ? new Date().toISOString() : null
-    };
-    saveUploadRetryState(nextState);
+    saveUploadRetryState(buildUploadRetryPauseState(paused, reason));
     sendUploadRetryQueueUpdate();
 };
 
@@ -1462,23 +1114,6 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
     }
 };
 
-const parseVersion = (value: string | null): number[] | null => {
-    if (!value) return null;
-    const cleaned = value.trim().replace(/^v/i, '');
-    const parts = cleaned.split('.').map((part) => Number.parseInt(part, 10));
-    if (parts.some((num) => Number.isNaN(num))) {
-        return null;
-    }
-    return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
-};
-
-const compareVersion = (a: number[], b: number[]) => {
-    for (let i = 0; i < 3; i += 1) {
-        if (a[i] !== b[i]) return a[i] - b[i];
-    }
-    return 0;
-};
-
 const migrateLegacySettings = () => {
     if (!app.isPackaged) return;
     if (store.get('bridgeSettingsMigrated')) return;
@@ -1565,34 +1200,6 @@ const migrateLegacyInstallName = () => {
             log.warn(`[Bridge] Failed to copy portable exe to new name: ${err?.message || err}`);
         }
     }
-};
-
-const extractReleaseNotesRangeFromFile = (rawNotes: string, currentVersion: string, lastSeenVersion: string | null) => {
-    const current = parseVersion(currentVersion);
-    if (!current) return null;
-    const lastSeen = parseVersion(lastSeenVersion);
-    const body = rawNotes.replace(/^# Release Notes\s*/i, '').trim();
-    if (!body) return null;
-    const sections = body.split(/\n(?=Version v)/).map((section) => section.trim()).filter(Boolean);
-    const selected = sections.filter((section) => {
-        const match = section.match(/^Version v?([0-9]+\.[0-9]+\.[0-9]+)\b/);
-        if (!match) return false;
-        const version = parseVersion(match[1]);
-        if (!version) return false;
-        if (compareVersion(version, current) > 0) return false;
-        if (lastSeen && compareVersion(version, lastSeen) <= 0) return false;
-        return true;
-    });
-    if (selected.length === 0) return null;
-    const sorted = selected.sort((a, b) => {
-        const aMatch = a.match(/^Version v?([0-9]+\.[0-9]+\.[0-9]+)\b/);
-        const bMatch = b.match(/^Version v?([0-9]+\.[0-9]+\.[0-9]+)\b/);
-        const aVer = parseVersion(aMatch?.[1] || '');
-        const bVer = parseVersion(bMatch?.[1] || '');
-        if (!aVer || !bVer) return 0;
-        return compareVersion(bVer, aVer);
-    });
-    return `# Release Notes\n\n${sorted.join('\n\n')}`.trim();
 };
 
 const fetchGithubReleaseNotesRange = async (currentVersion: string, lastSeenVersion: string | null): Promise<string | null> => {
