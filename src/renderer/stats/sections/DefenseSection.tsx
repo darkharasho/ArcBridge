@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMetricSectionState } from '../hooks/useMetricSectionState';
 import { Maximize2, Shield, X, Columns, Users } from 'lucide-react';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
@@ -50,43 +51,25 @@ export const DefenseSection = ({
     sectionClass,
     sidebarListClass
 }: DefenseSectionProps) => {
-    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
-    const [minionDamageMode, setMinionDamageMode] = useState<'combined' | 'separate'>('combined');
-    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
-        columnId: DEFENSE_METRICS[0]?.id || 'value',
-        dir: 'desc'
+    const {
+        sortState, updateSort,
+        denseSort, setDenseSort,
+        selectedColumnIds: selectedDefenseColumnIds, setSelectedColumnIds: setSelectedDefenseColumnIds,
+        selectedPlayers: selectedDefensePlayers, setSelectedPlayers: setSelectedDefensePlayers,
+        filteredMetrics: filteredDefenseMetrics,
+        columnOptions: defenseColumnOptions,
+        columnOptionsFiltered: defenseColumnOptionsFiltered,
+        selectedMetrics: visibleDefenseMetrics,
+        playerOptions: defensePlayerOptions,
+        searchSelectedIds: defenseSearchSelectedIds,
+    } = useMetricSectionState({
+        metrics: DEFENSE_METRICS,
+        rows: stats.defensePlayers,
+        search: defenseSearch,
+        renderProfessionIcon,
     });
+    const [minionDamageMode, setMinionDamageMode] = useState<'combined' | 'separate'>('combined');
     const isExpanded = expandedSection === 'defense-detailed';
-    const [selectedDefenseColumnIds, setSelectedDefenseColumnIds] = useState<string[]>([]);
-    const [selectedDefensePlayers, setSelectedDefensePlayers] = useState<string[]>([]);
-    const filteredDefenseMetrics = DEFENSE_METRICS.filter((metric) =>
-        metric.label.toLowerCase().includes(defenseSearch.trim().toLowerCase())
-    );
-    const defenseColumnOptions = DEFENSE_METRICS.map((metric) => ({ id: metric.id, label: metric.label }));
-    const defenseColumnOptionsFiltered = defenseColumnOptions.filter((option) =>
-        option.label.toLowerCase().includes(defenseSearch.trim().toLowerCase())
-    );
-    const selectedDefenseMetrics = selectedDefenseColumnIds.length > 0
-        ? DEFENSE_METRICS.filter((metric) => selectedDefenseColumnIds.includes(metric.id))
-        : DEFENSE_METRICS;
-    const visibleDefenseMetrics = selectedDefenseMetrics;
-    const defensePlayerOptions = Array.from(new Map(
-        stats.defensePlayers.map((row: any) => [row.account, row])
-    ).values()).map((row: any) => ({
-        id: row.account,
-        label: row.account,
-        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
-    }));
-    const defenseSearchSelectedIds = new Set([
-        ...selectedDefenseColumnIds.map((id) => `column:${id}`),
-        ...selectedDefensePlayers.map((id) => `player:${id}`)
-    ]);
-    const updateSort = (key: 'value' | 'fightTime') => {
-        setSortState((prev) => ({
-            key,
-            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-        }));
-    };
     const isMinionDamageMetric = (id?: string) => id === 'minionDamageTaken';
     const getMinionRows = (rows: any[], mode: 'combined' | 'separate') => {
         if (mode === 'combined') {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMetricSectionState } from '../hooks/useMetricSectionState';
 import { Maximize2, X, Columns, Users } from 'lucide-react';
 import { SupportPlusIcon } from '../../ui/SupportPlusIcon';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
@@ -55,42 +55,24 @@ export const SupportSection = ({
     sectionClass,
     sidebarListClass
 }: SupportSectionProps) => {
-    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
-    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
-        columnId: SUPPORT_METRICS[0]?.id || 'value',
-        dir: 'desc'
+    const {
+        sortState, updateSort,
+        denseSort, setDenseSort,
+        selectedColumnIds: selectedSupportColumnIds, setSelectedColumnIds: setSelectedSupportColumnIds,
+        selectedPlayers: selectedSupportPlayers, setSelectedPlayers: setSelectedSupportPlayers,
+        filteredMetrics: filteredSupportMetrics,
+        columnOptions: supportColumnOptions,
+        columnOptionsFiltered: supportColumnOptionsFiltered,
+        selectedMetrics: visibleSupportColumns,
+        playerOptions: supportPlayerOptions,
+        searchSelectedIds: supportSearchSelectedIds,
+    } = useMetricSectionState({
+        metrics: SUPPORT_METRICS,
+        rows: stats.supportPlayers,
+        search: supportSearch,
+        renderProfessionIcon,
     });
     const isExpanded = expandedSection === 'support-detailed';
-    const [selectedSupportColumnIds, setSelectedSupportColumnIds] = useState<string[]>([]);
-    const [selectedSupportPlayers, setSelectedSupportPlayers] = useState<string[]>([]);
-    const filteredSupportMetrics = SUPPORT_METRICS.filter((metric) =>
-        metric.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
-    );
-    const supportColumnOptions = SUPPORT_METRICS.map((metric) => ({ id: metric.id, label: metric.label }));
-    const supportColumnOptionsFiltered = supportColumnOptions.filter((option) =>
-        option.label.toLowerCase().includes(supportSearch.trim().toLowerCase())
-    );
-    const selectedSupportColumns = selectedSupportColumnIds.length > 0
-        ? SUPPORT_METRICS.filter((metric) => selectedSupportColumnIds.includes(metric.id))
-        : SUPPORT_METRICS;
-    const visibleSupportColumns = selectedSupportColumns;
-    const supportPlayerOptions = Array.from(new Map(
-        stats.supportPlayers.map((row: any) => [row.account, row])
-    ).values()).map((row: any) => ({
-        id: row.account,
-        label: row.account,
-        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
-    }));
-    const supportSearchSelectedIds = new Set([
-        ...selectedSupportColumnIds.map((id) => `column:${id}`),
-        ...selectedSupportPlayers.map((id) => `player:${id}`)
-    ]);
-    const updateSort = (key: 'value' | 'fightTime') => {
-        setSortState((prev) => ({
-            key,
-            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-        }));
-    };
     return (
     <div
         id="support-detailed"

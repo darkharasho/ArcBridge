@@ -24,7 +24,7 @@ The entire Electron main process lives in one file: app lifecycle, console loggi
 
 **Design constraint:** store-dependent functions should accept a minimal `StoreAdapter` interface (see `uploadRetryQueue.ts`) so they can be tested without Electron.
 
-**Status:** `uploadRetryQueue.ts` and `detailsProcessing.ts` extracted — see implementation below.
+**Status:** `uploadRetryQueue.ts`, `detailsProcessing.ts`, and `versionUtils.ts` extracted. Within the renderer, `parseTimestamp`/`resolveFightTimestamp` extracted to `stats/utils/timestampUtils.ts` and `computeSkillUsageData` extracted to `stats/computeSkillUsageData.ts`; `enrichPrecomputedStats` lifted to module level in `computeStatsAggregation.ts`.
 
 ---
 

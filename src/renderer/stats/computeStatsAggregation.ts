@@ -6,8 +6,10 @@ import { DisruptionMethod, IMvpWeights, IStatsViewSettings, DEFAULT_DISRUPTION_M
 import { buildConditionIconMap, computeOutgoingConditions, normalizeConditionLabel, resolveBuffMetaById, resolveConditionNameFromEntry } from '../../shared/conditionsMetrics';
 import { OFFENSE_METRICS, DEFENSE_METRICS, SUPPORT_METRICS, NON_DAMAGING_CONDITIONS } from './statsMetrics';
 import { isResUtilitySkill, formatDurationMs } from './utils/dashboardUtils';
-import { SkillUsageLogRecord, SkillUsagePlayer, PlayerSkillDamageEntry } from './statsTypes';
+import { PlayerSkillDamageEntry } from './statsTypes';
 import { PROFESSION_COLORS, getProfessionColor } from '../../shared/professionUtils';
+import { resolveFightTimestamp } from './utils/timestampUtils';
+import { computeSkillUsageData } from './computeSkillUsageData';
 
 interface UseStatsAggregationProps {
     logs: any[];
@@ -18,53 +20,7 @@ interface UseStatsAggregationProps {
     includePlayerSkillMap?: boolean;
 }
 
-const parseTimestamp = (value: any): number => {
-    if (value === undefined || value === null || value === '') return 0;
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value) || value <= 0) return 0;
-        return value > 1e12 ? value : value * 1000;
-    }
-    if (value instanceof Date) {
-        const ms = value.getTime();
-        return Number.isFinite(ms) && ms > 0 ? ms : 0;
-    }
-    const str = String(value).trim();
-    if (!str) return 0;
-    const numeric = Number(str);
-    if (Number.isFinite(numeric) && numeric > 0) {
-        return numeric > 1e12 ? numeric : numeric * 1000;
-    }
-    const parsed = Date.parse(str);
-    if (Number.isFinite(parsed) && parsed > 0) return parsed;
-    // Handles timezone format like "-05" by normalizing to "-05:00".
-    const normalized = str.replace(/([+-]\d{2})$/, '$1:00');
-    const reparsed = Date.parse(normalized);
-    return Number.isFinite(reparsed) && reparsed > 0 ? reparsed : 0;
-};
-
-const resolveFightTimestamp = (details: any, log: any): number => {
-    return parseTimestamp(
-        details?.timeStartStd
-        ?? details?.timeStart
-        ?? details?.timeEndStd
-        ?? details?.timeEnd
-        ?? details?.timeStartText
-        ?? details?.timeEndText
-        ?? details?.uploadTime
-        ?? log?.uploadTime
-    );
-};
-
-export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod, includePlayerSkillMap }: UseStatsAggregationProps) => {
-
-    const hasDetailedRoster = (log: any) => {
-        const players = Array.isArray(log?.details?.players) ? log.details.players : [];
-        return players.length > 0;
-    };
-    const validLogs = logs.filter((log) => hasDetailedRoster(log));
-    const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
-    const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
-    const enrichPrecomputedStats = (input: any) => {
+const enrichPrecomputedStats = (input: any, logs: any[]) => {
         if (!input || typeof input !== 'object') return input;
         const fights = Array.isArray(input.fightBreakdown) ? input.fightBreakdown : null;
         if (!fights || fights.length === 0) return input;
@@ -156,11 +112,21 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         });
 
         return { ...input, fightBreakdown: normalizedFights, fightDiffMode: derivedFightDiffMode };
+};
+
+export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod, includePlayerSkillMap }: UseStatsAggregationProps) => {
+
+    const hasDetailedRoster = (log: any) => {
+        const players = Array.isArray(log?.details?.players) ? log.details.players : [];
+        return players.length > 0;
     };
+    const validLogs = logs.filter((log) => hasDetailedRoster(log));
+    const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
+    const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
 
     const stats = (() => {
         if (precomputedStats) {
-            return enrichPrecomputedStats(precomputedStats);
+            return enrichPrecomputedStats(precomputedStats, logs);
         }
 
         const method = disruptionMethod || DEFAULT_DISRUPTION_METHOD;
@@ -4658,73 +4624,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         };
     })();
 
-    const skillUsageData = (() => {
-        const skillTotals = new Map<string, number>();
-        const playerMap = new Map<string, SkillUsagePlayer>();
-        const logRecords: SkillUsageLogRecord[] = [];
-        const skillNameMap = new Map<string, string>();
-        const skillIconMap = new Map<string, string>();
-
-        validLogs.forEach((log) => {
-            const details = log.details;
-            if (!details) return;
-            const skillMap = details.skillMap || {};
-            const label = details.fightName || 'Log';
-            const timestamp = resolveFightTimestamp(details, log) || Date.now();
-
-            const record: SkillUsageLogRecord = {
-                id: log.filePath || log.id || label,
-                label, timestamp, skillEntries: {}, playerActiveSeconds: {},
-                durationSeconds: details.durationMS ? details.durationMS / 1000 : 0
-            };
-
-            const players = (details.players || []) as any[];
-            players.forEach((p) => {
-                if (p.notInSquad) return;
-                const account = p.account || p.name || 'Unknown';
-                const profession = p.profession || 'Unknown';
-                const key = `${account}|${profession}`;
-                let pr = playerMap.get(key);
-                if (!pr) {
-                    pr = { key, account, displayName: account, profession, professionList: [profession], logs: 0, totalActiveSeconds: 0, skillTotals: {} };
-                    playerMap.set(key, pr);
-                }
-                pr.logs++;
-                const activeSec = (Array.isArray(p.activeTimes) ? p.activeTimes[0] : 0) / 1000;
-                pr.totalActiveSeconds = (pr.totalActiveSeconds || 0) + activeSec;
-                record.playerActiveSeconds![key] = activeSec;
-
-                (p.rotation || []).forEach((rot: any) => {
-                    if (!rot?.id) return;
-                    const count = rot.skills?.length || 0;
-                    if (count <= 0) return;
-                    const sId = `s${rot.id}`;
-                    const sName = skillMap[sId]?.name || `Skill ${rot.id}`;
-                    const sIcon = skillMap[sId]?.icon;
-                    pr!.skillTotals[sId] = (pr!.skillTotals[sId] || 0) + count;
-                    skillTotals.set(sId, (skillTotals.get(sId) || 0) + count);
-                    skillNameMap.set(sId, sName);
-                    if (sIcon && !skillIconMap.has(sId)) skillIconMap.set(sId, sIcon);
-
-                    if (!record.skillEntries[sId]) record.skillEntries[sId] = { name: sName, icon: sIcon, players: {} };
-                    if (!record.skillEntries[sId].icon && sIcon) record.skillEntries[sId].icon = sIcon;
-                    record.skillEntries[sId].players[key] = (record.skillEntries[sId].players[key] || 0) + count;
-                });
-            });
-            logRecords.push(record);
-        });
-
-        const skillOptions = Array.from(skillTotals.entries()).map(([id, total]) => ({
-            id, name: skillNameMap.get(id) || id, total, icon: skillIconMap.get(id)
-        })).sort((a, b) => b.total - a.total);
-
-        return {
-            logRecords,
-            players: Array.from(playerMap.values()),
-            skillOptions,
-            resUtilitySkills: []
-        };
-    })();
+    const skillUsageData = computeSkillUsageData(validLogs);
 
     return {
         validLogs,

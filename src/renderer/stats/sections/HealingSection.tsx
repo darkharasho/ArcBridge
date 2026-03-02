@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMetricSectionState } from '../hooks/useMetricSectionState';
 import { Activity, Maximize2, X, Columns, Users } from 'lucide-react';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
@@ -54,35 +54,21 @@ export const HealingSection = ({
     isFirstVisibleSection,
     sectionClass
 }: HealingSectionProps) => {
-    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
-    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
-        columnId: HEALING_METRICS[0]?.id || 'value',
-        dir: 'desc'
+    const {
+        sortState, updateSort,
+        denseSort, setDenseSort,
+        selectedColumnIds: selectedHealingColumnIds, setSelectedColumnIds: setSelectedHealingColumnIds,
+        selectedPlayers: selectedHealingPlayers, setSelectedPlayers: setSelectedHealingPlayers,
+        columnOptions: healingColumnOptions,
+        selectedMetrics: selectedHealingColumns,
+        playerOptions: healingPlayerOptions,
+        searchSelectedIds: healingSearchSelectedIds,
+    } = useMetricSectionState({
+        metrics: HEALING_METRICS,
+        rows: stats.healingPlayers,
+        renderProfessionIcon,
     });
     const isExpanded = expandedSection === 'healing-stats';
-    const [selectedHealingPlayers, setSelectedHealingPlayers] = useState<string[]>([]);
-    const [selectedHealingColumnIds, setSelectedHealingColumnIds] = useState<string[]>([]);
-    const healingPlayerOptions = Array.from(new Map(
-        stats.healingPlayers.map((row: any) => [row.account, row])
-    ).values()).map((row: any) => ({
-        id: row.account,
-        label: row.account,
-        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
-    }));
-    const healingSearchSelectedIds = new Set([
-        ...selectedHealingColumnIds.map((id) => `column:${id}`),
-        ...selectedHealingPlayers.map((id) => `player:${id}`)
-    ]);
-    const healingColumnOptions = HEALING_METRICS.map((metric) => ({ id: metric.id, label: metric.label }));
-    const selectedHealingColumns = selectedHealingColumnIds.length > 0
-        ? HEALING_METRICS.filter((metric) => selectedHealingColumnIds.includes(metric.id))
-        : HEALING_METRICS;
-    const updateSort = (key: 'value' | 'fightTime') => {
-        setSortState((prev) => ({
-            key,
-            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-        }));
-    };
     return (
     <div
         id="healing-stats"

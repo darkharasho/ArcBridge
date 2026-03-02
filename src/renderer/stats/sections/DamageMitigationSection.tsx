@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMetricSectionState } from '../hooks/useMetricSectionState';
 import { Maximize2, X, Columns, Users } from 'lucide-react';
 import { Gw2DamMitIcon } from '../../ui/Gw2DamMitIcon';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
@@ -55,43 +56,30 @@ export const DamageMitigationSection = ({
     sectionClass,
     sidebarListClass
 }: DamageMitigationSectionProps) => {
-    const initialSortColumnId = DAMAGE_MITIGATION_METRICS.find((metric) => metric.id === 'totalMitigation')?.id
-        || DAMAGE_MITIGATION_METRICS[0]?.id
-        || 'totalMitigation';
-    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
-    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
-        columnId: initialSortColumnId,
-        dir: 'desc'
-    });
-    const isExpanded = expandedSection === 'defense-mitigation';
-    const [selectedMitigationColumnIds, setSelectedMitigationColumnIds] = useState<string[]>([]);
-    const [selectedMitigationPlayers, setSelectedMitigationPlayers] = useState<string[]>([]);
-    const [selectedMinionTypes, setSelectedMinionTypes] = useState<string[]>([]);
-
     const mitigationPlayers = stats.damageMitigationPlayers || [];
     const mitigationMinions = stats.damageMitigationMinions || [];
-    const mitigationRows = damageMitigationScope === 'minions'
-        ? mitigationMinions
-        : mitigationPlayers;
+    const mitigationRows = damageMitigationScope === 'minions' ? mitigationMinions : mitigationPlayers;
     const hasMitigationData = mitigationPlayers.length > 0 || mitigationMinions.length > 0;
-    const filteredMitigationMetrics = DAMAGE_MITIGATION_METRICS.filter((metric) =>
-        metric.label.toLowerCase().includes(damageMitigationSearch.trim().toLowerCase())
-    );
-    const mitigationColumnOptions = DAMAGE_MITIGATION_METRICS.map((metric) => ({ id: metric.id, label: metric.label }));
-    const mitigationColumnOptionsFiltered = mitigationColumnOptions.filter((option) =>
-        option.label.toLowerCase().includes(damageMitigationSearch.trim().toLowerCase())
-    );
-    const selectedMitigationMetrics = selectedMitigationColumnIds.length > 0
-        ? DAMAGE_MITIGATION_METRICS.filter((metric) => selectedMitigationColumnIds.includes(metric.id))
-        : DAMAGE_MITIGATION_METRICS;
-    const visibleMitigationMetrics = selectedMitigationMetrics;
-    const mitigationPlayerOptions = Array.from(new Map(
-        mitigationRows.map((row: any) => [row.account, row])
-    ).values()).map((row: any) => ({
-        id: row.account,
-        label: row.account,
-        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
-    }));
+    const [selectedMinionTypes, setSelectedMinionTypes] = useState<string[]>([]);
+    const {
+        sortState, updateSort,
+        denseSort, setDenseSort,
+        selectedColumnIds: selectedMitigationColumnIds, setSelectedColumnIds: setSelectedMitigationColumnIds,
+        selectedPlayers: selectedMitigationPlayers, setSelectedPlayers: setSelectedMitigationPlayers,
+        filteredMetrics: filteredMitigationMetrics,
+        columnOptions: mitigationColumnOptions,
+        columnOptionsFiltered: mitigationColumnOptionsFiltered,
+        selectedMetrics: visibleMitigationMetrics,
+        playerOptions: mitigationPlayerOptions,
+        searchSelectedIds: mitigationSearchSelectedIds,
+    } = useMetricSectionState({
+        metrics: DAMAGE_MITIGATION_METRICS,
+        rows: mitigationRows,
+        search: damageMitigationSearch,
+        initialDenseSortColumnId: 'totalMitigation',
+        renderProfessionIcon,
+    });
+    const isExpanded = expandedSection === 'defense-mitigation';
     const mitigationMinionOptions = Array.from(new Map(
         mitigationMinions.map((row: any) => [row.minion, row])
     ).values())
@@ -100,16 +88,6 @@ export const DamageMitigationSection = ({
             id: String(row.minion),
             label: String(row.minion)
         }));
-    const mitigationSearchSelectedIds = new Set([
-        ...selectedMitigationColumnIds.map((id) => `column:${id}`),
-        ...selectedMitigationPlayers.map((id) => `player:${id}`)
-    ]);
-    const updateSort = (key: 'value' | 'fightTime') => {
-        setSortState((prev) => ({
-            key,
-            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-        }));
-    };
     const formatValue = (value: number) => {
         const decimals = roundCountStats && damageMitigationViewMode === 'total' ? 0 : 2;
         return formatWithCommas(value, decimals);

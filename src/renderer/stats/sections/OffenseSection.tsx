@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMetricSectionState } from '../hooks/useMetricSectionState';
 import { Maximize2, X, Columns, Users } from 'lucide-react';
 import { OffenseSwordIcon } from '../../ui/OffenseSwordIcon';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
@@ -56,42 +56,24 @@ export const OffenseSection = ({
     sectionClass,
     sidebarListClass
 }: OffenseSectionProps) => {
-    const [sortState, setSortState] = useState<{ key: 'value' | 'fightTime'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
-    const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({
-        columnId: OFFENSE_METRICS[0]?.id || 'value',
-        dir: 'desc'
+    const {
+        sortState, updateSort,
+        denseSort, setDenseSort,
+        selectedColumnIds: selectedOffenseColumnIds, setSelectedColumnIds: setSelectedOffenseColumnIds,
+        selectedPlayers: selectedOffensePlayers, setSelectedPlayers: setSelectedOffensePlayers,
+        filteredMetrics: filteredOffenseMetrics,
+        columnOptions: offenseColumnOptions,
+        columnOptionsFiltered: offenseColumnOptionsFiltered,
+        selectedMetrics: visibleOffenseMetrics,
+        playerOptions: offensePlayerOptions,
+        searchSelectedIds: offenseSearchSelectedIds,
+    } = useMetricSectionState({
+        metrics: OFFENSE_METRICS,
+        rows: stats.offensePlayers,
+        search: offenseSearch,
+        renderProfessionIcon,
     });
     const isExpanded = expandedSection === 'offense-detailed';
-    const [selectedOffenseColumnIds, setSelectedOffenseColumnIds] = useState<string[]>([]);
-    const [selectedOffensePlayers, setSelectedOffensePlayers] = useState<string[]>([]);
-    const filteredOffenseMetrics = OFFENSE_METRICS.filter((metric) =>
-        metric.label.toLowerCase().includes(offenseSearch.trim().toLowerCase())
-    );
-    const offenseColumnOptions = OFFENSE_METRICS.map((metric) => ({ id: metric.id, label: metric.label }));
-    const offenseColumnOptionsFiltered = offenseColumnOptions.filter((option) =>
-        option.label.toLowerCase().includes(offenseSearch.trim().toLowerCase())
-    );
-    const selectedOffenseMetrics = selectedOffenseColumnIds.length > 0
-        ? OFFENSE_METRICS.filter((metric) => selectedOffenseColumnIds.includes(metric.id))
-        : OFFENSE_METRICS;
-    const visibleOffenseMetrics = selectedOffenseMetrics;
-    const offensePlayerOptions = Array.from(new Map(
-        stats.offensePlayers.map((row: any) => [row.account, row])
-    ).values()).map((row: any) => ({
-        id: row.account,
-        label: row.account,
-        icon: renderProfessionIcon(row.profession, row.professionList, 'w-3 h-3')
-    }));
-    const offenseSearchSelectedIds = new Set([
-        ...selectedOffenseColumnIds.map((id) => `column:${id}`),
-        ...selectedOffensePlayers.map((id) => `player:${id}`)
-    ]);
-    const updateSort = (key: 'value' | 'fightTime') => {
-        setSortState((prev) => ({
-            key,
-            dir: prev.key === key ? (prev.dir === 'desc' ? 'asc' : 'desc') : 'desc'
-        }));
-    };
     return (
     <div
         id="offense-detailed"
