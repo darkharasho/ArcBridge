@@ -8,10 +8,10 @@ import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { useStatsSharedContext } from '../StatsViewContext';
+import { DAMAGE_MITIGATION_METRICS } from '../statsMetrics';
 
 type DamageMitigationSectionProps = {
-    stats: any;
-    DAMAGE_MITIGATION_METRICS: Array<{ id: string; label: string }>;
     damageMitigationSearch: string;
     setDamageMitigationSearch: (value: string) => void;
     activeDamageMitigationStat: string;
@@ -20,22 +20,9 @@ type DamageMitigationSectionProps = {
     setDamageMitigationViewMode: (value: 'total' | 'per1s' | 'per60s') => void;
     damageMitigationScope: 'player' | 'minions';
     setDamageMitigationScope: (value: 'player' | 'minions') => void;
-    roundCountStats: boolean;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 export const DamageMitigationSection = ({
-    stats,
-    DAMAGE_MITIGATION_METRICS,
     damageMitigationSearch,
     setDamageMitigationSearch,
     activeDamageMitigationStat,
@@ -43,19 +30,9 @@ export const DamageMitigationSection = ({
     damageMitigationViewMode,
     setDamageMitigationViewMode,
     damageMitigationScope,
-    setDamageMitigationScope,
-    roundCountStats,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    setDamageMitigationScope
 }: DamageMitigationSectionProps) => {
+    const { stats, roundCountStats, formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const mitigationPlayers = stats.damageMitigationPlayers || [];
     const mitigationMinions = stats.damageMitigationMinions || [];
     const mitigationRows = damageMitigationScope === 'minions' ? mitigationMinions : mitigationPlayers;

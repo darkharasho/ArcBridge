@@ -1,6 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { FightBreakdownSection } from '../stats/sections/FightBreakdownSection';
+import { StatsSharedContext } from '../stats/StatsViewContext';
+
+const makeContextValue = (stats: any) => ({
+    stats,
+    expandedSection: null,
+    expandedSectionClosing: false,
+    openExpandedSection: () => {},
+    closeExpandedSection: () => {},
+    isSectionVisible: () => true,
+    isFirstVisibleSection: () => false,
+    sectionClass: (_id: string, base: string) => base,
+    sidebarListClass: '',
+    formatWithCommas: (value: number, _decimals: number) => String(Math.round(value)),
+    renderProfessionIcon: () => null,
+    roundCountStats: false,
+});
 
 describe('FightBreakdownSection', () => {
     it('renders map label inside report link', () => {
@@ -23,18 +39,12 @@ describe('FightBreakdownSection', () => {
         };
 
         render(
-            <FightBreakdownSection
-                stats={stats}
-                fightBreakdownTab="sizes"
-                setFightBreakdownTab={() => {}}
-                expandedSection={null}
-                expandedSectionClosing={false}
-                openExpandedSection={() => {}}
-                closeExpandedSection={() => {}}
-                isSectionVisible={() => true}
-                isFirstVisibleSection={() => false}
-                sectionClass={(_id, base) => base}
-            />
+            <StatsSharedContext.Provider value={makeContextValue(stats)}>
+                <FightBreakdownSection
+                    fightBreakdownTab="sizes"
+                    setFightBreakdownTab={() => {}}
+                />
+            </StatsSharedContext.Provider>
         );
 
         expect(screen.getByText(/Green Alpine Borderlands/i)).toBeInTheDocument();
@@ -59,18 +69,12 @@ describe('FightBreakdownSection', () => {
         };
 
         render(
-            <FightBreakdownSection
-                stats={stats}
-                fightBreakdownTab="sizes"
-                setFightBreakdownTab={() => {}}
-                expandedSection={null}
-                expandedSectionClosing={false}
-                openExpandedSection={() => {}}
-                closeExpandedSection={() => {}}
-                isSectionVisible={() => true}
-                isFirstVisibleSection={() => false}
-                sectionClass={(_id, base) => base}
-            />
+            <StatsSharedContext.Provider value={makeContextValue(stats)}>
+                <FightBreakdownSection
+                    fightBreakdownTab="sizes"
+                    setFightBreakdownTab={() => {}}
+                />
+            </StatsSharedContext.Provider>
         );
 
         expect(screen.getByText(/^Unknown$/i)).toBeInTheDocument();

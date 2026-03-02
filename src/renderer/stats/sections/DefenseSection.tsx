@@ -7,50 +7,27 @@ import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { useStatsSharedContext } from '../StatsViewContext';
+import { DEFENSE_METRICS } from '../statsMetrics';
 
 type DefenseSectionProps = {
-    stats: any;
-    DEFENSE_METRICS: Array<{ id: string; label: string }>;
     defenseSearch: string;
     setDefenseSearch: (value: string) => void;
     activeDefenseStat: string;
     setActiveDefenseStat: (value: string) => void;
     defenseViewMode: 'total' | 'per1s' | 'per60s';
     setDefenseViewMode: (value: 'total' | 'per1s' | 'per60s') => void;
-    roundCountStats: boolean;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 export const DefenseSection = ({
-    stats,
-    DEFENSE_METRICS,
     defenseSearch,
     setDefenseSearch,
     activeDefenseStat,
     setActiveDefenseStat,
     defenseViewMode,
-    setDefenseViewMode,
-    roundCountStats,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    setDefenseViewMode
 }: DefenseSectionProps) => {
+    const { stats, roundCountStats, formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const {
         sortState, updateSort,
         denseSort, setDenseSort,

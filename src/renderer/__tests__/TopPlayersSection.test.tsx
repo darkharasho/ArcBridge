@@ -1,6 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { TopPlayersSection } from '../stats/sections/TopPlayersSection';
+import { StatsSharedContext } from '../stats/StatsViewContext';
+
+const makeContextValue = (stats: any, formatWithCommas: (value: number, decimals: number) => string, renderProfessionIcon: (...args: any[]) => null) => ({
+    stats,
+    expandedSection: null,
+    expandedSectionClosing: false,
+    openExpandedSection: () => {},
+    closeExpandedSection: () => {},
+    isSectionVisible: () => true,
+    isFirstVisibleSection: () => false,
+    sectionClass: (_id: string, base: string) => base,
+    sidebarListClass: '',
+    formatWithCommas,
+    renderProfessionIcon,
+    roundCountStats: false,
+});
 
 describe('TopPlayersSection', () => {
     it('uses the highest leaderboard value for Down Contribution card when precomputed top stat is stale', () => {
@@ -28,22 +44,21 @@ describe('TopPlayersSection', () => {
             }
         };
 
+        const formatWithCommas = (value: number) => `${Math.round(value)}u`;
+        const renderProfessionIcon = () => null;
+
         render(
-            <TopPlayersSection
-                stats={stats}
-                showTopStats={true}
-                showMvp={false}
-                topStatsMode="total"
-                expandedLeader={null}
-                setExpandedLeader={() => {}}
-                formatTopStatValue={(value) => `${Math.round(value)}u`}
-                formatWithCommas={(value) => `${Math.round(value)}u`}
-                isMvpStatEnabled={() => true}
-                renderProfessionIcon={() => null}
-                isSectionVisible={() => true}
-                isFirstVisibleSection={() => false}
-                sectionClass={(_id, base) => base}
-            />
+            <StatsSharedContext.Provider value={makeContextValue(stats, formatWithCommas, renderProfessionIcon)}>
+                <TopPlayersSection
+                    showTopStats={true}
+                    showMvp={false}
+                    topStatsMode="total"
+                    expandedLeader={null}
+                    setExpandedLeader={() => {}}
+                    formatTopStatValue={(value) => `${Math.round(value)}u`}
+                    isMvpStatEnabled={() => true}
+                />
+            </StatsSharedContext.Provider>
         );
 
         expect(screen.getByText('374000u')).toBeInTheDocument();

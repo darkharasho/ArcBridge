@@ -4,32 +4,18 @@ import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { CountClassTooltip } from '../ui/StatsViewShared';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { parseTimestamp } from '../utils/timestampUtils';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type FightBreakdownSectionProps = {
-    stats: any;
     fightBreakdownTab: 'sizes' | 'outcomes' | 'damage' | 'barrier';
     setFightBreakdownTab: (value: 'sizes' | 'outcomes' | 'damage' | 'barrier') => void;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 export const FightBreakdownSection = ({
-    stats,
     fightBreakdownTab,
-    setFightBreakdownTab,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    setFightBreakdownTab
 }: FightBreakdownSectionProps) => {
+    const { stats, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const sectionId = 'fight-breakdown';
     const isExpanded = expandedSection === sectionId;
     const fights = Array.isArray(stats?.fightBreakdown) ? stats.fightBreakdown : [];

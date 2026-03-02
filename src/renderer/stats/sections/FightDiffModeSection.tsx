@@ -1,18 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GitCompareArrows, Maximize2, X } from 'lucide-react';
 import { StatsTableShell } from '../ui/StatsTableShell';
-
-type FightDiffModeSectionProps = {
-    stats: any;
-    formatWithCommas: (value: number, decimals?: number) => string;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-};
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type DiffFightRow = {
     id: string;
@@ -29,17 +18,8 @@ type DiffFightRow = {
 
 type TargetSortKey = 'aDamage' | 'aShare' | 'bDamage' | 'bShare' | 'shareDelta';
 
-export const FightDiffModeSection = ({
-    stats,
-    formatWithCommas,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
-}: FightDiffModeSectionProps) => {
+export const FightDiffModeSection = () => {
+    const { stats, formatWithCommas, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const fights = (Array.isArray(stats?.fightDiffMode) ? stats.fightDiffMode : []) as DiffFightRow[];
     const fightDiffMissingFromDataset = !Array.isArray(stats?.fightDiffMode) && Array.isArray(stats?.fightBreakdown) && stats.fightBreakdown.length > 0;
     const [fightAId, setFightAId] = useState<string>('');

@@ -2,34 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { InlineIconLabel } from '../ui/StatsViewShared';
-import { formatWithCommas } from '../utils/dashboardUtils';
 import type { PlayerSkillBreakdown } from '../statsTypes';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type DamageBreakdownSectionProps = {
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
     playerSkillBreakdowns: PlayerSkillBreakdown[];
-    renderProfessionIcon: (profession?: string, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 type MetricMode = 'damage' | 'downContribution';
 
 export const DamageBreakdownSection = ({
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    playerSkillBreakdowns,
-    renderProfessionIcon
+    playerSkillBreakdowns
 }: DamageBreakdownSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, renderProfessionIcon, formatWithCommas } = useStatsSharedContext();
     const sectionId = 'damage-breakdown';
     const isExpanded = expandedSection === sectionId;
     const [metricMode, setMetricMode] = useState<MetricMode>('damage');

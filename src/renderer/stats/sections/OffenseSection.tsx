@@ -7,55 +7,27 @@ import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { useStatsSharedContext } from '../StatsViewContext';
+import { OFFENSE_METRICS } from '../statsMetrics';
 
 type OffenseSectionProps = {
-    stats: any;
-    OFFENSE_METRICS: Array<{
-        id: string;
-        label: string;
-        isRate?: boolean;
-        isPercent?: boolean;
-    }>;
-    roundCountStats: boolean;
     offenseSearch: string;
     setOffenseSearch: (value: string) => void;
     activeOffenseStat: string;
     setActiveOffenseStat: (value: string) => void;
     offenseViewMode: 'total' | 'per1s' | 'per60s';
     setOffenseViewMode: (value: 'total' | 'per1s' | 'per60s') => void;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 export const OffenseSection = ({
-    stats,
-    OFFENSE_METRICS,
-    roundCountStats,
     offenseSearch,
     setOffenseSearch,
     activeOffenseStat,
     setActiveOffenseStat,
     offenseViewMode,
-    setOffenseViewMode,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    setOffenseViewMode
 }: OffenseSectionProps) => {
+    const { stats, roundCountStats, formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const {
         sortState, updateSort,
         denseSort, setDenseSort,

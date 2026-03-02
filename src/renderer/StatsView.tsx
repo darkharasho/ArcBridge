@@ -5,7 +5,8 @@ import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from
 import { formatTopStatValue, formatWithCommas } from './stats/utils/dashboardUtils';
 import { sanitizeWvwLabel, buildFightLabel } from './stats/utils/labelUtils';
 import { parseTimestamp } from './stats/utils/timestampUtils';
-import { OFFENSE_METRICS, DEFENSE_METRICS, DAMAGE_MITIGATION_METRICS, SUPPORT_METRICS, HEALING_METRICS, NON_DAMAGING_CONDITIONS } from './stats/statsMetrics';
+import { NON_DAMAGING_CONDITIONS } from './stats/statsMetrics';
+import { StatsSharedContext } from './stats/StatsViewContext';
 import { useStatsNavigation } from './stats/hooks/useStatsNavigation';
 import { useStatsUploads } from './stats/hooks/useStatsUploads';
 import { useStatsScreenshot } from './stats/hooks/useStatsScreenshot';
@@ -3087,16 +3088,16 @@ type SpikeFight = {
 
 
 
-    const openExpandedSection = (sectionId: string) => {
+    const openExpandedSection = useCallback((sectionId: string) => {
         if (expandedCloseTimerRef.current) {
             window.clearTimeout(expandedCloseTimerRef.current);
             expandedCloseTimerRef.current = null;
         }
         setExpandedSectionClosing(false);
         setExpandedSection(sectionId);
-    };
+    }, []);
 
-    const closeExpandedSection = () => {
+    const closeExpandedSection = useCallback(() => {
         if (!expandedSection) return;
         if (expandedCloseTimerRef.current) {
             window.clearTimeout(expandedCloseTimerRef.current);
@@ -3107,7 +3108,7 @@ type SpikeFight = {
             setExpandedSectionClosing(false);
             expandedCloseTimerRef.current = null;
         }, 160);
-    };
+    }, [expandedSection]);
 
     useEffect(() => {
         if (!expandedSection) return;
@@ -3206,6 +3207,22 @@ type SpikeFight = {
     );
 
     const renderProfessionIcon = renderProfessionIconShared;
+    const sharedCtxValue = useMemo(() => ({
+        stats: safeStats,
+        expandedSection,
+        expandedSectionClosing,
+        openExpandedSection,
+        closeExpandedSection,
+        isSectionVisible,
+        isFirstVisibleSection,
+        sectionClass,
+        sidebarListClass,
+        formatWithCommas,
+        renderProfessionIcon,
+        roundCountStats,
+    }), [safeStats, expandedSection, expandedSectionClosing, openExpandedSection,
+        closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass,
+        formatWithCommas, renderProfessionIcon, roundCountStats]);
     const canUploadWeb = useMemo(() => {
         const total = Number((safeStats as any).total || 0);
         if (Number.isFinite(total) && total > 0) return true;
@@ -3296,58 +3313,36 @@ type SpikeFight = {
                     className={`${scrollContainerClass} ${embedded ? '' : 'flex-1'} ${blurStatsDashboard ? 'stats-dashboard-scroll-lock' : ''}`}
                     style={resolvedScrollContainerStyle}
                 >
+                <StatsSharedContext.Provider value={sharedCtxValue}>
                 {useModernLayout ? (
                     <div className="stats-layout stats-layout-modern grid gap-4 grid-cols-1">
                         <div className="space-y-4 min-w-0">
                             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <OverviewSection
-                                    stats={safeStats}
-                                    isSectionVisible={isSectionVisible}
-                                    isFirstVisibleSection={isFirstVisibleSection}
-                                    sectionClass={sectionClass}
                                 />
 
                                 <FightBreakdownSection
-                                    stats={safeStats}
                                     fightBreakdownTab={fightBreakdownTab}
                                     setFightBreakdownTab={setFightBreakdownTab}
-                                    expandedSection={expandedSection}
-                                    expandedSectionClosing={expandedSectionClosing}
-                                    openExpandedSection={openExpandedSection}
-                                    closeExpandedSection={closeExpandedSection}
-                                    isSectionVisible={isSectionVisible}
-                                    isFirstVisibleSection={isFirstVisibleSection}
-                                    sectionClass={sectionClass}
                                 />
 
                                 <TopPlayersSection
-                                    stats={safeStats}
                                     showTopStats={showTopStats}
                                     showMvp={showMvp}
                                     topStatsMode={topStatsMode}
                                     expandedLeader={expandedLeader}
                                     setExpandedLeader={setExpandedLeader}
                                     formatTopStatValue={formatTopStatValue}
-                                    formatWithCommas={formatWithCommas}
                                     isMvpStatEnabled={isMvpStatEnabled}
-                                    renderProfessionIcon={renderProfessionIcon}
-                                    isSectionVisible={isSectionVisible}
-                                    isFirstVisibleSection={isFirstVisibleSection}
-                                    sectionClass={sectionClass}
                                 />
                             </div>
 
                             <TopSkillsSection
-                                stats={safeStats}
                                 topSkillsMetric={topSkillsMetric}
                                 onTopSkillsMetricChange={updateTopSkillsMetric}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <BoonOutputSection
-                                stats={safeStats}
                                 activeBoonCategory={activeBoonCategory}
                                 setActiveBoonCategory={(val: string) => setActiveBoonCategory(val as BoonCategory)}
                                 activeBoonMetric={activeBoonMetric}
@@ -3359,25 +3354,8 @@ type SpikeFight = {
                                 setBoonSearch={setBoonSearch}
                                 formatBoonMetricDisplay={formatBoonMetricDisplay}
                                 getBoonMetricValue={getBoonMetricValue}
-                                renderProfessionIcon={renderProfessionIcon}
-                                roundCountStats={roundCountStats}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
                             <BoonTimelineSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                                 boonSearch={boonTimelineSearch}
                                 setBoonSearch={setBoonTimelineSearch}
                                 boons={filteredBoonTimelineBoons}
@@ -3397,17 +3375,8 @@ type SpikeFight = {
                                 setSelectedFightIndex={setSelectedBoonTimelineFightIndex}
                                 drilldownTitle={boonTimelineDrilldown.title}
                                 drilldownData={boonTimelineDrilldown.data}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
                             <BoonUptimeSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                                 boonSearch={boonUptimeSearch}
                                 setBoonSearch={setBoonUptimeSearch}
                                 boons={filteredBoonUptimeBoons}
@@ -3427,41 +3396,18 @@ type SpikeFight = {
                                 drilldownData={boonUptimeDrilldown.data}
                                 overallUptimePercent={boonUptimeOverallPercent}
                                 showStackCapLine={Boolean(activeBoonUptime?.stacking)}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <OffenseSection
-                                stats={safeStats}
-                                OFFENSE_METRICS={OFFENSE_METRICS}
-                                roundCountStats={roundCountStats}
                                 offenseSearch={offenseSearch}
                                 setOffenseSearch={setOffenseSearch}
                                 activeOffenseStat={activeOffenseStat}
                                 setActiveOffenseStat={setActiveOffenseStat}
                                 offenseViewMode={offenseViewMode}
                                 setOffenseViewMode={setOffenseViewMode}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <PlayerBreakdownSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                                 viewMode={playerBreakdownViewMode}
                                 setViewMode={setPlayerBreakdownViewMode}
                                 playerSkillBreakdowns={playerSkillBreakdowns}
@@ -3484,29 +3430,13 @@ type SpikeFight = {
                                 activePlayerSkill={activePlayerSkill}
                                 activeClassBreakdown={activeClassBreakdown}
                                 activeClassSkill={activeClassSkill}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <DamageBreakdownSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                                 playerSkillBreakdowns={playerSkillBreakdowns}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <SpikeDamageSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                                 spikePlayerFilter={spikePlayerFilter}
                                 setSpikePlayerFilter={setSpikePlayerFilter}
                                 groupedSpikePlayers={groupedSpikePlayers}
@@ -3528,8 +3458,6 @@ type SpikeFight = {
                                 spikeDrilldownDeathIndices={spikeDrilldown.deathIndices}
                                 spikeFightSkillRows={spikeFightSkillRows}
                                 spikeFightSkillTitle="Outgoing Skill Damage (Selected Fight)"
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <ConditionsSection
@@ -3545,37 +3473,15 @@ type SpikeFight = {
                                 effectiveConditionSort={effectiveConditionSort as any}
                                 setConditionSort={setConditionSort as any}
                                 showConditionDamage={showConditionDamage}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <DefenseSection
-                                stats={safeStats}
-                                DEFENSE_METRICS={DEFENSE_METRICS}
                                 defenseSearch={defenseSearch}
                                 setDefenseSearch={setDefenseSearch}
                                 activeDefenseStat={activeDefenseStat}
                                 setActiveDefenseStat={setActiveDefenseStat}
                                 defenseViewMode={defenseViewMode}
                                 setDefenseViewMode={setDefenseViewMode}
-                                roundCountStats={roundCountStats}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <SpikeDamageSection
@@ -3585,13 +3491,6 @@ type SpikeFight = {
                                 listTitle="Enemy Classes"
                                 searchPlaceholder="Search enemy class"
                                 titleIconClassName="text-cyan-300"
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                                 spikePlayerFilter={incomingStrikePlayerFilter}
                                 setSpikePlayerFilter={setIncomingStrikePlayerFilter}
                                 groupedSpikePlayers={groupedIncomingStrikePlayers}
@@ -3610,13 +3509,9 @@ type SpikeFight = {
                                 spikeDrilldownDeathIndices={incomingStrikeDrilldown.deathIndices}
                                 spikeFightSkillRows={incomingStrikeFightSkillRows}
                                 spikeFightSkillTitle="Incoming Skill Damage (Selected Fight)"
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <DamageMitigationSection
-                                stats={safeStats}
-                                DAMAGE_MITIGATION_METRICS={DAMAGE_MITIGATION_METRICS}
                                 damageMitigationSearch={damageMitigationSearch}
                                 setDamageMitigationSearch={setDamageMitigationSearch}
                                 activeDamageMitigationStat={activeDamageMitigationStat}
@@ -3625,22 +3520,9 @@ type SpikeFight = {
                                 setDamageMitigationViewMode={setDamageMitigationViewMode}
                                 damageMitigationScope={damageMitigationScope}
                                 setDamageMitigationScope={setDamageMitigationScope}
-                                roundCountStats={roundCountStats}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <SupportSection
-                                stats={safeStats}
-                                SUPPORT_METRICS={SUPPORT_METRICS}
                                 supportSearch={supportSearch}
                                 setSupportSearch={setSupportSearch}
                                 activeSupportStat={activeSupportStat}
@@ -3649,22 +3531,9 @@ type SpikeFight = {
                                 setSupportViewMode={setSupportViewMode}
                                 cleanseScope={cleanseScope}
                                 setCleanseScope={setCleanseScope}
-                                roundCountStats={roundCountStats}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <HealingSection
-                                stats={safeStats}
-                                HEALING_METRICS={HEALING_METRICS}
                                 activeHealingMetric={activeHealingMetric}
                                 setActiveHealingMetric={setActiveHealingMetric}
                                 healingCategory={healingCategory}
@@ -3672,46 +3541,17 @@ type SpikeFight = {
                                 activeResUtilitySkill={activeResUtilitySkill}
                                 setActiveResUtilitySkill={setActiveResUtilitySkill}
                                 skillUsageData={skillUsageData}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <FightDiffModeSection
-                                stats={safeStats}
-                                formatWithCommas={formatWithCommas}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <SpecialBuffsSection
-                                stats={safeStats}
                                 specialSearch={specialSearch}
                                 setSpecialSearch={setSpecialSearch}
                                 activeSpecialTab={activeSpecialTab}
                                 setActiveSpecialTab={setActiveSpecialTab}
                                 activeSpecialTable={activeSpecialTable}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <SigilRelicUptimeSection
@@ -3722,26 +3562,9 @@ type SpikeFight = {
                                 activeSigilRelicTab={activeSigilRelicTab}
                                 setActiveSigilRelicTab={setActiveSigilRelicTab}
                                 activeSigilRelicTable={activeSigilRelicTable}
-                                formatWithCommas={formatWithCommas}
-                                renderProfessionIcon={renderProfessionIcon}
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                             />
 
                             <SkillUsageSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                                 selectedPlayers={selectedPlayers}
                                 setSelectedPlayers={setSelectedPlayers}
                                 removeSelectedPlayer={removeSelectedPlayer}
@@ -3773,18 +3596,9 @@ type SpikeFight = {
                                 getLineStrokeColor={getLineStrokeColor}
                                 getLineDashForPlayer={getLineDashForPlayer}
                                 formatSkillUsageValue={formatSkillUsageValue}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                             <ApmSection
-                                expandedSection={expandedSection}
-                                expandedSectionClosing={expandedSectionClosing}
-                                openExpandedSection={openExpandedSection}
-                                closeExpandedSection={closeExpandedSection}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
-                                sidebarListClass={sidebarListClass}
                                 apmSpecAvailable={apmSpecAvailable}
                                 skillUsageAvailable={skillUsageAvailable}
                                 apmSpecTables={apmSpecTables}
@@ -3805,7 +3619,6 @@ type SpikeFight = {
                                 formatApmValue={formatApmValue}
                                 formatCastRateValue={formatCastRateValue}
                                 formatCastCountValue={formatCastCountValue}
-                                renderProfessionIcon={renderProfessionIcon}
                             />
 
                         </div>
@@ -3814,223 +3627,126 @@ type SpikeFight = {
                                 sortedSquadClassData={sortedSquadClassData}
                                 sortedEnemyClassData={sortedEnemyClassData}
                                 getProfessionIconPath={getProfessionIconPath}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <CommanderStatsSection
                                 commanderStats={commanderStats}
                                 getProfessionIconPath={getProfessionIconPath}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <AttendanceSection
                                 attendanceRows={attendanceData}
                                 getProfessionIconPath={getProfessionIconPath}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <SquadCompByFightSection
                                 fights={squadCompByFight}
                                 getProfessionIconPath={getProfessionIconPath}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <FightCompSection
                                 fights={fightCompByFight}
                                 getProfessionIconPath={getProfessionIconPath}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <MapDistributionSection
                                 mapData={safeStats.mapData}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
 
                             <TimelineSection
                                 timelineData={safeStats.timelineData}
                                 timelineFriendlyScope={timelineFriendlyScope}
                                 setTimelineFriendlyScope={setTimelineFriendlyScope}
-                                isSectionVisible={isSectionVisible}
-                                isFirstVisibleSection={isFirstVisibleSection}
-                                sectionClass={sectionClass}
                             />
                         </div>
                     </div>
                 ) : (
                     <>
                         {isSectionVisible('overview') && <OverviewSection
-                            stats={safeStats}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('fight-breakdown') && <FightBreakdownSection
-                            stats={safeStats}
                             fightBreakdownTab={fightBreakdownTab}
                             setFightBreakdownTab={setFightBreakdownTab}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('top-players') && <TopPlayersSection
-                            stats={safeStats}
                             showTopStats={showTopStats}
                             showMvp={showMvp}
                             topStatsMode={topStatsMode}
                             expandedLeader={expandedLeader}
                             setExpandedLeader={setExpandedLeader}
                             formatTopStatValue={formatTopStatValue}
-                            formatWithCommas={formatWithCommas}
                             isMvpStatEnabled={isMvpStatEnabled}
-                            renderProfessionIcon={renderProfessionIcon}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('top-skills-outgoing') && <TopSkillsSection
-                            stats={safeStats}
                             topSkillsMetric={topSkillsMetric}
                             onTopSkillsMetricChange={updateTopSkillsMetric}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('squad-composition') && <SquadCompositionSection
                             sortedSquadClassData={sortedSquadClassData}
                             sortedEnemyClassData={sortedEnemyClassData}
                             getProfessionIconPath={getProfessionIconPath}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('commander-stats') && <CommanderStatsSection
                             commanderStats={commanderStats}
                             getProfessionIconPath={getProfessionIconPath}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('commander-push-timing') && <CommanderPushTimingSection
                             commanderStats={commanderStats}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('commander-target-conversion') && <CommanderTargetConversionSection
                             commanderStats={commanderStats}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('commander-tag-movement') && <CommanderTagMovementSection
                             commanderStats={commanderStats}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('commander-tag-death-response') && <CommanderTagDeathResponseSection
                             commanderStats={commanderStats}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('attendance-ledger') && <AttendanceSection
                             attendanceRows={attendanceData}
                             getProfessionIconPath={getProfessionIconPath}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('squad-comp-fight') && <SquadCompByFightSection
                             fights={squadCompByFight}
                             getProfessionIconPath={getProfessionIconPath}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('fight-comp') && <FightCompSection
                             fights={fightCompByFight}
                             getProfessionIconPath={getProfessionIconPath}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('timeline') && <TimelineSection
                             timelineData={safeStats.timelineData}
                             timelineFriendlyScope={timelineFriendlyScope}
                             setTimelineFriendlyScope={setTimelineFriendlyScope}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('map-distribution') && <MapDistributionSection
                             mapData={safeStats.mapData}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('offense-detailed') && <OffenseSection
-                            stats={safeStats}
-                            OFFENSE_METRICS={OFFENSE_METRICS}
-                            roundCountStats={roundCountStats}
                             offenseSearch={offenseSearch}
                             setOffenseSearch={setOffenseSearch}
                             activeOffenseStat={activeOffenseStat}
                             setActiveOffenseStat={setActiveOffenseStat}
                             offenseViewMode={offenseViewMode}
                             setOffenseViewMode={setOffenseViewMode}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('player-breakdown') && <PlayerBreakdownSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                             viewMode={playerBreakdownViewMode}
                             setViewMode={setPlayerBreakdownViewMode}
                             playerSkillBreakdowns={playerSkillBreakdowns}
@@ -4053,29 +3769,13 @@ type SpikeFight = {
                             activePlayerSkill={activePlayerSkill}
                             activeClassBreakdown={activeClassBreakdown}
                             activeClassSkill={activeClassSkill}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                         {isSectionVisible('damage-breakdown') && <DamageBreakdownSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                             playerSkillBreakdowns={playerSkillBreakdowns}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                         {isSectionVisible('spike-damage') && <SpikeDamageSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                             spikePlayerFilter={spikePlayerFilter}
                             setSpikePlayerFilter={setSpikePlayerFilter}
                             groupedSpikePlayers={groupedSpikePlayers}
@@ -4097,8 +3797,6 @@ type SpikeFight = {
                             spikeDrilldownDeathIndices={spikeDrilldown.deathIndices}
                             spikeFightSkillRows={spikeFightSkillRows}
                             spikeFightSkillTitle="Outgoing Skill Damage (Selected Fight)"
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                         {isSectionVisible('conditions-outgoing') && <ConditionsSection
@@ -4114,37 +3812,15 @@ type SpikeFight = {
                             effectiveConditionSort={effectiveConditionSort as any}
                             setConditionSort={setConditionSort as any}
                             showConditionDamage={showConditionDamage}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('defense-detailed') && <DefenseSection
-                            stats={safeStats}
-                            DEFENSE_METRICS={DEFENSE_METRICS}
                             defenseSearch={defenseSearch}
                             setDefenseSearch={setDefenseSearch}
                             activeDefenseStat={activeDefenseStat}
                             setActiveDefenseStat={setActiveDefenseStat}
                             defenseViewMode={defenseViewMode}
                             setDefenseViewMode={setDefenseViewMode}
-                            roundCountStats={roundCountStats}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('incoming-strike-damage') && <SpikeDamageSection
@@ -4154,13 +3830,6 @@ type SpikeFight = {
                             listTitle="Enemy Classes"
                             searchPlaceholder="Search enemy class"
                             titleIconClassName="text-cyan-300"
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                             spikePlayerFilter={incomingStrikePlayerFilter}
                             setSpikePlayerFilter={setIncomingStrikePlayerFilter}
                             groupedSpikePlayers={groupedIncomingStrikePlayers}
@@ -4179,13 +3848,9 @@ type SpikeFight = {
                             spikeDrilldownDeathIndices={incomingStrikeDrilldown.deathIndices}
                             spikeFightSkillRows={incomingStrikeFightSkillRows}
                             spikeFightSkillTitle="Incoming Skill Damage (Selected Fight)"
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                         {isSectionVisible('defense-mitigation') && <DamageMitigationSection
-                            stats={safeStats}
-                            DAMAGE_MITIGATION_METRICS={DAMAGE_MITIGATION_METRICS}
                             damageMitigationSearch={damageMitigationSearch}
                             setDamageMitigationSearch={setDamageMitigationSearch}
                             activeDamageMitigationStat={activeDamageMitigationStat}
@@ -4194,21 +3859,9 @@ type SpikeFight = {
                             setDamageMitigationViewMode={setDamageMitigationViewMode}
                             damageMitigationScope={damageMitigationScope}
                             setDamageMitigationScope={setDamageMitigationScope}
-                            roundCountStats={roundCountStats}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('boon-output') && <BoonOutputSection
-                            stats={safeStats}
                             activeBoonCategory={activeBoonCategory}
                             setActiveBoonCategory={(val: string) => setActiveBoonCategory(val as BoonCategory)}
                             activeBoonMetric={activeBoonMetric}
@@ -4220,25 +3873,8 @@ type SpikeFight = {
                             setBoonSearch={setBoonSearch}
                             formatBoonMetricDisplay={formatBoonMetricDisplay}
                             getBoonMetricValue={getBoonMetricValue}
-                            renderProfessionIcon={renderProfessionIcon}
-                            roundCountStats={roundCountStats}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
                         {isSectionVisible('boon-timeline') && <BoonTimelineSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                             boonSearch={boonTimelineSearch}
                             setBoonSearch={setBoonTimelineSearch}
                             boons={filteredBoonTimelineBoons}
@@ -4258,17 +3894,8 @@ type SpikeFight = {
                             setSelectedFightIndex={setSelectedBoonTimelineFightIndex}
                             drilldownTitle={boonTimelineDrilldown.title}
                             drilldownData={boonTimelineDrilldown.data}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
                         {isSectionVisible('boon-uptime') && <BoonUptimeSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                             boonSearch={boonUptimeSearch}
                             setBoonSearch={setBoonUptimeSearch}
                             boons={filteredBoonUptimeBoons}
@@ -4288,13 +3915,9 @@ type SpikeFight = {
                             drilldownData={boonUptimeDrilldown.data}
                             overallUptimePercent={boonUptimeOverallPercent}
                             showStackCapLine={Boolean(activeBoonUptime?.stacking)}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                         {isSectionVisible('support-detailed') && <SupportSection
-                            stats={safeStats}
-                            SUPPORT_METRICS={SUPPORT_METRICS}
                             supportSearch={supportSearch}
                             setSupportSearch={setSupportSearch}
                             activeSupportStat={activeSupportStat}
@@ -4303,22 +3926,9 @@ type SpikeFight = {
                             setSupportViewMode={setSupportViewMode}
                             cleanseScope={cleanseScope}
                             setCleanseScope={setCleanseScope}
-                            roundCountStats={roundCountStats}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('healing-stats') && <HealingSection
-                            stats={safeStats}
-                            HEALING_METRICS={HEALING_METRICS}
                             activeHealingMetric={activeHealingMetric}
                             setActiveHealingMetric={setActiveHealingMetric}
                             healingCategory={healingCategory}
@@ -4326,46 +3936,17 @@ type SpikeFight = {
                             activeResUtilitySkill={activeResUtilitySkill}
                             setActiveResUtilitySkill={setActiveResUtilitySkill}
                             skillUsageData={skillUsageData}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('fight-diff-mode') && <FightDiffModeSection
-                            stats={safeStats}
-                            formatWithCommas={formatWithCommas}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                         />}
 
                         {isSectionVisible('special-buffs') && <SpecialBuffsSection
-                            stats={safeStats}
                             specialSearch={specialSearch}
                             setSpecialSearch={setSpecialSearch}
                             activeSpecialTab={activeSpecialTab}
                             setActiveSpecialTab={setActiveSpecialTab}
                             activeSpecialTable={activeSpecialTable}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('sigil-relic-uptime') && <SigilRelicUptimeSection
@@ -4376,26 +3957,9 @@ type SpikeFight = {
                             activeSigilRelicTab={activeSigilRelicTab}
                             setActiveSigilRelicTab={setActiveSigilRelicTab}
                             activeSigilRelicTable={activeSigilRelicTable}
-                            formatWithCommas={formatWithCommas}
-                            renderProfessionIcon={renderProfessionIcon}
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                         />}
 
                         {isSectionVisible('skill-usage') && <SkillUsageSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
                             selectedPlayers={selectedPlayers}
                             setSelectedPlayers={setSelectedPlayers}
                             removeSelectedPlayer={removeSelectedPlayer}
@@ -4427,19 +3991,9 @@ type SpikeFight = {
                             getLineStrokeColor={getLineStrokeColor}
                             getLineDashForPlayer={getLineDashForPlayer}
                             formatSkillUsageValue={formatSkillUsageValue}
-
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                         {isSectionVisible('apm-stats') && <ApmSection
-                            expandedSection={expandedSection}
-                            expandedSectionClosing={expandedSectionClosing}
-                            openExpandedSection={openExpandedSection}
-                            closeExpandedSection={closeExpandedSection}
-                            isSectionVisible={isSectionVisible}
-                            isFirstVisibleSection={isFirstVisibleSection}
-                            sectionClass={sectionClass}
-                            sidebarListClass={sidebarListClass}
                             apmSpecAvailable={apmSpecAvailable}
                             skillUsageAvailable={skillUsageAvailable}
                             apmSpecTables={apmSpecTables}
@@ -4460,11 +4014,11 @@ type SpikeFight = {
                             formatApmValue={formatApmValue}
                             formatCastRateValue={formatCastRateValue}
                             formatCastCountValue={formatCastCountValue}
-                            renderProfessionIcon={renderProfessionIcon}
                         />}
 
                     </>
                 )}
+                </StatsSharedContext.Provider>
                 {!embedded && <div className="h-24" aria-hidden="true" />}
             </div>
                 {blurStatsDashboard && (

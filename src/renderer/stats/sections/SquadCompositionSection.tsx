@@ -1,23 +1,19 @@
 import { Skull, Users } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type SquadCompositionSectionProps = {
     sortedSquadClassData: any[];
     sortedEnemyClassData: any[];
     getProfessionIconPath: (profession: string) => string | null;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 export const SquadCompositionSection = ({
     sortedSquadClassData,
     sortedEnemyClassData,
-    getProfessionIconPath,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    getProfessionIconPath
 }: SquadCompositionSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const sectionVisible = isSectionVisible('squad-composition');
     return (
         <div

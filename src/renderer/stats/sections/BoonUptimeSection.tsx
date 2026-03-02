@@ -3,6 +3,7 @@ import { Maximize2, X } from 'lucide-react';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
 import { Gw2FuryIcon } from '../../ui/Gw2FuryIcon';
 import { getProfessionColor } from '../../../shared/professionUtils';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type BoonUptimeBoon = {
     id: string;
@@ -38,13 +39,6 @@ type BoonUptimeFightPoint = {
 };
 
 type BoonUptimeSectionProps = {
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
     boonSearch: string;
     setBoonSearch: (value: string) => void;
     boons: BoonUptimeBoon[];
@@ -64,18 +58,9 @@ type BoonUptimeSectionProps = {
     drilldownData: Array<{ label: string; value: number; maxValue?: number }>;
     overallUptimePercent: number | null;
     showStackCapLine?: boolean;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const BoonUptimeSection = ({
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
     boonSearch,
     setBoonSearch,
     boons,
@@ -94,10 +79,9 @@ export const BoonUptimeSection = ({
     drilldownTitle,
     drilldownData,
     overallUptimePercent,
-    showStackCapLine = false,
-    formatWithCommas,
-    renderProfessionIcon
+    showStackCapLine = false
 }: BoonUptimeSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, formatWithCommas, renderProfessionIcon } = useStatsSharedContext();
     const sectionId = 'boon-uptime';
     const isExpanded = expandedSection === sectionId;
     const selectedLineColor = selectedPlayer?.profession && selectedPlayer.profession !== 'All'

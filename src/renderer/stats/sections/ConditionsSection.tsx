@@ -7,6 +7,7 @@ import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDrop
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { InlineIconLabel, SkillBreakdownTooltip } from '../ui/StatsViewShared';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type ConditionsSectionProps = {
     conditionSummary: any[];
@@ -21,15 +22,6 @@ type ConditionsSectionProps = {
     effectiveConditionSort: { key: 'applications' | 'damage'; dir: 'asc' | 'desc' };
     setConditionSort: (value: { key: 'applications' | 'damage'; dir: 'asc' | 'desc' }) => void;
     showConditionDamage: boolean;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 export const ConditionsSection = ({
@@ -44,17 +36,9 @@ export const ConditionsSection = ({
     conditionGridClass,
     effectiveConditionSort,
     setConditionSort,
-    showConditionDamage,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    showConditionDamage
 }: ConditionsSectionProps) => {
+    const { renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const isExpanded = expandedSection === 'conditions-outgoing';
     const [selectedConditionColumns, setSelectedConditionColumns] = useState<string[]>([]);
     const [selectedConditionPlayers, setSelectedConditionPlayers] = useState<string[]>([]);

@@ -6,16 +6,10 @@ import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { useStatsSharedContext } from '../StatsViewContext';
+import { HEALING_METRICS } from '../statsMetrics';
 
 type HealingSectionProps = {
-    stats: any;
-    HEALING_METRICS: Array<{
-        id: string;
-        label: string;
-        baseField: 'healing' | 'barrier' | 'downedHealing' | 'resUtility';
-        perSecond: boolean;
-        decimals: number;
-    }>;
     activeHealingMetric: string;
     setActiveHealingMetric: (value: string) => void;
     healingCategory: 'total' | 'squad' | 'group' | 'self' | 'offSquad';
@@ -23,37 +17,18 @@ type HealingSectionProps = {
     activeResUtilitySkill: string;
     setActiveResUtilitySkill: (value: string) => void;
     skillUsageData: { resUtilitySkills?: Array<{ id: string; name: string }> };
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 export const HealingSection = ({
-    stats,
-    HEALING_METRICS,
     activeHealingMetric,
     setActiveHealingMetric,
     healingCategory,
     setHealingCategory,
     activeResUtilitySkill,
     setActiveResUtilitySkill,
-    skillUsageData,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    skillUsageData
 }: HealingSectionProps) => {
+    const { stats, formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const {
         sortState, updateSort,
         denseSort, setDenseSort,

@@ -24,7 +24,7 @@ The entire Electron main process lives in one file: app lifecycle, console loggi
 
 **Design constraint:** store-dependent functions should accept a minimal `StoreAdapter` interface (see `uploadRetryQueue.ts`) so they can be tested without Electron.
 
-**Status:** All planned module extractions complete. `uploadRetryQueue.ts`, `detailsProcessing.ts`, `versionUtils.ts`, `imageFetcher.ts`, `consoleLogger.ts`, `dpsReportCache.ts`, and `devDatasets.ts` extracted. `index.ts` reduced from ~4871 to ~3919 lines. Remaining: `handlers/` grouping (IPC handler registration by domain). Within the renderer, `parseTimestamp`/`resolveFightTimestamp` extracted to `stats/utils/timestampUtils.ts` and `computeSkillUsageData` extracted to `stats/computeSkillUsageData.ts`; `enrichPrecomputedStats` lifted to module level in `computeStatsAggregation.ts`. Also extracted: `useAppUpdater`, `useDashboardStats`, `useStatsDataProgress` hooks from App.tsx.
+**Status:** Complete. All 7 logic modules extracted (`uploadRetryQueue.ts`, `detailsProcessing.ts`, `versionUtils.ts`, `imageFetcher.ts`, `consoleLogger.ts`, `dpsReportCache.ts`, `devDatasets.ts`) and all 51 IPC handlers moved to `src/main/handlers/` (7 files: appHandlers, datasetHandlers, discordHandlers, fileHandlers, githubHandlers, settingsHandlers, uploadHandlers). `index.ts` reduced from ~4871 → ~1093 lines.
 
 ---
 
@@ -77,6 +77,8 @@ App.tsx reduced from ~2015 → ~1771 lines (−244 lines). Remaining inline: log
 ### 5. Reduce prop drilling in `src/renderer/StatsView.tsx` (~4543 lines)
 
 ~40+ `useState` calls for search terms, active metrics, view modes, and sort state. A `useStatsViewState` hook + React Context would eliminate the drilling.
+
+**Status:** Complete. `StatsSharedContext` created at `src/renderer/stats/StatsViewContext.tsx` with 12 shared values (stats, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass, formatWithCommas, renderProfessionIcon, roundCountStats). All 27 section components updated to consume context. Metrics constants (OFFENSE_METRICS, etc.) now imported directly in section files. ~336 redundant prop passings removed from StatsView.tsx JSX.
 
 ---
 

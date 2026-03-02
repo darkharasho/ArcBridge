@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock3, Route, Skull, Target } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CommanderTagIcon } from '../../ui/CommanderTagIcon';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type CommanderFightRow = {
     id: string;
@@ -108,9 +109,6 @@ type CommanderSummaryRow = {
 type CommanderStatsSectionProps = {
     commanderStats: { rows?: CommanderSummaryRow[] } | null | undefined;
     getProfessionIconPath: (profession: string) => string | null;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 const formatDuration = (timeMs: number) => {
@@ -146,11 +144,9 @@ const pushTimingStatus = (fight: CommanderFightRow) => {
 };
 
 export const CommanderTargetConversionSection = ({
-    commanderStats,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    commanderStats
 }: Omit<CommanderStatsSectionProps, 'getProfessionIconPath'>) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const rows = useMemo(
         () => (Array.isArray(commanderStats?.rows) ? commanderStats?.rows || [] : []),
         [commanderStats]
@@ -265,11 +261,9 @@ export const CommanderTargetConversionSection = ({
 };
 
 export const CommanderTagMovementSection = ({
-    commanderStats,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    commanderStats
 }: Omit<CommanderStatsSectionProps, 'getProfessionIconPath'>) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const rows = useMemo(
         () => (Array.isArray(commanderStats?.rows) ? commanderStats?.rows || [] : []),
         [commanderStats]
@@ -393,11 +387,9 @@ export const CommanderTagMovementSection = ({
 };
 
 export const CommanderTagDeathResponseSection = ({
-    commanderStats,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    commanderStats
 }: Omit<CommanderStatsSectionProps, 'getProfessionIconPath'>) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const rows = useMemo(
         () => (Array.isArray(commanderStats?.rows) ? commanderStats?.rows || [] : []),
         [commanderStats]
@@ -541,11 +533,9 @@ export const CommanderTagDeathResponseSection = ({
 };
 
 export const CommanderPushTimingSection = ({
-    commanderStats,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    commanderStats
 }: Omit<CommanderStatsSectionProps, 'getProfessionIconPath'>) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const rows = useMemo(
         () => (Array.isArray(commanderStats?.rows) ? commanderStats?.rows || [] : []),
         [commanderStats]
@@ -672,11 +662,9 @@ export const CommanderPushTimingSection = ({
 
 export const CommanderStatsSection = ({
     commanderStats,
-    getProfessionIconPath,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    getProfessionIconPath
 }: CommanderStatsSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const rows = useMemo(
         () => (Array.isArray(commanderStats?.rows) ? commanderStats?.rows || [] : []),
         [commanderStats]

@@ -1,24 +1,18 @@
 import { useMemo } from 'react';
 import { ArrowBigDown, ArrowBigUp } from 'lucide-react';
 import { InlineIconLabel } from '../ui/StatsViewShared';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type TopSkillsSectionProps = {
-    stats: any;
     topSkillsMetric?: 'damage' | 'downContribution';
     onTopSkillsMetricChange?: (metric: 'damage' | 'downContribution') => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 export const TopSkillsSection = ({
-    stats,
     topSkillsMetric,
-    onTopSkillsMetricChange,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    onTopSkillsMetricChange
 }: TopSkillsSectionProps) => {
+    const { stats, isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const resolvedMetric = (topSkillsMetric || stats.topSkillsMetric) === 'downContribution' ? 'downContribution' : 'damage';
     const isDownContrib = resolvedMetric === 'downContribution';
     const metricLabel = isDownContrib ? 'Down Contrib' : 'Damage';

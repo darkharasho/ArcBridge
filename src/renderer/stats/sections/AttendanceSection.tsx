@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Download, FileText } from 'lucide-react';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type AttendanceClassTime = {
     profession: string;
@@ -17,9 +18,6 @@ type AttendanceRow = {
 type AttendanceSectionProps = {
     attendanceRows: AttendanceRow[];
     getProfessionIconPath: (profession: string) => string | null;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 const MAX_LEDGER_ROWS_BEFORE_SCROLL = 10;
@@ -47,11 +45,9 @@ const escapeCsvCell = (value: string) => {
 
 export const AttendanceSection = ({
     attendanceRows,
-    getProfessionIconPath,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    getProfessionIconPath
 }: AttendanceSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const [search, setSearch] = useState('');
     const [sortKey, setSortKey] = useState<'fight' | 'squad'>('squad');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');

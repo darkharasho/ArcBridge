@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
 import { resolvePublicAssetPath } from '../../ui/resolvePublicAssetPath';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type SquadCompPlayer = {
     account: string;
@@ -26,9 +27,6 @@ type SquadCompFight = {
 type SquadCompByFightSectionProps = {
     fights: SquadCompFight[];
     getProfessionIconPath: (profession: string) => string | null;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 const formatTimestamp = (timestamp: number) => {
@@ -42,11 +40,9 @@ const formatTimestamp = (timestamp: number) => {
 
 export const SquadCompByFightSection = ({
     fights,
-    getProfessionIconPath,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    getProfessionIconPath
 }: SquadCompByFightSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const [activeFightId, setActiveFightId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const normalizedSearch = search.trim().toLowerCase();

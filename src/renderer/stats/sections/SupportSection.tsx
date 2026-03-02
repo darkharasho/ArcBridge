@@ -7,10 +7,10 @@ import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
+import { useStatsSharedContext } from '../StatsViewContext';
+import { SUPPORT_METRICS } from '../statsMetrics';
 
 type SupportSectionProps = {
-    stats: any;
-    SUPPORT_METRICS: Array<{ id: string; label: string; isTime?: boolean }>;
     supportSearch: string;
     setSupportSearch: (value: string) => void;
     activeSupportStat: string;
@@ -19,22 +19,9 @@ type SupportSectionProps = {
     setSupportViewMode: (value: 'total' | 'per1s' | 'per60s') => void;
     cleanseScope: 'all' | 'squad';
     setCleanseScope: (value: 'all' | 'squad') => void;
-    roundCountStats: boolean;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 export const SupportSection = ({
-    stats,
-    SUPPORT_METRICS,
     supportSearch,
     setSupportSearch,
     activeSupportStat,
@@ -42,19 +29,9 @@ export const SupportSection = ({
     supportViewMode,
     setSupportViewMode,
     cleanseScope,
-    setCleanseScope,
-    roundCountStats,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    setCleanseScope
 }: SupportSectionProps) => {
+    const { stats, roundCountStats, formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const {
         sortState, updateSort,
         denseSort, setDenseSort,

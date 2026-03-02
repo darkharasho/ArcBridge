@@ -1,23 +1,20 @@
 import { Users } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type TimelineSectionProps = {
     timelineData: any[];
     timelineFriendlyScope: 'squad' | 'squadAllies';
     setTimelineFriendlyScope: (value: 'squad' | 'squadAllies') => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 export const TimelineSection = ({
     timelineData,
     timelineFriendlyScope,
-    setTimelineFriendlyScope,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
-}: TimelineSectionProps) => (
+    setTimelineFriendlyScope
+}: TimelineSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
+    return (
     <div
         id="timeline"
         data-section-visible={isSectionVisible('timeline')}
@@ -114,4 +111,5 @@ export const TimelineSection = ({
             </div>
         )}
     </div>
-);
+    );
+};

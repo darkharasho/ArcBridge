@@ -4,6 +4,7 @@ import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 import { Gw2SigilIcon } from '../../ui/Gw2SigilIcon';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type SigilRelicUptimeSectionProps = {
     hasSigilRelicTables: boolean;
@@ -13,16 +14,6 @@ type SigilRelicUptimeSectionProps = {
     activeSigilRelicTab: string | null;
     setActiveSigilRelicTab: (value: string | null) => void;
     activeSigilRelicTable: any | null;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 const truncateSidebarLabel = (name: string, max = 30) => {
@@ -37,18 +28,9 @@ export const SigilRelicUptimeSection = ({
     filteredSigilRelicTables,
     activeSigilRelicTab,
     setActiveSigilRelicTab,
-    activeSigilRelicTable,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    activeSigilRelicTable
 }: SigilRelicUptimeSectionProps) => {
+    const { formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const isExpanded = expandedSection === 'sigil-relic-uptime';
     const sortedRows = useMemo(() => {

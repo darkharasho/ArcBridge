@@ -3,6 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Maximize2, Zap, X } from 'lucide-react';
 import { getProfessionColor } from '../../../shared/professionUtils';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type SpikeDamagePlayer = {
     key: string;
@@ -53,13 +54,6 @@ type SpikeDamageSectionProps = {
     listTitle?: string;
     searchPlaceholder?: string;
     titleIconClassName?: string;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
     spikePlayerFilter: string;
     setSpikePlayerFilter: (value: string) => void;
     groupedSpikePlayers: Array<{ profession: string; players: SpikeDamagePlayer[] }>;
@@ -81,8 +75,6 @@ type SpikeDamageSectionProps = {
     spikeDrilldownDeathIndices: number[];
     spikeFightSkillRows?: SpikeSkillRow[];
     spikeFightSkillTitle?: string;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const SpikeDamageSection = ({
@@ -92,13 +84,6 @@ export const SpikeDamageSection = ({
     listTitle = 'Squad Players',
     searchPlaceholder = 'Search player or account',
     titleIconClassName = 'text-rose-300',
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
     spikePlayerFilter,
     setSpikePlayerFilter,
     groupedSpikePlayers,
@@ -119,10 +104,9 @@ export const SpikeDamageSection = ({
     spikeDrilldownDownIndices,
     spikeDrilldownDeathIndices,
     spikeFightSkillRows = [],
-    spikeFightSkillTitle = 'Skill Damage (Selected Fight)',
-    formatWithCommas,
-    renderProfessionIcon
+    spikeFightSkillTitle = 'Skill Damage (Selected Fight)'
 }: SpikeDamageSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, formatWithCommas, renderProfessionIcon } = useStatsSharedContext();
     const [hoveredMarkerKey, setHoveredMarkerKey] = useState<string | null>(null);
     const [hoveredMarkerInfo, setHoveredMarkerInfo] = useState<null | {
         x: number;

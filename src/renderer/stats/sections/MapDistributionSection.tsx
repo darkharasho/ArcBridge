@@ -1,19 +1,16 @@
 import { Map as MapIcon } from 'lucide-react';
 import { Cell, Legend as ChartLegend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type MapDistributionSectionProps = {
     mapData: any[];
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 export const MapDistributionSection = ({
-    mapData,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
-}: MapDistributionSectionProps) => (
+    mapData
+}: MapDistributionSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
+    return (
     <div
         id="map-distribution"
         data-section-visible={isSectionVisible('map-distribution')}
@@ -65,4 +62,5 @@ export const MapDistributionSection = ({
             </ResponsiveContainer>
         </div>
     </div>
-);
+    );
+};

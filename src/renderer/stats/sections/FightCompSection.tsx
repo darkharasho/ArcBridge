@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Swords } from 'lucide-react';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type FightCompPartyRow = {
     party: number;
@@ -21,9 +22,6 @@ type FightCompFight = {
 type FightCompSectionProps = {
     fights: FightCompFight[];
     getProfessionIconPath: (profession: string) => string | null;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 const formatTimestamp = (timestamp: number) => {
@@ -37,11 +35,9 @@ const formatTimestamp = (timestamp: number) => {
 
 export const FightCompSection = ({
     fights,
-    getProfessionIconPath,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    getProfessionIconPath
 }: FightCompSectionProps) => {
+    const { isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const [activeFightId, setActiveFightId] = useState<string | null>(null);
 
     useEffect(() => {

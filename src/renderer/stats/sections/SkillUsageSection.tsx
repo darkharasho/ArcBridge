@@ -4,15 +4,9 @@ import { CheckCircle2, ChevronDown, ChevronRight, Keyboard, Maximize2, X, XCircl
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 import type { SkillUsagePlayer } from '../statsTypes';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type SkillUsageSectionProps = {
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
     selectedPlayers: string[];
     setSelectedPlayers: Dispatch<SetStateAction<string[]>>;
     removeSelectedPlayer: (key: string) => void;
@@ -44,18 +38,9 @@ type SkillUsageSectionProps = {
     getLineStrokeColor: (playerKey: string, isSelected: boolean, hasSelection: boolean) => string;
     getLineDashForPlayer: (playerKey: string) => string | undefined;
     formatSkillUsageValue: (value: number) => string;
-
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const SkillUsageSection = ({
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
     selectedPlayers,
     setSelectedPlayers,
     removeSelectedPlayer,
@@ -86,10 +71,10 @@ export const SkillUsageSection = ({
     setHoveredSkillPlayer,
     getLineStrokeColor,
     getLineDashForPlayer,
-    formatSkillUsageValue,
-
-    renderProfessionIcon
-}: SkillUsageSectionProps) => (
+    formatSkillUsageValue
+}: SkillUsageSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, renderProfessionIcon } = useStatsSharedContext();
+    return (
     <div
         id="skill-usage"
         data-section-visible={isSectionVisible('skill-usage')}
@@ -491,4 +476,5 @@ export const SkillUsageSection = ({
             )}
         </div>
     </div>
-);
+    );
+};

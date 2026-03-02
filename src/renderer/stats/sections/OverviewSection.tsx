@@ -1,16 +1,7 @@
-type OverviewSectionProps = {
-    stats: any;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-};
+import { useStatsSharedContext } from '../StatsViewContext';
 
-export const OverviewSection = ({
-    stats,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
-}: OverviewSectionProps) => {
+export const OverviewSection = () => {
+    const { stats, isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     const alliedDeaths = Math.max(0, Number(stats.totalEnemyKills || 0));
     const enemyDeaths = Math.max(0, Number(stats.totalSquadKills || 0));
     const alliedDowns = Math.max(0, Number(stats.totalEnemyDowns || 0)) + alliedDeaths;

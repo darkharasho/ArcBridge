@@ -1,19 +1,14 @@
 import { Activity, Crown, Crosshair, Flame, Hammer, HelpingHand, Shield, ShieldCheck, Sparkles, Star, Trophy, Wind, Zap } from 'lucide-react';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type TopPlayersSectionProps = {
-    stats: any;
     showTopStats: boolean;
     showMvp: boolean;
     topStatsMode: 'total' | 'perSecond';
     expandedLeader: string | null;
     setExpandedLeader: (value: string | null | ((prev: string | null) => string | null)) => void;
     formatTopStatValue: (value: number) => string;
-    formatWithCommas: (value: number, decimals?: number) => string;
     isMvpStatEnabled: (name: string) => boolean;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
 };
 
 const colorClasses: Record<string, { bg: string; text: string }> = {
@@ -123,20 +118,15 @@ const formatMvpPillValue = (value: unknown, formatTopStatValue: (n: number) => s
 };
 
 export const TopPlayersSection = ({
-    stats,
     showTopStats,
     showMvp,
     topStatsMode,
     expandedLeader,
     setExpandedLeader,
     formatTopStatValue,
-    formatWithCommas,
-    isMvpStatEnabled,
-    renderProfessionIcon,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass
+    isMvpStatEnabled
 }: TopPlayersSectionProps) => {
+    const { stats, formatWithCommas, renderProfessionIcon, isSectionVisible, isFirstVisibleSection, sectionClass } = useStatsSharedContext();
     if (!showTopStats) return null;
     return (
         <div

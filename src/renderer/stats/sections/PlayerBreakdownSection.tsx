@@ -4,8 +4,9 @@ import { InlineIconLabel } from '../ui/StatsViewShared';
 import { DenseStatsTable } from '../ui/DenseStatsTable';
 import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDropdown';
-import { formatTopStatValue, formatWithCommas } from '../utils/dashboardUtils';
+import { formatTopStatValue } from '../utils/dashboardUtils';
 import type { PlayerSkillBreakdown, PlayerSkillDamageEntry } from '../statsTypes';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type ClassSkillBreakdown = {
     profession: string;
@@ -15,14 +16,6 @@ type ClassSkillBreakdown = {
 };
 
 type PlayerBreakdownSectionProps = {
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
     viewMode: 'player' | 'class';
     setViewMode: (value: 'player' | 'class') => void;
     playerSkillBreakdowns: PlayerSkillBreakdown[];
@@ -45,18 +38,9 @@ type PlayerBreakdownSectionProps = {
     activePlayerSkill: PlayerSkillDamageEntry | null;
     activeClassBreakdown: ClassSkillBreakdown | null;
     activeClassSkill: PlayerSkillDamageEntry | null;
-    renderProfessionIcon: (profession?: string, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const PlayerBreakdownSection = ({
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass,
     viewMode,
     setViewMode,
     playerSkillBreakdowns,
@@ -78,9 +62,9 @@ export const PlayerBreakdownSection = ({
     activePlayerBreakdown,
     activePlayerSkill,
     activeClassBreakdown,
-    activeClassSkill,
-    renderProfessionIcon
+    activeClassSkill
 }: PlayerBreakdownSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass, renderProfessionIcon, formatWithCommas } = useStatsSharedContext();
     const playerCount = playerSkillBreakdowns.length;
     const totalPlayerDamage = (activePlayerBreakdown?.skills || []).reduce((sum, skill) => sum + (skill.damage || 0), 0);
     const activeClassRows = activeClassBreakdown?.players || [];

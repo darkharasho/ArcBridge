@@ -7,16 +7,9 @@ import { ColumnFilterDropdown } from '../ui/ColumnFilterDropdown';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 import { Gw2ApmIcon } from '../../ui/Gw2ApmIcon';
 import type { ApmPlayerRow, ApmSkillEntry } from '../statsTypes';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type ApmSectionProps = {
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
     apmSpecAvailable: boolean;
     skillUsageAvailable: boolean;
     apmSpecTables: any[];
@@ -37,18 +30,9 @@ type ApmSectionProps = {
     formatApmValue: (value: number) => string;
     formatCastRateValue: (value: number) => string;
     formatCastCountValue: (value: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const ApmSection = ({
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass,
     apmSpecAvailable,
     skillUsageAvailable,
     apmSpecTables,
@@ -68,9 +52,9 @@ export const ApmSection = ({
     setApmView,
     formatApmValue,
     formatCastRateValue,
-    formatCastCountValue,
-    renderProfessionIcon
+    formatCastCountValue
 }: ApmSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass, renderProfessionIcon } = useStatsSharedContext();
     const [allSkillsSort, setAllSkillsSort] = useState<{ key: 'apm' | 'apmNoAuto'; dir: 'asc' | 'desc' }>({ key: 'apm', dir: 'desc' });
     const isExpanded = expandedSection === 'apm-stats';
     const [denseSort, setDenseSort] = useState<{ columnId: string; dir: 'asc' | 'desc' }>({ columnId: '', dir: 'desc' });

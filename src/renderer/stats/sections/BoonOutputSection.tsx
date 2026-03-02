@@ -9,9 +9,9 @@ import { StatsTableShell } from '../ui/StatsTableShell';
 import { InlineIconLabel } from '../ui/StatsViewShared';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
 import { useMetricSectionState } from '../hooks/useMetricSectionState';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type BoonOutputSectionProps = {
-    stats: any;
     activeBoonCategory: string;
     setActiveBoonCategory: (value: string) => void;
     activeBoonMetric: 'total' | 'average' | 'uptime';
@@ -23,20 +23,9 @@ type BoonOutputSectionProps = {
     setBoonSearch: (value: string) => void;
     formatBoonMetricDisplay: (...args: any[]) => string;
     getBoonMetricValue: (...args: any[]) => number;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    roundCountStats: boolean;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 export const BoonOutputSection = ({
-    stats,
     activeBoonCategory,
     setActiveBoonCategory,
     activeBoonMetric,
@@ -47,18 +36,9 @@ export const BoonOutputSection = ({
     boonSearch,
     setBoonSearch,
     formatBoonMetricDisplay,
-    getBoonMetricValue,
-    renderProfessionIcon,
-    roundCountStats,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    getBoonMetricValue
 }: BoonOutputSectionProps) => {
+    const { stats, renderProfessionIcon, roundCountStats, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const allBoonColumns = stats.boonTables || [];
     const boonMetrics = useMemo(
         () => allBoonColumns.map((boon: any) => ({ ...boon, label: boon.name })),

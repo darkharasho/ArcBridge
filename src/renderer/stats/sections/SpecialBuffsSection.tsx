@@ -8,24 +8,14 @@ import { SearchSelectDropdown, SearchSelectOption } from '../ui/SearchSelectDrop
 import { StatsTableLayout } from '../ui/StatsTableLayout';
 import { StatsTableShell } from '../ui/StatsTableShell';
 import { InlineIconLabel } from '../ui/StatsViewShared';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type SpecialBuffsSectionProps = {
-    stats: any;
     specialSearch: string;
     setSpecialSearch: (value: string) => void;
     activeSpecialTab: string | null;
     setActiveSpecialTab: (value: string | null) => void;
     activeSpecialTable: any | null;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
-    sidebarListClass: string;
 };
 
 type SpecialSortKey = 'total' | 'perSecond' | 'duration';
@@ -35,23 +25,13 @@ const truncateSidebarLabel = (name: string, max = 30) => {
 };
 
 export const SpecialBuffsSection = ({
-    stats,
     specialSearch,
     setSpecialSearch,
     activeSpecialTab,
     setActiveSpecialTab,
-    activeSpecialTable,
-    formatWithCommas,
-    renderProfessionIcon,
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
-    sidebarListClass
+    activeSpecialTable
 }: SpecialBuffsSectionProps) => {
+    const { stats, formatWithCommas, renderProfessionIcon, expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, sidebarListClass } = useStatsSharedContext();
     const [sortKey, setSortKey] = useState<SpecialSortKey>('total');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const isExpanded = expandedSection === 'special-buffs';

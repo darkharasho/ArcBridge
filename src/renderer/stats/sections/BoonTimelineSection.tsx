@@ -4,6 +4,7 @@ import { Gw2AegisIcon } from '../../ui/Gw2AegisIcon';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
 import { getProfessionColor } from '../../../shared/professionUtils';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
+import { useStatsSharedContext } from '../StatsViewContext';
 
 type BoonTimelineBoon = {
     id: string;
@@ -33,13 +34,6 @@ type BoonTimelineFightPoint = {
 };
 
 type BoonTimelineSectionProps = {
-    expandedSection: string | null;
-    expandedSectionClosing: boolean;
-    openExpandedSection: (id: string) => void;
-    closeExpandedSection: () => void;
-    isSectionVisible: (id: string) => boolean;
-    isFirstVisibleSection: (id: string) => boolean;
-    sectionClass: (id: string, base: string) => string;
     boonSearch: string;
     setBoonSearch: (value: string) => void;
     boons: BoonTimelineBoon[];
@@ -59,18 +53,9 @@ type BoonTimelineSectionProps = {
     setSelectedFightIndex: (value: number | null) => void;
     drilldownTitle: string;
     drilldownData: Array<{ label: string; value: number }>;
-    formatWithCommas: (value: number, decimals: number) => string;
-    renderProfessionIcon: (profession: string | undefined, professionList?: string[], className?: string) => JSX.Element | null;
 };
 
 export const BoonTimelineSection = ({
-    expandedSection,
-    expandedSectionClosing,
-    openExpandedSection,
-    closeExpandedSection,
-    isSectionVisible,
-    isFirstVisibleSection,
-    sectionClass,
     boonSearch,
     setBoonSearch,
     boons,
@@ -89,10 +74,9 @@ export const BoonTimelineSection = ({
     selectedFightIndex,
     setSelectedFightIndex,
     drilldownTitle,
-    drilldownData,
-    formatWithCommas,
-    renderProfessionIcon
+    drilldownData
 }: BoonTimelineSectionProps) => {
+    const { expandedSection, expandedSectionClosing, openExpandedSection, closeExpandedSection, isSectionVisible, isFirstVisibleSection, sectionClass, formatWithCommas, renderProfessionIcon } = useStatsSharedContext();
     const sectionId = 'boon-timeline';
     const isExpanded = expandedSection === sectionId;
     const selectedLineColor = selectedPlayer?.profession && selectedPlayer.profession !== 'All'
