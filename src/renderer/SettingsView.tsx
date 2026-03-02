@@ -1465,7 +1465,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                     type="button"
                                                     onClick={() => setKineticThemeVariant('midnight')}
                                                     className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${kineticThemeVariant === 'midnight'
-                                                        ? 'bg-white/10 text-amber-100 border-amber-300/40'
+                                                        ? 'bg-amber-500/20 text-amber-100 border-amber-300/45 shadow-[0_0_0_1px_rgba(252,211,77,0.08)]'
                                                         : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:border-white/30'
                                                         }`}
                                                 >
@@ -1475,7 +1475,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                     type="button"
                                                     onClick={() => setKineticThemeVariant('slate')}
                                                     className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${kineticThemeVariant === 'slate'
-                                                        ? 'bg-white/10 text-amber-100 border-amber-300/40'
+                                                        ? 'bg-amber-500/20 text-amber-100 border-amber-300/45 shadow-[0_0_0_1px_rgba(252,211,77,0.08)]'
                                                         : 'bg-white/5 text-gray-300 border-white/10 hover:text-white hover:border-white/30'
                                                         }`}
                                                 >
