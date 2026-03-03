@@ -402,7 +402,7 @@ The Skill Usage Tracker supports two display modes:
   `activeSeconds = players[*].activeTimes[0] / 1000` when available, otherwise
   `durationMS / 1000` from the log details.
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts` (skill usage tracker aggregation).
+Implementation: `src/renderer/stats/computeSkillUsageData.ts`.
 
 ## APM Breakdown
 
@@ -431,7 +431,7 @@ For each player and skill:
 - `downContribution = sum(entry.downContribution)`
 - `dps = totalDamage / (totalFightSeconds)`
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+Implementation: `src/renderer/stats/computeSpecialTables.ts`.
 
 ## Top Skills (Outgoing / Incoming)
 
@@ -453,7 +453,8 @@ Top Incoming Skills are derived from `totalDamageTaken`:
 - `damage = sum(entry.totalDamage)`
 - `hits = sum(entry.hits)`
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+Implementation: `src/renderer/stats/computePlayerAggregation.ts` (skill damage map aggregation);
+`src/renderer/stats/computeStatsAggregation.ts` (sorting and top-N selection).
 
 ## Boon Output
 
@@ -505,8 +506,8 @@ values can exceed `5` and may be large for stacking boons or `All`-player view.
 Timeline player identity is account-level (`account`) to match Boon Output row
 grouping across profession swaps.
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`,
-`src/renderer/StatsView.tsx`.
+Implementation: `src/renderer/stats/computeBoonTimeline.ts` (aggregation);
+`src/renderer/StatsView.tsx` (runtime selection and rendering).
 
 ### Boon Uptime (Defense)
 
@@ -560,8 +561,9 @@ Aggregation notes:
 - uptime view is account-keyed per player and does not use an aggregated `__all__`
   synthetic row for timeline values
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`,
-`src/renderer/StatsView.tsx`, `src/renderer/stats/sections/BoonUptimeSection.tsx`.
+Implementation: `src/renderer/stats/computeBoonUptimeTimeline.ts` (aggregation);
+`src/renderer/StatsView.tsx` (runtime selection);
+`src/renderer/stats/sections/BoonUptimeSection.tsx` (rendering).
 
 ## Special Buffs
 
@@ -569,7 +571,7 @@ Special (non-boon) buff tables are computed from `buffUptimes` using
 `buffMap` classification and icon metadata. Durations are normalized by
 `activeTimes` and `durationMS`.
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+Implementation: `src/renderer/stats/computeSpecialTables.ts`.
 
 ### Sigil/Relic Uptime (Other Metrics)
 
@@ -665,7 +667,7 @@ as uptime%.
   metric direction (`higherIsBetter`).
 
 Implementation:
-- aggregation payload build: `src/renderer/stats/computeStatsAggregation.ts` (`fightDiffMode`)
+- aggregation: `src/renderer/stats/computeFightDiffMode.ts`
 - section rendering: `src/renderer/stats/sections/FightDiffModeSection.tsx`
 
 ## Offense / Defense / Support / Healing Tables
@@ -795,7 +797,7 @@ Web report parity:
 - embedded/web mode can render markers without raw `logs` by consuming these fields.
 
 Implementation:
-- Aggregation/precompute: `src/renderer/stats/computeStatsAggregation.ts`
+- Aggregation/precompute: `src/renderer/stats/computeSpikeDamageData.ts`
 - Runtime selection/drilldown + fallbacks: `src/renderer/StatsView.tsx`
 - Chart rendering/interaction: `src/renderer/stats/sections/SpikeDamageSection.tsx`
 
@@ -926,7 +928,7 @@ This is expected under the current event-id attribution model.
 ### Implementation
 
 - Aggregation/precompute:
-  - `src/renderer/stats/computeStatsAggregation.ts` (`incomingStrikeDamage`)
+  - `src/renderer/stats/computeIncomingStrikeDamageData.ts`
 - Runtime selection/drilldown/table rows:
   - `src/renderer/StatsView.tsx`
 - UI rendering (card, chart, drilldown, skill table):
@@ -939,7 +941,8 @@ These sections use log-level metadata:
 - `details.targets` (enemy counts, fake target filtering)
 - `details.zone`/`mapName`/`map`/`location`/`fightName` for map labels
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+Implementation: `src/renderer/stats/computeTimelineAndMapData.ts` (timeline, map data, fight sorting, boon tables);
+`src/renderer/stats/computeFightBreakdown.ts` (fight breakdown rows).
 
 ## Squad Composition
 
