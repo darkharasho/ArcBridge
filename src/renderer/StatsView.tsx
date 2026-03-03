@@ -1,4 +1,5 @@
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ShieldAlert } from 'lucide-react';
 
 
 
@@ -3518,6 +3519,7 @@ type SpikeFight = {
                                 subtitle="Select one enemy class to chart incoming strike pressure per fight."
                                 listTitle="Enemy Classes"
                                 searchPlaceholder="Search enemy class"
+                                titleIcon={ShieldAlert}
                                 titleIconClassName="text-cyan-300"
                                 spikePlayerFilter={incomingStrikePlayerFilter}
                                 setSpikePlayerFilter={setIncomingStrikePlayerFilter}
@@ -3864,6 +3866,7 @@ type SpikeFight = {
                             subtitle="Select one enemy class to chart incoming strike pressure per fight."
                             listTitle="Enemy Classes"
                             searchPlaceholder="Search enemy class"
+                            titleIcon={ShieldAlert}
                             titleIconClassName="text-cyan-300"
                             spikePlayerFilter={incomingStrikePlayerFilter}
                             setSpikePlayerFilter={setIncomingStrikePlayerFilter}
