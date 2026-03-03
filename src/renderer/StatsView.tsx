@@ -2752,6 +2752,7 @@ type SpikeFight = {
             data
         };
     }, [selectedBoonTimelineFightIndex, boonTimelineChartData, activeBoonTimeline, selectedBoonTimelinePlayerKey, boonTimelineScope, boonTimelineScopeLabel]);
+    const boonUptimeSubgroupKeyPrefix = '__subgroup__:';
     const boonUptimeBoons = useMemo(() => {
         const source = Array.isArray((safeStats as any)?.boonUptimeTimeline) ? (safeStats as any).boonUptimeTimeline : [];
         return source.map((boon: any) => ({
@@ -2791,6 +2792,34 @@ type SpikeFight = {
             }))
         })).filter((boon: any) => boon.id && boon.players.length > 0 && boon.fights.length > 0);
     }, [safeStats.boonUptimeTimeline]);
+    const boonUptimeSubgroupsByFightId = useMemo(() => {
+        const fights = Array.isArray((safeStats as any)?.squadCompByFight) ? (safeStats as any).squadCompByFight : [];
+        const map = new Map<string, Map<number, string[]>>();
+        fights.forEach((fight: any, index: number) => {
+            const fightId = String(fight?.id || `fight-${index + 1}`);
+            const subgroupMap = new Map<number, Set<string>>();
+            const parties = Array.isArray(fight?.parties) ? fight.parties : [];
+            parties.forEach((party: any) => {
+                const subgroupId = Number(party?.party ?? 0);
+                if (!Number.isFinite(subgroupId) || subgroupId <= 0) return;
+                const members = Array.isArray(party?.players) ? party.players : [];
+                const accounts = members
+                    .map((player: any) => String(player?.account || '').trim())
+                    .filter((account: string) => account.length > 0 && account !== 'Unknown');
+                if (!accounts.length) return;
+                const existing = subgroupMap.get(subgroupId) || new Set<string>();
+                accounts.forEach((account: string) => existing.add(account));
+                subgroupMap.set(subgroupId, existing);
+            });
+            map.set(
+                fightId,
+                new Map(
+                    Array.from(subgroupMap.entries()).map(([subgroupId, accounts]) => [subgroupId, Array.from(accounts.values())])
+                )
+            );
+        });
+        return map;
+    }, [safeStats.squadCompByFight]);
     const filteredBoonUptimeBoons = useMemo(() => {
         const term = boonUptimeSearch.trim().toLowerCase();
         if (!term) return boonUptimeBoons;
@@ -2800,10 +2829,79 @@ type SpikeFight = {
         if (!activeBoonUptimeId) return null;
         return boonUptimeBoons.find((boon: any) => boon.id === activeBoonUptimeId) || null;
     }, [boonUptimeBoons, activeBoonUptimeId]);
+    const boonUptimeFightsWithSubgroups = useMemo(() => {
+        const fights = Array.isArray(activeBoonUptime?.fights) ? activeBoonUptime.fights : [];
+        return fights.map((fight: any) => {
+            const baseValues = (fight?.values && typeof fight.values === 'object') ? fight.values : {};
+            const values: Record<string, any> = { ...baseValues };
+            const subgroupMap = boonUptimeSubgroupsByFightId.get(String(fight?.id || '')) || new Map<number, string[]>();
+            const fallbackBucketCount = Math.max(
+                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                1
+            );
+            subgroupMap.forEach((members, subgroupId) => {
+                if (!Array.isArray(members) || members.length <= 0) return;
+                const bucketCount = members.reduce((best: number, account: string) => {
+                    const memberBuckets = Array.isArray(baseValues?.[account]?.buckets5s) ? baseValues[account].buckets5s : [];
+                    return Math.max(best, memberBuckets.length);
+                }, fallbackBucketCount);
+                const averagedBuckets = Array.from({ length: bucketCount }, (_, bucketIndex) => {
+                    const sum = members.reduce((total: number, account: string) => {
+                        const memberValue = baseValues?.[account];
+                        const bucketValue = Array.isArray(memberValue?.buckets5s) ? memberValue.buckets5s[bucketIndex] : 0;
+                        return total + Math.max(0, Number(bucketValue || 0));
+                    }, 0);
+                    return members.length > 0 ? (sum / members.length) : 0;
+                });
+                const total = averagedBuckets.reduce((sum: number, value: number) => sum + value, 0);
+                const peak = averagedBuckets.reduce((best: number, value: number) => Math.max(best, value), 0);
+                values[`${boonUptimeSubgroupKeyPrefix}${subgroupId}`] = {
+                    total,
+                    peak,
+                    buckets5s: averagedBuckets
+                };
+            });
+            return {
+                ...fight,
+                values
+            };
+        });
+    }, [activeBoonUptime, boonUptimeSubgroupsByFightId, boonUptimeSubgroupKeyPrefix]);
+    const boonUptimeSubgroupEntries = useMemo(() => {
+        const subgroups = new Map<number, any>();
+        boonUptimeFightsWithSubgroups.forEach((fight: any) => {
+            const values = (fight?.values && typeof fight.values === 'object') ? fight.values : {};
+            Object.entries(values).forEach(([key, value]: [string, any]) => {
+                if (!String(key).startsWith(boonUptimeSubgroupKeyPrefix)) return;
+                const subgroupId = Number(String(key).slice(boonUptimeSubgroupKeyPrefix.length));
+                if (!Number.isFinite(subgroupId) || subgroupId <= 0) return;
+                const current = subgroups.get(subgroupId) || {
+                    key,
+                    account: `Subgroup ${subgroupId}`,
+                    displayName: `Subgroup ${subgroupId}`,
+                    profession: 'Subgroup',
+                    professionList: [],
+                    logs: 0,
+                    total: 0,
+                    peak: 0,
+                    entryType: 'subgroup' as const,
+                    subgroupId
+                };
+                current.logs += 1;
+                current.total += Math.max(0, Number(value?.total || 0));
+                current.peak = Math.max(current.peak, Math.max(0, Number(value?.peak || 0)));
+                subgroups.set(subgroupId, current);
+            });
+        });
+        return Array.from(subgroups.values()).sort((a, b) => Number(a.subgroupId || 0) - Number(b.subgroupId || 0));
+    }, [boonUptimeFightsWithSubgroups, boonUptimeSubgroupKeyPrefix]);
     const boonUptimePercentByPlayer = useMemo(() => {
         const map = new Map<string, number>();
-        const players = Array.isArray(activeBoonUptime?.players) ? activeBoonUptime.players : [];
-        const fights = Array.isArray(activeBoonUptime?.fights) ? activeBoonUptime.fights : [];
+        const players = [
+            ...(Array.isArray(activeBoonUptime?.players) ? activeBoonUptime.players : []),
+            ...boonUptimeSubgroupEntries
+        ];
+        const fights = boonUptimeFightsWithSubgroups;
         if (!players.length || !fights.length) return map;
         const totalSamplesAllFights = fights.reduce((sum: number, fight: any) => {
             const bucketCount = Math.max(
@@ -2832,20 +2930,32 @@ type SpikeFight = {
             map.set(key, (activeSamples / totalSamplesAllFights) * 100);
         });
         return map;
-    }, [activeBoonUptime]);
+    }, [activeBoonUptime, boonUptimeFightsWithSubgroups, boonUptimeSubgroupEntries]);
     const boonUptimePlayers = useMemo(() => {
         const sourcePlayers = Array.isArray(activeBoonUptime?.players) ? activeBoonUptime.players : [];
-        const players = sourcePlayers.map((player: any) => ({
-            ...player,
-            uptimePercent: Number(boonUptimePercentByPlayer.get(String(player?.key || '')) || 0)
-        }));
-        return [...players].sort((a, b) =>
+        const players = [
+            ...sourcePlayers.map((player: any) => ({
+                ...player,
+                entryType: 'player' as const,
+                uptimePercent: Number(boonUptimePercentByPlayer.get(String(player?.key || '')) || 0)
+            })),
+            ...boonUptimeSubgroupEntries.map((player: any) => ({
+                ...player,
+                uptimePercent: Number(boonUptimePercentByPlayer.get(String(player?.key || '')) || 0)
+            }))
+        ];
+        const sortedPlayers = [...players].sort((a, b) =>
             Number(boonUptimePercentByPlayer.get(String(b?.key || '')) || 0) - Number(boonUptimePercentByPlayer.get(String(a?.key || '')) || 0)
             || Number(b.peak || 0) - Number(a.peak || 0)
             || Number(b.total || 0) - Number(a.total || 0)
             || String(a.displayName || '').localeCompare(String(b.displayName || ''))
         );
-    }, [activeBoonUptime, boonUptimePercentByPlayer]);
+        const subgroupEntries = sortedPlayers
+            .filter((entry) => entry.entryType === 'subgroup')
+            .sort((a, b) => Number(a.subgroupId || 0) - Number(b.subgroupId || 0));
+        const playerEntries = sortedPlayers.filter((entry) => entry.entryType !== 'subgroup');
+        return [...subgroupEntries, ...playerEntries];
+    }, [activeBoonUptime, boonUptimePercentByPlayer, boonUptimeSubgroupEntries]);
     const filteredBoonUptimePlayers = useMemo(() => {
         const term = boonUptimePlayerFilter.trim().toLowerCase();
         if (!term) return boonUptimePlayers;
@@ -2881,7 +2991,7 @@ type SpikeFight = {
         maxUptimePercent: number;
     }>>(() => {
         if (!activeBoonUptime || !selectedBoonUptimePlayerKey) return [];
-        return (activeBoonUptime.fights || []).map((fight: any, index: number) => {
+        return boonUptimeFightsWithSubgroups.map((fight: any, index: number) => {
             const playerValue = fight?.values?.[selectedBoonUptimePlayerKey] || { total: 0, peak: 0 };
             const playerBuckets = Array.isArray(playerValue?.buckets5s) ? playerValue.buckets5s : [];
             const playerBucketCount = Math.max(
@@ -2938,7 +3048,7 @@ type SpikeFight = {
                 maxUptimePercent: computedFightUptimePercentMax
             };
         });
-    }, [activeBoonUptime, selectedBoonUptimePlayerKey]);
+    }, [activeBoonUptime, selectedBoonUptimePlayerKey, boonUptimeFightsWithSubgroups]);
     const boonUptimeChartMaxY = useMemo(() => {
         const useAverage = Boolean(activeBoonUptime?.stacking);
         const selectedPeak = boonUptimeChartData.reduce((best: number, entry) => Math.max(
@@ -2962,7 +3072,7 @@ type SpikeFight = {
                 data: [] as Array<{ label: string; value: number; maxValue: number }>
             };
         }
-        const selectedFight = activeBoonUptime.fights?.[selectedPoint.index];
+        const selectedFight = boonUptimeFightsWithSubgroups?.[selectedPoint.index];
         if (!selectedFight) {
             return {
                 title: 'Fight Breakdown',
@@ -2990,7 +3100,7 @@ type SpikeFight = {
             title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Stack Buckets)`,
             data
         };
-    }, [selectedBoonUptimeFightIndex, boonUptimeChartData, activeBoonUptime, selectedBoonUptimePlayerKey]);
+    }, [selectedBoonUptimeFightIndex, boonUptimeChartData, boonUptimeFightsWithSubgroups, selectedBoonUptimePlayerKey]);
     const boonUptimeOverallPercent = useMemo(() => {
         if (!selectedBoonUptimePlayerKey) return null;
         const value = boonUptimePercentByPlayer.get(selectedBoonUptimePlayerKey);
@@ -3055,16 +3165,16 @@ type SpikeFight = {
         }
     }, [boonUptimeBoons, activeBoonUptimeId]);
     useEffect(() => {
-        const players = activeBoonUptime?.players || [];
+        const players = boonUptimePlayers;
         if (players.length === 0) {
             if (selectedBoonUptimePlayerKey !== null) setSelectedBoonUptimePlayerKey(null);
             return;
         }
-        const preferred = players.find((player: any) => player.key === '__all__')?.key || players[0].key;
+        const preferred = players[0].key;
         if (!selectedBoonUptimePlayerKey || !players.some((player: any) => player.key === selectedBoonUptimePlayerKey)) {
             setSelectedBoonUptimePlayerKey(preferred);
         }
-    }, [activeBoonUptime, selectedBoonUptimePlayerKey]);
+    }, [boonUptimePlayers, selectedBoonUptimePlayerKey]);
     useEffect(() => {
         if (
             selectedBoonUptimeFightIndex !== null

@@ -21,6 +21,8 @@ type BoonUptimePlayer = {
     total: number;
     peak: number;
     uptimePercent?: number;
+    entryType?: 'player' | 'subgroup';
+    subgroupId?: number;
 };
 
 type BoonUptimeFightPoint = {
@@ -126,6 +128,17 @@ export const BoonUptimeSection = ({
             return '';
         }
     };
+    const renderEntryIcon = (player: BoonUptimePlayer, sizeClass: string) => {
+        if (player.entryType === 'subgroup') {
+            const textClass = sizeClass.includes('w-4') ? 'text-[8px]' : 'text-[7px]';
+            return (
+                <span className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full border border-cyan-300/50 bg-cyan-400/15 font-bold tracking-[0.08em] text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.16)] ${textClass}`}>
+                    SG
+                </span>
+            );
+        }
+        return renderProfessionIcon(player.profession, player.professionList, sizeClass);
+    };
 
     return (
         <div
@@ -144,7 +157,7 @@ export const BoonUptimeSection = ({
                         Boon Uptime
                     </h3>
                     <p className="text-xs text-gray-400">
-                        Select a boon, then a player to chart per-fight peak stacks and drill into 5-second fight buckets.
+                        Select a boon, then a player or subgroup to chart per-fight peak stacks and drill into 5-second fight buckets.
                     </p>
                 </div>
                 <button
@@ -205,52 +218,61 @@ export const BoonUptimeSection = ({
             <div className="grid gap-4 lg:grid-cols-2 items-stretch">
                 <div className="space-y-2 flex flex-col h-[320px]">
                     <div className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">
-                        Players
+                        Entries
                     </div>
                     <input
                         type="search"
                         value={playerFilter}
                         onChange={(event) => setPlayerFilter(event.target.value)}
-                        placeholder="Search player or account"
+                        placeholder="Search player, account, or subgroup"
                         className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200 focus:border-amber-400 focus:outline-none"
                     />
                     <div className="spike-player-list-container flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-black/20">
                         {players.length === 0 ? (
                             <div className="px-3 py-4 text-xs text-gray-500 italic">
-                                Select a boon to view player uptime.
+                                Select a boon to view uptime entries.
                             </div>
                         ) : (
                             <div className="p-1.5 space-y-1">
                                 {players.map((player) => {
                                     const isSelected = selectedPlayerKey === player.key;
+                                    const isSubgroup = player.entryType === 'subgroup';
                                     return (
                                         <button
                                             key={player.key}
                                             type="button"
                                             onClick={() => setSelectedPlayerKey(player.key)}
-                                            className={`spike-player-list-item w-full rounded-md border px-2.5 py-1.5 text-left transition-colors ${isSelected
-                                                ? 'border-amber-300/60 bg-amber-400/10 text-white'
-                                                : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]'
+                                            className={`spike-player-list-item w-full rounded-md border px-2.5 py-1.5 text-left transition-colors ${isSubgroup
+                                                ? (isSelected
+                                                    ? 'border-cyan-300/70 bg-cyan-400/12 text-white shadow-[inset_0_0_0_1px_rgba(34,211,238,0.18)]'
+                                                    : 'border-cyan-400/25 bg-cyan-400/[0.06] hover:border-cyan-300/45 hover:bg-cyan-400/[0.10]')
+                                                : (isSelected
+                                                    ? 'border-amber-300/60 bg-amber-400/10 text-white'
+                                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]')
                                                 }`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        {player.key === '__all__'
-                                                            ? <Gw2FuryIcon className="w-3.5 h-3.5 text-amber-300" />
-                                                            : renderProfessionIcon(player.profession, player.professionList, 'w-3.5 h-3.5')}
+                                                        {renderEntryIcon(player, 'w-3.5 h-3.5')}
                                                         <div className="text-sm font-semibold truncate text-white">{player.displayName}</div>
-                                                        {player.profession !== 'All' && (
+                                                        {isSubgroup && (
+                                                            <span className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.18em] text-cyan-200 shrink-0">
+                                                                Aggregate
+                                                            </span>
+                                                        )}
+                                                        {!isSubgroup && player.profession !== 'All' && (
                                                             <span className="text-[9px] uppercase tracking-[0.14em] text-gray-400 shrink-0">
                                                                 {player.profession}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-[10px] text-gray-400 truncate">
+                                                    <div className={`text-[10px] truncate ${isSubgroup ? 'text-cyan-200/80' : 'text-gray-400'}`}>
                                                         {player.logs} {player.logs === 1 ? 'fight' : 'fights'}
+                                                        {isSubgroup ? ' averaged across subgroup members' : ''}
                                                     </div>
                                                 </div>
-                                                <div className="text-xs font-mono text-amber-200 shrink-0">
+                                                <div className={`text-xs font-mono shrink-0 ${isSubgroup ? 'text-cyan-100' : 'text-amber-200'}`}>
                                                     {formatWithCommas(Number(player.uptimePercent || 0), 1)}%
                                                 </div>
                                             </div>
@@ -274,7 +296,7 @@ export const BoonUptimeSection = ({
                     <div className="rounded-2xl border border-white/10 bg-black/30 p-4 flex-1 min-h-0">
                         {!selectedPlayer || chartData.length === 0 ? (
                             <div className="h-full flex items-center justify-center text-xs text-gray-500">
-                                Select one player to view boon uptime by fight.
+                                Select one entry to view boon uptime by fight.
                             </div>
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
@@ -358,11 +380,9 @@ export const BoonUptimeSection = ({
             {selectedPlayer && (
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 grid gap-3 md:grid-cols-3">
                     <div>
-                        <div className="text-[10px] uppercase tracking-[0.35em] text-gray-500">Selected Player</div>
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-gray-500">Selected Entry</div>
                         <div className="mt-1 text-sm font-semibold text-white flex items-center gap-2 min-w-0">
-                            {selectedPlayer.key === '__all__'
-                                ? <Gw2FuryIcon className="w-4 h-4 text-amber-300" />
-                                : renderProfessionIcon(selectedPlayer.profession, selectedPlayer.professionList, 'w-4 h-4')}
+                            {renderEntryIcon(selectedPlayer, 'w-4 h-4')}
                             <span className="truncate">{selectedPlayer.displayName}</span>
                         </div>
                     </div>
