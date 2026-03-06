@@ -32,18 +32,47 @@ export const DEFAULT_EMBED_STATS = {
 };
 
 export const DEFAULT_MVP_WEIGHTS = {
-    downContribution: 1,
-    healing: 1,
-    cleanses: 1,
-    strips: 1,
-    stability: 1,
-    cc: 0.7,
-    revives: 0.7,
-    distanceToTag: 0.7,
-    participation: 0.7,
-    dodging: 0.4,
-    dps: 0.2,
-    damage: 0.2
+    offensiveDownContribution: 1,
+    offensiveStrips: 1,
+    offensiveCc: 0.7,
+    offensiveDps: 0.2,
+    offensiveDamage: 0.2,
+    generalDistanceToTag: 0.7,
+    generalParticipation: 0.7,
+    generalDodging: 0.4,
+    defensiveHealing: 1,
+    defensiveCleanses: 1,
+    defensiveStability: 1,
+    defensiveRevives: 0.7,
+    defensiveDistanceToTag: 0.7,
+    defensiveParticipation: 0.7,
+    defensiveDodging: 0.4
+};
+
+export const normalizeMvpWeights = (weights: unknown) => {
+    const input = (weights && typeof weights === 'object') ? (weights as Record<string, unknown>) : {};
+    const toNum = (key: string, legacyKey: string, fallback: number) => {
+        const next = input[key] ?? input[legacyKey] ?? fallback;
+        const value = Number(next);
+        return Number.isFinite(value) ? value : fallback;
+    };
+    return {
+        offensiveDownContribution: toNum('offensiveDownContribution', 'downContribution', DEFAULT_MVP_WEIGHTS.offensiveDownContribution),
+        offensiveStrips: toNum('offensiveStrips', 'strips', DEFAULT_MVP_WEIGHTS.offensiveStrips),
+        offensiveCc: toNum('offensiveCc', 'cc', DEFAULT_MVP_WEIGHTS.offensiveCc),
+        offensiveDps: toNum('offensiveDps', 'dps', DEFAULT_MVP_WEIGHTS.offensiveDps),
+        offensiveDamage: toNum('offensiveDamage', 'damage', DEFAULT_MVP_WEIGHTS.offensiveDamage),
+        generalDistanceToTag: toNum('generalDistanceToTag', 'defensiveDistanceToTag', toNum('generalDistanceToTag', 'distanceToTag', DEFAULT_MVP_WEIGHTS.generalDistanceToTag)),
+        generalParticipation: toNum('generalParticipation', 'defensiveParticipation', toNum('generalParticipation', 'participation', DEFAULT_MVP_WEIGHTS.generalParticipation)),
+        generalDodging: toNum('generalDodging', 'defensiveDodging', toNum('generalDodging', 'dodging', DEFAULT_MVP_WEIGHTS.generalDodging)),
+        defensiveHealing: toNum('defensiveHealing', 'healing', DEFAULT_MVP_WEIGHTS.defensiveHealing),
+        defensiveCleanses: toNum('defensiveCleanses', 'cleanses', DEFAULT_MVP_WEIGHTS.defensiveCleanses),
+        defensiveStability: toNum('defensiveStability', 'stability', DEFAULT_MVP_WEIGHTS.defensiveStability),
+        defensiveRevives: toNum('defensiveRevives', 'revives', DEFAULT_MVP_WEIGHTS.defensiveRevives),
+        defensiveDistanceToTag: toNum('defensiveDistanceToTag', 'generalDistanceToTag', toNum('generalDistanceToTag', 'distanceToTag', DEFAULT_MVP_WEIGHTS.defensiveDistanceToTag)),
+        defensiveParticipation: toNum('defensiveParticipation', 'generalParticipation', toNum('generalParticipation', 'participation', DEFAULT_MVP_WEIGHTS.defensiveParticipation)),
+        defensiveDodging: toNum('defensiveDodging', 'generalDodging', toNum('generalDodging', 'dodging', DEFAULT_MVP_WEIGHTS.defensiveDodging))
+    };
 };
 
 export const DEFAULT_STATS_VIEW_SETTINGS = {
@@ -131,7 +160,7 @@ export function registerSettingsHandlers(opts: SettingsHandlerOptions) {
             dpsReportToken: store.get('dpsReportToken', null),
             closeBehavior: store.get('closeBehavior', 'minimize'),
             embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS),
-            mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) },
+            mvpWeights: normalizeMvpWeights(store.get('mvpWeights')),
             statsViewSettings: { ...DEFAULT_STATS_VIEW_SETTINGS, ...(store.get('statsViewSettings') as any || {}) },
             disruptionMethod: store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD),
             uiTheme: store.get('uiTheme', 'classic'),
@@ -187,7 +216,7 @@ export function registerSettingsHandlers(opts: SettingsHandlerOptions) {
             dpsReportToken: store.get('dpsReportToken', null),
             closeBehavior: store.get('closeBehavior', 'minimize'),
             embedStatSettings: store.get('embedStatSettings', DEFAULT_EMBED_STATS),
-            mvpWeights: { ...DEFAULT_MVP_WEIGHTS, ...(store.get('mvpWeights') as any || {}) },
+            mvpWeights: normalizeMvpWeights(store.get('mvpWeights')),
             statsViewSettings: { ...DEFAULT_STATS_VIEW_SETTINGS, ...(store.get('statsViewSettings') as any || {}) },
             disruptionMethod: store.get('disruptionMethod', DEFAULT_DISRUPTION_METHOD),
             uiTheme: store.get('uiTheme', 'classic'),

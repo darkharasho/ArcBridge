@@ -101,11 +101,9 @@ import { registerDiscordHandlers } from './handlers/discordHandlers';
 import {
     registerSettingsHandlers,
     DEFAULT_EMBED_STATS,
-    DEFAULT_MVP_WEIGHTS,
-    DEFAULT_STATS_VIEW_SETTINGS,
     DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS,
+    normalizeMvpWeights,
     normalizeKineticThemeVariant,
-    inferKineticThemeVariantFromThemeId,
 } from './handlers/settingsHandlers';
 import { registerDatasetHandlers } from './handlers/datasetHandlers';
 import { registerUploadHandlers } from './handlers/uploadHandlers';
@@ -1041,7 +1039,7 @@ if (!gotTheLock) {
                 discord?.setEmbedStatSettings(settings.embedStatSettings);
             }
             if (settings.mvpWeights !== undefined) {
-                store.set('mvpWeights', settings.mvpWeights);
+                store.set('mvpWeights', normalizeMvpWeights(settings.mvpWeights));
             }
             if (settings.statsViewSettings !== undefined) {
                 store.set('statsViewSettings', settings.statsViewSettings);

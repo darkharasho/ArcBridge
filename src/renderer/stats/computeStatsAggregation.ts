@@ -1,5 +1,5 @@
 
-import { DisruptionMethod, IMvpWeights, IStatsViewSettings, DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS } from '../global.d';
+import { DisruptionMethod, IMvpWeights, IStatsViewSettings, DEFAULT_DISRUPTION_METHOD, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, normalizeMvpWeights } from '../global.d';
 import { formatDurationMs } from './utils/dashboardUtils';
 import { getProfessionColor } from '../../shared/professionUtils';
 import { resolveFightTimestamp } from './utils/timestampUtils';
@@ -126,7 +126,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
     };
     const validLogs = logs.filter((log) => hasDetailedRoster(log));
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
-    const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+    const activeMvpWeights = normalizeMvpWeights(mvpWeights || DEFAULT_MVP_WEIGHTS);
 
     const stats = (() => {
         if (precomputedStats) {
@@ -372,89 +372,122 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         };
 
         // MVP Calculation
-        let mvp = { player: 'None', account: 'None', score: -1, profession: 'Unknown', professionList: [] as string[], color: '#64748b', topStats: [] as any[] };
-        let silver: any = undefined;
-        let bronze: any = undefined;
-        let avgMvpScore = 0;
+        const emptyMvpPlacement = { player: 'None', account: 'None', score: -1, profession: 'Unknown', professionList: [] as string[], color: '#64748b', topStats: [] as any[] };
+        let offensiveMvp = { ...emptyMvpPlacement };
+        let offensiveSilver: any = undefined;
+        let offensiveBronze: any = undefined;
+        let defensiveMvp = { ...emptyMvpPlacement };
+        let defensiveSilver: any = undefined;
+        let defensiveBronze: any = undefined;
+        let offensiveAvgMvpScore = 0;
+        let defensiveAvgMvpScore = 0;
 
         if (activeStatsViewSettings?.showMvp) {
-            const mvpWeightKeyByName: Record<string, keyof IMvpWeights> = {
-                'Down Contribution': 'downContribution',
-                'Healing': 'healing',
-                'Cleanses': 'cleanses',
-                'Strips': 'strips',
-                'Stability': 'stability',
-                'CC': 'cc',
-                'Revives': 'revives',
-                'Distance to Tag': 'distanceToTag',
-                'Participation': 'participation',
-                'Dodging': 'dodging',
-                'DPS': 'dps',
-                'Damage': 'damage'
+            const rankByAccount = (lb: any[]) => {
+                const rankMap = new Map<string, number>();
+                (lb || []).forEach((row: any) => {
+                    const account = String(row?.account || '');
+                    if (!account || rankMap.has(account)) return;
+                    rankMap.set(account, Number(row?.rank || 0));
+                });
+                return rankMap;
             };
-            const isMvpMetricEnabled = (name: string) => {
-                const key = mvpWeightKeyByName[name];
-                if (!key) return false;
-                return Number(activeMvpWeights[key] || 0) > 0;
-            };
-            const scores: any[] = [];
-            const buildTopStats = (contribs: any[]) =>
-                [...(contribs || [])]
-                    .filter((entry) => isMvpMetricEnabled(entry?.name))
-                    .sort((a, b) => b.ratio - a.ratio || a.rank - b.rank || a.name.localeCompare(b.name))
-                    .slice(0, 3);
 
-            const enrichPlacement = (entry: any) => {
-                if (!entry) return undefined;
-                const topStats = buildTopStats(entry.contribs);
+            const offensiveMetrics: Array<{
+                name: string;
+                weight: number;
+                leaderboard: any[];
+                getter: (s: PlayerStats) => number;
+                higher?: boolean;
+            }> = [
+                { name: 'Down Contribution', weight: activeMvpWeights.offensiveDownContribution, leaderboard: leaderboards.downContrib, getter: (s) => s.downContrib },
+                { name: 'Strips', weight: activeMvpWeights.offensiveStrips, leaderboard: leaderboards.strips, getter: (s) => s.strips },
+                { name: 'CC', weight: activeMvpWeights.offensiveCc, leaderboard: leaderboards.cc, getter: (s) => s.cc },
+                { name: 'DPS', weight: activeMvpWeights.offensiveDps, leaderboard: leaderboards.dps, getter: (s) => s.dps },
+                { name: 'Damage', weight: activeMvpWeights.offensiveDamage, leaderboard: leaderboards.damage, getter: (s) => s.damage }
+            ];
+
+            const generalMetrics: Array<{
+                name: string;
+                weight: number;
+                leaderboard: any[];
+                getter: (s: PlayerStats) => number;
+                higher?: boolean;
+            }> = [
+                { name: 'Distance to Tag', weight: activeMvpWeights.generalDistanceToTag, leaderboard: leaderboards.closestToTag, getter: (s) => getVal(s, 'closestToTag'), higher: false },
+                { name: 'Participation', weight: activeMvpWeights.generalParticipation, leaderboard: leaderboards.participation, getter: (s) => s.logsJoined },
+                { name: 'Dodging', weight: activeMvpWeights.generalDodging, leaderboard: leaderboards.dodges, getter: (s) => s.dodges }
+            ];
+
+            const defensiveMetrics: Array<{
+                name: string;
+                weight: number;
+                leaderboard: any[];
+                getter: (s: PlayerStats) => number;
+                higher?: boolean;
+            }> = [
+                { name: 'Healing', weight: activeMvpWeights.defensiveHealing, leaderboard: leaderboards.healing, getter: (s) => s.healing },
+                { name: 'Cleanses', weight: activeMvpWeights.defensiveCleanses, leaderboard: leaderboards.cleanses, getter: (s) => s.cleanses },
+                { name: 'Stability', weight: activeMvpWeights.defensiveStability, leaderboard: leaderboards.stability, getter: (s) => s.stab },
+                { name: 'Revives', weight: activeMvpWeights.defensiveRevives, leaderboard: leaderboards.revives, getter: (s) => s.revives }
+            ];
+
+            const computeCategoryScores = (metrics: typeof offensiveMetrics) => {
+                const scores: any[] = [];
+                const metricRankMaps = metrics.map((metric) => rankByAccount(metric.leaderboard));
+                const buildTopStats = (contribs: any[]) =>
+                    [...(contribs || [])]
+                        .sort((a, b) => b.ratio - a.ratio || a.rank - b.rank || a.name.localeCompare(b.name))
+                        .slice(0, 3);
+                const enrichPlacement = (entry: any) => {
+                    if (!entry) return undefined;
+                    const topStats = buildTopStats(entry.contribs);
+                    return {
+                        ...entry,
+                        player: entry.name,
+                        reason: topStats[0]?.name || 'Top Performance',
+                        topStats
+                    };
+                };
+
+                playerEntries.forEach(({ stat }) => {
+                    let score = 0;
+                    const contribs: any[] = [];
+                    metrics.forEach((metric, idx) => {
+                        if (metric.weight <= 0) return;
+                        const best = Number(metric.leaderboard?.[0]?.value || 0);
+                        if (!best) return;
+                        const val = Number(metric.getter(stat));
+                        if (!Number.isFinite(val)) return;
+                        const higherIsBetter = metric.higher !== false;
+                        if (higherIsBetter ? val <= 0 : val >= Number.POSITIVE_INFINITY || val <= 0) return;
+                        const ratio = higherIsBetter ? val / best : best / val;
+                        const rank = metricRankMaps[idx].get(stat.account) || 0;
+                        score += ratio * metric.weight;
+                        contribs.push({ name: metric.name, ratio, val: val.toLocaleString(), rank });
+                    });
+                    scores.push({ ...stat, score, contribs });
+                });
+                scores.sort((a, b) => b.score - a.score);
                 return {
-                    ...entry,
-                    player: entry.name,
-                    reason: topStats[0]?.name || 'Top Performance',
-                    topStats
+                    mvp: scores[0] && scores[0].score > 0 ? (enrichPlacement(scores[0]) || { ...emptyMvpPlacement }) : { ...emptyMvpPlacement },
+                    silver: enrichPlacement(scores[1]),
+                    bronze: enrichPlacement(scores[2]),
+                    avgScore: scores.length > 0 ? scores.reduce((sum, s) => sum + s.score, 0) / scores.length : 0
                 };
             };
 
-            playerEntries.forEach(({ stat }) => {
-                let score = 0;
-                const contribs: any[] = [];
-                const check = (val: number, lb: any[], weight: number, name: string, higher = true) => {
-                    if (weight <= 0) return;
-                    const best = lb[0]?.value || 0;
-                    if (!best) return;
-                    if (!Number.isFinite(val)) return;
-                    if (higher ? val > 0 : val < Number.POSITIVE_INFINITY) {
-                        const ratio = higher ? val / best : best / val; // Approximation since we don't have max value handy without LB 0
-                        score += ratio * weight;
-                        const rank = lb.find((r: any) => r.account === stat.account)?.rank || 0;
-                        contribs.push({ name, ratio, val: val.toLocaleString(), rank });
-                    }
-                };
-                // Check against leaderboards
-                check(stat.downContrib, leaderboards.downContrib, activeMvpWeights.downContribution, 'Down Contribution');
-                check(stat.healing, leaderboards.healing, activeMvpWeights.healing, 'Healing');
-                check(stat.cleanses, leaderboards.cleanses, activeMvpWeights.cleanses, 'Cleanses');
-                check(stat.strips, leaderboards.strips, activeMvpWeights.strips, 'Strips');
-                check(stat.stab, leaderboards.stability, activeMvpWeights.stability, 'Stability');
-                check(stat.cc, leaderboards.cc, activeMvpWeights.cc, 'CC');
-                check(stat.revives, leaderboards.revives, activeMvpWeights.revives, 'Revives');
-                check(getVal(stat, 'closestToTag'), leaderboards.closestToTag, activeMvpWeights.distanceToTag, 'Distance to Tag', false);
-                check(stat.logsJoined, leaderboards.participation, activeMvpWeights.participation, 'Participation');
-                check(stat.dodges, leaderboards.dodges, activeMvpWeights.dodging, 'Dodging');
-                check(stat.dps, leaderboards.dps, activeMvpWeights.dps, 'DPS');
-                check(stat.damage, leaderboards.damage, activeMvpWeights.damage, 'Damage');
-                scores.push({ ...stat, score, contribs: contribs.filter((entry) => isMvpMetricEnabled(entry.name)) });
-            });
-            scores.sort((a, b) => b.score - a.score);
-            if (scores[0] && scores[0].score > 0) {
-                mvp = enrichPlacement(scores[0]) || mvp;
-            }
-            silver = enrichPlacement(scores[1]);
-            bronze = enrichPlacement(scores[2]);
+            const offensiveScores = computeCategoryScores([...offensiveMetrics, ...generalMetrics]);
+            offensiveMvp = offensiveScores.mvp;
+            offensiveSilver = offensiveScores.silver;
+            offensiveBronze = offensiveScores.bronze;
+            offensiveAvgMvpScore = offensiveScores.avgScore;
 
-            avgMvpScore = scores.length > 0
-                ? scores.reduce((sum, s) => sum + s.score, 0) / scores.length
-                : 0;
+            const defensiveScores = computeCategoryScores([...defensiveMetrics, ...generalMetrics]);
+            defensiveMvp = defensiveScores.mvp;
+            defensiveSilver = defensiveScores.silver;
+            defensiveBronze = defensiveScores.bronze;
+            defensiveAvgMvpScore = defensiveScores.avgScore;
         }
 
         const topSkillsByDamage = Object.values(skillDamageMap)
@@ -634,7 +667,15 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 account: s.account, profession: s.profession, professionList: s.professionList,
                 healingTotals: s.healingTotals, activeMs: s.healingActiveMs
             })),
-            mvp, silver, bronze,
+            offensiveMvp,
+            offensiveSilver,
+            offensiveBronze,
+            defensiveMvp,
+            defensiveSilver,
+            defensiveBronze,
+            mvp: offensiveMvp,
+            silver: offensiveSilver,
+            bronze: offensiveBronze,
             squadClassData,
             enemyClassData,
             fightBreakdown,
@@ -650,7 +691,9 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             topStatsLeaderboardsPerSecond: perSecondLeaderboards,
             topStatsPerMinute,
             topStatsLeaderboardsPerMinute: perMinuteLeaderboards,
-            avgMvpScore
+            offensiveAvgMvpScore,
+            defensiveAvgMvpScore,
+            avgMvpScore: offensiveAvgMvpScore
         };
     })();
 

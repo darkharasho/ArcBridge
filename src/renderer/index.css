@@ -1519,6 +1519,28 @@ body.theme-crt .app-shell .rounded-full {
     border-radius: 2px !important;
 }
 
+body.theme-crt #top-players .mvp-group {
+    background: linear-gradient(180deg, rgba(7, 17, 11, 0.88), rgba(5, 12, 8, 0.92)) !important;
+    border-color: rgba(87, 255, 154, 0.22) !important;
+    box-shadow: inset 0 0 0 1px rgba(87, 255, 154, 0.08), 0 0 18px rgba(87, 255, 154, 0.09) !important;
+}
+
+body.theme-crt #top-players .mvp-group-label {
+    background: rgba(5, 14, 9, 0.97) !important;
+    border-color: rgba(87, 255, 154, 0.34) !important;
+    box-shadow: 0 0 10px rgba(87, 255, 154, 0.12) !important;
+}
+
+body.theme-crt #top-players .mvp-group-label-title {
+    color: #b9f8cf !important;
+    text-shadow: 0 0 8px rgba(87, 255, 154, 0.2) !important;
+}
+
+body.theme-crt #top-players .mvp-group-label-icon {
+    color: #66ffab !important;
+    filter: drop-shadow(0 0 5px rgba(87, 255, 154, 0.35));
+}
+
 body.theme-crt .app-shell .bg-gradient-to-br,
 body.theme-crt .app-shell .bg-gradient-to-r {
     background-image: none !important;
@@ -2449,6 +2471,48 @@ body.theme-matte .mvp-card--bronze {
 body.theme-matte .mvp-card .absolute.blur-\[80px\],
 body.theme-matte .mvp-card .absolute.blur-\[70px\] {
     opacity: 0.15 !important;
+}
+
+body.theme-matte #top-players .mvp-group {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border-subtle) !important;
+    box-shadow: -4px -4px 9px var(--matte-light), 4px 4px 9px var(--matte-dark) !important;
+}
+
+body.theme-matte #top-players .mvp-group--offense {
+    border-color: rgba(248, 113, 113, 0.24) !important;
+    background: linear-gradient(150deg, rgba(248, 113, 113, 0.05), transparent 42%), var(--bg-elevated) !important;
+}
+
+body.theme-matte #top-players .mvp-group--defense {
+    border-color: rgba(74, 222, 128, 0.24) !important;
+    background: linear-gradient(150deg, rgba(74, 222, 128, 0.05), transparent 42%), var(--bg-elevated) !important;
+}
+
+body.theme-matte #top-players .mvp-group-label {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border-subtle) !important;
+    box-shadow: inset 2px 2px 4px var(--matte-dark), inset -2px -2px 4px var(--matte-light) !important;
+}
+
+body.theme-matte #top-players .mvp-group--offense .mvp-group-label {
+    border-color: rgba(248, 113, 113, 0.26) !important;
+}
+
+body.theme-matte #top-players .mvp-group--defense .mvp-group-label {
+    border-color: rgba(74, 222, 128, 0.26) !important;
+}
+
+body.theme-matte #top-players .mvp-group-label-title {
+    color: #d0d8e3 !important;
+}
+
+body.theme-matte #top-players .mvp-group--offense .mvp-group-label-icon {
+    color: #f1b3b3 !important;
+}
+
+body.theme-matte #top-players .mvp-group--defense .mvp-group-label-icon {
+    color: #a8dfbf !important;
 }
 
 /* Terminal Screen - Matte Theme */
@@ -4169,6 +4233,38 @@ body.theme-kinetic .stats-view .mvp-card--bronze .border-orange-400\/30 {
     border-color: rgba(128, 88, 58, 0.42) !important;
 }
 
+body.theme-kinetic #top-players .mvp-group {
+    background: rgba(228, 220, 205, 0.34) !important;
+    border-color: rgba(138, 124, 104, 0.34) !important;
+}
+
+body.theme-kinetic #top-players .mvp-group--offense {
+    border-color: rgba(137, 98, 63, 0.44) !important;
+    background: linear-gradient(150deg, rgba(168, 115, 74, 0.16), rgba(228, 220, 205, 0.34) 46%) !important;
+}
+
+body.theme-kinetic #top-players .mvp-group--defense {
+    border-color: rgba(88, 112, 89, 0.42) !important;
+    background: linear-gradient(150deg, rgba(109, 130, 109, 0.16), rgba(228, 220, 205, 0.34) 46%) !important;
+}
+
+body.theme-kinetic #top-players .mvp-group-label {
+    background: rgba(243, 236, 224, 0.96) !important;
+    border-color: rgba(128, 116, 97, 0.42) !important;
+}
+
+body.theme-kinetic #top-players .mvp-group-label-title {
+    color: #4d3d2d !important;
+}
+
+body.theme-kinetic #top-players .mvp-group--offense .mvp-group-label-icon {
+    color: #8a663f !important;
+}
+
+body.theme-kinetic #top-players .mvp-group--defense .mvp-group-label-icon {
+    color: #537452 !important;
+}
+
 body.theme-kinetic #top-skills-outgoing .top-skills-outgoing-icon {
     color: #8a663f !important;
 }
@@ -5486,6 +5582,38 @@ body.theme-kinetic.theme-kinetic-dark .stats-view .mvp-card--bronze {
 body.theme-kinetic.theme-kinetic-dark .stats-view .mvp-card .absolute.blur-\[80px\],
 body.theme-kinetic.theme-kinetic-dark .stats-view .mvp-card .absolute.blur-\[70px\] {
     opacity: 0.42 !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group {
+    background: rgba(61, 52, 41, 0.44) !important;
+    border-color: rgba(191, 164, 122, 0.34) !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group--offense {
+    border-color: rgba(214, 166, 129, 0.44) !important;
+    background: linear-gradient(150deg, rgba(154, 114, 88, 0.26), rgba(61, 52, 41, 0.44) 48%) !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group--defense {
+    border-color: rgba(146, 181, 143, 0.44) !important;
+    background: linear-gradient(150deg, rgba(96, 133, 91, 0.24), rgba(61, 52, 41, 0.44) 48%) !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group-label {
+    background: rgba(39, 32, 24, 0.96) !important;
+    border-color: rgba(201, 171, 128, 0.44) !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group-label-title {
+    color: #f0dfc0 !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group--offense .mvp-group-label-icon {
+    color: #e4bc96 !important;
+}
+
+body.theme-kinetic.theme-kinetic-dark #top-players .mvp-group--defense .mvp-group-label-icon {
+    color: #b8d0a8 !important;
 }
 
 /* Dark kinetic: restore muted semantic color accents for overview and non-MVP top players. */

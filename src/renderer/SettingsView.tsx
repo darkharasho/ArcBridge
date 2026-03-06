@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload, ChevronDown } from 'lucide-react';
-import { DashboardLayout, IEmbedStatSettings, DEFAULT_DASHBOARD_LAYOUT, DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME, KineticFontStyle, DEFAULT_KINETIC_FONT_STYLE, KineticThemeVariant, DEFAULT_KINETIC_THEME_VARIANT } from './global.d';
+import { DashboardLayout, IEmbedStatSettings, DEFAULT_DASHBOARD_LAYOUT, DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, UiTheme, DEFAULT_UI_THEME, KineticFontStyle, DEFAULT_KINETIC_FONT_STYLE, KineticThemeVariant, DEFAULT_KINETIC_THEME_VARIANT, normalizeMvpWeights } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { BASE_WEB_THEMES, CRT_WEB_THEME, CRT_WEB_THEME_ID, DEFAULT_WEB_THEME_ID, KINETIC_DARK_WEB_THEME, KINETIC_DARK_WEB_THEME_ID, KINETIC_SLATE_WEB_THEME, KINETIC_SLATE_WEB_THEME_ID, KINETIC_WEB_THEME, KINETIC_WEB_THEME_ID, MATTE_WEB_THEME, MATTE_WEB_THEME_ID } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
@@ -464,7 +464,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         setEmbedStats({ ...DEFAULT_EMBED_STATS, ...(settings.embedStatSettings || {}) });
         const discordEnemySplitSettings = { ...DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, ...(settings.discordEnemySplitSettings || {}) };
         setSplitEnemiesByTeam(Boolean(settings.discordSplitEnemiesByTeam) || Boolean(discordEnemySplitSettings.image || discordEnemySplitSettings.embed || discordEnemySplitSettings.tiled));
-        setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...(settings.mvpWeights || {}) });
+        setMvpWeights(normalizeMvpWeights(settings.mvpWeights));
         setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...(settings.statsViewSettings || {}) });
         const resolvedTheme = (settings.uiTheme as UiTheme) || DEFAULT_UI_THEME;
         setUiTheme(resolvedTheme);
@@ -2216,7 +2216,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 enabled={statsViewSettings.showMvp}
                                 onChange={(v) => updateStatsViewSetting('showMvp', v)}
                                 label="Calculate MVP"
-                                description="MVP scoring + squad/silver/bronze highlights"
+                                description="Offensive/Defensive MVP scoring + gold/silver/bronze highlights"
                             />
                             <Toggle
                                 enabled={statsViewSettings.roundCountStats}
@@ -2399,7 +2399,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     <SettingsSection title="MVP Weighting" icon={BarChart3} delay={0.18} sectionId="mvp-weighting">
                         <div className="flex items-center justify-between mb-4">
                             <p className="text-sm text-gray-400">
-                                Adjust how each stat influences MVP scoring. 0 disables a stat.
+                                Offensive and Defensive MVP use separate scoring weights. 0 disables a stat.
                             </p>
                             <button
                                 onClick={() => setMvpWeights(DEFAULT_MVP_WEIGHTS)}
@@ -2408,37 +2408,88 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 Reset
                             </button>
                         </div>
-                        <div className="space-y-2">
-                            {([
-                                { key: 'downContribution', label: 'Down Contribution' },
-                                { key: 'healing', label: 'Healing' },
-                                { key: 'cleanses', label: 'Cleanses' },
-                                { key: 'strips', label: 'Strips' },
-                                { key: 'stability', label: 'Stability' },
-                                { key: 'cc', label: 'CC' },
-                                { key: 'revives', label: 'Revives' },
-                                { key: 'distanceToTag', label: 'Distance to Tag' },
-                                { key: 'participation', label: 'Participation' },
-                                { key: 'dodging', label: 'Dodging' },
-                                { key: 'dps', label: 'DPS' },
-                                { key: 'damage', label: 'Damage' }
-                            ] as Array<{ key: keyof IMvpWeights; label: string }>).map(item => (
-                                <div key={item.key} className="flex items-center gap-3 py-2">
-                                    <div className="flex-1 text-sm text-gray-200">{item.label}</div>
-                                    <input
-                                        type="range"
-                                        min={0}
-                                        max={1}
-                                        step={0.05}
-                                        value={mvpWeights[item.key]}
-                                        onChange={(e) => updateMvpWeight(item.key, Number(e.target.value))}
-                                        className="flex-1 accent-blue-400"
-                                    />
-                                    <div className="w-12 text-right text-xs text-gray-300 font-mono">
-                                        {formatWeight(mvpWeights[item.key])}
-                                    </div>
+                        <div className="space-y-5">
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-sky-300 mb-2">General MVP (Applied to Both)</div>
+                                <div className="space-y-2">
+                                    {([
+                                        { key: 'generalDistanceToTag', label: 'Distance to Tag' },
+                                        { key: 'generalParticipation', label: 'Participation' },
+                                        { key: 'generalDodging', label: 'Dodging' }
+                                    ] as Array<{ key: keyof IMvpWeights; label: string }>).map(item => (
+                                        <div key={item.key} className="flex items-center gap-3 py-2">
+                                            <div className="flex-1 text-sm text-gray-200">{item.label}</div>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={1}
+                                                step={0.05}
+                                                value={mvpWeights[item.key]}
+                                                onChange={(e) => updateMvpWeight(item.key, Number(e.target.value))}
+                                                className="flex-1 accent-blue-400"
+                                            />
+                                            <div className="w-12 text-right text-xs text-gray-300 font-mono">
+                                                {formatWeight(mvpWeights[item.key])}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-orange-300 mb-2">Offensive MVP</div>
+                                <div className="space-y-2">
+                                    {([
+                                        { key: 'offensiveDownContribution', label: 'Down Contribution' },
+                                        { key: 'offensiveStrips', label: 'Strips' },
+                                        { key: 'offensiveCc', label: 'CC' },
+                                        { key: 'offensiveDps', label: 'DPS' },
+                                        { key: 'offensiveDamage', label: 'Damage' }
+                                    ] as Array<{ key: keyof IMvpWeights; label: string }>).map(item => (
+                                        <div key={item.key} className="flex items-center gap-3 py-2">
+                                            <div className="flex-1 text-sm text-gray-200">{item.label}</div>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={1}
+                                                step={0.05}
+                                                value={mvpWeights[item.key]}
+                                                onChange={(e) => updateMvpWeight(item.key, Number(e.target.value))}
+                                                className="flex-1 accent-blue-400"
+                                            />
+                                            <div className="w-12 text-right text-xs text-gray-300 font-mono">
+                                                {formatWeight(mvpWeights[item.key])}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-2">Defensive MVP</div>
+                                <div className="space-y-2">
+                                    {([
+                                        { key: 'defensiveHealing', label: 'Healing' },
+                                        { key: 'defensiveCleanses', label: 'Cleanses' },
+                                        { key: 'defensiveStability', label: 'Stability' },
+                                        { key: 'defensiveRevives', label: 'Revives' }
+                                    ] as Array<{ key: keyof IMvpWeights; label: string }>).map(item => (
+                                        <div key={item.key} className="flex items-center gap-3 py-2">
+                                            <div className="flex-1 text-sm text-gray-200">{item.label}</div>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={1}
+                                                step={0.05}
+                                                value={mvpWeights[item.key]}
+                                                onChange={(e) => updateMvpWeight(item.key, Number(e.target.value))}
+                                                className="flex-1 accent-blue-400"
+                                            />
+                                            <div className="w-12 text-right text-xs text-gray-300 font-mono">
+                                                {formatWeight(mvpWeights[item.key])}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </SettingsSection>
 

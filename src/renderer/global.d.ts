@@ -36,19 +36,37 @@ export interface IEmbedStatSettings {
 }
 
 export interface IMvpWeights {
-    downContribution: number;
-    healing: number;
-    cleanses: number;
-    strips: number;
-    stability: number;
-    cc: number;
-    revives: number;
-    distanceToTag: number;
-    participation: number;
-    dodging: number;
-    dps: number;
-    damage: number;
+    offensiveDownContribution: number;
+    offensiveStrips: number;
+    offensiveCc: number;
+    offensiveDps: number;
+    offensiveDamage: number;
+    generalDistanceToTag: number;
+    generalParticipation: number;
+    generalDodging: number;
+    defensiveHealing: number;
+    defensiveCleanses: number;
+    defensiveStability: number;
+    defensiveRevives: number;
+    defensiveDistanceToTag: number;
+    defensiveParticipation: number;
+    defensiveDodging: number;
 }
+
+type LegacyMvpWeights = {
+    downContribution?: number;
+    healing?: number;
+    cleanses?: number;
+    strips?: number;
+    stability?: number;
+    cc?: number;
+    revives?: number;
+    distanceToTag?: number;
+    participation?: number;
+    dodging?: number;
+    dps?: number;
+    damage?: number;
+};
 
 export interface IStatsViewSettings {
     showTopStats: boolean;
@@ -168,18 +186,46 @@ export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
 };
 
 export const DEFAULT_MVP_WEIGHTS: IMvpWeights = {
-    downContribution: 1,
-    healing: 1,
-    cleanses: 1,
-    strips: 1,
-    stability: 1,
-    cc: 0.7,
-    revives: 0.7,
-    distanceToTag: 0.7,
-    participation: 0.7,
-    dodging: 0.4,
-    dps: 0.2,
-    damage: 0.2
+    offensiveDownContribution: 1,
+    offensiveStrips: 1,
+    offensiveCc: 0.7,
+    offensiveDps: 0.2,
+    offensiveDamage: 0.2,
+    generalDistanceToTag: 0.7,
+    generalParticipation: 0.7,
+    generalDodging: 0.4,
+    defensiveHealing: 1,
+    defensiveCleanses: 1,
+    defensiveStability: 1,
+    defensiveRevives: 0.7,
+    defensiveDistanceToTag: 0.7,
+    defensiveParticipation: 0.7,
+    defensiveDodging: 0.4
+};
+
+export const normalizeMvpWeights = (weights: unknown): IMvpWeights => {
+    const input = (weights && typeof weights === 'object') ? (weights as Partial<IMvpWeights> & LegacyMvpWeights) : {};
+    const toNum = (value: unknown, fallback: number) => {
+        const next = Number(value);
+        return Number.isFinite(next) ? next : fallback;
+    };
+    return {
+        offensiveDownContribution: toNum(input.offensiveDownContribution ?? input.downContribution, DEFAULT_MVP_WEIGHTS.offensiveDownContribution),
+        offensiveStrips: toNum(input.offensiveStrips ?? input.strips, DEFAULT_MVP_WEIGHTS.offensiveStrips),
+        offensiveCc: toNum(input.offensiveCc ?? input.cc, DEFAULT_MVP_WEIGHTS.offensiveCc),
+        offensiveDps: toNum(input.offensiveDps ?? input.dps, DEFAULT_MVP_WEIGHTS.offensiveDps),
+        offensiveDamage: toNum(input.offensiveDamage ?? input.damage, DEFAULT_MVP_WEIGHTS.offensiveDamage),
+        generalDistanceToTag: toNum(input.generalDistanceToTag ?? input.defensiveDistanceToTag ?? input.distanceToTag, DEFAULT_MVP_WEIGHTS.generalDistanceToTag),
+        generalParticipation: toNum(input.generalParticipation ?? input.defensiveParticipation ?? input.participation, DEFAULT_MVP_WEIGHTS.generalParticipation),
+        generalDodging: toNum(input.generalDodging ?? input.defensiveDodging ?? input.dodging, DEFAULT_MVP_WEIGHTS.generalDodging),
+        defensiveHealing: toNum(input.defensiveHealing ?? input.healing, DEFAULT_MVP_WEIGHTS.defensiveHealing),
+        defensiveCleanses: toNum(input.defensiveCleanses ?? input.cleanses, DEFAULT_MVP_WEIGHTS.defensiveCleanses),
+        defensiveStability: toNum(input.defensiveStability ?? input.stability, DEFAULT_MVP_WEIGHTS.defensiveStability),
+        defensiveRevives: toNum(input.defensiveRevives ?? input.revives, DEFAULT_MVP_WEIGHTS.defensiveRevives),
+        defensiveDistanceToTag: toNum(input.defensiveDistanceToTag ?? input.generalDistanceToTag ?? input.distanceToTag, DEFAULT_MVP_WEIGHTS.defensiveDistanceToTag),
+        defensiveParticipation: toNum(input.defensiveParticipation ?? input.generalParticipation ?? input.participation, DEFAULT_MVP_WEIGHTS.defensiveParticipation),
+        defensiveDodging: toNum(input.defensiveDodging ?? input.generalDodging ?? input.dodging, DEFAULT_MVP_WEIGHTS.defensiveDodging)
+    };
 };
 
 export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {

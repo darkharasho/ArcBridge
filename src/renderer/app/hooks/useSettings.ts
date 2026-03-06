@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     DashboardLayout, DEFAULT_DASHBOARD_LAYOUT, DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS,
     DEFAULT_KINETIC_FONT_STYLE, DEFAULT_KINETIC_THEME_VARIANT, DEFAULT_MVP_WEIGHTS,
-    DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IEmbedStatSettings, IMvpWeights,
+    DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IEmbedStatSettings, IMvpWeights, normalizeMvpWeights,
     IStatsViewSettings, KineticFontStyle, KineticThemeVariant,
 } from '../../global.d';
 import { Webhook } from '../../WebhookModal';
@@ -90,7 +90,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
                 setEmbedStatSettings({ ...DEFAULT_EMBED_STATS, ...settings.embedStatSettings });
             }
             if (settings.mvpWeights) {
-                setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...settings.mvpWeights });
+                setMvpWeights(normalizeMvpWeights(settings.mvpWeights));
             }
             if (settings.statsViewSettings) {
                 setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...settings.statsViewSettings });

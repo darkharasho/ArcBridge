@@ -16,7 +16,7 @@ import { useApmStats } from './stats/hooks/useApmStats';
 import { useSkillCharts } from './stats/hooks/useSkillCharts';
 import { getProfessionColor, getProfessionIconPath, PROFESSION_COLORS } from '../shared/professionUtils';
 import { BoonCategory, BoonMetric, formatBoonMetricDisplay, getBoonMetricValue } from '../shared/boonGeneration';
-import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState } from './global.d';
+import { DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, DEFAULT_WEB_UPLOAD_STATE, DisruptionMethod, IMvpWeights, IStatsViewSettings, IWebUploadState, normalizeMvpWeights } from './global.d';
 import type { PlayerSkillBreakdown, PlayerSkillDamageEntry, SkillUsageSummary } from './stats/statsTypes';
 import { getDefaultConditionIcon, normalizeConditionLabel } from '../shared/conditionsMetrics';
 
@@ -134,7 +134,7 @@ const EMPTY_SKILL_USAGE_SUMMARY: SkillUsageSummary = {
 const EMPTY_ANY_ARRAY: any[] = [];
 
 export function StatsView({ logs, onBack: _onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, uiTheme, canShareDiscord = true, statsDataProgress, aggregationResult: externalAggregationResult }: StatsViewProps) {
-    const activeMvpWeights = mvpWeights || DEFAULT_MVP_WEIGHTS;
+    const activeMvpWeights = normalizeMvpWeights(mvpWeights || DEFAULT_MVP_WEIGHTS);
     const activeStatsViewSettings = statsViewSettings || DEFAULT_STATS_VIEW_SETTINGS;
     const activeWebUploadState = webUploadState || DEFAULT_WEB_UPLOAD_STATE;
     const showTopStats = activeStatsViewSettings.showTopStats;
@@ -543,18 +543,18 @@ export function StatsView({ logs, onBack: _onBack, mvpWeights, statsViewSettings
         handleShare
     } = useStatsScreenshot(embedded);
     const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
-        'Down Contribution': 'downContribution',
-        'Healing': 'healing',
-        'Cleanses': 'cleanses',
-        'Strips': 'strips',
-        'Stability': 'stability',
-        'CC': 'cc',
-        'Revives': 'revives',
-        'Distance to Tag': 'distanceToTag',
-        'Participation': 'participation',
-        'Dodging': 'dodging',
-        'DPS': 'dps',
-        'Damage': 'damage'
+        'Down Contribution': 'offensiveDownContribution',
+        'Strips': 'offensiveStrips',
+        'CC': 'offensiveCc',
+        'DPS': 'offensiveDps',
+        'Damage': 'offensiveDamage',
+        'Healing': 'defensiveHealing',
+        'Cleanses': 'defensiveCleanses',
+        'Stability': 'defensiveStability',
+        'Revives': 'defensiveRevives',
+        'Distance to Tag': 'generalDistanceToTag',
+        'Participation': 'generalParticipation',
+        'Dodging': 'generalDodging'
     };
     const isMvpStatEnabled = (name: string) => {
         const key = mvpStatWeightKeys[name];

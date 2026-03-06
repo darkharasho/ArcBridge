@@ -1,8 +1,8 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import {
     DEFAULT_EMBED_STATS,
-    DEFAULT_MVP_WEIGHTS,
     DEFAULT_STATS_VIEW_SETTINGS,
+    normalizeMvpWeights,
     type DisruptionMethod,
     type IDevDatasetSnapshot,
     type IEmbedStatSettings,
@@ -163,7 +163,7 @@ export function useDevDatasets({
             setEmbedStatSettings({ ...DEFAULT_EMBED_STATS, ...state.embedStatSettings });
         }
         if (state.mvpWeights && typeof state.mvpWeights === 'object') {
-            setMvpWeights({ ...DEFAULT_MVP_WEIGHTS, ...state.mvpWeights });
+            setMvpWeights(normalizeMvpWeights(state.mvpWeights));
         }
         if (state.statsViewSettings && typeof state.statsViewSettings === 'object') {
             setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...state.statsViewSettings });
