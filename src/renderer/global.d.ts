@@ -72,6 +72,7 @@ export interface IStatsViewSettings {
     showTopStats: boolean;
     showMvp: boolean;
     roundCountStats: boolean;
+    splitPlayersByClass: boolean;
     topStatsMode: 'total' | 'perSecond' | 'perMinute';
     topSkillDamageSource: 'total' | 'target';
     topSkillsMetric: 'damage' | 'downContribution';
@@ -232,6 +233,7 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     showTopStats: true,
     showMvp: true,
     roundCountStats: false,
+    splitPlayersByClass: false,
     topStatsMode: 'total',
     topSkillDamageSource: 'target',
     topSkillsMetric: 'damage'

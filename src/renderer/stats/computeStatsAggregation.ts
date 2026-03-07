@@ -137,6 +137,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         const shouldIncludePlayerSkillMap = includePlayerSkillMap !== false;
         const skillDamageSource = activeStatsViewSettings.topSkillDamageSource || 'target';
         const topSkillsMetric = activeStatsViewSettings.topSkillsMetric || 'damage';
+        const splitPlayersByClass = Boolean(activeStatsViewSettings.splitPlayersByClass);
         const total = validLogs.length;
 
         const {
@@ -151,6 +152,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             validLogs,
             method,
             skillDamageSource,
+            splitPlayersByClass,
         });
 
         // Post-Processing

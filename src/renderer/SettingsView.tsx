@@ -2224,6 +2224,12 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 label="Round count stats to whole numbers"
                                 description="Percent-based stats keep decimals"
                             />
+                            <Toggle
+                                enabled={statsViewSettings.splitPlayersByClass}
+                                onChange={(v) => updateStatsViewSetting('splitPlayersByClass', v)}
+                                label="Split players by class"
+                                description="Show separate rows per class instead of combining each player."
+                            />
                             <div className="py-3">
                                 <div className="text-sm font-medium text-gray-200 mb-2">Top Stats Calculation</div>
                                 <div className="flex gap-2">

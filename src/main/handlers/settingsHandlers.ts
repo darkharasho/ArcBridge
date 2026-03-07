@@ -79,6 +79,7 @@ export const DEFAULT_STATS_VIEW_SETTINGS = {
     showTopStats: true,
     showMvp: true,
     roundCountStats: false,
+    splitPlayersByClass: false,
     topStatsMode: 'total',
     topSkillDamageSource: 'target',
     topSkillsMetric: 'damage'

@@ -155,10 +155,12 @@ export const computePlayerAggregation = ({
     validLogs,
     method,
     skillDamageSource,
+    splitPlayersByClass,
 }: {
     validLogs: any[];
     method: DisruptionMethod;
     skillDamageSource: string;
+    splitPlayersByClass: boolean;
 }) => {
 
     let wins = 0;
@@ -190,6 +192,7 @@ export const computePlayerAggregation = ({
     const enemyProfessionCounts: Record<string, number> = {};
     const specialBuffMeta = new Map<string, { name?: string; stacking?: boolean; icon?: string }>();
     const specialBuffAgg = new Map<string, Map<string, {
+        key: string;
         account: string;
         profession: string;
         professions: Set<string>;
@@ -308,6 +311,21 @@ export const computePlayerAggregation = ({
         existing.interrupted += delta.interrupted;
         map.set(key, existing);
         return existing;
+    };
+    const getPlayerIdentity = (player: any) => {
+        const baseAccount = (player?.account && player.account !== 'Unknown') ? player.account : (player?.name || 'Unknown');
+        const profession = resolveProfessionLabel(player?.profession || 'Unknown');
+        const isSplit = splitPlayersByClass && profession !== 'Unknown';
+        const key = isSplit ? `${baseAccount}::${profession}` : baseAccount;
+        const accountLabel = baseAccount;
+        return { key, baseAccount, profession, accountLabel, isSplit };
+    };
+    const getMitigationIdentity = (account: string, profession: string) => {
+        const resolvedProfession = resolveProfessionLabel(profession || 'Unknown');
+        const isSplit = splitPlayersByClass && resolvedProfession !== 'Unknown';
+        const key = isSplit ? `${account}::${resolvedProfession}` : account;
+        const accountLabel = account;
+        return { key, accountLabel, profession: resolvedProfession };
     };
 
     // Precompute global enemy averages across all logs (by skill id)
@@ -428,16 +446,16 @@ export const computePlayerAggregation = ({
 
         players.forEach((p, playerIndex) => {
             if (p.notInSquad) return;
-            const account = p.account || 'Unknown';
-            const key = account !== 'Unknown' ? account : (p.name || 'Unknown');
+            const identity = getPlayerIdentity(p);
+            const key = identity.key;
             const name = p.name || 'Unknown';
 
             if (!playerStats.has(key)) {
                 playerStats.set(key, {
-                    name, account: key, characterNames: new Set<string>(), downContrib: 0, cleanses: 0, strips: 0, stab: 0, healing: 0, barrier: 0, cc: 0, logsJoined: 0,
+                    name, account: identity.accountLabel, characterNames: new Set<string>(), downContrib: 0, cleanses: 0, strips: 0, stab: 0, healing: 0, barrier: 0, cc: 0, logsJoined: 0,
                     totalDist: 0, distCount: 0, dodges: 0, downs: 0, deaths: 0, totalFightMs: 0,
                     offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, defenseMinionDamageTaken: {}, supportActiveMs: 0, supportTotals: {},
-                    healingActiveMs: 0, healingTotals: {}, profession: p.profession || 'Unknown', professions: new Set(),
+                    healingActiveMs: 0, healingTotals: {}, profession: identity.profession, professions: new Set(),
                     professionTimeMs: {}, squadActiveMs: 0, firstSeenFightTs: 0, lastSeenFightTs: 0, lastSeenFightDurationMs: 0, isCommander: false, damage: 0, dps: 0, revives: 0, outgoingConditions: {}, incomingConditions: {}
                 });
             }
@@ -561,11 +579,12 @@ export const computePlayerAggregation = ({
                         specialBuffAgg.set(buffId, new Map());
                     }
                     const bucket = specialBuffAgg.get(buffId)!;
-                    const account = s.account || p.account || p.name || 'Unknown';
-                    let agg = bucket.get(account);
+                    const specialBucketKey = identity.key;
+                    let agg = bucket.get(specialBucketKey);
                     if (!agg) {
                         agg = {
-                            account,
+                            key: specialBucketKey,
+                            account: identity.accountLabel,
                             profession: s.profession || p.profession || 'Unknown',
                             professions: new Set<string>(),
                             professionTimeMs: {},
@@ -573,7 +592,7 @@ export const computePlayerAggregation = ({
                             uptimeMs: 0,
                             durationMs: 0
                         };
-                        bucket.set(account, agg);
+                        bucket.set(specialBucketKey, agg);
                     }
                     const prof = p.profession || s.profession;
                     if (prof && prof !== 'Unknown') {
@@ -893,7 +912,7 @@ export const computePlayerAggregation = ({
             targets: targets as any,
             skillMap: details.skillMap,
             buffMap: details.buffMap,
-            getPlayerKey: (pl: any) => (pl.account && pl.account !== 'Unknown') ? pl.account : (pl.name || null)
+            getPlayerKey: (pl: any) => getPlayerIdentity(pl).key
         });
         const conditionIconMap = buildConditionIconMap(details.buffMap);
         Object.entries(conditionResult.playerConditions).forEach(([k, totals]) => {
@@ -928,7 +947,7 @@ export const computePlayerAggregation = ({
 
         // Incoming conditions
         squadPlayers.forEach((p: any) => {
-            const key = (p.account && p.account !== 'Unknown') ? p.account : (p.name || 'Unknown');
+            const key = getPlayerIdentity(p).key;
             const ps = playerStats.get(key);
             if (!ps || !p.totalDamageTaken) return;
             p.totalDamageTaken.forEach((list: any) => list?.forEach((entry: any) => {
@@ -974,7 +993,8 @@ export const computePlayerAggregation = ({
             Object.entries(mitigationSource).forEach(([rawKey, skillMap]) => {
                 if (!skillMap || typeof skillMap !== 'object') return;
                 const base = parseMitigationKey(rawKey);
-                const row = ensureMitigationRow(damageMitigationPlayersMap, base.account, base);
+                const identity = getMitigationIdentity(base.account, base.profession);
+                const row = ensureMitigationRow(damageMitigationPlayersMap, identity.key, { ...base, account: identity.accountLabel, profession: identity.profession });
                 Object.values(skillMap as any).forEach((entry: any) => {
                     const avoided = readNumber(entry?.avoided_damage ?? entry?.avoidedDamage);
                     if (avoided <= 0) return;
@@ -988,11 +1008,14 @@ export const computePlayerAggregation = ({
             Object.entries(mitigationMinionSource).forEach(([rawKey, minionMap]) => {
                 if (!minionMap || typeof minionMap !== 'object') return;
                 const base = parseMitigationKey(rawKey);
+                const identity = getMitigationIdentity(base.account, base.profession);
                 Object.entries(minionMap as any).forEach(([minionName, skillMap]) => {
                     if (!skillMap || typeof skillMap !== 'object') return;
-                    const rowKey = `${base.account}::${minionName}`;
+                    const rowKey = `${identity.key}::${minionName}`;
                     const row = ensureMitigationMinionRow(damageMitigationMinionsMap, rowKey, {
                         ...base,
+                        account: identity.accountLabel,
+                        profession: identity.profession,
                         minion: String(minionName || 'Unknown')
                     });
                     Object.values(skillMap as any).forEach((entry: any) => {
@@ -1008,13 +1031,13 @@ export const computePlayerAggregation = ({
                 squadPlayers.forEach((player: any) => {
                     const entries = player?.totalDamageTaken || [];
                     if (!Array.isArray(entries) || entries.length === 0) return;
-                    const account = player.account || player.name || 'Unknown';
+                    const identity = getPlayerIdentity(player);
                     const base = {
-                        account,
-                        name: player.name || account,
-                        profession: resolveProfessionLabel(player.profession || 'Unknown')
+                        account: identity.accountLabel,
+                        name: player.name || identity.accountLabel,
+                        profession: identity.profession
                     };
-                    ensureMitigationRow(damageMitigationPlayersMap, account, base);
+                    ensureMitigationRow(damageMitigationPlayersMap, identity.key, base);
                     const list = Array.isArray(entries) ? entries[0] : null;
                     list?.forEach((entry: any) => {
                         if (!entry?.id) return;
@@ -1028,7 +1051,7 @@ export const computePlayerAggregation = ({
                         const skillId = Number(entry.id);
                         updateCumulativeCounts(
                             mitigationCumulativeCounts,
-                            `${account}::${skillId}`,
+                            `${identity.key}::${skillId}`,
                             {
                                 totalHits: skillHits,
                                 blocked,
@@ -1049,18 +1072,18 @@ export const computePlayerAggregation = ({
                 squadPlayers.forEach((player: any) => {
                     const minions = player?.minions || [];
                     if (!Array.isArray(minions) || minions.length === 0) return;
-                    const account = player.account || player.name || 'Unknown';
+                    const identity = getPlayerIdentity(player);
                     const base = {
-                        account,
-                        name: player.name || account,
-                        profession: resolveProfessionLabel(player.profession || 'Unknown')
+                        account: identity.accountLabel,
+                        name: player.name || identity.accountLabel,
+                        profession: identity.profession
                     };
                     minions.forEach((minion: any) => {
                         const minionEntries = minion?.totalDamageTakenDist || [];
                         if (!Array.isArray(minionEntries) || minionEntries.length === 0) return;
                         let minionName = String(minion?.name || 'Unknown').replace(/^Juvenile\s+/i, '') || 'Unknown';
                         if (minionName.toUpperCase().includes('UNKNOWN')) minionName = 'Unknown';
-                        const rowKey = `${account}::${minionName}`;
+                        const rowKey = `${identity.key}::${minionName}`;
                         ensureMitigationMinionRow(damageMitigationMinionsMap, rowKey, { ...base, minion: minionName });
                         const list = Array.isArray(minionEntries) ? minionEntries[0] : null;
                         list?.forEach((entry: any) => {

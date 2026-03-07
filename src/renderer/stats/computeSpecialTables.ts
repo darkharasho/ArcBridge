@@ -2,6 +2,7 @@ import { PlayerSkillDamageEntry } from './statsTypes';
 
 export function computeSpecialTables(
     specialBuffAgg: Map<string, Map<string, {
+        key: string;
         account: string;
         profession: string;
         professions: Set<string>;
@@ -42,7 +43,7 @@ export function computeSpecialTables(
             const durationMs = entry.durationMs || 0;
             const total = entry.totalMs / 1000;
             const perSecond = durationMs > 0 ? (entry.totalMs / durationMs) : 0;
-            const fullPlayerDurationMs = playerStats.get(entry.account)?.supportActiveMs || durationMs;
+            const fullPlayerDurationMs = playerStats.get(entry.key)?.supportActiveMs || durationMs;
             const uptimePerSecond = fullPlayerDurationMs > 0 ? (entry.uptimeMs / fullPlayerDurationMs) : 0;
             return {
                 account: entry.account,
