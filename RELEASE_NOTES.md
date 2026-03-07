@@ -2,8 +2,8 @@
 
 Version v1.40.9 — March 6, 2026
 
-## ExpandableLogCard improvements
-- You can now remove items directly from ExpandableLogCard.
+## Recent Activity improvements
+- You can now remove items directly from Recent Activity.
 - Transitions are smoother when items expand/collapse thanks to the new animation work.
 
 ## BoonTimelineSection: incoming damage heatmap

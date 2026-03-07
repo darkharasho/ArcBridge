@@ -2187,7 +2187,7 @@ export function ReportApp() {
                         </div>
                     </div>
                 </aside>
-                <div className={`max-w-[1850px] mx-1 sm:mx-2 px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 mobile-bottom-pad ${isNarrowViewport ? '' : 'lg:mx-auto lg:pl-[17rem] lg:pr-10'}`}>
+                <div className={`max-w-[2150px] mx-1 sm:mx-2 px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 mobile-bottom-pad ${isNarrowViewport ? '' : 'lg:mx-auto lg:pl-[17rem] lg:pr-10'}`}>
                     <div className={`${glassCard} p-5 sm:p-6 mb-6 mx-1 sm:mx-1 lg:mx-0`} style={glassCardStyle}>
                         <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 text-center sm:text-left">
@@ -2342,7 +2342,7 @@ export function ReportApp() {
                         />
                     </div>
                 )}
-                <div className="max-w-[1850px] mx-auto px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
+                <div className="max-w-[2150px] mx-auto px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
                     <div className="rounded-2xl border border-white/5 bg-black/20 p-4 sm:p-6">
                         <div className={`${glassCard} p-5 sm:p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-h-[56px] text-center sm:text-left">
@@ -2673,7 +2673,7 @@ export function ReportApp() {
                     />
                 </div>
             )}
-            <div className="max-w-[1850px] mx-auto px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
+            <div className="max-w-[2150px] mx-auto px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
                 <div id="report-list-container" className="rounded-2xl border border-white/5 bg-black/20 p-4 sm:p-6">
                     <div id="report-top" className={`${glassCard} p-5 sm:p-6 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between`} style={glassCardStyle}>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-h-[56px] text-center sm:text-left">

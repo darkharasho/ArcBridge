@@ -5680,6 +5680,26 @@ body.theme-kinetic.theme-kinetic-dark #top-players > .grid:last-child [class*="b
     background-color: rgba(108, 116, 176, 0.34) !important;
 }
 
+/* Keep MVP crown icon wrappers circular in web report across theme overrides. */
+body.web-report #top-players .mvp-gold-icon-ring,
+body.web-report #top-players .mvp-gold-icon-badge {
+    border-radius: 9999px !important;
+}
+
+@media (min-width: 640px) {
+    body.web-report #top-players .mvp-stat-pill {
+        padding: 0.2rem 0.45rem !important;
+        font-size: 0.65rem !important;
+        line-height: 1.15 !important;
+    }
+    body.web-report #top-players .mvp-stat-pill--gold {
+        min-height: 1.45rem !important;
+    }
+    body.web-report #top-players .mvp-stat-pill--minor {
+        min-height: 1.35rem !important;
+    }
+}
+
 body.theme-kinetic.theme-kinetic-dark #top-players > .grid:last-child .text-red-400 {
     color: #f3b8ae !important;
 }

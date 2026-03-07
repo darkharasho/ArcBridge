@@ -197,7 +197,7 @@ export const TopPlayersSection = ({
                             avg: defenseAvg
                         }
                     ].map((group) => (
-                        <div key={group.title} className={`mvp-group mvp-group--${group.key} relative grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)] gap-3 rounded-2xl p-2 pt-4 border ${group.accentBorder} ${group.accentBg}`}>
+                        <div key={group.title} className={`mvp-group mvp-group--${group.key} relative grid grid-cols-1 gap-3 rounded-2xl p-2 pt-4 border ${group.accentBorder} ${group.accentBg}`}>
                             <div className={`mvp-group-label absolute -top-[9px] left-3 inline-flex items-center gap-2 px-2 rounded-sm bg-slate-950 border ${group.accentLabelBorder}`}>
                                 <Sparkles className={`mvp-group-label-icon w-4 h-4 ${group.accent}`} />
                                 <span className="mvp-group-label-title font-bold uppercase tracking-widest text-xs text-gray-200">{group.title}</span>
@@ -205,30 +205,45 @@ export const TopPlayersSection = ({
                             <div className={`mvp-card mvp-card--gold border rounded-2xl p-3 min-h-[182px] relative overflow-visible z-0 group hover:z-20 flex items-center ${group.goldCardBorder}`}>
                                 <div className={`absolute top-0 right-0 w-64 h-64 blur-[80px] rounded-full pointer-events-none transition-all ${group.accentBlob}`} />
                                 <div className="flex items-center gap-5 relative z-10 w-full">
-                                    <div className={`hidden sm:flex items-center justify-center w-20 h-20 rounded-full border relative ${group.goldIconWrap}`}>
-                                        <Crown className="w-10 h-10 text-yellow-400" />
-                                        <span className={`absolute -bottom-1 -right-1 inline-flex items-center justify-center w-6 h-6 rounded-full border ${group.goldIconBadgeWrap}`}>
+                                    <div className={`mvp-gold-icon-ring flex shrink-0 aspect-square items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full border relative ${group.goldIconWrap}`}>
+                                        <Crown className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400" />
+                                        <span className={`mvp-gold-icon-badge absolute -bottom-1 -right-1 inline-flex items-center justify-center w-6 h-6 rounded-full border ${group.goldIconBadgeWrap}`}>
                                             {group.key === 'offense'
                                                 ? <Flame className={`w-3.5 h-3.5 ${group.goldIconBadge}`} />
                                                 : <ShieldCheck className={`w-3.5 h-3.5 ${group.goldIconBadge}`} />}
                                         </span>
                                     </div>
                                     <div className="flex-1 flex flex-col h-full">
-                                        <div className="text-2xl sm:text-3xl font-black text-white mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
-                                            <span className="min-w-0 max-w-full truncate">{group.gold?.account || 'None'}</span>
-                                            {renderProfessionIcon(group.gold?.profession || 'Unknown', group.gold?.professionList, 'w-6 h-6')}
-                                            <span className="text-sm sm:text-lg font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 rounded border border-yellow-500/20 max-w-full truncate">
-                                                {group.gold?.profession || 'Unknown'}
-                                            </span>
+                                        <div className="mb-2 flex items-start justify-between gap-3">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-2xl sm:text-3xl font-black text-white flex flex-wrap items-center gap-2 sm:gap-3">
+                                                    <span className="min-w-0 max-w-full truncate">{group.gold?.account || 'None'}</span>
+                                                    {renderProfessionIcon(group.gold?.profession || 'Unknown', group.gold?.professionList, 'w-6 h-6')}
+                                                    <span className="text-xs sm:text-sm font-medium text-yellow-200/70 bg-white/5 px-2 py-0.5 sm:px-1.5 sm:py-0 rounded border border-yellow-500/20 max-w-full truncate">
+                                                        {group.gold?.profession || 'Unknown'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="sm:hidden text-right shrink-0">
+                                                <div className={`text-3xl font-black leading-none ${group.goldScoreValue}`}>{group.gold?.score > 0 ? group.gold.score.toFixed(1) : '-'}</div>
+                                                <div className={`text-[10px] font-mono mt-1 ${group.goldScoreMeta}`}>Avg: {group.avg.toFixed(1)}</div>
+                                            </div>
                                         </div>
                                         <p className={`italic flex items-center gap-2 mb-2 ${group.accentSoft}`}>
                                             <Star className={`w-4 h-4 fill-yellow-500/40 ${group.goldReasonIcon}`} />
                                             <span className="truncate">"{group.gold?.reason || 'Top Performance'}"</span>
                                         </p>
-                                        <div className="mt-auto min-h-[66px]">
-                                            <div className="space-y-1.5">
+                                        <div className="hidden sm:flex xl:hidden mb-2 items-end justify-between gap-3">
+                                            <div className={`font-mono text-[10px] uppercase tracking-wider font-bold ${group.goldScoreTitle}`}>{group.title}</div>
+                                            <div className="text-right">
+                                                <div className={`text-3xl font-black leading-none ${group.goldScoreValue}`}>{group.gold?.score > 0 ? group.gold.score.toFixed(1) : '-'}</div>
+                                                <div className={`text-[10px] font-mono mt-1 ${group.goldScoreMeta}`}>Avg: {group.avg.toFixed(1)}</div>
+                                            </div>
+                                        </div>
+                                        <div className="mt-auto min-h-[58px] sm:min-h-[54px]">
+                                            <div className="space-y-1 sm:space-y-0.5 sm:max-w-[12rem]">
                                                 {(group.gold?.topStats || []).filter((stat: any) => isMvpStatEnabled(stat.name)).slice(0, 3).map((stat: any, i: number) => (
-                                                    <div key={i} className={`flex items-center justify-between gap-3 px-2 py-1.5 rounded-md border text-xs leading-normal ${group.goldStatRow}`}>
+                                                    <div key={i} className={`mvp-stat-pill mvp-stat-pill--gold flex items-center justify-between gap-2 px-2 py-1 text-[11px] sm:gap-1.5 sm:px-1.5 sm:py-0.5 sm:text-[10px] rounded-md border leading-normal ${group.goldStatRow}`}>
                                                         <span className="text-yellow-200/90 font-semibold truncate leading-normal">{stat.name}</span>
                                                         <span className="text-yellow-100 font-mono tabular-nums shrink-0 leading-normal">{formatMvpPillValue(stat.val, formatTopStatValue)}</span>
                                                     </div>
@@ -236,14 +251,14 @@ export const TopPlayersSection = ({
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="hidden lg:block text-right">
+                                    <div className="hidden xl:block text-right">
                                         <div className={`font-mono text-sm uppercase tracking-wider font-bold ${group.goldScoreTitle}`}>{group.title}</div>
                                         <div className={`text-4xl font-black ${group.goldScoreValue}`}>{group.gold?.score > 0 ? group.gold.score.toFixed(1) : '-'}</div>
                                         <div className={`text-xs font-mono mt-1 ${group.goldScoreMeta}`}>Avg: {group.avg.toFixed(1)}</div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 xl:grid-cols-1 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 {[
                                     { label: 'Silver', data: group.silver },
                                     { label: 'Bronze', data: group.bronze }
@@ -276,12 +291,12 @@ export const TopPlayersSection = ({
                                             </div>
                                         </div>
                                         {entry.data?.topStats?.some((stat: any) => isMvpStatEnabled(stat.name)) ? (
-                                            <div className={`mt-auto min-h-[46px] text-xs ${entry.label === 'Silver' ? 'text-slate-200' : 'text-orange-200'}`}>
-                                                <div className="space-y-1.5">
+                                            <div className={`mt-auto min-h-[40px] sm:min-h-[36px] text-[11px] sm:text-[10px] ${entry.label === 'Silver' ? 'text-slate-200' : 'text-orange-200'}`}>
+                                                <div className="space-y-1 sm:space-y-0.5 sm:max-w-[12rem]">
                                                     {entry.data.topStats.filter((stat: any) => isMvpStatEnabled(stat.name)).slice(0, 2).map((stat: any, idx: number) => (
                                                         <div
                                                             key={idx}
-                                                            className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-md border leading-normal ${entry.label === 'Silver'
+                                                            className={`mvp-stat-pill mvp-stat-pill--minor flex items-center justify-between gap-2 sm:gap-1.5 px-2 py-1 sm:px-1.5 sm:py-0.5 rounded-md border leading-normal ${entry.label === 'Silver'
                                                                 ? 'bg-slate-400/10 border-slate-300/30'
                                                                 : 'bg-orange-500/10 border-orange-400/30'
                                                                 }`}
