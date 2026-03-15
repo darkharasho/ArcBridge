@@ -1,11 +1,17 @@
 # Release Notes
 
-Version v1.40.14 — March 7, 2026
+Version v1.40.15 — March 14, 2026
 
-## Dark glass theme polish
-The dark glass theme gets a refreshed look with new glass effect styles and backdrop filters for more depth and readability. Cards and panels in this theme now use semi-transparent backgrounds with subtle gradients and brighter edge highlights. Backdrop blur and saturation are applied more broadly to surfaces to feel punchier and more cohesive.
+## Boon Generation Metrics
 
-NOTE: This only affects the dark glass theme; other themes are unchanged.
+- Boon outputs now include detailed generation data and new display calculations per player, boon, fight, and category.
+- You’ll see a Generation Milliseconds (Raw Accumulation) metric that sums generation time across recipients.
+- Display options show Total (boon-seconds), Average (generation rate), and Uptime (per-recipient rate) for each boon, with distinctions for stacking vs non-stacking and self/group/squad contexts.
+
+## Fixes
+
+- Fixed down contribution calculation when EI uses an aggregate target. The value is now derived from totalDamageDist for more accurate results.
 
 ## QoL Improvements
-- The 2×2 uploader KPI cards no longer sit with a downward nudge—the numbers stay vertically centered for a cleaner, crisper read.
+
+- Refactor class icon handling and remove an unused SVG file, tidying up the icon assets used by the UI.
