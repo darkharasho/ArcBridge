@@ -120,8 +120,10 @@
             "COPYRIGHT",
             "LICENSE",
             "package.json",
-            "RELEASE_NOTES.md",
             "THIRD_PARTY_NOTICES.md"
+        ],
+        "extraResources": [
+            "RELEASE_NOTES.md"
         ],
         "linux": {
             "artifactName": "ArcBridge-${version}.${ext}",
