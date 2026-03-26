@@ -391,6 +391,29 @@ export function FightReportHistoryView() {
             </div>
 
             {/* Content area */}
+            {activeTab !== 'list' ? (() => {
+                const activeReport = tabs.find((t) => t.id === activeTab);
+                return activeReport ? (
+                    <div className="flex-1 min-h-0 flex gap-3 px-4 pt-2 pb-2">
+                        <StatsNavSidebar onSectionVisibilityChange={handleSectionVisibilityChange} />
+                        <div className="flex-1 min-h-0 overflow-y-auto">
+                            <StatsView
+                                logs={[]}
+                                onBack={() => setActiveTab('list')}
+                                precomputedStats={activeReport.report.stats}
+                                statsViewSettings={activeReport.report.stats?.statsViewSettings}
+                                dashboardTitle={activeReport.title}
+                                sectionVisibility={sectionVisibility || undefined}
+                                embedded
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex-1 min-h-0 flex items-center justify-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        Report not found. It may have been closed.
+                    </div>
+                );
+            })() : (
             <div className="flex-1 min-h-0 overflow-y-auto">
             {activeTab === 'list' ? (
                 <motion.div
@@ -620,43 +643,9 @@ export function FightReportHistoryView() {
                     )}
                     </AnimatePresence>
                 </motion.div>
-            ) : (() => {
-                const activeReport = tabs.find((t) => t.id === activeTab);
-                return activeReport ? (
-                    <motion.div
-                        key={`detail-${activeTab}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex h-full gap-3 px-4 pt-2 pb-2"
-                    >
-                        <StatsNavSidebar onSectionVisibilityChange={handleSectionVisibilityChange} />
-                        <div className="flex-1 min-h-0 flex flex-col">
-                            <StatsView
-                                logs={[]}
-                                onBack={() => setActiveTab('list')}
-                                precomputedStats={activeReport.report.stats}
-                                statsViewSettings={activeReport.report.stats?.statsViewSettings}
-                                dashboardTitle={activeReport.title}
-                                sectionVisibility={sectionVisibility || undefined}
-                                embedded
-                            />
-                        </div>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        key="not-found"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex-1 flex items-center justify-center text-sm"
-                        style={{ color: 'var(--text-secondary)' }}
-                    >
-                        Report not found. It may have been closed.
-                    </motion.div>
-                );
-            })()}
+            ) : null}
             </div>
+            )}
         </div>
     );
 }
