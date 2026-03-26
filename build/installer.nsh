@@ -1,19 +1,11 @@
 !macro customInit
-  ; Check if old ArcBridge (com.arcbridge.app) is installed and uninstall it silently
-  ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.arcbridge.app" "UninstallString"
-  ${If} $0 != ""
-    ; Extract the directory from the uninstall string (it may be quoted)
-    ${If} ${FileExists} $0
-      ExecWait '"$0" /S --keep-data'
-    ${Else}
-      ; Try removing quotes
-      StrCpy $1 $0 "" 1
-      StrLen $2 $1
-      IntOp $2 $2 - 1
-      StrCpy $1 $1 $2
-      ${If} ${FileExists} $1
-        ExecWait '"$1" /S --keep-data'
-      ${EndIf}
-    ${EndIf}
+  ; Silently uninstall old ArcBridge if present.
+  ; electron-builder oneClick NSIS installs to $LOCALAPPDATA\Programs\<name>
+  ; with an uninstaller named "Uninstall <productName>.exe".
+  StrCpy $0 "$LOCALAPPDATA\Programs\arcbridge\Uninstall ArcBridge.exe"
+  ${If} ${FileExists} $0
+    ExecWait '"$0" /S _?=$LOCALAPPDATA\Programs\arcbridge'
+    ; Clean up the install directory if it still exists
+    RMDir /r "$LOCALAPPDATA\Programs\arcbridge"
   ${EndIf}
 !macroend
