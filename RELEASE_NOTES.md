@@ -1,8 +1,8 @@
 # Release Notes
 
-Version v2.0.1 — March 25, 2026
+Version v2.0.2 — March 25, 2026
 
 ## Fixes
 
-- Fixed the Windows installer not removing the old ArcBridge install. The NSIS uninstall script was looking for a registry key that didn't exist — now checks for the uninstaller directly at the known install path. If you updated from ArcBridge, this release will clean up the old install automatically.
-- All GitHub links (settings page, web report, Discord avatar, release notes API) now point directly to the new `darkharasho/axibridge` repo instead of relying on redirects.
+- The titlebar and web report logos still said "ArcBridge" — now correctly shows "AxiBridge". The styled title was split across two elements which the initial rename missed.
+- Fixed auto-updates failing on Linux for users who upgraded from ArcBridge. A stale updater cache from the old install was causing electron-updater to look for a non-existent AppImage path. The old cache is now cleaned up on startup.
