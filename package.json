@@ -110,7 +110,7 @@
         "publish": {
             "provider": "github",
             "owner": "darkharasho",
-            "repo": "ArcBridge",
+            "repo": "axibridge",
             "releaseType": "draft"
         },
         "files": [

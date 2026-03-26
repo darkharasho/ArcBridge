@@ -1070,7 +1070,7 @@ export function ReportApp() {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-gray-400">Legal Notice</div>
                 <div className="flex flex-wrap items-end gap-2">
                     <a
-                        href="https://github.com/darkharasho/ArcBridge"
+                        href="https://github.com/darkharasho/axibridge"
                         target="_blank"
                         rel="noreferrer"
                         className="px-2.5 py-1 rounded-full text-[9px] uppercase tracking-widest border bg-white/5 text-gray-400 border-white/10 hover:text-white"
@@ -1120,7 +1120,7 @@ export function ReportApp() {
             <p className="mt-2">
                 See the{' '}
                 <a
-                    href="https://github.com/darkharasho/ArcBridge/blob/main/LICENSE"
+                    href="https://github.com/darkharasho/axibridge/blob/main/LICENSE"
                     target="_blank"
                     rel="noreferrer"
                     className="text-[color:var(--brand-primary)] hover:text-white underline underline-offset-2"
@@ -1129,7 +1129,7 @@ export function ReportApp() {
                 </a>
                 {' '}and{' '}
                 <a
-                    href="https://github.com/darkharasho/ArcBridge/blob/main/THIRD_PARTY_NOTICES.md"
+                    href="https://github.com/darkharasho/axibridge/blob/main/THIRD_PARTY_NOTICES.md"
                     target="_blank"
                     rel="noreferrer"
                     className="text-[color:var(--brand-primary)] hover:text-white underline underline-offset-2"

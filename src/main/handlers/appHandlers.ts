@@ -16,7 +16,7 @@ const fetchGithubReleaseNotesRange = async (
     const current = parseVersion(currentVersion);
     if (!current) return null;
     const lastSeen = parseVersion(lastSeenVersion);
-    const url = 'https://api.github.com/repos/darkharasho/ArcBridge/releases?per_page=100';
+    const url = 'https://api.github.com/repos/darkharasho/axibridge/releases?per_page=100';
 
     return new Promise((resolve) => {
         const req = https.get(

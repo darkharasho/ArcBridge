@@ -22,7 +22,7 @@ describe('autoUpdateErrors', () => {
 
     it('detects retryable github 504 feed errors and hides html payloads', () => {
         const err = {
-            message: 'Error: 504 "method: GET url: https://github.com/darkharasho/ArcBridge/releases.atom\\n\\n Data:\\n <!DOCTYPE html><html>..."'
+            message: 'Error: 504 "method: GET url: https://github.com/darkharasho/axibridge/releases.atom\\n\\n Data:\\n <!DOCTYPE html><html>..."'
         };
 
         expect(isRetryableAutoUpdateError(err)).toBe(true);

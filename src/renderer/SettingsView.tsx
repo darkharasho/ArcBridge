@@ -2230,7 +2230,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/ArcBridge')}
+                                    onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/axibridge')}
                                     className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest border bg-white/5 text-gray-300 border-white/10 hover:text-white"
                                 >
                                     GitHub
@@ -2273,7 +2273,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             See the{' '}
                             <button
                                 type="button"
-                                onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/ArcBridge/blob/main/LICENSE')}
+                                onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/axibridge/blob/main/LICENSE')}
                                 className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
                             >
                                 LICENSE
@@ -2281,7 +2281,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             {' '}and{' '}
                             <button
                                 type="button"
-                                onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/ArcBridge/blob/main/THIRD_PARTY_NOTICES.md')}
+                                onClick={() => window.electronAPI?.openExternal?.('https://github.com/darkharasho/axibridge/blob/main/THIRD_PARTY_NOTICES.md')}
                                 className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
                             >
                                 THIRD_PARTY_NOTICES.md
