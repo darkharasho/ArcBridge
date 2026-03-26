@@ -14,7 +14,7 @@ test.describe('Settings — Import/Export (IMP-001–002)', () => {
         }
     });
 
-    test('IMP-002: import button calls importSettings', async ({ page }) => {
+    test('IMP-002: import button calls selectSettingsFile', async ({ page }) => {
         await setupAppPage(page);
         await navigateTo(page, 'Settings');
         const section = page.locator('[data-settings-label="Export / Import Settings"]');
@@ -23,7 +23,7 @@ test.describe('Settings — Import/Export (IMP-001–002)', () => {
         if (await importBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
             await importBtn.click();
             await page.waitForTimeout(500);
-            await expectAPICalled(page, 'importSettings');
+            await expectAPICalled(page, 'selectSettingsFile');
         }
     });
 });

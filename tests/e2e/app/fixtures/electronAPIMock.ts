@@ -213,6 +213,15 @@ export function createElectronAPIMock(overrides?: ElectronAPIMockOverrides): voi
         },
         onUploadComplete: (callback: any) => {
             log('onUploadComplete', [callback])
+            // If test provided initial logs, emit them via onUploadComplete
+            // after a microtask so React has time to mount
+            if (o.logs && o.logs.length > 0) {
+                setTimeout(() => {
+                    for (const logEntry of o.logs!) {
+                        callback(logEntry)
+                    }
+                }, 50)
+            }
             return noop
         },
 

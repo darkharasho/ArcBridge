@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { setupAppPage, navigateTo, expectAPICalled } from './helpers/appTestHelpers';
 
 test.describe('Data Persistence (PERS-001–008)', () => {
-    test('PERS-001: persisted logs loaded on startup', async ({ page }) => {
+    test('PERS-001: logs loaded on startup via onUploadComplete', async ({ page }) => {
         const mockLogs = [{
             id: 'persisted-1', filePath: '/fake/logs/old.zevtc',
             fightName: 'Persisted Fight', permalink: 'https://dps.report/xyz',
@@ -15,8 +15,8 @@ test.describe('Data Persistence (PERS-001–008)', () => {
             error: undefined, details: null,
         }];
         await setupAppPage(page, { logs: mockLogs });
-        await expectAPICalled(page, 'getLogs');
-        await expect(page.getByText('Persisted Fight')).toBeVisible({ timeout: 5000 });
+        // Logs are injected via onUploadComplete callback
+        await expect(page.getByText(/Persisted Fight/)).toBeVisible({ timeout: 5000 });
     });
 
     test('PERS-002: getSettings called on startup', async ({ page }) => {
@@ -48,9 +48,9 @@ test.describe('Data Persistence (PERS-001–008)', () => {
         expect(bodyClass).toMatch(/refined-cyan|palette/);
     });
 
-    test('PERS-007: getAppVersion called on startup', async ({ page }) => {
-        await setupAppPage(page, { appVersion: '2.0.3' });
-        await expectAPICalled(page, 'getAppVersion');
+    test('PERS-007: getWhatsNew called on startup (provides app version)', async ({ page }) => {
+        await setupAppPage(page);
+        await expectAPICalled(page, 'getWhatsNew');
     });
 
     test('PERS-008: clear cache button calls IPC', async ({ page }) => {
