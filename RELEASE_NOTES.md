@@ -1,8 +1,16 @@
 # Release Notes
 
-Version v2.0.2 — March 25, 2026
+Version v2.0.3 — March 25, 2026
+
+## Crash Recovery
+
+If the app hits an unrecoverable error during startup, you now get a proper error screen with the message, stack trace, and a Reload button — instead of a blank white window.
+
+## Report Viewer Fixes
+
+Fixed a layout issue where opening a saved fight report in the History tab could render incorrectly or lose scroll position. The report detail view now mounts outside the list container, so the sidebar and stats panel fill the available space properly.
 
 ## Fixes
 
-- The titlebar and web report logos still said "ArcBridge" — now correctly shows "AxiBridge". The styled title was split across two elements which the initial rename missed.
-- Fixed auto-updates failing on Linux for users who upgraded from ArcBridge. A stale updater cache from the old install was causing electron-updater to look for a non-existent AppImage path. The old cache is now cleaned up on startup.
+- Fixed release notes not loading in packaged builds when checking "What's New".
+- Details cache no longer triggers network requests during bulk aggregation streaming, which could stall the pipeline.
