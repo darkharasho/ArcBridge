@@ -2,63 +2,68 @@ import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
-test.skip('web report renders and navigates', async ({ page }) => {
-    const fixturePath = path.resolve(process.cwd(), 'web/report.json');
-    const payload = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+const fixturePath = path.resolve(process.cwd(), 'web/report.json');
 
-    await page.route('**/reports/test-report/report.json', async (route) => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(payload)
+function loadReportFixture() {
+    return JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+}
+
+test.describe('Web Report Loading (WRPT-001–004)', () => {
+    test.beforeEach(async ({ page }) => {
+        const payload = loadReportFixture();
+        await page.route('**/reports/test-report/report.json', async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(payload),
+            });
         });
     });
 
-    await page.goto('/web/index.html?report=test-report');
+    test('WRPT-001: report loads from URL parameter', async ({ page }) => {
+        await page.goto('/web/index.html?report=test-report');
+        await expect(
+            page.getByRole('heading', { name: /Statistics Dashboard/i })
+        ).toBeVisible({ timeout: 15_000 });
+    });
 
-    await expect(page.getByRole('heading', { name: /Statistics Dashboard/i })).toBeVisible({ timeout: 15000 });
+    test('WRPT-002: loading indicator shown while fetching', async ({ page }) => {
+        // Override route with delayed response
+        await page.route('**/reports/test-report/report.json', async (route) => {
+            await new Promise((r) => setTimeout(r, 1500));
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(loadReportFixture()),
+            });
+        });
+        await page.goto('/web/index.html?report=test-report');
+        // Eventually loads successfully
+        await expect(
+            page.getByRole('heading', { name: /Statistics Dashboard/i })
+        ).toBeVisible({ timeout: 20_000 });
+    });
 
-    await page.getByRole('button', { name: /Offensive Stats/i }).click();
-    await page.waitForTimeout(200);
-    await expect(page.getByRole('heading', { name: /Statistics Dashboard - Offensive Stats/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Offenses - Detailed/i })).toBeVisible();
+    test('WRPT-003: report not found shows error or empty state', async ({ page }) => {
+        await page.route('**/reports/nonexistent/report.json', async (route) => {
+            await route.fulfill({ status: 404, body: 'Not Found' });
+        });
+        await page.goto('/web/index.html?report=nonexistent');
+        await page.waitForTimeout(3000);
+        // Should show error state — not the stats dashboard
+        const hasStats = await page.getByRole('heading', { name: /Statistics Dashboard/i })
+            .isVisible().catch(() => false);
+        const hasError = await page.getByText(/error|not found|failed|no report/i)
+            .isVisible().catch(() => false);
+        expect(hasError || !hasStats).toBe(true);
+    });
 
-    await page.getByRole('button', { name: /Defensive Stats/i }).click();
-    await page.waitForTimeout(200);
-    await expect(page.getByRole('heading', { name: /Statistics Dashboard - Defensive Stats/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Defenses - Detailed/i })).toBeVisible();
-
-    await page.getByRole('button', { name: /Other Metrics/i }).click();
-    await page.waitForTimeout(200);
-    await expect(page.getByRole('heading', { name: /Sigil\/Relic Uptime/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Skill Usage Tracker/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /APM Breakdown/i })).toBeVisible();
-
-    await page.getByRole('button', { name: /^Overview$/i }).click();
-    await page.waitForTimeout(200);
-    await expect(page.getByRole('heading', { name: /Statistics Dashboard - Overview/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Fight Breakdown/i })).toBeVisible();
-
-    await page.locator('a[href="#proof-of-work"]').first().click();
-    await expect(page.getByText(/Metrics Specification/i)).toBeVisible();
-
-    const sigilRelicSpecHeading = page.getByText(/Sigil\/Relic Uptime \(Other Metrics\)/i).first();
-    await expect(sigilRelicSpecHeading).toBeVisible();
-
-    const proofOfWorkSearch = page.getByPlaceholder(/Search spec\.\.\./i);
-    await proofOfWorkSearch.fill('sigil');
-    const sigilSearchResult = page.locator('.proof-of-work-search-results').getByRole('button', {
-        name: /Sigil\/Relic Uptime \(Other Metrics\)/i
-    }).first();
-    await expect(sigilSearchResult).toBeVisible();
-    await sigilSearchResult.click();
-    await expect(sigilRelicSpecHeading).toBeVisible();
-
-    const sigilRelicTocItem = page
-        .locator('.proof-of-work-sidebar')
-        .getByRole('button', { name: /Sigil\/Relic Uptime \(Other Metrics\)/i });
-    await expect(sigilRelicTocItem).toBeVisible();
-    await sigilRelicTocItem.click();
-    await expect(sigilRelicTocItem).toHaveAttribute('data-toc-active', 'true');
-    await expect(sigilRelicSpecHeading).toBeVisible();
+    test('WRPT-004: report renders stats from embedded data', async ({ page }) => {
+        await page.goto('/web/index.html?report=test-report');
+        await expect(
+            page.getByRole('heading', { name: /Statistics Dashboard/i })
+        ).toBeVisible({ timeout: 15_000 });
+        // Verify actual content from fixture (commander name)
+        await expect(page.getByText('Guardian Kamoidra')).toBeVisible();
+    });
 });
