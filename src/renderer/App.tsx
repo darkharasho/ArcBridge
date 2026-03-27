@@ -921,6 +921,7 @@ function App() {
         mvpWeights, statsViewSettings, disruptionMethod, colorPalette,
         selectedWebhookId, bulkUploadMode, logs, devDatasetSaveProgress,
         devDatasets, devDatasetLoadModes, devDatasetDeleteConfirmId, devDatasetLoadingId,
+        applyDevDatasetSnapshot,
     ]);
     const filePickerCtx = useMemo(() => ({
         ...filePickerState, logDirectory
