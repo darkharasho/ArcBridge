@@ -1,4 +1,6 @@
 - [ ] Revisit the display: none hide to swallow recalculations of the stats view. its preventing a ton of consistency like the framer motion stuff. we gotta harden this
 - [x] Fix re-render cascade to re-enable recharts chart animations. The unified theme refactor introduced colorPalette/glassSurfaces as separate state that flows through the component tree without memoization boundaries, causing excessive re-renders that interrupt recharts animations mid-draw (corrupting SVG state). Fix: add React.memo on StatsView, create a ThemeContext to isolate theme updates, stabilize useSettings return object, and useMemo inline style objects in StatsView (lines ~3766-3777). Once render stability is restored, recharts Line animations can be re-enabled.
 - [ ] rename to axibridge and come up with the full resolution path for changing the name/icon
+- [ ] more color choices
+- [ ] smoother animations when popping out breakdowns
 - [ ] wvw fury is 20% pve is 25%
