@@ -911,15 +911,38 @@ function App() {
         </motion.div>
     );
 
-    const devDatasetsCtx = {
+    const devDatasetsCtx = useMemo(() => ({
         devDatasetsEnabled, devDatasetsOpen, loadDevDatasets, devDatasetRefreshing, setDevDatasetsOpen, devDatasetName, setDevDatasetName, devDatasetSaving, setDevDatasetSaving, devDatasetSavingIdRef, setDevDatasetSaveProgress, computedStats, computedSkillUsageData, appVersion, view, expandedLogId, notificationType, embedStatSettings, mvpWeights, statsViewSettings, disruptionMethod, colorPalette, selectedWebhookId, bulkUploadMode, logs, setDevDatasets, setDevDatasetLoadModes, devDatasetSaveProgress, devDatasets, devDatasetLoadModes, setDevDatasetLoadingId, setDevDatasetLoadProgress, setLogs, setLogsForStats, logsRef, setPrecomputedStats, canceledLogsRef, datasetLoadRef, devDatasetStreamingIdRef, applyDevDatasetSnapshot, setDevDatasetDeleteConfirmId, devDatasetDeleteConfirmId, devDatasetLoadingId
-    };
-    const filePickerCtx = {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [
+        devDatasetsEnabled, devDatasetsOpen, loadDevDatasets, devDatasetRefreshing,
+        devDatasetName, devDatasetSaving, computedStats, computedSkillUsageData,
+        appVersion, view, expandedLogId, notificationType, embedStatSettings,
+        mvpWeights, statsViewSettings, disruptionMethod, colorPalette,
+        selectedWebhookId, bulkUploadMode, logs, devDatasetSaveProgress,
+        devDatasets, devDatasetLoadModes, devDatasetDeleteConfirmId, devDatasetLoadingId,
+    ]);
+    const filePickerCtx = useMemo(() => ({
         ...filePickerState, logDirectory
-    };
-    const appLayoutCtx = {
+    }), [filePickerState, logDirectory]);
+    const appLayoutCtx = useMemo(() => ({
         shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, devDatasetsEnabled, setDevDatasetsOpen, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, precomputedStats, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, devDatasetsCtx, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [
+        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded,
+        updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason,
+        view, appVersion, showTerminal, devDatasetsEnabled, webUploadState,
+        logsForStats, mvpWeights, disruptionMethod, statsViewSettings,
+        precomputedStats, computedStats, computedSkillUsageData, aggregationProgress,
+        aggregationDiagnostics, statsDataProgress, colorPalette, glassSurfaces,
+        selectedWebhookId, developerSettingsTrigger, helpUpdatesFocusTrigger,
+        activityPanel, configurationPanel, devDatasetsCtx, filePickerCtx,
+        webhookDropdownOpen, webhookDropdownStyle, webhooks, handleUpdateSettings,
+        webhookModalOpen, showUpdateErrorModal, updateError, whatsNewOpen,
+        whatsNewVersion, whatsNewNotes, walkthroughOpen, isBulkUploadActive,
+        handleWebUpload, handleWhatsNewClose, handleWalkthroughClose,
+        handleWalkthroughLearnMore, handleHelpUpdatesFocusConsumed,
+    ]);
 
     return (
         <DetailsCacheProvider cache={detailsCacheRef.current!}>
