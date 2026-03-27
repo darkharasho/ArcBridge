@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { DetailsCache } from '../../cache/DetailsCache';
 
 export function useDetailsHydration({
-    viewRef,
+    viewRef: _viewRef,
     logsRef,
     setLogs,
     setLogsDeferred,
@@ -110,9 +110,10 @@ export function useDetailsHydration({
             });
             return;
         }
-        // Populate memory LRU (no IndexedDB — structured clone too expensive on hot path)
-        if (detailsCache && result.details && log.id) {
-            detailsCache.putMemoryOnly(log.id, result.details);
+        // Populate memory LRU under both id and filePath (no IndexedDB — structured clone too expensive on hot path)
+        if (detailsCache && result.details) {
+            if (log.id) detailsCache.putMemoryOnly(log.id, result.details);
+            if (log.filePath && log.filePath !== log.id) detailsCache.putMemoryOnly(log.filePath, result.details);
         }
         setLogs((currentLogs) => {
             const existingIndex = currentLogs.findIndex((entry) => entry.filePath === log.filePath);
@@ -140,7 +141,6 @@ export function useDetailsHydration({
         hydrateDetailsQueueRef.current = schedule(async () => {
             hydrateDetailsQueueRef.current = null;
             if (!window.electronAPI?.getLogDetails) return;
-            const statsViewActive = viewRef.current === 'stats';
             const rawCandidates = logsRef.current
                 .filter((log) => {
                     if (!log.filePath) return false;
@@ -173,7 +173,7 @@ export function useDetailsHydration({
                 return attempts < MAX_DETAILS_HYDRATION_ATTEMPTS;
             });
             if (allCandidates.length === 0) return;
-            const maxPerPass = statsViewActive ? allCandidates.length : Math.min(allCandidates.length, 2);
+            const maxPerPass = allCandidates.length;
             const candidates = allCandidates.slice(0, maxPerPass);
             const hasMore = allCandidates.length > candidates.length;
             const hydratedBatch: Array<{ filePath: string; details: any }> = [];
@@ -206,7 +206,7 @@ export function useDetailsHydration({
                 });
             };
             const maxConcurrent = 3; // Fetch up to 3 details in parallel (was 1, now parallelize for 3× speedup)
-            const flushThreshold = statsViewActive ? 8 : 2;
+            const flushThreshold = 8;
             let nextIndex = 0;
             const runWorker = async () => {
                 while (nextIndex < candidates.length) {
@@ -233,8 +233,12 @@ export function useDetailsHydration({
                         });
                         if (result?.success && result.details) {
                             detailsHydrationAttemptsRef.current.delete(filePath);
-                            if (detailsCache && log.id) {
-                                detailsCache.putMemoryOnly(log.id, result.details);
+                            if (detailsCache) {
+                                // Store under both id and filePath — logsForStats
+                                // entries may still have the old filePath-based id
+                                // from before the real id was assigned.
+                                if (log.id) detailsCache.putMemoryOnly(log.id, result.details);
+                                if (filePath && filePath !== log.id) detailsCache.putMemoryOnly(filePath, result.details);
                             }
                             hydratedBatch.push({ filePath, details: result.details });
                             if (hydratedBatch.length >= flushThreshold) {
@@ -246,9 +250,8 @@ export function useDetailsHydration({
                             }
                             failedPaths.add(filePath);
                         }
-                        if (!statsViewActive) {
-                            await new Promise((resolve) => window.setTimeout(resolve, 40));
-                        }
+                        // Brief yield to keep UI responsive during bulk hydration
+                        await new Promise((resolve) => window.setTimeout(resolve, 5));
                     } catch {
                         failedPaths.add(filePath);
                     } finally {
@@ -306,9 +309,7 @@ export function useDetailsHydration({
                 });
             }
             if (hasMore || retryableFailures.length > 0) {
-                const delayMs = retryableFailures.length > 0
-                    ? (statsViewActive ? 260 : 420)
-                    : (statsViewActive ? 0 : 180);
+                const delayMs = retryableFailures.length > 0 ? 260 : 0;
                 if (hydrateDetailsRetryTimerRef.current !== null) {
                     window.clearTimeout(hydrateDetailsRetryTimerRef.current);
                 }
@@ -318,7 +319,7 @@ export function useDetailsHydration({
                 }, delayMs);
             }
         });
-    }, [applyHydratedStatsBatch, setLogsDeferred, viewRef, logsRef, detailsCache]);
+    }, [applyHydratedStatsBatch, setLogsDeferred, logsRef, detailsCache]);
 
     useEffect(() => {
         return () => {
