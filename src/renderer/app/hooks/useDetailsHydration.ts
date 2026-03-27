@@ -34,7 +34,10 @@ export function useDetailsHydration({
                 if (!details) return entry;
                 updatesByPath.delete(filePath);
                 if (entry.statsDetailsLoaded === true && entry.status === 'success') {
-                    return entry;
+                    // Cache was just populated — force a new reference so the
+                    // worker restarts and picks up the newly cached details.
+                    changed = true;
+                    return { ...entry };
                 }
                 changed = true;
                 return {
@@ -149,7 +152,7 @@ export function useDetailsHydration({
                         !cachedDetails.targets.some((t: any) => Array.isArray(t?.buffs) && t.buffs.length > 0);
                     const hasStaleDetails = cachedDetails && (!cachedDetails.damageModMap || !cachedDetails.conditionMetrics || targetsLackBuffs);
                     if (hasStaleDetails) return Boolean(log.permalink);
-                    if (cachedDetails || log.statsDetailsLoaded) return false;
+                    if (cachedDetails) return false;
                     if (log.detailsAvailable) return true;
                     return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink);
                 })
@@ -255,6 +258,13 @@ export function useDetailsHydration({
             };
             await Promise.all(Array.from({ length: Math.min(maxConcurrent, candidates.length) }, () => runWorker()));
             flushHydratedBatch();
+            // After all hydrations complete, force a final logsForStats touch
+            // so the worker restarts with a fully populated DetailsCache.
+            // Intermediate flushes may have restarted the worker mid-hydration,
+            // causing it to miss details that weren't cached yet.
+            if (hydratedBatch.length === 0 && candidates.length > 0) {
+                setLogsForStats((prev) => [...prev]);
+            }
             const retryableFailures: string[] = [];
             const exhaustedFailures: string[] = [];
             failedPaths.forEach((filePath) => {

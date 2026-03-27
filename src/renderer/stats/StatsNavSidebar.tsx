@@ -68,10 +68,10 @@ export function StatsNavSidebar({ onSectionVisibilityChange, onScrollToSection }
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="relative z-50 w-[248px] -mr-[176px] shrink-0 self-stretch min-h-0 overflow-visible"
+            className="relative z-50 w-[248px] -mr-[176px] shrink-0 self-stretch min-h-0 overflow-visible pointer-events-none"
         >
             <motion.div
-                className="stats-dashboard-nav-panel absolute inset-y-0 left-0 z-40 min-h-0 rounded-[4px] border border-[color:var(--border-default)] overflow-hidden"
+                className="stats-dashboard-nav-panel absolute inset-y-0 left-0 z-40 min-h-0 rounded-[4px] border border-[color:var(--border-default)] overflow-hidden pointer-events-auto"
                 style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', width: COLLAPSED_W }}
                 animate={{ width: expanded ? EXPANDED_W : COLLAPSED_W }}
                 transition={SPRING}
@@ -82,6 +82,7 @@ export function StatsNavSidebar({ onSectionVisibilityChange, onScrollToSection }
                     {/* Header */}
                     <motion.div
                         className="h-5 flex items-center"
+                        style={{ gap: 0 }}
                         animate={{ paddingLeft: expanded ? 12 : 20, paddingRight: expanded ? 12 : 20, gap: expanded ? 8 : 0 }}
                         transition={SPRING}
                     >
@@ -123,6 +124,7 @@ export function StatsNavSidebar({ onSectionVisibilityChange, onScrollToSection }
                                     type="button"
                                     onClick={() => { if (expanded && isOpen) return; handleItemClick(group.id, defaultTarget); }}
                                     className={`w-full h-9 flex items-center text-left rounded-sm ${isActiveGroup ? 'text-white' : 'text-[color:var(--text-primary)] hover:bg-[var(--bg-hover)]'}`}
+                                    style={{ gap: 0 }}
                                     animate={{
                                         paddingLeft: expanded ? 12 : 20,
                                         paddingRight: expanded ? 12 : 20,
@@ -139,6 +141,7 @@ export function StatsNavSidebar({ onSectionVisibilityChange, onScrollToSection }
                                     </motion.div>
                                     <motion.span
                                         className="text-[11px] leading-none font-semibold uppercase tracking-[0.18em] whitespace-nowrap overflow-hidden"
+                                        style={{ maxWidth: 0 }}
                                         animate={{
                                             opacity: expanded ? 1 : 0,
                                             x: expanded ? 0 : -8,
@@ -151,6 +154,7 @@ export function StatsNavSidebar({ onSectionVisibilityChange, onScrollToSection }
                                     </motion.span>
                                     <motion.span
                                         className="inline-flex ml-auto overflow-hidden"
+                                        style={{ maxWidth: 0 }}
                                         animate={{
                                             opacity: expanded ? 1 : 0,
                                             scale: expanded ? 1 : 0.75,
@@ -192,6 +196,7 @@ export function StatsNavSidebar({ onSectionVisibilityChange, onScrollToSection }
                                                                 <ItemIcon className="w-3.5 h-3.5 text-[color:var(--brand-primary)] shrink-0" />
                                                                 <motion.span
                                                                     className="text-xs leading-tight truncate overflow-hidden"
+                                                                    style={{ maxWidth: 0 }}
                                                                     animate={{
                                                                         opacity: expanded ? 1 : 0,
                                                                         maxWidth: expanded ? 140 : 0,

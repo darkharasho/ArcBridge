@@ -8,6 +8,10 @@ type ChartContainerProps = ComponentProps<typeof ResponsiveContainer>;
  * Wrapper around recharts ResponsiveContainer that disables animations on all
  * Bar, Line, Scatter, Area, and Pie children. Recharts animations get interrupted
  * by React re-renders and never complete, leaving charts permanently empty.
+ *
+ * The unified theme refactor introduced additional re-render cascades
+ * (colorPalette/glassSurfaces state without memoization boundaries) which
+ * makes recharts animations unviable until the re-render path is fixed.
  */
 function disableAnimations(children: React.ReactNode): React.ReactNode {
     return Children.map(children, (child) => {
@@ -28,9 +32,9 @@ function disableAnimations(children: React.ReactNode): React.ReactNode {
     });
 }
 
-export function ChartContainer({ children, ...props }: ChartContainerProps) {
+export function ChartContainer({ children, minWidth = 0, minHeight = 0, ...props }: ChartContainerProps) {
     return (
-        <ResponsiveContainer {...props}>
+        <ResponsiveContainer minWidth={minWidth} minHeight={minHeight} {...props}>
             {isValidElement(children)
                 ? (cloneElement(children as ReactElement<any>, {}, disableAnimations((children as ReactElement<any>).props.children)) as ReactElement)
                 : children}

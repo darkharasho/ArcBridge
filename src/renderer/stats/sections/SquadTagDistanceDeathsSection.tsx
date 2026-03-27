@@ -117,8 +117,8 @@ export const SquadTagDistanceDeathsSection = ({ fights }: SquadTagDistanceDeaths
                                 <BarChart
                                     data={summaryData}
                                     onClick={(state: any) => {
-                                        const idx = Number(state?.activeTooltipIndex);
-                                        if (!Number.isFinite(idx)) return;
+                                        const idx = state?.activePayload?.[0]?.payload?.index;
+                                        if (typeof idx !== 'number') return;
                                         setSelectedFightIndex(selectedFightIndex === idx ? null : idx);
                                     }}
                                 >

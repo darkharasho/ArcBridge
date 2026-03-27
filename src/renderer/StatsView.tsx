@@ -387,7 +387,9 @@ export function StatsView({ logs, onBack: _onBack, mvpWeights, statsViewSettings
     // Loading stays active until computed >= expected (or expected is 0).
     const computedFights = Number((stats as any)?.total || 0);
     const expectedFights = Math.max(0, (statsDataProgress?.total ?? 0) - (statsDataProgress?.unavailable ?? 0));
-    const allFightsComputed = expectedFights === 0 || computedFights >= expectedFights;
+    const aggregationSettled = aggregationProgress?.phase === 'settled';
+    const detailsPending = (statsDataProgress?.pending ?? 0) > 0;
+    const allFightsComputed = expectedFights === 0 || computedFights >= expectedFights || (aggregationSettled && !detailsPending);
 
     // dissolveActive: active during aggregation settling or while awaiting all fights
     const awaitingData = !embedded && !allFightsComputed;
