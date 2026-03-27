@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 
 
@@ -148,7 +148,7 @@ const EMPTY_SKILL_USAGE_SUMMARY: SkillUsageSummary = {
 
 const EMPTY_ANY_ARRAY: any[] = [];
 
-export function StatsView({ logs, onBack: _onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, statsDataProgress, aggregationResult: externalAggregationResult }: StatsViewProps) {
+export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWeights, statsViewSettings, onStatsViewSettingsChange, webUploadState, onWebUpload, disruptionMethod, precomputedStats, embedded = false, sectionVisibility, dashboardTitle, statsDataProgress, aggregationResult: externalAggregationResult }: StatsViewProps) {
     // Defer heavy section rendering by one frame so the header + progress bar can paint first.
     const [sectionsDeferred, setSectionsDeferred] = useState(!embedded);
     useEffect(() => {
@@ -3765,18 +3765,18 @@ type SpikeFight = {
         }`
         : `flex-1 overflow-y-auto pr-2 space-y-6 min-h-0 ${expandedSection ? '' : 'backdrop-blur-2xl'
         }`;
-    const scrollContainerStyle: CSSProperties | undefined = embedded
+    const scrollContainerStyle: CSSProperties | undefined = useMemo(() => embedded
         ? {
             backgroundColor: 'rgba(3, 7, 18, 0.75)',
             backgroundImage: 'linear-gradient(160deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.04) 70%)'
         }
-        : undefined;
-    const resolvedScrollContainerStyle: CSSProperties | undefined = dissolveActive
+        : undefined, [embedded]);
+    const resolvedScrollContainerStyle: CSSProperties | undefined = useMemo(() => dissolveActive
         ? {
             ...(scrollContainerStyle || {}),
-            overflowY: 'hidden'
+            overflowY: 'hidden' as const
         }
-        : scrollContainerStyle;
+        : scrollContainerStyle, [dissolveActive, scrollContainerStyle]);
 
 
     const formatSkillUsageValue = (val: number) => {
@@ -4733,4 +4733,4 @@ type SpikeFight = {
             </div>)}
         </div>
     );
-}
+});
