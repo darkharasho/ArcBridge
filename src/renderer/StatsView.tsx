@@ -1,5 +1,5 @@
 import { CSSProperties, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Eraser } from 'lucide-react';
 
 
 
@@ -53,6 +53,9 @@ import { SquadCompositionSection } from './stats/sections/SquadCompositionSectio
 import { TimelineSection } from './stats/sections/TimelineSection';
 import { MapDistributionSection } from './stats/sections/MapDistributionSection';
 import { SpikeDamageSection } from './stats/sections/SpikeDamageSection';
+import { FightMetricSection } from './stats/sections/FightMetricSection';
+import type { FightMetricPlayer, FightMetricPoint } from './stats/sections/FightMetricSection';
+import type { StripFight, StripPlayer } from './stats/computeStripSpikesData';
 import { AttendanceSection } from './stats/sections/AttendanceSection';
 import { CommanderPushTimingSection, CommanderStatsSection, CommanderTagDeathResponseSection, CommanderTagMovementSection, CommanderTargetConversionSection } from './stats/sections/CommanderStatsSection';
 import { SquadCompByFightSection } from './stats/sections/SquadCompByFightSection';
@@ -843,6 +846,9 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const [selectedSpikeFightIndex, setSelectedSpikeFightIndex] = useState<number | null>(null);
     const [spikeMode, setSpikeMode] = useState<'hit' | '1s' | '5s' | '30s'>('hit');
     const [spikeDamageBasis, setSpikeDamageBasis] = useState<'all' | 'downContribution'>('all');
+    const [stripPlayerFilter, setStripPlayerFilter] = useState('');
+    const [selectedStripPlayerKey, setSelectedStripPlayerKey] = useState<string | null>(null);
+    const [stripMode, setStripMode] = useState<string>('strips');
     const [selectedIncomingStrikePlayerKey, setSelectedIncomingStrikePlayerKey] = useState<string | null>(null);
     const [selectedIncomingStrikeFightIndex, setSelectedIncomingStrikeFightIndex] = useState<number | null>(null);
     const [incomingStrikeMode, setIncomingStrikeMode] = useState<'hit' | '1s' | '5s' | '30s'>('hit');
@@ -1639,6 +1645,115 @@ type SpikeFight = {
         const fightPeak = spikeChartData.reduce((best, entry) => Math.max(best, Number(entry.maxDamage || 0)), 0);
         return Math.max(1, selectedPeak, fightPeak);
     }, [spikeChartData]);
+
+    // ── Strip Spikes ──────────────────────────────────────────────────────────────
+    const stripSpikesData = useMemo<{ fights: StripFight[]; players: StripPlayer[] }>(() => {
+        const raw = safeStats?.stripSpikes;
+        if (!raw) return { fights: [], players: [] };
+        return {
+            fights: Array.isArray(raw.fights) ? raw.fights : [],
+            players: Array.isArray(raw.players) ? raw.players : [],
+        };
+    }, [safeStats]);
+
+    const stripPlayerMap = useMemo(() => {
+        const map = new Map<string, (typeof stripSpikesData.players)[number]>();
+        stripSpikesData.players.forEach((player) => map.set(player.key, player));
+        return map;
+    }, [stripSpikesData.players]);
+
+    const groupedStripPlayers = useMemo((): Array<{ profession: string; players: FightMetricPlayer[] }> => {
+        const modeValue = (player: any) => {
+            if (stripMode === 'stripTime') return Number(player.peakStripTime || 0);
+            if (stripMode === 'stripDownContrib') return Number(player.peakStripDownContrib || 0);
+            return Number(player.peakStrips || 0);
+        };
+        const term = stripPlayerFilter.trim().toLowerCase();
+        const filtered = !term
+            ? stripSpikesData.players
+            : stripSpikesData.players.filter((player) =>
+                player.displayName.toLowerCase().includes(term)
+                || player.account.toLowerCase().includes(term)
+                || player.profession.toLowerCase().includes(term)
+            );
+        const groups = new Map<string, FightMetricPlayer[]>();
+        filtered.forEach((player) => {
+            const profession = player.profession || 'Unknown';
+            const list = groups.get(profession) || [];
+            list.push({
+                key: player.key,
+                account: player.account,
+                displayName: player.displayName,
+                characterName: player.characterName,
+                profession: player.profession,
+                professionList: player.professionList,
+                logs: player.logs,
+                value: modeValue(player),
+                peakFightLabel: player.peakFightLabel,
+            });
+            groups.set(profession, list);
+        });
+        return Array.from(groups.entries())
+            .map(([profession, players]) => ({
+                profession,
+                players: [...players].sort((a, b) => b.value - a.value || a.displayName.localeCompare(b.displayName))
+            }))
+            .sort((a, b) => a.profession.localeCompare(b.profession));
+    }, [stripSpikesData.players, stripPlayerFilter, stripMode]);
+
+    const selectedStripPlayer = selectedStripPlayerKey
+        ? (() => {
+            const raw = stripPlayerMap.get(selectedStripPlayerKey);
+            if (!raw) return null;
+            const modeValue = stripMode === 'stripTime' ? raw.peakStripTime
+                : stripMode === 'stripDownContrib' ? raw.peakStripDownContrib
+                : raw.peakStrips;
+            return {
+                key: raw.key,
+                account: raw.account,
+                displayName: raw.displayName,
+                characterName: raw.characterName,
+                profession: raw.profession,
+                professionList: raw.professionList,
+                logs: raw.logs,
+                value: Number(modeValue || 0),
+                peakFightLabel: raw.peakFightLabel,
+            } as FightMetricPlayer;
+        })()
+        : null;
+
+    const stripChartData = useMemo((): FightMetricPoint[] => {
+        if (!selectedStripPlayerKey) return [];
+        return stripSpikesData.fights.map((fight, index) => {
+            const entry = fight.values?.[selectedStripPlayerKey];
+            const value = stripMode === 'stripTime' ? Number(entry?.stripTime || 0)
+                : stripMode === 'stripDownContrib' ? Number(entry?.stripDownContrib || 0)
+                : Number(entry?.strips || 0);
+            const maxValue = stripMode === 'stripTime' ? Number(fight.maxStripTime || 0)
+                : stripMode === 'stripDownContrib' ? Number(fight.maxStripDownContrib || 0)
+                : Number(fight.maxStrips || 0);
+            return {
+                index,
+                fightId: fight.id,
+                shortLabel: fight.shortLabel,
+                fullLabel: fight.fullLabel,
+                timestamp: Number(fight.timestamp || 0),
+                value,
+                maxValue,
+            };
+        });
+    }, [stripSpikesData.fights, selectedStripPlayerKey, stripMode]);
+
+    const stripChartMaxY = useMemo(() => {
+        const selectedPeak = stripChartData.reduce((best, entry) => Math.max(best, Number(entry.value || 0)), 0);
+        const fightPeak = stripChartData.reduce((best, entry) => Math.max(best, Number(entry.maxValue || 0)), 0);
+        return Math.max(1, selectedPeak, fightPeak);
+    }, [stripChartData]);
+
+    const formatStripTime = (ms: number) => {
+        const seconds = ms / 1000;
+        return seconds < 10 ? seconds.toFixed(1) + 's' : Math.round(seconds) + 's';
+    };
 
     const spikeDrilldown = useMemo(() => {
         const selectedPoint = selectedSpikeFightIndex === null
@@ -4153,6 +4268,30 @@ type SpikeFight = {
                                 spikeFightSkillTitle="Outgoing Skill Damage (Selected Fight)"
                             />)}
 
+                            {renderSectionWrap(<FightMetricSection
+                                sectionId="strip-spikes"
+                                title="Strip Spikes"
+                                titleIcon={Eraser}
+                                titleIconClassName="text-amber-300"
+                                modes={[
+                                    { id: 'strips', label: 'Strips' },
+                                    { id: 'stripTime', label: 'Strip Time' },
+                                    { id: 'stripDownContrib', label: 'Down Contrib' },
+                                ]}
+                                activeMode={stripMode}
+                                setActiveMode={setStripMode}
+                                playerFilter={stripPlayerFilter}
+                                setPlayerFilter={setStripPlayerFilter}
+                                groupedPlayers={groupedStripPlayers}
+                                selectedPlayerKey={selectedStripPlayerKey}
+                                setSelectedPlayerKey={setSelectedStripPlayerKey}
+                                selectedPlayer={selectedStripPlayer}
+                                chartData={stripChartData}
+                                chartMaxY={stripChartMaxY}
+                                formatValue={stripMode === 'stripTime' ? formatStripTime : (v: number) => formatWithCommas(v, 0)}
+                                valueSuffix={stripMode === 'strips' ? 'strips' : ''}
+                            />)}
+
                             {renderSectionWrap(<ConditionsSection
                                 conditionSummary={conditionSummary}
                                 conditionPlayers={conditionPlayers}
@@ -4528,6 +4667,29 @@ type SpikeFight = {
                                 spikeDrilldownDeathIndices={spikeDrilldown.deathIndices}
                                 spikeFightSkillRows={spikeFightSkillRows}
                                 spikeFightSkillTitle="Outgoing Skill Damage (Selected Fight)"
+                            /> },
+                            { id: 'strip-spikes', element: <FightMetricSection
+                                sectionId="strip-spikes"
+                                title="Strip Spikes"
+                                titleIcon={Eraser}
+                                titleIconClassName="text-amber-300"
+                                modes={[
+                                    { id: 'strips', label: 'Strips' },
+                                    { id: 'stripTime', label: 'Strip Time' },
+                                    { id: 'stripDownContrib', label: 'Down Contrib' },
+                                ]}
+                                activeMode={stripMode}
+                                setActiveMode={setStripMode}
+                                playerFilter={stripPlayerFilter}
+                                setPlayerFilter={setStripPlayerFilter}
+                                groupedPlayers={groupedStripPlayers}
+                                selectedPlayerKey={selectedStripPlayerKey}
+                                setSelectedPlayerKey={setSelectedStripPlayerKey}
+                                selectedPlayer={selectedStripPlayer}
+                                chartData={stripChartData}
+                                chartMaxY={stripChartMaxY}
+                                formatValue={stripMode === 'stripTime' ? formatStripTime : (v: number) => formatWithCommas(v, 0)}
+                                valueSuffix={stripMode === 'strips' ? 'strips' : ''}
                             /> },
                             { id: 'conditions-outgoing', element: <ConditionsSection
                                 conditionSummary={conditionSummary}

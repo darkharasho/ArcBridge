@@ -1,13 +1,13 @@
 import { sanitizeWvwLabel, buildFightLabel, resolveMapName } from './utils/labelUtils';
 import { resolveFightTimestamp } from './utils/timestampUtils';
 
-type StripFightValue = {
+export type StripFightValue = {
     strips: number;
     stripTime: number;
     stripDownContrib: number;
 };
 
-type StripFight = {
+export type StripFight = {
     id: string;
     shortLabel: string;
     fullLabel: string;
@@ -18,7 +18,7 @@ type StripFight = {
     maxStripDownContrib: number;
 };
 
-type StripPlayer = {
+export type StripPlayer = {
     key: string;
     account: string;
     displayName: string;
