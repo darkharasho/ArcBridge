@@ -1698,7 +1698,11 @@ type SpikeFight = {
                 profession,
                 players: [...players].sort((a, b) => b.value - a.value || a.displayName.localeCompare(b.displayName))
             }))
-            .sort((a, b) => a.profession.localeCompare(b.profession));
+            .sort((a, b) => {
+                const totalA = a.players.reduce((sum, p) => sum + p.value, 0);
+                const totalB = b.players.reduce((sum, p) => sum + p.value, 0);
+                return totalB - totalA;
+            });
     }, [stripSpikesData.players, stripPlayerFilter, stripMode]);
 
     const selectedStripPlayer = selectedStripPlayerKey
