@@ -3,4 +3,3 @@
 - [ ] rename to axibridge and come up with the full resolution path for changing the name/icon
 - [ ] more color choices
 - [ ] smoother animations when popping out breakdowns
-- [ ] wvw fury is 20% pve is 25%

@@ -874,12 +874,34 @@ function createWindow() {
     }
 
     win.webContents.on('render-process-gone', (_event, details) => {
-        log.error(`[Main] Renderer process gone (reason: ${details.reason}), reloading...`);
+        const mainMem = process.memoryUsage();
+        // Use both log.error (writes to disk) and console.error (feeds in-app terminal after reload)
+        const msg1 = `[Main] Renderer process gone — reason: ${details.reason}, exitCode: ${details.exitCode}`;
+        const msg2 = `[Main] Main process memory at crash — rss: ${(mainMem.rss / 1024 / 1024).toFixed(1)}MB, heapUsed: ${(mainMem.heapUsed / 1024 / 1024).toFixed(1)}MB, heapTotal: ${(mainMem.heapTotal / 1024 / 1024).toFixed(1)}MB`;
+        const msg3 = `[Main] Active uploads: ${activeUploads.size}, fileHashCache: ${fileHashByPath.size}, detailsCache: ${bulkLogDetailsCache.size}`;
+        log.error(msg1);
+        log.error(msg2);
+        log.error(msg3);
+        console.error(msg1);
+        console.error(msg2);
+        console.error(msg3);
         if (!app.isPackaged) {
             win?.loadURL(VITE_DEV_SERVER_URL);
         } else {
             win?.loadFile(path.join(process.env.DIST || '', 'dist-react/index.html'));
         }
+    });
+
+    win.webContents.on('unresponsive', () => {
+        const mainMem = process.memoryUsage();
+        const msg = `[Main] Renderer became unresponsive — rss: ${(mainMem.rss / 1024 / 1024).toFixed(1)}MB, heapUsed: ${(mainMem.heapUsed / 1024 / 1024).toFixed(1)}MB`;
+        log.warn(msg);
+        console.warn(msg);
+    });
+
+    win.webContents.on('responsive', () => {
+        log.info(`[Main] Renderer became responsive again`);
+        console.log(`[Main] Renderer became responsive again`);
     });
 }
 
@@ -1077,6 +1099,50 @@ if (!gotTheLock) {
         }
 
         // Removed get-logs and save-logs handlers
+
+        // Renderer error reporting — catches errors from AppErrorBoundary and
+        // unhandled exceptions/rejections in the renderer process so they appear
+        // in the electron-log file on disk.
+        ipcMain.on('renderer-error', (_event, payload: { source: string; message: string; stack?: string }) => {
+            const msg = `[Renderer:${payload.source}] ${payload.message}`;
+            log.error(msg);
+            console.error(msg);
+            if (payload.stack) {
+                log.error(`[Renderer:${payload.source}] Stack: ${payload.stack}`);
+                console.error(`[Renderer:${payload.source}] Stack: ${payload.stack}`);
+            }
+        });
+
+        // Periodic memory diagnostics — log every 5 minutes so we can spot
+        // gradual leaks that precede a renderer crash.
+        setInterval(() => {
+            const mem = process.memoryUsage();
+            const msg =
+                `[Diagnostics] Main process — rss: ${(mem.rss / 1024 / 1024).toFixed(1)}MB, ` +
+                `heapUsed: ${(mem.heapUsed / 1024 / 1024).toFixed(1)}MB, ` +
+                `heapTotal: ${(mem.heapTotal / 1024 / 1024).toFixed(1)}MB, ` +
+                `activeUploads: ${activeUploads.size}, ` +
+                `hashCache: ${fileHashByPath.size}, ` +
+                `detailsCache: ${bulkLogDetailsCache.size}`;
+            log.info(msg);
+            console.log(msg);
+            // Ask renderer for its heap stats (if alive)
+            try {
+                if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+                    win.webContents.send('request-renderer-diagnostics');
+                }
+            } catch { /* renderer may be gone */ }
+        }, 5 * 60 * 1000);
+
+        ipcMain.on('renderer-diagnostics', (_event, payload: { heapUsed: number; heapTotal: number; heapLimit: number; logCount: number }) => {
+            const msg =
+                `[Diagnostics] Renderer — heapUsed: ${(payload.heapUsed / 1024 / 1024).toFixed(1)}MB, ` +
+                `heapTotal: ${(payload.heapTotal / 1024 / 1024).toFixed(1)}MB, ` +
+                `heapLimit: ${(payload.heapLimit / 1024 / 1024).toFixed(1)}MB, ` +
+                `logCount: ${payload.logCount}`;
+            log.info(msg);
+            console.log(msg);
+        });
 
         const applySettings = (settings: { logDirectory?: string | null, discordWebhookUrl?: string | null, discordNotificationType?: 'embed', discordEnemySplitSettings?: { image?: boolean; embed?: boolean; tiled?: boolean }, discordSplitEnemiesByTeam?: boolean, webhooks?: any[], selectedWebhookId?: string | null, dpsReportToken?: string | null, closeBehavior?: 'minimize' | 'quit', embedStatSettings?: any, mvpWeights?: any, statsViewSettings?: any, disruptionMethod?: DisruptionMethod, colorPalette?: string, glassSurfaces?: boolean, githubRepoOwner?: string | null, githubRepoName?: string | null, githubBranch?: string | null, githubPagesBaseUrl?: string | null, githubToken?: string | null, githubLogoPath?: string | null, githubFavoriteRepos?: string[], walkthroughSeen?: boolean }) => {
             if (settings.logDirectory !== undefined) {

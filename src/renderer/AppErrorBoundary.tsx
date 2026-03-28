@@ -17,6 +17,13 @@ export class AppErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, info: ErrorInfo) {
         console.error('[AppErrorBoundary] Uncaught error:', error, info.componentStack);
+        try {
+            window.electronAPI?.reportRendererError({
+                source: 'ErrorBoundary',
+                message: error.message,
+                stack: (error.stack || '') + '\nComponent stack:' + (info.componentStack || ''),
+            });
+        } catch { /* preload may not be available */ }
     }
 
     render() {

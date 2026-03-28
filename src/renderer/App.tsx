@@ -165,6 +165,46 @@ function App() {
 
     // Persistence removed
 
+    // Diagnostics: report renderer errors and respond to memory probes from main
+    useEffect(() => {
+        const onError = (event: ErrorEvent) => {
+            window.electronAPI?.reportRendererError?.({
+                source: 'window.onerror',
+                message: event.message,
+                stack: event.error?.stack,
+            });
+        };
+        const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+            const reason = event.reason;
+            window.electronAPI?.reportRendererError?.({
+                source: 'unhandledrejection',
+                message: reason instanceof Error ? reason.message : String(reason),
+                stack: reason instanceof Error ? reason.stack : undefined,
+            });
+        };
+        window.addEventListener('error', onError);
+        window.addEventListener('unhandledrejection', onUnhandledRejection);
+
+        const cleanupDiag = window.electronAPI?.onRequestRendererDiagnostics?.(() => {
+            const perf = (performance as any);
+            const memInfo = perf.memory ? {
+                heapUsed: perf.memory.usedJSHeapSize,
+                heapTotal: perf.memory.totalJSHeapSize,
+                heapLimit: perf.memory.jsHeapSizeLimit,
+            } : { heapUsed: 0, heapTotal: 0, heapLimit: 0 };
+            window.electronAPI?.sendRendererDiagnostics?.({
+                ...memInfo,
+                logCount: logsRef.current.length,
+            });
+        });
+
+        return () => {
+            window.removeEventListener('error', onError);
+            window.removeEventListener('unhandledrejection', onUnhandledRejection);
+            cleanupDiag?.();
+        };
+    }, []);
+
     const {
         result: aggregationResult,
         computeTick,

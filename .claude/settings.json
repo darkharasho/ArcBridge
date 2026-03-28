@@ -3,6 +3,9 @@
     "allow": [
       "Bash",
       "Edit(/.claude/skills/release/**)"
+    ],
+    "additionalDirectories": [
+      "~/Documents/GitHub/axibridge/.claude"
     ]
   }
 }

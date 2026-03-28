@@ -117,4 +117,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportSettings: () => ipcRenderer.invoke('export-settings'),
     importSettings: () => ipcRenderer.invoke('import-settings'),
     selectSettingsFile: () => ipcRenderer.invoke('select-settings-file'),
+
+    // Diagnostics — renderer error reporting and memory monitoring
+    reportRendererError: (payload: { source: string; message: string; stack?: string }) =>
+        ipcRenderer.send('renderer-error', payload),
+    onRequestRendererDiagnostics: (callback: () => void) => {
+        ipcRenderer.on('request-renderer-diagnostics', () => callback());
+        return () => ipcRenderer.removeAllListeners('request-renderer-diagnostics');
+    },
+    sendRendererDiagnostics: (payload: { heapUsed: number; heapTotal: number; heapLimit: number; logCount: number }) =>
+        ipcRenderer.send('renderer-diagnostics', payload),
 })
