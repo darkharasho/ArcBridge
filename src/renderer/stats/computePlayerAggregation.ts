@@ -1070,7 +1070,10 @@ export const computePlayerAggregation = ({
                                 ...entry,
                                 totalDamage: Math.max(0, deltaDamage),
                                 connectedHits: Math.max(0, deltaHits),
-                                downContribution: Math.max(0, deltaDownContribution)
+                                downContribution: Math.max(0, deltaDownContribution),
+                                hits: 0,
+                                min: 0,
+                                max: 0
                             };
                             pushSkillDamageEntry(reconciledEntry);
                             pushPlayerSkillEntry(reconciledEntry);
