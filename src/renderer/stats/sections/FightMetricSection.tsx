@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo, useState } from 'react';
-import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '../ui/ChartContainer';
 import { Maximize2, X, Users, User } from 'lucide-react';
 import { getProfessionColor } from '../../../shared/professionUtils';
@@ -70,6 +70,19 @@ type FightMetricSectionProps = {
 
     // Footer (shown when fight is selected and renderFooter is provided)
     renderFooter?: () => ReactNode;
+
+    // Content above player list (e.g., boon selector)
+    renderAbovePlayerList?: () => ReactNode;
+
+    // Custom player item renderer (replaces default icon + name + value)
+    renderPlayerItem?: (player: FightMetricPlayer, isSelected: boolean) => ReactNode;
+
+    // Container class (defaults to '' for flat style)
+    containerClassName?: string;
+
+    // Optional horizontal reference line on main chart
+    referenceLineY?: number;
+    referenceLineLabel?: string;
 };
 
 export const FightMetricSection = ({
@@ -99,6 +112,11 @@ export const FightMetricSection = ({
     renderDrilldown,
     renderSummary,
     renderFooter,
+    renderAbovePlayerList,
+    renderPlayerItem,
+    containerClassName = '',
+    referenceLineY,
+    referenceLineLabel,
 }: FightMetricSectionProps) => {
     const { expandedSection, openExpandedSection, closeExpandedSection, formatWithCommas, renderProfessionIcon } = useStatsSharedContext();
     const isExpanded = expandedSection === sectionId;
@@ -128,7 +146,7 @@ export const FightMetricSection = ({
     const renderContent = (expanded: boolean) => (
         <div
             id={expanded ? undefined : sectionId}
-            className={`glass-surface rounded-xl overflow-hidden ${expanded ? 'h-full flex flex-col' : ''}`}
+            className={`rounded-xl overflow-hidden ${containerClassName} ${expanded ? 'h-full flex flex-col' : ''}`}
             style={{ scrollMarginTop: '80px' }}
         >
             {/* ── Header ─────────────────────────────────────── */}
@@ -182,6 +200,11 @@ export const FightMetricSection = ({
                             className="w-full bg-white/5 rounded px-2 py-1 text-xs text-slate-300 placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/50"
                         />
                     </div>
+                    {renderAbovePlayerList && (
+                        <div className="border-b border-white/5">
+                            {renderAbovePlayerList()}
+                        </div>
+                    )}
                     <div className="flex items-center justify-between px-3 pt-2 pb-1">
                         <div className="text-[10px] uppercase tracking-wider text-slate-500">{listTitle}</div>
                         <button
@@ -210,13 +233,17 @@ export const FightMetricSection = ({
                                                     : 'hover:bg-white/5'
                                             }`}
                                         >
-                                            {renderProfessionIcon(player.profession, player.professionList, 'w-4 h-4 flex-shrink-0')}
-                                            <span className={`text-xs truncate flex-1 ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>
-                                                {player.displayName}
-                                            </span>
-                                            <span className={`text-xs tabular-nums ${isSelected ? 'text-indigo-300 font-semibold' : 'text-slate-500'}`}>
-                                                {formatValue(player.value)}
-                                            </span>
+                                            {renderPlayerItem ? renderPlayerItem(player, isSelected) : (
+                                                <>
+                                                    {renderProfessionIcon(player.profession, player.professionList, 'w-4 h-4 flex-shrink-0')}
+                                                    <span className={`text-xs truncate flex-1 ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>
+                                                        {player.displayName}
+                                                    </span>
+                                                    <span className={`text-xs tabular-nums ${isSelected ? 'text-indigo-300 font-semibold' : 'text-slate-500'}`}>
+                                                        {formatValue(player.value)}
+                                                    </span>
+                                                </>
+                                            )}
                                         </button>
                                     );
                                 })}
@@ -328,6 +355,15 @@ export const FightMetricSection = ({
                                             animationDuration={800}
                                             animationEasing="ease-out"
                                         />
+                                        {referenceLineY != null && (
+                                            <ReferenceLine
+                                                y={referenceLineY}
+                                                stroke="rgba(251,191,36,0.9)"
+                                                strokeDasharray="6 4"
+                                                ifOverflow="extendDomain"
+                                                label={referenceLineLabel ? { value: referenceLineLabel, position: 'right', fill: '#fbbf24', fontSize: 10 } : undefined}
+                                            />
+                                        )}
                                     </LineChart>
                                 </ChartContainer>
                             </div>
