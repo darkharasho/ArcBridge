@@ -169,6 +169,7 @@ export interface TotalDamageDist {
     interrupted: number;
     evaded: number;
     blocked: number;
+    min: number;
     max: number;
     downContribution?: number;
 }

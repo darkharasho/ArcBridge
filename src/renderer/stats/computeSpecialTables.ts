@@ -106,6 +106,7 @@ export function computeSpecialTables(
     const playerSkillBreakdowns = Array.from(playerSkillBreakdownMap.values())
         .map((entry) => {
             const skills = Array.from(entry.skills.values())
+                .map((s) => s.min === Infinity ? { ...s, min: 0 } : s)
                 .sort((a, b) => b.damage - a.damage);
             const payload: any = {
                 key: entry.key,

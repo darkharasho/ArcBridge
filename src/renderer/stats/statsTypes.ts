@@ -43,6 +43,9 @@ export interface PlayerSkillDamageEntry {
     icon?: string;
     damage: number;
     downContribution: number;
+    hits: number;
+    min: number;
+    max: number;
 }
 
 export interface PlayerSkillBreakdown {

@@ -1007,13 +1007,19 @@ export const computePlayerAggregation = ({
                 const skillId = `s${entry.id}`;
                 let skillEntry = playerBreakdown!.skills.get(skillId);
                 if (!skillEntry) {
-                    skillEntry = { id: skillId, name, icon, damage: 0, downContribution: 0 };
+                    skillEntry = { id: skillId, name, icon, damage: 0, downContribution: 0, hits: 0, min: Infinity, max: 0 };
                     playerBreakdown!.skills.set(skillId, skillEntry);
                 }
                 if (skillEntry.name.startsWith('Skill ') && !name.startsWith('Skill ')) skillEntry.name = name;
                 if (!skillEntry.icon && icon) skillEntry.icon = icon;
                 skillEntry.damage += Number(entry.totalDamage || 0);
                 skillEntry.downContribution += Number(entry.downContribution || 0);
+                skillEntry.hits += Number(entry.hits || 0);
+                const entryMin = Number(entry.min);
+                if (Number.isFinite(entryMin) && entryMin > 0) {
+                    skillEntry.min = Math.min(skillEntry.min, entryMin);
+                }
+                skillEntry.max = Math.max(skillEntry.max, Number(entry.max || 0));
             };
             if (skillDamageSource === 'total') {
                 p.totalDamageDist?.forEach((list: any) => {

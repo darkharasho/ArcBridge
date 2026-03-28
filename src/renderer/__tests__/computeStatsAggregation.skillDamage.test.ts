@@ -256,6 +256,102 @@ describe('computeStatsAggregation (skill damage source reconciliation)', () => {
         expect(String(spikePlayer.peakSkillName || '')).toBe('Arc Divider');
     });
 
+    it('captures hits, min, and max per skill in player breakdown', () => {
+        const fireballId = 5491;
+        const playerKey = 'TestPlayer.1234';
+        const log = {
+            status: 'success',
+            filePath: 'skill-min-max-test',
+            details: {
+                durationMS: 10000,
+                skillMap: {
+                    [`s${fireballId}`]: { name: 'Fireball', icon: 'https://example.invalid/fireball.png' }
+                },
+                buffMap: {},
+                players: [
+                    {
+                        account: 'TestPlayer.1234',
+                        profession: 'Weaver',
+                        notInSquad: false,
+                        dpsAll: [{ damage: 5000, dps: 500 }],
+                        statsAll: [{ connectedDamageCount: 5 }],
+                        support: [{ resurrects: 0 }],
+                        damage1S: [[0, 1000, 2000, 3000, 4000, 5000]],
+                        targetDamage1S: [[[0, 1000, 2000, 3000, 4000, 5000]]],
+                        targetDamageDist: [[[
+                            { id: fireballId, totalDamage: 5000, connectedHits: 5, hits: 5, min: 675, max: 1400, downContribution: 2000 }
+                        ]]],
+                        totalDamageDist: [[
+                            { id: fireballId, totalDamage: 5000, connectedHits: 5, hits: 5, min: 675, max: 1400, downContribution: 2000 }
+                        ]]
+                    }
+                ],
+                targets: []
+            }
+        };
+
+        const { stats } = computeStatsAggregation({ logs: [log as any] });
+        const playerBreakdown = (stats.playerSkillBreakdowns || []).find((entry: any) => entry.key === playerKey);
+        expect(playerBreakdown).toBeTruthy();
+        const skill = (playerBreakdown.skills || []).find((s: any) => s.name === 'Fireball');
+        expect(skill).toBeTruthy();
+        expect(skill.hits).toBe(5);
+        expect(skill.min).toBe(675);
+        expect(skill.max).toBe(1400);
+        // Avg = damage / hits = 5000 / 5 = 1000
+        expect(skill.damage / skill.hits).toBe(1000);
+    });
+
+    it('aggregates min/max across multiple logs correctly', () => {
+        const slashId = 1001;
+        const playerKey = 'MultiLog.5678';
+        const makeLog = (damage: number, hits: number, min: number, max: number) => ({
+            status: 'success',
+            filePath: `multi-log-min-max-${min}-${max}`,
+            details: {
+                durationMS: 5000,
+                skillMap: { [`s${slashId}`]: { name: 'Slash' } },
+                buffMap: {},
+                players: [
+                    {
+                        account: 'MultiLog.5678',
+                        profession: 'Warrior',
+                        notInSquad: false,
+                        dpsAll: [{ damage, dps: damage / 5 }],
+                        statsAll: [{ connectedDamageCount: hits }],
+                        support: [{ resurrects: 0 }],
+                        damage1S: [[0, 100, 200, 300, 400, 500]],
+                        targetDamage1S: [[[0, 100, 200, 300, 400, 500]]],
+                        targetDamageDist: [[[
+                            { id: slashId, totalDamage: damage, connectedHits: hits, hits, min, max }
+                        ]]],
+                        totalDamageDist: [[
+                            { id: slashId, totalDamage: damage, connectedHits: hits, hits, min, max }
+                        ]]
+                    }
+                ],
+                targets: []
+            }
+        });
+
+        const log1 = makeLog(3000, 3, 800, 1200);
+        const log2 = makeLog(4000, 4, 600, 1500);
+
+        const { stats } = computeStatsAggregation({ logs: [log1 as any, log2 as any] });
+        const playerBreakdown = (stats.playerSkillBreakdowns || []).find((entry: any) => entry.key === playerKey);
+        expect(playerBreakdown).toBeTruthy();
+        const skill = (playerBreakdown.skills || []).find((s: any) => s.name === 'Slash');
+        expect(skill).toBeTruthy();
+        // hits summed: 3 + 4 = 7
+        expect(skill.hits).toBe(7);
+        // min is global minimum: min(800, 600) = 600
+        expect(skill.min).toBe(600);
+        // max is global maximum: max(1200, 1500) = 1500
+        expect(skill.max).toBe(1500);
+        // Avg = total damage / total hits = 7000 / 7 = 1000
+        expect(skill.damage / skill.hits).toBe(1000);
+    });
+
     it('ignores total-only spike outliers for detailedWvW logs', () => {
         const battleMaulId = 54922;
         const whirlwindId = 14447;
