@@ -29,30 +29,34 @@ grep '^DISCORD_BOT_TOKEN=' .env | sed 's/^DISCORD_BOT_TOKEN=//' | tr -d '"' | tr
 
 If the output is empty or the file doesn't exist, stop and output:
 
-> **Error:** No Discord bot token found. Add `DISCORD_BOT_TOKEN` to your `.env` file.
+> **Error:** No Discord bot token found. Add `DISCORD_BOT_TOKEN=<your_token>` to `.env` at the repository root.
 
 Store the token value for use in subsequent API calls.
 
 ### Step 3: Fetch Thread Metadata
 
-Use WebFetch to call the Discord API:
+Use the Bash tool to call the Discord API:
 
-- **URL:** `https://discord.com/api/v10/channels/$ARGUMENTS`
-- **Headers:** `Authorization: Bot <token>`
+```bash
+curl -s -w "\n%{http_code}" -H "Authorization: Bot <token>" "https://discord.com/api/v10/channels/$ARGUMENTS"
+```
+
+The `-w "\n%{http_code}"` appends the HTTP status code on a new line so you can check for errors.
 
 If the response status is:
 - **401 or 403:** Stop. Output: "Bot token is invalid or the bot lacks permission to read this channel."
 - **404:** Stop. Output: "Thread not found. Check that the thread ID is correct and the bot has access to the channel."
-- **429:** Read `retry_after` from the response body, wait that many seconds, then retry once. If still 429, stop and report the rate limit.
+- **429:** Read `retry_after` from the response JSON body. Use the Bash tool to run `sleep <retry_after>`, then retry the request once. If still 429, stop and report the rate limit.
 
 From the response, note the thread `name` (this is the thread title).
 
 ### Step 4: Fetch All Messages
 
-Use WebFetch to fetch messages:
+Use the Bash tool to fetch messages:
 
-- **URL:** `https://discord.com/api/v10/channels/$ARGUMENTS/messages?limit=100`
-- **Headers:** `Authorization: Bot <token>`
+```bash
+curl -s -w "\n%{http_code}" -H "Authorization: Bot <token>" "https://discord.com/api/v10/channels/$ARGUMENTS/messages?limit=100"
+```
 
 Handle errors the same as Step 3.
 
@@ -72,11 +76,16 @@ If no messages are found, stop and output:
 
 For each message, check its `attachments` array. For each attachment where `content_type` starts with `image/`:
 
-- Use WebFetch to fetch the attachment `url`.
-- View the image to understand what it shows (mockup, screenshot, diagram, etc.).
+- Use the Bash tool to download the image:
+
+```bash
+curl -s -o /tmp/discord_img_<message_id>_<index>.png "<attachment_url>"
+```
+
+- Then use the Read tool to view `/tmp/discord_img_<message_id>_<index>.png` to see the image.
 - Note which message it was attached to and what it depicts.
 
-Also check each message's `embeds` array for any embeds with `image` or `thumbnail` fields and fetch those too.
+Also check each message's `embeds` array for any embeds with `image` or `thumbnail` fields and fetch those too using the same curl-then-Read pattern.
 
 ### Step 6: Synthesize the Feature Request
 
@@ -86,7 +95,7 @@ Compile everything you've read into a structured summary. Format it like this:
 ## Feature Request from Discord Thread
 
 **Thread:** <thread name>
-**Participants:** <comma-separated list of unique author usernames>
+**Participants:** <comma-separated list of unique author display names>
 **Message count:** <number>
 
 ### Feature Description
@@ -100,7 +109,8 @@ Compile everything you've read into a structured summary. Format it like this:
 
 ### Raw Thread Transcript
 <For each message in chronological order:>
-**<author username>** (<timestamp>):
+**<author global_name or username>** (<timestamp>):
+(Prefer `author.global_name` when present — this is the display name — falling back to `author.username`.)
 <message content>
 <if attachments: [Image: <description of what the image shows>]>
 ```
