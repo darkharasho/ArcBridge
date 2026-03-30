@@ -418,7 +418,13 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
             return log;
         });
 
-        const result = computeStatsAggregation({ logs: logsWithDetails, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+        let result: any;
+        try {
+            result = computeStatsAggregation({ logs: logsWithDetails, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+        } catch (err) {
+            console.error('[StatsAggregation] Fallback computation failed:', err);
+            result = { stats: null, skillUsageData: null };
+        }
 
         const computeMs = Math.max(0, performance.now() - computeStartedAt);
         const completedAt = Date.now();
@@ -463,7 +469,14 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     }, [fallbackComputeKey, fallback, workerFailed, logs.length, shouldUseWorker]);
 
     const resolvedResult = (workerFailed || typeof Worker === 'undefined' || !shouldUseWorker)
-        ? (fallback?.result ?? computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod }))
+        ? (fallback?.result ?? (() => {
+            try {
+                return computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+            } catch (err) {
+                console.error('[StatsAggregation] Inline fallback failed:', err);
+                return { stats: null, skillUsageData: null };
+            }
+        })())
         : result;
     const resolvedAggregationProgress = (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker)
         ? aggregationProgress

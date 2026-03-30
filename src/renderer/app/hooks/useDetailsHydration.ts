@@ -24,7 +24,11 @@ export function useDetailsHydration({
 
     const applyHydratedStatsBatch = useCallback((batch: Array<{ filePath: string; details: any }>) => {
         if (batch.length === 0) return;
-        // logsForStats is metadata-only — details live in DetailsCache (populated by hydration)
+        // logsForStats is metadata-only — details live in DetailsCache (populated by hydration).
+        // Only update metadata flags here. Do NOT force new references for entries that are
+        // already loaded — that causes rapid worker restarts during hydration which accumulate
+        // memory and can crash the renderer. The final force-touch after hydration completes
+        // (setLogsForStats((prev) => [...prev])) handles the single worker restart.
         setLogsForStats((currentStatsLogs) => {
             const updatesByPath = new Map(batch.map((entry) => [entry.filePath, entry.details]));
             let changed = false;
@@ -34,10 +38,9 @@ export function useDetailsHydration({
                 if (!details) return entry;
                 updatesByPath.delete(filePath);
                 if (entry.statsDetailsLoaded === true && entry.status === 'success') {
-                    // Cache was just populated — force a new reference so the
-                    // worker restarts and picks up the newly cached details.
-                    changed = true;
-                    return { ...entry };
+                    // Already marked as loaded — skip. The final force-touch after
+                    // hydration completes will restart the worker with full cache.
+                    return entry;
                 }
                 changed = true;
                 return {

@@ -68,7 +68,30 @@ const computeAndPost = () => {
     const flushId = pendingFlushId;
     pendingFlushId = null;
     const computeStartedAt = performance.now();
-    const result = computeStatsAggregation({ ...latestPayload, includePlayerSkillMap: false });
+    let result: any;
+    try {
+        result = computeStatsAggregation({ ...latestPayload, includePlayerSkillMap: false });
+    } catch (err) {
+        console.error('[StatsWorker] computeStatsAggregation threw:', err);
+        // Post an empty result so the main thread doesn't hang waiting
+        (self as any).postMessage({
+            type: 'result',
+            result: { stats: null, skillUsageData: null },
+            computeId,
+            logCount: latestPayload.logs.length,
+            token: currentToken,
+            completedAt: Date.now(),
+            flushId,
+            diagnostics: {
+                computeMs: Math.max(0, performance.now() - computeStartedAt),
+                logsInPayload: latestPayload.logs.length,
+                expectedLogCount,
+                droppedLogMessages,
+                error: err instanceof Error ? err.message : String(err)
+            }
+        });
+        return;
+    }
     const transferStripStats = stripTransferHeavySkillRows(result);
     const computeMs = Math.max(0, performance.now() - computeStartedAt);
     const stats = result?.stats;
