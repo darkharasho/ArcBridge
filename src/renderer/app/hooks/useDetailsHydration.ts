@@ -110,10 +110,10 @@ export function useDetailsHydration({
             });
             return;
         }
-        // Populate memory LRU under both id and filePath (no IndexedDB — structured clone too expensive on hot path)
+        // Populate LRU + IndexedDB (fire-and-forget — structured clone runs async)
         if (detailsCache && result.details) {
-            if (log.id) detailsCache.putMemoryOnly(log.id, result.details);
-            if (log.filePath && log.filePath !== log.id) detailsCache.putMemoryOnly(log.filePath, result.details);
+            if (log.id) detailsCache.putSync(log.id, result.details);
+            if (log.filePath && log.filePath !== log.id) detailsCache.putSync(log.filePath, result.details);
         }
         setLogs((currentLogs) => {
             const existingIndex = currentLogs.findIndex((entry) => entry.filePath === log.filePath);
@@ -234,8 +234,8 @@ export function useDetailsHydration({
                                 // Store under both id and filePath — logsForStats
                                 // entries may still have the old filePath-based id
                                 // from before the real id was assigned.
-                                if (log.id) detailsCache.putMemoryOnly(log.id, result.details);
-                                if (filePath && filePath !== log.id) detailsCache.putMemoryOnly(filePath, result.details);
+                                if (log.id) detailsCache.putSync(log.id, result.details);
+                                if (filePath && filePath !== log.id) detailsCache.putSync(filePath, result.details);
                             }
                             hydratedBatch.push({ filePath, details: result.details });
                             if (hydratedBatch.length >= flushThreshold) {
