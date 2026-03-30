@@ -2103,6 +2103,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 <div className="text-xs font-semibold uppercase tracking-widest text-sky-300 mb-2">General MVP (Applied to Both)</div>
                                 <div className="space-y-2">
                                     {([
+                                        { key: 'generalStrips', label: 'Strips' },
                                         { key: 'generalDistanceToTag', label: 'Distance to Tag' },
                                         { key: 'generalParticipation', label: 'Participation' },
                                         { key: 'generalDodging', label: 'Dodging' }
@@ -2130,7 +2131,6 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 <div className="space-y-2">
                                     {([
                                         { key: 'offensiveDownContribution', label: 'Down Contribution' },
-                                        { key: 'offensiveStrips', label: 'Strips' },
                                         { key: 'offensiveCc', label: 'CC' },
                                         { key: 'offensiveDps', label: 'DPS' },
                                         { key: 'offensiveDamage', label: 'Damage' }
