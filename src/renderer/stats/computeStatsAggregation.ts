@@ -444,7 +444,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 higher?: boolean;
             }> = [
                 { name: 'Down Contribution', weight: activeMvpWeights.offensiveDownContribution, leaderboard: leaderboards.downContrib, getter: (s) => s.downContrib },
-                { name: 'Strips', weight: activeMvpWeights.offensiveStrips, leaderboard: leaderboards.strips, getter: (s) => s.strips },
                 { name: 'CC', weight: activeMvpWeights.offensiveCc, leaderboard: leaderboards.cc, getter: (s) => s.cc },
                 { name: 'DPS', weight: activeMvpWeights.offensiveDps, leaderboard: leaderboards.dps, getter: (s) => s.dps },
                 { name: 'Damage', weight: activeMvpWeights.offensiveDamage, leaderboard: leaderboards.damage, getter: (s) => s.damage }
@@ -457,6 +456,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 getter: (s: PlayerStats) => number;
                 higher?: boolean;
             }> = [
+                { name: 'Strips', weight: activeMvpWeights.generalStrips, leaderboard: leaderboards.strips, getter: (s) => s.strips },
                 { name: 'Distance to Tag', weight: activeMvpWeights.generalDistanceToTag, leaderboard: leaderboards.closestToTag, getter: (s) => getVal(s, 'closestToTag'), higher: false },
                 { name: 'Participation', weight: activeMvpWeights.generalParticipation, leaderboard: leaderboards.participation, getter: (s) => s.logsJoined },
                 { name: 'Dodging', weight: activeMvpWeights.generalDodging, leaderboard: leaderboards.dodges, getter: (s) => s.dodges }
