@@ -367,14 +367,14 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         };
         Object.values(statKeys).forEach((k) => {
             const higherIsBetter = k !== 'closestToTag';
-            perSecondLeaderboards[k] = buildLeaderboard(playerEntries.map(({ stat }) => ({
+            perSecondLeaderboards[k] = buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
                 account: stat.account,
                 profession: stat.profession,
                 professionList: stat.professionList,
                 value: getPerSecondVal(stat, k),
                 count: stat.logsJoined
             })), higherIsBetter);
-            perMinuteLeaderboards[k] = buildLeaderboard(playerEntries.map(({ stat }) => ({
+            perMinuteLeaderboards[k] = buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
                 account: stat.account,
                 profession: stat.profession,
                 professionList: stat.professionList,
