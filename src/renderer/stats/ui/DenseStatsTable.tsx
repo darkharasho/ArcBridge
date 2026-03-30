@@ -41,7 +41,7 @@ export const DenseStatsTable = ({
 }: DenseStatsTableProps) => {
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const templateColumns = [
-        'minmax(170px, max-content)',
+        'minmax(220px, max-content)',
         ...columns.map((column) => `minmax(${column.minWidth ?? 60}px, max-content)`)
     ].join(' ');
 
