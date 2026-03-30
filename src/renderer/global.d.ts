@@ -78,6 +78,7 @@ export interface IStatsViewSettings {
     topStatsMode: 'total' | 'perSecond' | 'perMinute';
     topSkillDamageSource: 'total' | 'target';
     topSkillsMetric: 'damage' | 'downContribution';
+    minParticipationPercent: number;
 }
 
 export interface IDiscordEnemySplitSettings {
@@ -200,7 +201,8 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     splitPlayersByClass: false,
     topStatsMode: 'total',
     topSkillDamageSource: 'target',
-    topSkillsMetric: 'damage'
+    topSkillsMetric: 'damage',
+    minParticipationPercent: 0
 };
 
 export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {
