@@ -1,31 +1,21 @@
 # Release Notes
 
-Version v2.0.5 — March 28, 2026
+Version v2.0.6 — March 30, 2026
 
-## Strip Spikes
+## Minimum Fight Participation Filter
 
-New stats section that tracks boon strip spikes per player across fights. Shows peak strip counts and down contribution, with the same per-fight chart and player drilldown as spike damage. Profession groups are sorted by total value so the biggest strippers float to the top.
+You can now set a minimum fight participation percentage in stats settings. Players who were only in a handful of fights get filtered out of leaderboards and MVP scoring, so your rankings actually reflect consistent contributors instead of someone who showed up for one good fight. The dense table still shows everyone — only leaderboards and MVP are filtered.
 
-## Boon Uptime Incoming Damage Heatmap
+## Strips Moved to General MVP
 
-The boon uptime drilldown now has an incoming damage heatmap overlay. When you expand a player's fight breakdown, you can toggle the heatmap to see where incoming damage was heaviest relative to boon uptime — useful for spotting whether boons dropped right when they were needed most.
+Boon strips used to count as an offensive stat for MVP scoring. That never really made sense — stripping is more of a general contribution than pure offense. Strips now live under the General MVP category with their own weight slider, so you can tune how much they matter independently.
 
-## Player Breakdown: Min/Avg/Max Hit
+## Wider Stats Sidebars
 
-The player breakdown detail pane now shows Min Hit, Avg Hit, and Max Hit rows per skill. These aggregate correctly across multiple logs, taking the true minimum and maximum across all fights rather than averaging them.
+The inline sidebar grids in breakdown and APM sections are wider now (220→280px), and the dense table player column grew from 170→220px. Names were getting clipped, especially for longer account names.
 
-## Boon Selector Moved to Header
+## Fixes
 
-The boon selector dropdown moved out of the boon section body and into the section header, right-aligned. Saves vertical space and makes it easier to switch boons without scrolling.
-
-## Stats Sections Refactored to FightMetricSection
-
-Boon Uptime, Boon Timeline, and Spike Damage sections now use a shared FightMetricSection component under the hood. This doesn't change how they look or behave, but it means future metric sections (like Strip Spikes) can be added with much less code.
-
-## Skill Usage Visual Refresh
-
-Skill Usage section got a flat design pass — cleaner layout, less visual noise.
-
-## Crash Diagnostics
-
-Added diagnostic logging for a reported issue where the app black screens and loses recent activity on Windows. The app now logs memory stats every 5 minutes and captures detailed crash information (reason, exit code, heap state) when the renderer process dies. All of this shows up in the in-app terminal and the log file on disk, so next time it happens there'll be something to go on.
+- Boon strip metrics now respect the disruption method setting consistently. Previously some strip calculations ignored it.
+- Stats no longer publish before detail hydration finishes, which could cause incomplete data in reports.
+- The LRU cache for log details holds more entries now, preventing thrashing when working with large log sets. Hydrated details also get written to IndexedDB as a fallback when entries do get evicted.
