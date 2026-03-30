@@ -1891,6 +1891,30 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 description="Show separate rows per class instead of combining each player."
                             />
                             <div className="py-3">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div>
+                                        <div className="text-sm font-medium text-gray-200">Min. Fight Participation</div>
+                                        <div className="text-xs text-gray-500">Exclude players below this threshold from leaderboards and MVP.</div>
+                                    </div>
+                                    <div className="text-sm font-semibold text-blue-200 tabular-nums w-12 text-right">
+                                        {statsViewSettings.minParticipationPercent}%
+                                    </div>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    value={statsViewSettings.minParticipationPercent}
+                                    onChange={(e) => updateStatsViewSettingValue('minParticipationPercent', Number(e.target.value))}
+                                    className="w-full accent-blue-500"
+                                />
+                                <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
+                                    <span>0% (all players)</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+                            <div className="py-3">
                                 <div className="text-sm font-medium text-gray-200 mb-2">Top Stats Calculation</div>
                                 <div className="flex gap-2">
                                     {([
