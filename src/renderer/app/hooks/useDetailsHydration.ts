@@ -122,7 +122,6 @@ export function useDetailsHydration({
             const existing = updated[existingIndex];
             updated[existingIndex] = {
                 ...existing,
-                details: result.details,
                 detailsAvailable: true,
                 statsDetailsLoaded: true,
                 detailsLoading: false,
@@ -189,13 +188,11 @@ export function useDetailsHydration({
                     let changed = false;
                     const next = currentLogs.map((entry) => {
                         const filePath = entry.filePath || '';
-                        const details = updatesByPath.get(filePath);
-                        if (!details) return entry;
-                        if (entry.details === details && entry.statsDetailsLoaded && entry.status === 'success') return entry;
+                        if (!updatesByPath.has(filePath)) return entry;
+                        if (entry.statsDetailsLoaded && entry.status === 'success') return entry;
                         changed = true;
                         return {
                             ...entry,
-                            details,
                             detailsAvailable: true,
                             statsDetailsLoaded: true,
                             detailsFetchExhausted: false,

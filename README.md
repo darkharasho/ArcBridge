@@ -28,6 +28,10 @@ AxiBridge automatically uploads arcdps logs, summarizes WvW fights, and sends cl
 
 
 
+## 🔧 Installation
+
+[Install Claude CLI](https://github.com/anthropics/claude-cli) to use this project from the command line.
+
 ## 📖 Quick start
 
 1. **Configure Log Directory**: Set your `arcdps.cbtlogs` folder in the Configuration panel.

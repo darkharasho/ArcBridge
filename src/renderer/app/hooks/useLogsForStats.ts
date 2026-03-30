@@ -38,8 +38,7 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
     const buildStatsSnapshotKey = useCallback((entries: ILogData[]) => {
         let key = `len:${entries.length}`;
         entries.forEach((log, index) => {
-            const cached = detailsCache?.peek(log?.id);
-            const details = cached || (log?.details && typeof log.details === 'object' ? log.details : null);
+            const details = detailsCache?.peek(log?.id) ?? null;
             const detailsId = details ? getStatsObjectId(details) : 0;
             const logId = details ? 0 : getStatsObjectId(log);
             const identifier = String(log?.filePath || log?.id || `idx-${index}`);
@@ -66,11 +65,7 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
             const identity = String(entry?.filePath || entry?.id || `idx-${index}`);
             const previousEntry = previousByIdentity.get(identity);
             if (!previousEntry) return entry;
-            if (previousEntry.details && previousEntry.id && detailsCache) {
-                if (!detailsCache.peek(previousEntry.id)) {
-                    detailsCache.putSync(previousEntry.id, previousEntry.details);
-                }
-            }
+            // Details now live exclusively in DetailsCache — no need to rescue from state
             const shouldCarryStatsLoaded = !entry.statsDetailsLoaded && !!previousEntry.statsDetailsLoaded;
             const shouldPromoteStatus = shouldCarryStatsLoaded && entry.status === 'calculating';
             if (!shouldCarryStatsLoaded && !shouldPromoteStatus) {
