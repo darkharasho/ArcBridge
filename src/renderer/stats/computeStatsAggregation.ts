@@ -140,6 +140,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         const skillDamageSource = activeStatsViewSettings.topSkillDamageSource || 'target';
         const topSkillsMetric = activeStatsViewSettings.topSkillsMetric || 'damage';
         const splitPlayersByClass = Boolean(activeStatsViewSettings.splitPlayersByClass);
+        const minParticipationPercent = activeStatsViewSettings.minParticipationPercent ?? 0;
         const total = validLogs.length;
 
         // Merge damageModMap and personalDamageMods across all logs (data lives under log.details)
@@ -226,6 +227,14 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             return { key: stat.account, stat };
         });
 
+        const totalLogCount = logs.length;
+        const minLogsRequired = minParticipationPercent > 0
+            ? Math.ceil(totalLogCount * (minParticipationPercent / 100))
+            : 0;
+        const leaderboardEntries = minLogsRequired > 0
+            ? playerEntries.filter(({ stat }) => stat.logsJoined >= minLogsRequired)
+            : playerEntries;
+
         const hasMitigationTotals = (totals: DamageMitigationTotals) => Object.values(totals).some((value) => value > 0);
 
         const hydrateMitigationRow = <T extends DamageMitigationRow>(row: T): T => {
@@ -279,7 +288,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             }
         };
 
-        const createLB = (k: string, higher: boolean) => buildLeaderboard(playerEntries.map(({ stat }) => ({
+        const createLB = (k: string, higher: boolean) => buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
             account: stat.account, profession: stat.profession, professionList: stat.professionList, value: getVal(stat, k), count: stat.logsJoined
         })), higher);
 
@@ -484,7 +493,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     };
                 };
 
-                playerEntries.forEach(({ stat }) => {
+                leaderboardEntries.forEach(({ stat }) => {
                     let score = 0;
                     const contribs: any[] = [];
                     metrics.forEach((metric, idx) => {
