@@ -132,16 +132,11 @@ function App() {
     const detailsCacheRef = useRef<DetailsCache | null>(null);
     if (!detailsCacheRef.current) {
         detailsCacheRef.current = new DetailsCache({
-            lruCapacity: 100,
-            resolveDetails: (logId: string) => {
-                const log = logsRef.current.find((l: any) => l.id === logId || l.filePath === logId);
-                return log?.details ?? null;
-            },
+            lruCapacity: 10,
+            resolveDetails: () => null,
             fetchDetails: async (logId: string) => {
                 const log = logsRef.current.find((l: any) => l.id === logId || l.filePath === logId);
                 if (!log) return null;
-                // Fast path: details still in logs state (stripped from logsForStats only)
-                if (log.details) return log.details;
                 try {
                     const result = await window.electronAPI.getLogDetails({
                         filePath: log.filePath,

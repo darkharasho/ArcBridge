@@ -198,7 +198,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
             const cached = detailsCache.peek(log.id);
             if (cached) return cached;
         }
-        return log?.details || {};
+        return {};
     };
 
     // --- Hook Integration ---

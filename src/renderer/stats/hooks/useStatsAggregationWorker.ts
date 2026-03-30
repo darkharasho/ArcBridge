@@ -316,12 +316,12 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                 const prefetchEnd = Math.min(index + 4, totalLogs);
                 for (let i = index; i < prefetchEnd; i++) {
                     const log = logs[i];
-                    if (log?.details) continue; // already in state, no need to fetch
+                    if (detailsCache?.peek(log?.id || log?.filePath)) continue; // already in cache, no need to fetch
                     const logId = log?.id || log?.filePath;
                     if (detailsCache && logId && !detailsCache.peek(logId)) {
                         // Use getLocal (LRU + IndexedDB only) — never trigger IPC/network
                         // fetches here, as they can block the streaming pipeline indefinitely
-                        try { await detailsCache.getLocal(logId); } catch { /* fallback to log.details */ }
+                        try { await detailsCache.getLocal(logId); } catch { /* not in cache */ }
                     }
                 }
                 scheduleStep();
@@ -356,7 +356,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                     const log = logs[index];
                     const logId = log?.id || log?.filePath;
                     // peek is synchronous — details were pre-fetched into LRU by prefetchAndStep
-                    const details = (detailsCache && logId ? detailsCache.peek(logId) : null) || log?.details;
+                    const details = detailsCache && logId ? detailsCache.peek(logId) : null;
                     workerRef.current.postMessage({
                         type: 'log',
                         token: activeToken,
@@ -412,7 +412,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         const logsWithDetails = logs.map((log: any) => {
             const logId = log?.id || log?.filePath;
             const cachedDetails = detailsCache && logId ? detailsCache.peek(logId) : null;
-            if (cachedDetails && !log?.details) {
+            if (cachedDetails) {
                 return { ...log, details: cachedDetails };
             }
             return log;

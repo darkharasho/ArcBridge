@@ -13,7 +13,6 @@ type DashboardLogSummary = {
 
 type DashboardSummaryCacheEntry = {
     logRef: ILogData;
-    detailsRef: any;
     status: ILogData['status'];
     error: any;
     detailsAvailable: boolean | undefined;
@@ -26,9 +25,8 @@ const resolveDashboardStatus = (log: ILogData) => {
     if (log.status === 'queued' || log.status === 'pending' || log.status === 'uploading' || log.status === 'retrying' || log.status === 'discord') {
         return log.status;
     }
-    if (log.detailsAvailable && !log.details && !log.statsDetailsLoaded) return 'calculating';
+    if (log.detailsAvailable && !log.statsDetailsLoaded) return 'calculating';
     if (log.status === 'calculating' && log.statsDetailsLoaded) return 'success';
-    if (log.details) return 'success';
     if (log.status === 'calculating') return 'calculating';
     return log.status || 'queued';
 };
@@ -50,66 +48,16 @@ const buildDashboardLogSummary = (log: ILogData): DashboardLogSummary => {
         };
     }
 
-    const details: any = log.details;
-    const players = Array.isArray(details?.players) ? details.players : [];
-    const targets = Array.isArray(details?.targets) ? details.targets : [];
-
-    let squadCount = 0;
-    let enemyCount = 0;
-    let squadDownsDeaths = 0;
-    let enemyDownsDeaths = 0;
-    let squadDeaths = 0;
-    let enemyDeaths = 0;
-
-    for (let i = 0; i < players.length; i += 1) {
-        const player = players[i];
-        if (player?.notInSquad) continue;
-        squadCount += 1;
-
-        const defenses = player?.defenses?.[0];
-        if (defenses) {
-            const downCount = Number(defenses.downCount || 0);
-            const deadCount = Number(defenses.deadCount || 0);
-            squadDownsDeaths += downCount + deadCount;
-            squadDeaths += deadCount;
-        }
-
-        const statsTargets = Array.isArray(player?.statsTargets) ? player.statsTargets : [];
-        for (let targetIndex = 0; targetIndex < statsTargets.length; targetIndex += 1) {
-            const targetStats = statsTargets[targetIndex];
-            const phase = Array.isArray(targetStats) ? targetStats[0] : null;
-            if (!phase) continue;
-            const downed = Number(phase.downed || 0);
-            const killed = Number(phase.killed || 0);
-            enemyDownsDeaths += downed + killed;
-            enemyDeaths += killed;
-        }
-    }
-
-    for (let i = 0; i < targets.length; i += 1) {
-        if (!targets[i]?.isFake) enemyCount += 1;
-    }
-
-    let isWin: boolean | null = null;
-    if (players.length > 0) {
-        if (squadDownsDeaths > 0 || enemyDownsDeaths > 0) {
-            isWin = enemyDownsDeaths > squadDownsDeaths;
-        } else if (typeof details?.success === 'boolean') {
-            isWin = details.success;
-        } else {
-            isWin = false;
-        }
-    }
-
+    // No dashboardSummary available — return empty summary (details no longer kept in logs state)
     return {
         statusKey: resolveDashboardStatus(log),
-        hasPlayers: players.length > 0,
-        hasTargets: targets.length > 0,
-        squadCount,
-        enemyCount,
-        isWin,
-        squadDeaths,
-        enemyDeaths
+        hasPlayers: false,
+        hasTargets: false,
+        squadCount: 0,
+        enemyCount: 0,
+        isWin: null,
+        squadDeaths: 0,
+        enemyDeaths: 0
     };
 };
 
@@ -143,12 +91,10 @@ export function useDashboardStats(logs: ILogData[]) {
 
         logs.forEach((log, index) => {
             const cacheKey = String(log.filePath || log.id || `idx-${index}`);
-            const detailsRef = (log as any)?.details;
             const cached = previousCache.get(cacheKey);
             const canReuse = Boolean(
                 cached
                 && cached.logRef === log
-                && cached.detailsRef === detailsRef
                 && cached.status === log.status
                 && cached.error === log.error
                 && cached.detailsAvailable === log.detailsAvailable
@@ -156,7 +102,6 @@ export function useDashboardStats(logs: ILogData[]) {
             const summary = canReuse ? cached!.summary : buildDashboardLogSummary(log);
             nextCache.set(cacheKey, {
                 logRef: log,
-                detailsRef,
                 status: log.status,
                 error: log.error,
                 detailsAvailable: log.detailsAvailable,

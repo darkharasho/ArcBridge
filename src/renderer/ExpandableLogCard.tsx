@@ -202,8 +202,8 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
     const resolveEncounterDuration = () => {
-        // Check all available sources: useLogDetails cache, log.details (nested), and log top-level
-        const direct = [details.encounterDuration, log.details?.encounterDuration, log.encounterDuration]
+        // Check all available sources: useLogDetails cache and log top-level
+        const direct = [details.encounterDuration, log.encounterDuration]
             .find((value) => typeof value === 'string' && value.trim().length > 0);
         if (direct) {
             const text = String(direct).trim();
@@ -219,7 +219,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             return text;
         }
 
-        const rawDuration = [details.duration, log.details?.duration, log.duration]
+        const rawDuration = [details.duration, log.duration]
             .find((value) => typeof value === 'string' && value.trim().length > 0);
         if (rawDuration) {
             const text = String(rawDuration).trim();
@@ -234,7 +234,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             return text;
         }
 
-        const durationMs = Number(details.durationMS ?? log.details?.durationMS ?? log.durationMS);
+        const durationMs = Number(details.durationMS ?? log.durationMS);
         if (Number.isFinite(durationMs) && durationMs > 0) {
             return formatDurationFromMs(durationMs);
         }
