@@ -111,7 +111,7 @@ export const DamageBreakdownSection = ({
                     No player skill damage data available for the current selection.
                 </div>
             ) : (
-                <div className="grid lg:grid-cols-[220px_1fr] gap-0 h-[480px]">
+                <div className="grid lg:grid-cols-[280px_1fr] gap-0 h-[480px]">
                     <div className="pr-3 flex flex-col overflow-y-auto" style={{ borderRight: '1px solid var(--border-subtle)' }}>
                         <div className="text-xs uppercase tracking-widest text-[color:var(--text-secondary)] mb-3">
                             Squad Players
