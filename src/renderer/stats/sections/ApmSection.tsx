@@ -112,7 +112,7 @@ export const ApmSection = ({
                         : 'Upload or highlight logs with rotation data to enable the APM table.'}
                 </div>
             ) : (
-                <div className={`grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-0 ${expandedSection === 'apm-stats' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-0 ${expandedSection === 'apm-stats' ? 'flex-1 min-h-0 h-full' : ''}`}>
                     <div className={`pr-3 flex flex-col min-h-0 ${expandedSection === 'apm-stats' ? 'h-full' : ''}`} style={{ borderRight: '1px solid var(--border-subtle)' }}>
                         <div className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>Elite Specs</div>
                         <div className="mb-2">

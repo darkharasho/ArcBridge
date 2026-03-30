@@ -139,7 +139,7 @@ export const PlayerBreakdownSection = ({
                         No player skill damage data available for the current selection.
                     </div>
                 ) : (
-                    <div className={`grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-0 ${expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 h-full' : ''}`}>
+                    <div className={`grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-0 ${expandedSection === 'player-breakdown' ? 'flex-1 min-h-0 h-full' : ''}`}>
                         <div className={`pr-3 flex flex-col overflow-y-auto ${expandedSection === 'player-breakdown' ? 'h-full min-h-0' : ''}`} style={{ borderRight: '1px solid var(--border-subtle)' }}>
                             <div className="flex items-center justify-between gap-2 mb-3">
                                 <div className="text-xs uppercase tracking-widest text-[color:var(--text-secondary)]">
