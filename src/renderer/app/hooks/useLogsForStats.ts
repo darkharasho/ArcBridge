@@ -16,6 +16,7 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
     const statsObjectIdMapRef = useRef<WeakMap<object, number>>(new WeakMap());
     const nextStatsObjectIdRef = useRef(1);
     const lastPublishedStatsKeyRef = useRef('');
+    const hasPendingStatsDetailsRef = useRef(false);
 
     const hasPendingStatsDetails = logs.some((log) => {
         if (detailsCache?.peek(log.id) || log.statsDetailsLoaded) return false;
@@ -23,6 +24,7 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
         if (log.detailsAvailable) return true;
         return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink) && !log.detailsFetchExhausted;
     });
+    hasPendingStatsDetailsRef.current = hasPendingStatsDetails;
 
     const getStatsObjectId = useCallback((value: unknown): number => {
         if (!value || typeof value !== 'object') return 0;
@@ -114,6 +116,10 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
         if (statsBatchTimerRef.current) return;
         statsBatchTimerRef.current = window.setTimeout(() => {
             statsBatchTimerRef.current = null;
+            // Don't publish while details are still being hydrated — the
+            // hasPendingStatsDetails effect will publish once hydration finishes,
+            // ensuring the worker sees a complete cache on its first run.
+            if (hasPendingStatsDetailsRef.current) return;
             publishLogsForStats(logsRef.current);
         }, 1200);
     }, [logs, bulkUploadMode, publishLogsForStats]);
