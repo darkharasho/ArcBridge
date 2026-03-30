@@ -801,12 +801,15 @@ export const computePlayerAggregation = ({
             }
             if (p.support?.[0]) {
                 SUPPORT_METRICS.forEach(m => {
+                    if (m.id === 'boonStrips') return; // handled below with disruption method
                     let val = Number((p.support![0] as any)[m.field!] ?? 0);
                     if (Number.isFinite(val)) {
                         if (supportTimeSanityFields.has(m.field!) && val > 999999) val = 0;
                         s.supportTotals[m.id] = (s.supportTotals[m.id] || 0) + val;
                     }
                 });
+                // Apply disruption method to support boonStrips for consistency
+                s.supportTotals.boonStrips = (s.supportTotals.boonStrips || 0) + getPlayerStrips(p, method);
             }
 
             // Healing
@@ -862,7 +865,7 @@ export const computePlayerAggregation = ({
             const dpsAll = p.dpsAll?.[0];
             const support = p.support?.[0];
             OFFENSE_METRICS.forEach(m => {
-                if (m.id === 'downContributionPercent' || m.id === 'downContribution') return;
+                if (m.id === 'downContributionPercent' || m.id === 'downContribution' || m.id === 'boonStrips') return;
                 if (!m.field) return;
                 let val = 0;
                 let denom = 0;
@@ -887,6 +890,9 @@ export const computePlayerAggregation = ({
             // Use computeDownContribution for offenseTotals.downContribution — it falls back to
             // totalDamageDist when EI uses the aggregate "Enemy Players" target (which zeroes statsTargets.downContribution)
             s.offenseTotals.downContribution = (s.offenseTotals.downContribution || 0) + getPlayerDownContribution(p);
+            // Use getPlayerStrips for offenseTotals.boonStrips so the Offense Detailed
+            // table applies the disruption method consistently with the sidebar total.
+            s.offenseTotals.boonStrips = (s.offenseTotals.boonStrips || 0) + getPlayerStrips(p, method);
             if (p.targetDamageDist && Number.isFinite(battleStandardSkillId)) {
                 const connectedHits = p.targetDamageDist
                     .flatMap((group: any) => group || [])
