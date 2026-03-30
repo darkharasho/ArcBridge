@@ -21,10 +21,15 @@ export class DetailsCache {
         this.resolveDetails = options.resolveDetails ?? null;
     }
 
-    /** Synchronous — checks memory LRU, then synchronous resolver if provided. */
+    /** Synchronous — checks memory LRU (with promotion), then synchronous resolver if provided. */
     peek(logId: string): any | undefined {
         const cached = this.lru.get(logId);
-        if (cached !== undefined) return cached;
+        if (cached !== undefined) {
+            // Promote to most-recently-used to prevent eviction by concurrent prefetch
+            this.lru.delete(logId);
+            this.lru.set(logId, cached);
+            return cached;
+        }
         if (this.resolveDetails) {
             const resolved = this.resolveDetails(logId);
             if (resolved) {
