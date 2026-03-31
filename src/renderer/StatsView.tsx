@@ -3475,7 +3475,7 @@ type SpikeFight = {
         if (!players.length || !fights.length) return map;
         const totalSamplesAllFights = fights.reduce((sum: number, fight: any) => {
             const bucketCount = Math.max(
-                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
                 1
             );
             return sum + bucketCount;
@@ -3487,10 +3487,10 @@ type SpikeFight = {
             let activeSamples = 0;
             fights.forEach((fight: any) => {
                 const playerValue = fight?.values?.[key];
-                const buckets = Array.isArray(playerValue?.buckets5s) ? playerValue.buckets5s : [];
+                const buckets = Array.isArray(playerValue?.buckets) ? playerValue.buckets : [];
                 const bucketCount = Math.max(
                     buckets.length,
-                    Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                    Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
                     1
                 );
                 for (let index = 0; index < bucketCount; index += 1) {
@@ -3563,10 +3563,10 @@ type SpikeFight = {
         if (!activeBoonUptime || !selectedBoonUptimePlayerKey) return [];
         return boonUptimeFightsWithSubgroups.map((fight: any, index: number) => {
             const playerValue = fight?.values?.[selectedBoonUptimePlayerKey] || { total: 0, peak: 0 };
-            const playerBuckets = Array.isArray(playerValue?.buckets5s) ? playerValue.buckets5s : [];
+            const playerBuckets = Array.isArray(playerValue?.buckets) ? playerValue.buckets : [];
             const playerBucketCount = Math.max(
                 playerBuckets.length,
-                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
                 1
             );
             const playerAverage = Math.max(0, Number(playerValue?.total || 0)) / playerBucketCount;
@@ -3579,10 +3579,10 @@ type SpikeFight = {
             const computedFightAverageMax = Object.entries((fight?.values && typeof fight.values === 'object') ? fight.values : {})
                 .filter(([key]) => String(key || '') !== '__all__')
                 .reduce((best: number, [, value]: [string, any]) => {
-                    const buckets = Array.isArray(value?.buckets5s) ? value.buckets5s : [];
+                    const buckets = Array.isArray(value?.buckets) ? value.buckets : [];
                     const bucketCount = Math.max(
                         buckets.length,
-                        Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                        Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
                         1
                     );
                     const avg = Math.max(0, Number(value?.total || 0)) / bucketCount;
@@ -3591,10 +3591,10 @@ type SpikeFight = {
             const computedFightUptimePercentMax = Object.entries((fight?.values && typeof fight.values === 'object') ? fight.values : {})
                 .filter(([key]) => String(key || '') !== '__all__')
                 .reduce((best: number, [, value]: [string, any]) => {
-                    const buckets = Array.isArray(value?.buckets5s) ? value.buckets5s : [];
+                    const buckets = Array.isArray(value?.buckets) ? value.buckets : [];
                     const bucketCount = Math.max(
                         buckets.length,
-                        Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                        Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
                         1
                     );
                     const activeBuckets = Array.from({ length: bucketCount }, (_, i) => Math.max(0, Number(buckets[i] || 0)))
@@ -3650,18 +3650,19 @@ type SpikeFight = {
             };
         }
         const selectedValue = selectedFight?.values?.[selectedBoonUptimePlayerKey];
-        const selectedBuckets = Array.isArray(selectedValue?.buckets5s) ? selectedValue.buckets5s : [];
+        const selectedBuckets = Array.isArray(selectedValue?.buckets) ? selectedValue.buckets : [];
         const bucketCount = Math.max(
             selectedBuckets.length,
-            Math.ceil(Math.max(0, Number(selectedFight?.durationMs || 0)) / 5000),
+            Math.ceil(Math.max(0, Number(selectedFight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
             1
         );
+        const intervalSec = (activeBoonUptime?.intervalMs || 5000) / 1000;
         const data = Array.from({ length: bucketCount }, (_, index) => {
             const maxValue = Object.entries((selectedFight?.values && typeof selectedFight.values === 'object') ? selectedFight.values : {})
                 .filter(([key]) => String(key || '') !== '__all__')
-                .reduce((best: number, [, value]: [string, any]) => Math.max(best, Math.max(0, Number(value?.buckets5s?.[index] || 0))), 0);
+                .reduce((best: number, [, value]: [string, any]) => Math.max(best, Math.max(0, Number(value?.buckets?.[index] || 0))), 0);
             return {
-                label: `${index * 5}s-${(index + 1) * 5}s`,
+                label: `${index * intervalSec}s-${(index + 1) * intervalSec}s`,
                 value: Math.max(0, Number(selectedBuckets[index] || 0)),
                 maxValue
             };
@@ -3697,7 +3698,7 @@ type SpikeFight = {
             };
         });
         return {
-            title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (5s Stack Buckets)`,
+            title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (${(activeBoonUptime?.intervalMs || 5000) / 1000}s Stack Buckets)`,
             data: dataWithIncoming
         };
     }, [selectedBoonUptimeFightIndex, boonUptimeChartData, boonUptimeFightsWithSubgroups, selectedBoonUptimePlayerKey, squadIncomingDamageBucketsByFightId, fallbackIncomingDamageBucketsByFightId, squadIncomingDamageTotalByFightId]);
