@@ -544,10 +544,71 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
 
         // Map data, timeline, boon tables
         const boonIntervalSettings = {
-            boonBucketIntervalMs: activeStatsViewSettings.boonBucketIntervalMs ?? 2000,
+            boonBucketIntervalMs: activeStatsViewSettings.boonBucketIntervalMs ?? 5000,
             stackingBoonBucketIntervalMs: activeStatsViewSettings.stackingBoonBucketIntervalMs ?? 5000,
         };
         const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass, boonIntervalSettings);
+
+        // Pre-compute per-second incoming damage for the boon uptime drilldown overlay.
+        // This runs here (not in the renderer) because log.details is guaranteed available.
+        const incomingDamagePerSecondByFightId: Record<string, { perSecond: number[]; buckets5s: number[]; total: number }> = {};
+        {
+            const normalizeCumulative = (value: any): number[] => {
+                if (!Array.isArray(value) || value.length === 0) return [];
+                const first = value[0];
+                if (typeof first === 'number') return value.map((e: any) => Number(e || 0));
+                if (Array.isArray(first) && first.length > 0 && typeof first[0] === 'number') {
+                    return first.map((e: any) => Number(e || 0));
+                }
+                return [];
+            };
+            const toDeltas = (series: number[]) => {
+                const out: number[] = [];
+                for (let i = 0; i < series.length; i += 1) {
+                    out.push(Math.max(0, Number(series[i] || 0) - (i > 0 ? Number(series[i - 1] || 0) : 0)));
+                }
+                return out;
+            };
+            const toBuckets = (deltas: number[], size: number) => {
+                const out: number[] = [];
+                for (let i = 0; i < deltas.length; i += size) {
+                    let sum = 0;
+                    for (let j = i; j < Math.min(i + size, deltas.length); j += 1) sum += Number(deltas[j] || 0);
+                    out.push(sum);
+                }
+                return out;
+            };
+            const sorted = [...validLogs]
+                .map((log) => ({ log, ts: resolveFightTimestamp(log?.details, log) }))
+                .sort((a, b) => a.ts - b.ts);
+            sorted.forEach(({ log }, fightIndex) => {
+                const details = log?.details;
+                const players = Array.isArray(details?.players) ? details.players : [];
+                const squadPlayers = players.filter((p: any) => !p?.notInSquad);
+                const series = squadPlayers.map((p: any) => toDeltas(normalizeCumulative(p?.damageTaken1S)));
+                const maxLen = series.reduce((best: number, s: number[]) => Math.max(best, s.length), 0);
+                const summed = new Array<number>(maxLen).fill(0);
+                series.forEach((s: number[]) => { for (let i = 0; i < s.length; i += 1) summed[i] += Number(s[i] || 0); });
+                const buckets5s = toBuckets(summed, 5);
+                const total = squadPlayers.reduce((sum: number, p: any) => {
+                    const def = Array.isArray(p?.defenses) ? p.defenses[0] : p?.defenses;
+                    return sum + Math.max(0, Number(def?.damageTaken || 0));
+                }, 0);
+                // Scale buckets to match the authoritative total
+                const bucketSum = buckets5s.reduce((s, v) => s + v, 0);
+                if (total > 0 && bucketSum > 0) {
+                    const scale = total / bucketSum;
+                    for (let i = 0; i < buckets5s.length; i += 1) buckets5s[i] *= scale;
+                }
+                const perSecondSum = summed.reduce((s, v) => s + v, 0);
+                if (total > 0 && perSecondSum > 0) {
+                    const scale = total / perSecondSum;
+                    for (let i = 0; i < summed.length; i += 1) summed[i] *= scale;
+                }
+                const fightId = String(log?.filePath || log?.id || `fight-${fightIndex + 1}`);
+                incomingDamagePerSecondByFightId[fightId] = { perSecond: summed, buckets5s, total };
+            });
+        }
 
         // 1. Squad Class Data
         const squadClassCounts: Record<string, number> = {};
@@ -706,7 +767,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             playerSkillBreakdowns,
             healingBreakdownPlayers,
             topSkillsMetric,
-            mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline,
+            mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline, incomingDamagePerSecondByFightId,
             offensePlayers: Array.from(playerStats.values()).map(s => ({
                 account: s.account, profession: s.profession, professionList: s.professionList,
                 offenseTotals: s.offenseTotals, offenseRateWeights: s.offenseRateWeights, totalFightMs: s.totalFightMs

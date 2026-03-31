@@ -38,7 +38,7 @@ type UptimeBucket = {
     players: Map<string, UptimePlayer>;
     fights: UptimeFight[];
 };
-const defaultBoonIntervalMs = settings?.boonBucketIntervalMs ?? 2000;
+const defaultBoonIntervalMs = settings?.boonBucketIntervalMs ?? 5000;
 const defaultStackingIntervalMs = settings?.stackingBoonBucketIntervalMs ?? 5000;
 const boonBuckets = new Map<string, UptimeBucket>();
 const ensureBoonBucket = (boonId: string, meta?: any) => {

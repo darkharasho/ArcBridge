@@ -5,7 +5,7 @@ import { ShieldAlert, Eraser } from 'lucide-react';
 
 import { formatTopStatValue, formatWithCommas } from './stats/utils/dashboardUtils';
 import { sanitizeWvwLabel, buildFightLabel } from './stats/utils/labelUtils';
-import { parseTimestamp, resolveFightTimestamp } from './stats/utils/timestampUtils';
+import { parseTimestamp } from './stats/utils/timestampUtils';
 import { NON_DAMAGING_CONDITIONS } from './stats/statsMetrics';
 import { StatsSharedContext } from './stats/StatsViewContext';
 import { StatsGroupContainer } from './stats/ui/StatsGroupContainer';
@@ -3082,91 +3082,19 @@ type SpikeFight = {
         return Math.max(1, selectedPeak, fightPeak);
     }, [boonTimelineChartData]);
     const squadIncomingDamageBucketsByFightId = useMemo(() => {
-        const map = new Map<string, number[]>();
-        const normalizeCumulativeSeries = (value: any): number[] => {
-            if (!Array.isArray(value) || value.length === 0) return [];
-            const first = value[0];
-            if (typeof first === 'number') {
-                return value.map((entry: any) => Number(entry || 0));
-            }
-            if (Array.isArray(first) && first.length > 0) {
-                if (typeof first[0] === 'number') {
-                    return first.map((entry: any) => Number(entry || 0));
-                }
-                if (Array.isArray(first[0]) && Array.isArray(first[0][0])) {
-                    const phase0Targets = first
-                        .map((series: any) => Array.isArray(series) ? series.map((entry: any) => Number(entry || 0)) : null)
-                        .filter((series: number[] | null): series is number[] => Array.isArray(series) && series.length > 0);
-                    const maxLen = phase0Targets.reduce((len, series) => Math.max(len, series.length), 0);
-                    if (maxLen <= 0) return [];
-                    const out = new Array<number>(maxLen).fill(0);
-                    phase0Targets.forEach((series) => {
-                        for (let i = 0; i < maxLen; i += 1) {
-                            out[i] += Number(series[i] || 0);
-                        }
-                    });
-                    return out;
-                }
-            }
-            return [];
-        };
-        const toPerSecond = (series: number[]) => {
-            if (!Array.isArray(series) || series.length === 0) return [] as number[];
-            const deltas: number[] = [];
-            for (let i = 0; i < series.length; i += 1) {
-                const current = Number(series[i] || 0);
-                const prev = i > 0 ? Number(series[i - 1] || 0) : 0;
-                deltas.push(Math.max(0, current - prev));
-            }
-            return deltas;
-        };
-        const getBuckets = (values: number[], bucketSizeSeconds: number) => {
-            if (!Array.isArray(values) || values.length === 0 || bucketSizeSeconds <= 0) return [] as number[];
-            const out: number[] = [];
-            for (let i = 0; i < values.length; i += bucketSizeSeconds) {
-                const end = Math.min(i + bucketSizeSeconds, values.length);
-                const bucket = values.slice(i, end).reduce((sum, value) => sum + Number(value || 0), 0);
-                out.push(bucket);
-            }
-            return out;
-        };
-        const sortedLogs = [...logs]
-            .map((log) => ({ log, ts: resolveFightTimestamp(getDetails(log), log) }))
-            .sort((a, b) => a.ts - b.ts)
-            .map((entry) => entry.log);
-        sortedLogs.forEach((log: any, fightIndex: number) => {
-            const details = getDetails(log);
-            const players = Array.isArray(details?.players) ? details.players : [];
-            const squadPlayers = players.filter((entry: any) => !entry?.notInSquad);
-            const perSecondSeries: number[][] = squadPlayers.map((player: any) => toPerSecond(normalizeCumulativeSeries(player?.damageTaken1S)));
-            const squadIncomingDamageTotal = squadPlayers.reduce((sum: number, player: any) => {
-                const defenses = Array.isArray(player?.defenses) ? player.defenses[0] : player?.defenses;
-                return sum + Math.max(0, Number(defenses?.damageTaken || 0));
-            }, 0);
-            const maxLen = perSecondSeries.reduce((best: number, series: number[]) => Math.max(best, Array.isArray(series) ? series.length : 0), 0);
-            const summedPerSecond = new Array<number>(maxLen).fill(0);
-            perSecondSeries.forEach((series: number[]) => {
-                if (!Array.isArray(series)) return;
-                for (let i = 0; i < maxLen; i += 1) {
-                    summedPerSecond[i] += Number(series[i] || 0);
-                }
+        const source = (safeStats as any)?.incomingDamagePerSecondByFightId;
+        const map = new Map<string, { buckets: number[]; perSecond: number[]; total: number }>();
+        if (source && typeof source === 'object') {
+            Object.entries(source).forEach(([fightId, entry]: [string, any]) => {
+                map.set(fightId, {
+                    perSecond: Array.isArray(entry?.perSecond) ? entry.perSecond : [],
+                    buckets: Array.isArray(entry?.buckets5s) ? entry.buckets5s : [],
+                    total: Number(entry?.total || 0),
+                });
             });
-            const durationBucketCount = Math.ceil(Math.max(0, Number(details?.durationMS || 0)) / 5000);
-            const damageBucketCount = Math.ceil(maxLen / 5);
-            const bucketCount = Math.max(1, durationBucketCount, damageBucketCount);
-            const rawBuckets = getBuckets(summedPerSecond, 5);
-            const buckets = Array.from({ length: bucketCount }, (_, bucketIndex) => Number(rawBuckets[bucketIndex] || 0));
-            const bucketSum = buckets.reduce((sum, value) => sum + Number(value || 0), 0);
-            if (squadIncomingDamageTotal > 0 && bucketSum > 0) {
-                const scale = squadIncomingDamageTotal / bucketSum;
-                for (let i = 0; i < buckets.length; i += 1) {
-                    buckets[i] = Number(buckets[i] || 0) * scale;
-                }
-            }
-            map.set(String(log?.filePath || log?.id || `fight-${fightIndex + 1}`), buckets);
-        });
+        }
         return map;
-    }, [logs]);
+    }, [safeStats.incomingDamagePerSecondByFightId]);
     const fallbackIncomingDamageBucketsByFightId = useMemo(() => {
         const map = new Map<string, number[]>();
         incomingStrikeDamageData.fights.forEach((fight: any, fightIndex: number) => {
@@ -3245,9 +3173,9 @@ type SpikeFight = {
             label: `${index * 5}s-${(index + 1) * 5}s`,
             value: Number(scaledBuckets[index] || 0)
         }));
-        const primaryIncomingByFightId = squadIncomingDamageBucketsByFightId.get(String(selectedFight?.id || ''))
-            || squadIncomingDamageBucketsByFightId.get(String(selectedPoint?.fightId || ''))
-            || [];
+        const primaryIncomingEntry = squadIncomingDamageBucketsByFightId.get(String(selectedFight?.id || ''))
+            || squadIncomingDamageBucketsByFightId.get(String(selectedPoint?.fightId || ''));
+        const primaryIncomingByFightId = primaryIncomingEntry?.buckets || [];
         const fallbackIncomingByFightId = fallbackIncomingDamageBucketsByFightId.get(String(selectedFight?.id || ''))
             || fallbackIncomingDamageBucketsByFightId.get(String(selectedPoint?.fightId || ''))
             || [];
@@ -3313,12 +3241,23 @@ type SpikeFight = {
                         {
                             total: Math.max(0, Number(value?.total || 0)),
                             peak: Math.max(0, Number(value?.peak || 0)),
-                            buckets5s: Array.isArray(value?.buckets5s) ? value.buckets5s.map((entry: any) => Math.max(0, Number(entry || 0))) : []
+                            buckets: Array.isArray(value?.buckets) ? value.buckets.map((entry: any) => Math.max(0, Number(entry || 0))) : []
                         }
                     ]))
                     : {}
             }))
         })).filter((boon: any) => boon.id && boon.players.length > 0 && boon.fights.length > 0);
+    }, [safeStats.boonUptimeTimeline]);
+    /* ── intervalMs per-boon (set by computeBoonUptimeTimeline) ── */
+    const boonUptimeIntervalMap = useMemo(() => {
+        const source = Array.isArray((safeStats as any)?.boonUptimeTimeline) ? (safeStats as any).boonUptimeTimeline : [];
+        const map = new Map<string, number>();
+        source.forEach((boon: any) => {
+            if (boon?.id && Number.isFinite(Number(boon?.intervalMs)) && Number(boon.intervalMs) > 0) {
+                map.set(String(boon.id), Number(boon.intervalMs));
+            }
+        });
+        return map;
     }, [safeStats.boonUptimeTimeline]);
     const boonUptimeSubgroupsByFightId = useMemo(() => {
         const fights = Array.isArray((safeStats as any)?.squadCompByFight) ? (safeStats as any).squadCompByFight : [];
@@ -3355,8 +3294,11 @@ type SpikeFight = {
     }, [boonUptimeBoons, boonUptimeSearch]);
     const activeBoonUptime = useMemo(() => {
         if (!activeBoonUptimeId) return null;
-        return boonUptimeBoons.find((boon: any) => boon.id === activeBoonUptimeId) || null;
-    }, [boonUptimeBoons, activeBoonUptimeId]);
+        const boon = boonUptimeBoons.find((b: any) => b.id === activeBoonUptimeId) || null;
+        if (!boon) return null;
+        const intervalMs = boonUptimeIntervalMap.get(boon.id) || 5000;
+        return { ...boon, intervalMs };
+    }, [boonUptimeBoons, activeBoonUptimeId, boonUptimeIntervalMap]);
     const boonUptimeFightsWithSubgroups = useMemo(() => {
         const fights = Array.isArray(activeBoonUptime?.fights) ? activeBoonUptime.fights : [];
         return fights.map((fight: any) => {
@@ -3364,19 +3306,19 @@ type SpikeFight = {
             const values: Record<string, any> = { ...baseValues };
             const subgroupMap = boonUptimeSubgroupsByFightId.get(String(fight?.id || '')) || new Map<number, string[]>();
             const fallbackBucketCount = Math.max(
-                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / 5000),
+                Math.ceil(Math.max(0, Number(fight?.durationMs || 0)) / (activeBoonUptime?.intervalMs || 5000)),
                 1
             );
             subgroupMap.forEach((members, subgroupId) => {
                 if (!Array.isArray(members) || members.length <= 0) return;
                 const bucketCount = members.reduce((best: number, account: string) => {
-                    const memberBuckets = Array.isArray(baseValues?.[account]?.buckets5s) ? baseValues[account].buckets5s : [];
+                    const memberBuckets = Array.isArray(baseValues?.[account]?.buckets) ? baseValues[account].buckets : [];
                     return Math.max(best, memberBuckets.length);
                 }, fallbackBucketCount);
                 const averagedBuckets = Array.from({ length: bucketCount }, (_, bucketIndex) => {
                     const sum = members.reduce((total: number, account: string) => {
                         const memberValue = baseValues?.[account];
-                        const bucketValue = Array.isArray(memberValue?.buckets5s) ? memberValue.buckets5s[bucketIndex] : 0;
+                        const bucketValue = Array.isArray(memberValue?.buckets) ? memberValue.buckets[bucketIndex] : 0;
                         return total + Math.max(0, Number(bucketValue || 0));
                     }, 0);
                     return members.length > 0 ? (sum / members.length) : 0;
@@ -3386,7 +3328,7 @@ type SpikeFight = {
                 values[`${boonUptimeSubgroupKeyPrefix}${subgroupId}`] = {
                     total,
                     peak,
-                    buckets5s: averagedBuckets
+                    buckets: averagedBuckets
                 };
             });
             return {
@@ -3667,27 +3609,29 @@ type SpikeFight = {
                 maxValue
             };
         });
-        const primaryIncomingByFightId = squadIncomingDamageBucketsByFightId.get(String(selectedFight?.id || ''))
-            || squadIncomingDamageBucketsByFightId.get(String(selectedPoint?.fightId || ''))
-            || [];
+        const primaryIncomingEntry = squadIncomingDamageBucketsByFightId.get(String(selectedFight?.id || ''))
+            || squadIncomingDamageBucketsByFightId.get(String(selectedPoint?.fightId || ''));
         const fallbackIncomingByFightId = fallbackIncomingDamageBucketsByFightId.get(String(selectedFight?.id || ''))
             || fallbackIncomingDamageBucketsByFightId.get(String(selectedPoint?.fightId || ''))
             || [];
-        const primaryIncomingTotal = primaryIncomingByFightId.reduce((sum, value) => sum + Number(value || 0), 0);
-        const fallbackIncomingTotal = fallbackIncomingByFightId.reduce((sum, value) => sum + Number(value || 0), 0);
-        const incomingShape = primaryIncomingTotal > 0 ? primaryIncomingByFightId : fallbackIncomingByFightId;
-        const incomingShapeTotal = primaryIncomingTotal > 0 ? primaryIncomingTotal : fallbackIncomingTotal;
-        const incomingTotal = Math.max(
-            0,
-            Number(squadIncomingDamageTotalByFightId.get(String(selectedFight?.id || ''))
-                ?? squadIncomingDamageTotalByFightId.get(String(selectedPoint?.fightId || ''))
-                ?? 0)
-        );
-        let incomingBuckets = Array.from({ length: bucketCount }, (_, index) => Number(incomingShape[index] || 0));
-        if (incomingTotal > 0 && incomingShapeTotal > 0) {
-            const scale = incomingTotal / incomingShapeTotal;
-            incomingBuckets = incomingBuckets.map((value) => Number(value || 0) * scale);
+        const intervalSeconds = Math.max(1, Math.round(intervalSec));
+        const primaryPerSecond = primaryIncomingEntry?.perSecond || [];
+        const aggregatedBuckets: number[] = [];
+        if (primaryPerSecond.length > 0) {
+            for (let i = 0; i < bucketCount; i += 1) {
+                const start = i * intervalSeconds;
+                const end = Math.min(start + intervalSeconds, primaryPerSecond.length);
+                let sum = 0;
+                for (let j = start; j < end; j += 1) {
+                    sum += Number(primaryPerSecond[j] || 0);
+                }
+                aggregatedBuckets.push(sum);
+            }
         }
+        const primaryIncomingTotal = aggregatedBuckets.reduce((sum, value) => sum + Number(value || 0), 0);
+        const incomingBuckets = primaryIncomingTotal > 0
+            ? Array.from({ length: bucketCount }, (_, index) => Number(aggregatedBuckets[index] || 0))
+            : Array.from({ length: bucketCount }, (_, index) => Number(fallbackIncomingByFightId[index] || 0));
         const incomingMax = incomingBuckets.reduce((best, value) => Math.max(best, Number(value || 0)), 0);
         const dataWithIncoming = data.map((entry, index) => {
             const incomingDamage = Number(incomingBuckets[index] || 0);
@@ -3701,7 +3645,7 @@ type SpikeFight = {
             title: `Fight Breakdown - ${selectedPoint.shortLabel || 'Fight'} (${(activeBoonUptime?.intervalMs || 5000) / 1000}s Stack Buckets)`,
             data: dataWithIncoming
         };
-    }, [selectedBoonUptimeFightIndex, boonUptimeChartData, boonUptimeFightsWithSubgroups, selectedBoonUptimePlayerKey, squadIncomingDamageBucketsByFightId, fallbackIncomingDamageBucketsByFightId, squadIncomingDamageTotalByFightId]);
+    }, [selectedBoonUptimeFightIndex, boonUptimeChartData, boonUptimeFightsWithSubgroups, selectedBoonUptimePlayerKey, activeBoonUptime, squadIncomingDamageBucketsByFightId, fallbackIncomingDamageBucketsByFightId]);
     const boonUptimeOverallPercent = useMemo(() => {
         if (!selectedBoonUptimePlayerKey) return null;
         const value = boonUptimePercentByPlayer.get(selectedBoonUptimePlayerKey);

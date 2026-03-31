@@ -72,7 +72,7 @@ describe('computeBoonUptimeTimeline', () => {
         });
 
         const result = computeBoonUptimeTimeline([log], {
-            boonBucketIntervalMs: 2000,
+            boonBucketIntervalMs: 5000,
             stackingBoonBucketIntervalMs: 5000,
         });
 
@@ -85,7 +85,7 @@ describe('computeBoonUptimeTimeline', () => {
         expect(fight.values['TestPlayer.1234'].buckets).toHaveLength(3);
     });
 
-    it('defaults to 2000/5000 when no settings provided', () => {
+    it('defaults to 5000/5000 when no settings provided', () => {
         const log = makeMockLog({
             durationMs: 10000,
             boonId: 717,
@@ -98,10 +98,10 @@ describe('computeBoonUptimeTimeline', () => {
 
         const protBoon = result.find((b) => b.name === 'Protection');
         expect(protBoon).toBeDefined();
-        expect(protBoon!.intervalMs).toBe(2000);
+        expect(protBoon!.intervalMs).toBe(5000);
 
         const fight = protBoon!.fights[0];
-        expect(fight.values['TestPlayer.1234'].buckets).toHaveLength(5);
+        expect(fight.values['TestPlayer.1234'].buckets).toHaveLength(2);
     });
 
     it('samples state transitions at the configured interval', () => {
@@ -136,7 +136,7 @@ describe('computeBoonUptimeTimeline', () => {
         });
 
         const result = computeBoonUptimeTimeline([log], {
-            boonBucketIntervalMs: 2000,
+            boonBucketIntervalMs: 5000,
             stackingBoonBucketIntervalMs: 5000,
         });
 
