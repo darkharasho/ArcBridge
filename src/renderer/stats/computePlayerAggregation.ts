@@ -1013,7 +1013,7 @@ export const computePlayerAggregation = ({
                 const skillId = `s${entry.id}`;
                 let skillEntry = playerBreakdown!.skills.get(skillId);
                 if (!skillEntry) {
-                    skillEntry = { id: skillId, name, icon, damage: 0, downContribution: 0, hits: 0, min: Infinity, max: 0 };
+                    skillEntry = { id: skillId, name, icon, damage: 0, downContribution: 0, hits: 0, casts: 0, min: Infinity, max: 0 };
                     playerBreakdown!.skills.set(skillId, skillEntry);
                 }
                 if (skillEntry.name.startsWith('Skill ') && !name.startsWith('Skill ')) skillEntry.name = name;
@@ -1086,6 +1086,19 @@ export const computePlayerAggregation = ({
                         });
                     });
                 }
+            }
+            // Inject cast counts from rotation data
+            if (Array.isArray(p.rotation)) {
+                p.rotation.forEach((rot: any) => {
+                    if (!rot?.id) return;
+                    const count = rot.skills?.length || 0;
+                    if (count <= 0) return;
+                    const skillId = `s${rot.id}`;
+                    const skillEntry = playerBreakdown!.skills.get(skillId);
+                    if (skillEntry) {
+                        skillEntry.casts += count;
+                    }
+                });
             }
             if (p.totalDamageTaken) {
                 p.totalDamageTaken.forEach((list: any) => {

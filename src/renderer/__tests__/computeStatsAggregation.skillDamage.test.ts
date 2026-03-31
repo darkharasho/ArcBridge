@@ -406,4 +406,141 @@ describe('computeStatsAggregation (skill damage source reconciliation)', () => {
         expect(topWhirlwind).toBeTruthy();
         expect(Number(topWhirlwind.damage || 0)).toBe(355);
     });
+
+    it('aggregates casts from rotation data into player skill breakdown', () => {
+        const arcDividerId = 29852;
+        const playerKey = 'TestPlayer.1234';
+        const log = {
+            status: 'success',
+            filePath: 'skill-casts-test',
+            details: {
+                durationMS: 10000,
+                skillMap: {
+                    [`s${arcDividerId}`]: { name: 'Arc Divider', icon: 'https://example.invalid/arc.png' }
+                },
+                buffMap: {},
+                players: [
+                    {
+                        account: 'TestPlayer.1234',
+                        profession: 'Berserker',
+                        notInSquad: false,
+                        dpsAll: [{ damage: 50000, dps: 5000 }],
+                        statsAll: [{ connectedDamageCount: 20 }],
+                        support: [{ resurrects: 0 }],
+                        damage1S: [[0, 10000, 20000, 30000, 40000, 50000]],
+                        targetDamage1S: [[[0, 10000, 20000, 30000, 40000, 50000]]],
+                        targetDamageDist: [[[
+                            { id: arcDividerId, totalDamage: 50000, connectedHits: 20, hits: 20, min: 1000, max: 5000, downContribution: 10000 }
+                        ]]],
+                        totalDamageDist: [[
+                            { id: arcDividerId, totalDamage: 50000, connectedHits: 20, hits: 20, min: 1000, max: 5000, downContribution: 10000 }
+                        ]],
+                        rotation: [
+                            { id: arcDividerId, skills: [0, 1500, 3000, 4500, 6000] }
+                        ]
+                    }
+                ],
+                targets: []
+            }
+        };
+
+        const { stats } = computeStatsAggregation({ logs: [log as any] });
+        const playerBreakdown = (stats.playerSkillBreakdowns || []).find((entry: any) => entry.key === playerKey);
+        expect(playerBreakdown).toBeTruthy();
+        const skill = (playerBreakdown.skills || []).find((s: any) => s.name === 'Arc Divider');
+        expect(skill).toBeTruthy();
+        expect(skill.casts).toBe(5);
+        expect(skill.hits).toBe(20);
+    });
+
+    it('sets casts to 0 for skills without rotation data (conditions/procs)', () => {
+        const vampAuraId = 30285;
+        const playerKey = 'TestPlayer.1234';
+        const log = {
+            status: 'success',
+            filePath: 'skill-casts-no-rotation-test',
+            details: {
+                durationMS: 10000,
+                skillMap: {},
+                buffMap: {
+                    [`b${vampAuraId}`]: { name: 'Vampiric Aura', icon: 'https://example.invalid/vamp.png' }
+                },
+                players: [
+                    {
+                        account: 'TestPlayer.1234',
+                        profession: 'Berserker',
+                        notInSquad: false,
+                        dpsAll: [{ damage: 5000, dps: 500 }],
+                        statsAll: [{ connectedDamageCount: 3 }],
+                        support: [{ resurrects: 0 }],
+                        damage1S: [[0, 1000, 2000, 3000, 4000, 5000]],
+                        targetDamage1S: [[[0, 1000, 2000, 3000, 4000, 5000]]],
+                        targetDamageDist: [[[
+                            { id: vampAuraId, totalDamage: 5000, connectedHits: 3, hits: 3, min: 1000, max: 2000 }
+                        ]]],
+                        totalDamageDist: [[
+                            { id: vampAuraId, totalDamage: 5000, connectedHits: 3, hits: 3, min: 1000, max: 2000 }
+                        ]],
+                        rotation: []
+                    }
+                ],
+                targets: []
+            }
+        };
+
+        const { stats } = computeStatsAggregation({ logs: [log as any] });
+        const playerBreakdown = (stats.playerSkillBreakdowns || []).find((entry: any) => entry.key === playerKey);
+        expect(playerBreakdown).toBeTruthy();
+        const skill = (playerBreakdown.skills || []).find((s: any) => s.name === 'Vampiric Aura');
+        expect(skill).toBeTruthy();
+        expect(skill.casts).toBe(0);
+    });
+
+    it('aggregates casts across multiple logs', () => {
+        const arcDividerId = 29852;
+        const playerKey = 'TestPlayer.1234';
+        const makeLog = (casts: number[], hits: number, damage: number) => ({
+            status: 'success',
+            filePath: `skill-casts-multi-${casts.length}`,
+            details: {
+                durationMS: 5000,
+                skillMap: {
+                    [`s${arcDividerId}`]: { name: 'Arc Divider' }
+                },
+                buffMap: {},
+                players: [
+                    {
+                        account: 'TestPlayer.1234',
+                        profession: 'Berserker',
+                        notInSquad: false,
+                        dpsAll: [{ damage, dps: damage / 5 }],
+                        statsAll: [{ connectedDamageCount: hits }],
+                        support: [{ resurrects: 0 }],
+                        damage1S: [[0, damage]],
+                        targetDamage1S: [[[0, damage]]],
+                        targetDamageDist: [[[
+                            { id: arcDividerId, totalDamage: damage, connectedHits: hits, hits, min: 500, max: 3000 }
+                        ]]],
+                        totalDamageDist: [[
+                            { id: arcDividerId, totalDamage: damage, connectedHits: hits, hits, min: 500, max: 3000 }
+                        ]],
+                        rotation: [
+                            { id: arcDividerId, skills: casts }
+                        ]
+                    }
+                ],
+                targets: []
+            }
+        });
+
+        const { stats } = computeStatsAggregation({
+            logs: [makeLog([0, 1000, 2000], 10, 20000) as any, makeLog([0, 1000], 8, 15000) as any]
+        });
+        const playerBreakdown = (stats.playerSkillBreakdowns || []).find((entry: any) => entry.key === playerKey);
+        expect(playerBreakdown).toBeTruthy();
+        const skill = (playerBreakdown.skills || []).find((s: any) => s.name === 'Arc Divider');
+        expect(skill).toBeTruthy();
+        expect(skill.casts).toBe(5);
+        expect(skill.hits).toBe(18);
+    });
 });
