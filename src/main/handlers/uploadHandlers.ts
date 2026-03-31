@@ -164,7 +164,8 @@ export function registerUploadHandlers(opts: UploadHandlerOptions) {
                     const knownHash = getKnownFileHash(filePath);
                     if (knownHash) {
                         try {
-                            await updateDpsReportCacheDetails(knownHash, refreshed.details);
+                            // Save pruned version to disk (not full) to reduce memory during future cache loads
+                            await updateDpsReportCacheDetails(knownHash, resolved);
                         } catch {
                             // Cache refresh failures should not block stats hydration.
                         }
