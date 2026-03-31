@@ -543,7 +543,11 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         const topIncomingSkills = Object.values(incomingSkillDamageMap).sort((a, b) => b.damage - a.damage).slice(0, 25);
 
         // Map data, timeline, boon tables
-        const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass);
+        const boonIntervalSettings = {
+            boonBucketIntervalMs: activeStatsViewSettings.boonBucketIntervalMs ?? 2000,
+            stackingBoonBucketIntervalMs: activeStatsViewSettings.stackingBoonBucketIntervalMs ?? 5000,
+        };
+        const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass, boonIntervalSettings);
 
         // 1. Squad Class Data
         const squadClassCounts: Record<string, number> = {};

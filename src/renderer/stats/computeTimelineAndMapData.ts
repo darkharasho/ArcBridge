@@ -78,7 +78,7 @@ const sortLogsByFightOrder = (a: { log: any; originalIndex: number }, b: { log: 
     return a.originalIndex - b.originalIndex;
 };
 
-export function computeTimelineAndMapData(logs: any[], validLogs: any[], splitPlayersByClass = false) {
+export function computeTimelineAndMapData(logs: any[], validLogs: any[], splitPlayersByClass = false, boonIntervalSettings?: { boonBucketIntervalMs: number; stackingBoonBucketIntervalMs: number }) {
     const sortedFightLogs = logs
         .map((log, originalIndex) => ({ log, originalIndex }))
         .sort(sortLogsByFightOrder);
@@ -109,7 +109,7 @@ export function computeTimelineAndMapData(logs: any[], validLogs: any[], splitPl
 
     const { boonTables } = buildBoonTables(validLogs, splitPlayersByClass);
     const boonTimeline = computeBoonTimeline(validLogs);
-    const boonUptimeTimeline = computeBoonUptimeTimeline(validLogs);
+    const boonUptimeTimeline = computeBoonUptimeTimeline(validLogs, boonIntervalSettings);
 
     const timelineData = sortedFightLogs
         .map(({ log }) => {
