@@ -53,6 +53,8 @@ import { SquadCompositionSection } from './stats/sections/SquadCompositionSectio
 import { TimelineSection } from './stats/sections/TimelineSection';
 import { MapDistributionSection } from './stats/sections/MapDistributionSection';
 import { SpikeDamageSection } from './stats/sections/SpikeDamageSection';
+import { AllDamageSection } from './stats/sections/AllDamageSection';
+import type { AllDamageData } from './stats/computeAllDamageData';
 import { FightMetricSection } from './stats/sections/FightMetricSection';
 import type { FightMetricPlayer, FightMetricPoint } from './stats/sections/FightMetricSection';
 import type { StripFight, StripPlayer } from './stats/computeStripSpikesData';
@@ -128,6 +130,7 @@ const ORDERED_SECTION_IDS = [
     'player-breakdown',
     'damage-breakdown',
     'spike-damage',
+    'all-damage',
     'conditions-outgoing',
     'defense-detailed',
     'incoming-damage-modifiers',
@@ -545,6 +548,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const needsApmData = sectionsReady && isSectionVisibleFast('apm-stats');
     const needsSpikeData = sectionsReady && isSectionVisibleFast('spike-damage');
     const needsIncomingStrikeData = sectionsReady && isSectionVisibleFast('incoming-strike-damage');
+    const needsAllDamageData = sectionsReady && isSectionVisibleFast('all-damage');
     const needsConditionData = sectionsReady && isSectionVisibleFast('conditions-outgoing');
 
     const safeStats = useMemo(() => {
@@ -846,6 +850,9 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const [selectedSpikeFightIndex, setSelectedSpikeFightIndex] = useState<number | null>(null);
     const [spikeMode, setSpikeMode] = useState<'hit' | '1s' | '5s' | '30s'>('hit');
     const [spikeDamageBasis, setSpikeDamageBasis] = useState<'all' | 'downContribution'>('all');
+    const [allDamageMode, setAllDamageMode] = useState<'damage' | 'downContribution'>('damage');
+    const [allDamageSelectedFightIndex, setAllDamageSelectedFightIndex] = useState<number | null>(null);
+    const [allDamageSelectedPlayerKey, setAllDamageSelectedPlayerKey] = useState<string | null>(null);
     const [stripPlayerFilter, setStripPlayerFilter] = useState('');
     const [selectedStripPlayerKey, setSelectedStripPlayerKey] = useState<string | null>(null);
     const [stripMode, setStripMode] = useState<string>('strips');
@@ -1494,6 +1501,15 @@ type SpikeFight = {
 
         return { fights, players };
     }, [logs, safeStats, needsSpikeData, spikeDamageBasis]);
+
+    const allDamageData = useMemo<AllDamageData>(() => {
+        if (!needsAllDamageData) return { fights: [], players: [] };
+        const precomputed = (safeStats as any)?.allDamage;
+        if (precomputed && Array.isArray(precomputed.fights)) {
+            return precomputed as AllDamageData;
+        }
+        return { fights: [], players: [] };
+    }, [safeStats, needsAllDamageData]);
 
     const incomingStrikeDamageData = useMemo<{ fights: SpikeFight[]; players: SpikePlayer[] }>(() => {
         if (!needsIncomingStrikeData) {
@@ -4611,6 +4627,15 @@ type SpikeFight = {
                                 spikeDrilldownDeathIndices={spikeDrilldown.deathIndices}
                                 spikeFightSkillRows={spikeFightSkillRows}
                                 spikeFightSkillTitle="Outgoing Skill Damage (Selected Fight)"
+                            /> },
+                            { id: 'all-damage', element: <AllDamageSection
+                                fights={allDamageData.fights}
+                                mode={allDamageMode}
+                                setMode={setAllDamageMode}
+                                selectedFightIndex={allDamageSelectedFightIndex}
+                                setSelectedFightIndex={setAllDamageSelectedFightIndex}
+                                selectedDrilldownPlayerKey={allDamageSelectedPlayerKey}
+                                setSelectedDrilldownPlayerKey={setAllDamageSelectedPlayerKey}
                             /> },
                             { id: 'strip-spikes', element: <FightMetricSection
                                 sectionId="strip-spikes"

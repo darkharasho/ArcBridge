@@ -46,6 +46,7 @@ export const SECTION_ACCENT_COLORS: Record<string, string> = {
     'player-breakdown': 'var(--section-offense)',
     'damage-breakdown': 'var(--section-offense)',
     'spike-damage': 'var(--section-offense)',
+    'all-damage': 'var(--section-offense)',
     'conditions-outgoing': 'var(--section-offense)',
     // Defense group
     'defense-detailed': 'var(--section-defense)',
