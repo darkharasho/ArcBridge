@@ -222,7 +222,7 @@ let discordNoWebhookLogAt = 0;
 let bulkUploadMode = false;
 const bulkLogDetailsCache = new Map<string, any>();
 const bulkLogDetailsByBaseName = new Map<string, any>();
-const BULK_LOG_DETAILS_CACHE_MAX = 600;
+const BULK_LOG_DETAILS_CACHE_MAX = 100;
 const fileHashByPath = new Map<string, string>();
 const FILE_HASH_CACHE_MAX = 1200;
 const normalizeDetailsCacheKey = (filePath: string) => path.resolve(path.normalize(String(filePath || '')));
@@ -244,6 +244,7 @@ const getKnownFileHash = (filePath: string): string | null => {
     if (!normalizedKey) return null;
     return fileHashByPath.get(normalizedKey) || null;
 };
+const BULK_LOG_DETAILS_HEAP_BUDGET_BYTES = 400 * 1024 * 1024; // 400 MB
 const setBulkLogDetails = (filePath: string, details: any) => {
     const rawKey = String(filePath || '');
     const normalizedKey = normalizeDetailsCacheKey(filePath);
@@ -271,6 +272,27 @@ const setBulkLogDetails = (filePath: string, details: any) => {
         if (!oldest) break;
         bulkLogDetailsByBaseName.delete(oldest);
     }
+    // Evict oldest entries when heap usage exceeds budget to prevent OOM
+    try {
+        const heapUsed = process.memoryUsage().heapUsed;
+        if (heapUsed > BULK_LOG_DETAILS_HEAP_BUDGET_BYTES && bulkLogDetailsCache.size > 2) {
+            const evictCount = Math.max(1, Math.ceil(bulkLogDetailsCache.size * 0.25));
+            let evicted = 0;
+            for (const key of bulkLogDetailsCache.keys()) {
+                if (evicted >= evictCount) break;
+                bulkLogDetailsCache.delete(key);
+                evicted += 1;
+            }
+            // Also evict corresponding baseName entries
+            evicted = 0;
+            for (const key of bulkLogDetailsByBaseName.keys()) {
+                if (evicted >= evictCount) break;
+                bulkLogDetailsByBaseName.delete(key);
+                evicted += 1;
+            }
+            console.log(`[Main] Heap budget exceeded (${(heapUsed / 1024 / 1024).toFixed(0)}MB). Evicted ${evictCount} oldest cache entries. Remaining: ${bulkLogDetailsCache.size} entries.`);
+        }
+    } catch { /* memory check failure should not block cache updates */ }
 };
 const getBulkLogDetails = (filePath: string) => {
     const rawKey = String(filePath || '');
@@ -475,7 +497,18 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
 
             const hasJsonPayload = Boolean(jsonDetails && !jsonDetails.error);
             const hasUsableDetails = Boolean(hasJsonPayload && hasUsableFightDetails(jsonDetails));
-            const cacheableDetails = hasUsableDetails ? jsonDetails : null;
+            const detailsErrorCode = String(jsonDetails?.error || '').toLowerCase();
+            const detailsKnownUnavailable = detailsErrorCode === 'incomplete-json'
+                || detailsErrorCode === 'invalid-json'
+                || detailsErrorCode === 'empty-json-payload'
+                || (hasJsonPayload && !hasUsableDetails);
+            // Prune immediately after enrichment so the full JSON can be GC'd.
+            // Discord embeds only read fields that survive pruning.
+            const prunedDetails = hasUsableDetails ? pruneDetailsForStats(jsonDetails) : null;
+            // Release full JSON reference — pruned version is sufficient for all
+            // downstream consumers (disk cache, Discord, in-memory cache, IPC).
+            jsonDetails = null;
+            const cacheableDetails = prunedDetails;
             if (cacheKey && (!cached?.entry?.result || cacheRecomputedFrom404)) {
                 await saveDpsReportCacheEntry(cacheKey, result, cacheableDetails);
             } else if (cacheKey && cached?.entry?.result && cacheableDetails) {
@@ -525,7 +558,7 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                                 }
                             }
                         }
-                        await discord?.sendLog({ ...result, filePath, mode: 'embed', splitEnemiesByTeam }, jsonDetails);
+                        await discord?.sendLog({ ...result, filePath, mode: 'embed', splitEnemiesByTeam }, prunedDetails);
                     }
                 } catch (discordError: any) {
                     console.error('[Main] Discord notification failed:', discordError?.message || discordError);
@@ -540,12 +573,6 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
             }
 
             const hasDetails = hasUsableDetails;
-            const detailsErrorCode = String(jsonDetails?.error || '').toLowerCase();
-            const detailsKnownUnavailable = detailsErrorCode === 'incomplete-json'
-                || detailsErrorCode === 'invalid-json'
-                || detailsErrorCode === 'empty-json-payload'
-                || (hasJsonPayload && !hasUsableDetails);
-            const prunedDetails = hasDetails ? pruneDetailsForStats(jsonDetails) : null;
             const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
             const dashboardSummary = prunedDetails ? buildDashboardSummaryFromDetails(prunedDetails) : undefined;
             const detailsSummary = {

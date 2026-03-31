@@ -94,8 +94,14 @@ const PLAYER_DENY = [
     'groupBuffVolumes', 'groupBuffVolumesActive',
     'selfBuffVolumes', 'selfBuffVolumesActive',
     'offGroupBuffs', 'offGroupBuffsActive',
+    // Active-variant buff generation (unused — only non-active variants are read)
+    'groupBuffsActive', 'selfBuffsActive', 'squadBuffsActive', 'squadBuffVolumes',
+    // Per-target DPS breakdown (unused — dpsAll is used instead)
+    'dpsTargets',
     // Time series (~50 KB/log combined)
     'boonsStates', 'conditionsStates', 'healthPercents', 'barrierPercents',
+    // 1-second resolution time series not consumed by the stats pipeline
+    'breakbarDamage1S', 'powerDamage1S',
     // Misc unused
     'consumables', 'weaponSets', 'weapons', 'guildID',
     // Confirmed-unused damage/condition detail fields
