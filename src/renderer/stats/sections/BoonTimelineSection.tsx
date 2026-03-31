@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bar, CartesianGrid, Cell, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, Brush, CartesianGrid, Cell, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '../ui/ChartContainer';
 import { ChevronDown } from 'lucide-react';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
@@ -335,6 +335,16 @@ export const BoonTimelineSection = ({
                                     dot={{ r: 2 }}
                                     activeDot={{ r: 4 }}
                                 />
+                                {drilldownHeatData.length > 10 && (
+                                    <Brush
+                                        dataKey="label"
+                                        height={24}
+                                        stroke="rgba(129,140,248,0.4)"
+                                        fill="rgba(15,23,42,0.8)"
+                                        travellerWidth={8}
+                                        tickFormatter={() => ''}
+                                    />
+                                )}
                             </ComposedChart>
                         </ChartContainer>
                     )}
