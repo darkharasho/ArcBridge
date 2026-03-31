@@ -112,6 +112,9 @@ export interface Player {
     activeTimes?: number[];
     damageModifiers?: DamageModifierData[];
     incomingDamageModifiers?: DamageModifierData[];
+    // Per-second cumulative damage arrays – shape: [phase][time] or [target][phase][time]
+    damage1S?: number[][];
+    targetDamage1S?: number[][][];
 }
 
 export interface StatsAll {

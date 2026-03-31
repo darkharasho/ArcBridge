@@ -91,13 +91,14 @@ export const STATS_TOC_GROUPS: readonly StatsTocGroup[] = [
         id: 'offense',
         label: 'Offensive Stats',
         icon: Swords,
-        sectionIds: ['offense-detailed', 'damage-modifiers', 'player-breakdown', 'damage-breakdown', 'spike-damage', 'strip-spikes', 'conditions-outgoing'],
+        sectionIds: ['offense-detailed', 'damage-modifiers', 'player-breakdown', 'damage-breakdown', 'spike-damage', 'all-damage', 'strip-spikes', 'conditions-outgoing'],
         items: [
             { id: 'offense-detailed', label: 'Offense Detailed', icon: Swords },
             { id: 'damage-modifiers', label: 'Damage Modifiers', icon: Flame },
             { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
             { id: 'damage-breakdown', label: 'Damage Breakdown', icon: BarChart3 },
             { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
+            { id: 'all-damage', label: 'All Damage', icon: Flame },
             { id: 'strip-spikes', label: 'Strip Spikes', icon: Eraser },
             { id: 'conditions-outgoing', label: 'Conditions', icon: Skull }
         ]
