@@ -1,7 +1,10 @@
 import { resolveFightTimestamp } from './utils/timestampUtils';
 import { sanitizeWvwLabel, buildFightLabel, resolveMapName } from './utils/labelUtils';
 
-export function computeBoonUptimeTimeline(validLogs: any[]) {
+export function computeBoonUptimeTimeline(
+    validLogs: any[],
+    settings?: { boonBucketIntervalMs: number; stackingBoonBucketIntervalMs: number }
+) {
 type UptimePlayer = {
     key: string;
     account: string;
@@ -15,7 +18,7 @@ type UptimePlayer = {
 type UptimeFightValue = {
     total: number;
     peak: number;
-    buckets5s: number[];
+    buckets: number[];
 };
 type UptimeFight = {
     id: string;
@@ -31,17 +34,22 @@ type UptimeBucket = {
     name: string;
     icon?: string;
     stacking: boolean;
+    intervalMs: number;
     players: Map<string, UptimePlayer>;
     fights: UptimeFight[];
 };
+const defaultBoonIntervalMs = settings?.boonBucketIntervalMs ?? 2000;
+const defaultStackingIntervalMs = settings?.stackingBoonBucketIntervalMs ?? 5000;
 const boonBuckets = new Map<string, UptimeBucket>();
 const ensureBoonBucket = (boonId: string, meta?: any) => {
     if (!boonBuckets.has(boonId)) {
+        const stacking = Boolean(meta?.stacking);
         boonBuckets.set(boonId, {
             id: boonId,
             name: String(meta?.name || boonId),
             icon: meta?.icon,
-            stacking: Boolean(meta?.stacking),
+            stacking,
+            intervalMs: stacking ? defaultStackingIntervalMs : defaultBoonIntervalMs,
             players: new Map<string, UptimePlayer>(),
             fights: []
         });
@@ -49,7 +57,10 @@ const ensureBoonBucket = (boonId: string, meta?: any) => {
         const existing = boonBuckets.get(boonId)!;
         if ((!existing.name || existing.name === boonId) && meta?.name) existing.name = String(meta.name);
         if (!existing.icon && meta?.icon) existing.icon = String(meta.icon);
-        if (!existing.stacking && Boolean(meta?.stacking)) existing.stacking = true;
+        if (!existing.stacking && Boolean(meta?.stacking)) {
+            existing.stacking = true;
+            existing.intervalMs = defaultStackingIntervalMs;
+        }
     }
     return boonBuckets.get(boonId)!;
 };
@@ -84,7 +95,8 @@ const sampleStackTimeline = (
     statesPerSource: Record<string, any>,
     bucketCount: number,
     stacking: boolean,
-    boonName: string
+    boonName: string,
+    intervalMs: number
 ) => {
     const buckets = Array.from({ length: bucketCount }, () => 0);
     if (!statesPerSource || typeof statesPerSource !== 'object' || bucketCount <= 0) return buckets;
@@ -94,7 +106,7 @@ const sampleStackTimeline = (
         let stateIndex = 0;
         let currentValue = 0;
         for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex += 1) {
-            const sampleTime = bucketIndex * 5000;
+            const sampleTime = bucketIndex * intervalMs;
             while (stateIndex < normalized.length && normalized[stateIndex][0] <= sampleTime) {
                 currentValue = Math.max(0, Number(normalized[stateIndex][1] || 0));
                 stateIndex += 1;
@@ -105,10 +117,10 @@ const sampleStackTimeline = (
     const stackCap = resolveBoonStackCap(boonName, stacking);
     return buckets.map((value) => normalizeBucketStackValue(value, stacking, stackCap));
 };
-const createFightValue = (buckets5s: number[]): UptimeFightValue => {
-    const total = buckets5s.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
-    const peak = buckets5s.reduce((best, value) => Math.max(best, Math.max(0, Number(value || 0))), 0);
-    return { total, peak, buckets5s };
+const createFightValue = (buckets: number[]): UptimeFightValue => {
+    const total = buckets.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
+    const peak = buckets.reduce((best, value) => Math.max(best, Math.max(0, Number(value || 0))), 0);
+    return { total, peak, buckets };
 };
 
 validLogs
@@ -121,7 +133,6 @@ validLogs
         const squadPlayers = players.filter((p: any) => !p?.notInSquad);
         if (squadPlayers.length <= 0) return;
         const durationMs = Math.max(0, Number(details?.durationMS || 0));
-        const bucketCount = Math.max(1, Math.ceil(Math.max(1, durationMs) / 5000));
         const buffMap = (details?.buffMap && typeof details.buffMap === 'object')
             ? details.buffMap
             : {};
@@ -147,16 +158,19 @@ validLogs
                     ? buff.statesPerSource
                     : null;
                 if (!statesPerSource) return;
-                const buckets5s = sampleStackTimeline(
+                const boonBucket = ensureBoonBucket(boonId, meta);
+                const intervalMs = boonBucket.intervalMs;
+                const boonBucketCount = Math.max(1, Math.ceil(Math.max(1, durationMs) / intervalMs));
+                const buckets = sampleStackTimeline(
                     statesPerSource as Record<string, any>,
-                    bucketCount,
+                    boonBucketCount,
                     Boolean(meta?.stacking),
-                    String(meta?.name || '')
+                    String(meta?.name || ''),
+                    intervalMs
                 );
-                const fightValue = createFightValue(buckets5s);
+                const fightValue = createFightValue(buckets);
                 if (fightValue.total <= 0 && fightValue.peak <= 0) return;
 
-                const boonBucket = ensureBoonBucket(boonId, meta);
                 const playerEntry = boonBucket.players.get(key) || {
                     key,
                     account,
@@ -197,8 +211,8 @@ validLogs
                 values[playerKey] = {
                     total: Number(fightValue.total || 0),
                     peak: Number(fightValue.peak || 0),
-                    buckets5s: Array.isArray(fightValue.buckets5s)
-                        ? fightValue.buckets5s.map((entry: any) => Number(entry || 0))
+                    buckets: Array.isArray(fightValue.buckets)
+                        ? fightValue.buckets.map((entry: any) => Number(entry || 0))
                         : []
                 };
                 maxTotal = Math.max(maxTotal, Number(fightValue.peak || 0));
@@ -222,6 +236,7 @@ return Array.from(boonBuckets.values())
         name: bucket.name || bucket.id,
         icon: bucket.icon,
         stacking: bucket.stacking,
+        intervalMs: bucket.intervalMs,
         players: Array.from(bucket.players.values()).sort((a, b) => {
             const peakDiff = Number(b.peak || 0) - Number(a.peak || 0);
             if (peakDiff !== 0) return peakDiff;
