@@ -761,10 +761,11 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const mvpStatWeightKeys: Record<string, keyof IMvpWeights> = {
         'Down Contribution': 'offensiveDownContribution',
         'Strips': 'generalStrips',
-        'CC': 'offensiveCc',
+        'CC': 'generalCc',
         'DPS': 'offensiveDps',
         'Damage': 'offensiveDamage',
         'Healing': 'defensiveHealing',
+        'Downed Healing': 'defensiveDownedHealing',
         'Cleanses': 'defensiveCleanses',
         'Stability': 'defensiveStability',
         'Revives': 'defensiveRevives',

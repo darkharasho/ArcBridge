@@ -2161,6 +2161,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 <div className="space-y-2">
                                     {([
                                         { key: 'generalStrips', label: 'Strips' },
+                                        { key: 'generalCc', label: 'CC' },
                                         { key: 'generalDistanceToTag', label: 'Distance to Tag' },
                                         { key: 'generalParticipation', label: 'Participation' },
                                         { key: 'generalDodging', label: 'Dodging' }
@@ -2188,7 +2189,6 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 <div className="space-y-2">
                                     {([
                                         { key: 'offensiveDownContribution', label: 'Down Contribution' },
-                                        { key: 'offensiveCc', label: 'CC' },
                                         { key: 'offensiveDps', label: 'DPS' },
                                         { key: 'offensiveDamage', label: 'Damage' }
                                     ] as Array<{ key: keyof IMvpWeights; label: string }>).map(item => (
@@ -2215,6 +2215,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 <div className="space-y-2">
                                     {([
                                         { key: 'defensiveHealing', label: 'Healing' },
+                                        { key: 'defensiveDownedHealing', label: 'Downed Healing' },
                                         { key: 'defensiveCleanses', label: 'Cleanses' },
                                         { key: 'defensiveStability', label: 'Stability' },
                                         { key: 'defensiveRevives', label: 'Revives' }

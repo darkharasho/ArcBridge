@@ -39,14 +39,15 @@ export interface IEmbedStatSettings {
 
 export interface IMvpWeights {
     offensiveDownContribution: number;
-    offensiveCc: number;
     offensiveDps: number;
     offensiveDamage: number;
     generalStrips: number;
+    generalCc: number;
     generalDistanceToTag: number;
     generalParticipation: number;
     generalDodging: number;
     defensiveHealing: number;
+    defensiveDownedHealing: number;
     defensiveCleanses: number;
     defensiveStability: number;
     defensiveRevives: number;
@@ -62,6 +63,7 @@ type LegacyMvpWeights = {
     strips?: number;
     stability?: number;
     cc?: number;
+    offensiveCc?: number;
     revives?: number;
     distanceToTag?: number;
     participation?: number;
@@ -156,14 +158,15 @@ export const DEFAULT_EMBED_STATS: IEmbedStatSettings = {
 
 export const DEFAULT_MVP_WEIGHTS: IMvpWeights = {
     offensiveDownContribution: 1,
-    offensiveCc: 0.7,
     offensiveDps: 0.2,
     offensiveDamage: 0.2,
     generalStrips: 1,
+    generalCc: 0.7,
     generalDistanceToTag: 0.7,
     generalParticipation: 0.7,
     generalDodging: 0.4,
     defensiveHealing: 1,
+    defensiveDownedHealing: 0.7,
     defensiveCleanses: 1,
     defensiveStability: 1,
     defensiveRevives: 0.7,
@@ -180,14 +183,15 @@ export const normalizeMvpWeights = (weights: unknown): IMvpWeights => {
     };
     return {
         offensiveDownContribution: toNum(input.offensiveDownContribution ?? input.downContribution, DEFAULT_MVP_WEIGHTS.offensiveDownContribution),
-        offensiveCc: toNum(input.offensiveCc ?? input.cc, DEFAULT_MVP_WEIGHTS.offensiveCc),
         offensiveDps: toNum(input.offensiveDps ?? input.dps, DEFAULT_MVP_WEIGHTS.offensiveDps),
         offensiveDamage: toNum(input.offensiveDamage ?? input.damage, DEFAULT_MVP_WEIGHTS.offensiveDamage),
         generalStrips: toNum(input.generalStrips ?? input.offensiveStrips ?? input.strips, DEFAULT_MVP_WEIGHTS.generalStrips),
+        generalCc: toNum(input.generalCc ?? input.offensiveCc ?? input.cc, DEFAULT_MVP_WEIGHTS.generalCc),
         generalDistanceToTag: toNum(input.generalDistanceToTag ?? input.defensiveDistanceToTag ?? input.distanceToTag, DEFAULT_MVP_WEIGHTS.generalDistanceToTag),
         generalParticipation: toNum(input.generalParticipation ?? input.defensiveParticipation ?? input.participation, DEFAULT_MVP_WEIGHTS.generalParticipation),
         generalDodging: toNum(input.generalDodging ?? input.defensiveDodging ?? input.dodging, DEFAULT_MVP_WEIGHTS.generalDodging),
         defensiveHealing: toNum(input.defensiveHealing ?? input.healing, DEFAULT_MVP_WEIGHTS.defensiveHealing),
+        defensiveDownedHealing: toNum(input.defensiveDownedHealing, DEFAULT_MVP_WEIGHTS.defensiveDownedHealing),
         defensiveCleanses: toNum(input.defensiveCleanses ?? input.cleanses, DEFAULT_MVP_WEIGHTS.defensiveCleanses),
         defensiveStability: toNum(input.defensiveStability ?? input.stability, DEFAULT_MVP_WEIGHTS.defensiveStability),
         defensiveRevives: toNum(input.defensiveRevives ?? input.revives, DEFAULT_MVP_WEIGHTS.defensiveRevives),
