@@ -54,6 +54,8 @@ import { TimelineSection } from './stats/sections/TimelineSection';
 import { MapDistributionSection } from './stats/sections/MapDistributionSection';
 import { SpikeDamageSection } from './stats/sections/SpikeDamageSection';
 import { AllDamageSection } from './stats/sections/AllDamageSection';
+import { AllBoonsSection } from './stats/sections/AllBoonsSection';
+import type { AllBoonsBoon } from './stats/sections/AllBoonsSection';
 import type { AllDamageData } from './stats/computeAllDamageData';
 import { FightMetricSection } from './stats/sections/FightMetricSection';
 import type { FightMetricPlayer, FightMetricPoint } from './stats/sections/FightMetricSection';
@@ -123,6 +125,7 @@ const ORDERED_SECTION_IDS = [
     'timeline',
     'map-distribution',
     'boon-output',
+    'all-boons',
     'boon-timeline',
     'boon-uptime',
     'offense-detailed',
@@ -787,6 +790,10 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const [selectedBoonTimelinePlayerKey, setSelectedBoonTimelinePlayerKey] = useState<string | null>(null);
     const [selectedBoonTimelineFightIndex, setSelectedBoonTimelineFightIndex] = useState<number | null>(null);
     const [showBoonTimelineIncomingHeatmap, setShowBoonTimelineIncomingHeatmap] = useState(false);
+    const [allBoonsActiveBoonId, setAllBoonsActiveBoonId] = useState<string | null>(null);
+    const [allBoonsScope, setAllBoonsScope] = useState<'selfBuffs' | 'groupBuffs' | 'squadBuffs' | 'totalBuffs'>('squadBuffs');
+    const [allBoonsSelectedFightIndex, setAllBoonsSelectedFightIndex] = useState<number | null>(null);
+    const [allBoonsSelectedPlayerKey, setAllBoonsSelectedPlayerKey] = useState<string | null>(null);
     const [showBoonUptimeIncomingHeatmap, setShowBoonUptimeIncomingHeatmap] = useState(false);
     const [boonUptimeSearch, setBoonUptimeSearch] = useState('');
     const [activeBoonUptimeId, setActiveBoonUptimeId] = useState<string | null>(null);
@@ -3703,6 +3710,15 @@ type SpikeFight = {
         }
     }, [boonTimelineBoons, activeBoonTimelineId]);
     useEffect(() => {
+        if (boonTimelineBoons.length === 0) {
+            if (allBoonsActiveBoonId !== null) setAllBoonsActiveBoonId(null);
+            return;
+        }
+        if (!allBoonsActiveBoonId || !boonTimelineBoons.some((boon: any) => boon.id === allBoonsActiveBoonId)) {
+            setAllBoonsActiveBoonId(boonTimelineBoons[0].id);
+        }
+    }, [boonTimelineBoons, allBoonsActiveBoonId]);
+    useEffect(() => {
         const players = activeBoonTimeline?.players || [];
         if (players.length === 0) {
             if (selectedBoonTimelinePlayerKey !== null) setSelectedBoonTimelinePlayerKey(null);
@@ -4743,6 +4759,17 @@ type SpikeFight = {
                                 setBoonSearch={setBoonSearch}
                                 formatBoonMetricDisplay={formatBoonMetricDisplay}
                                 getBoonMetricValue={getBoonMetricValue}
+                            /> },
+                            { id: 'all-boons', element: <AllBoonsSection
+                                boons={boonTimelineBoons as AllBoonsBoon[]}
+                                activeBoonId={allBoonsActiveBoonId}
+                                setActiveBoonId={setAllBoonsActiveBoonId}
+                                scope={allBoonsScope}
+                                setScope={setAllBoonsScope}
+                                selectedFightIndex={allBoonsSelectedFightIndex}
+                                setSelectedFightIndex={setAllBoonsSelectedFightIndex}
+                                selectedPlayerKey={allBoonsSelectedPlayerKey}
+                                setSelectedPlayerKey={setAllBoonsSelectedPlayerKey}
                             /> },
                             { id: 'boon-timeline', element: <BoonTimelineSection
                                 boonSearch={boonTimelineSearch}
