@@ -132,3 +132,56 @@ Frame your opening message to the brainstorming flow as:
 > "I need to implement a feature for the AxiBridge project based on a Discord thread discussion. Here's the feature request: <paste the Feature Description and Visual References and Key Decisions sections from the synthesis>"
 
 Then follow the brainstorming skill's process from there.
+
+### Step 8: Close the Discord Thread
+
+After the feature has been fully implemented, merged, and the user confirms it's done, close out the Discord thread. Use the bot token from Step 2 and the thread ID from the arguments.
+
+**Important:** All Discord API calls in this step must pipe JSON through Python to avoid shell escaping issues with curl's `-d` flag. Use this pattern for every POST/PATCH:
+
+```bash
+python3 -c "
+import json, sys
+sys.stdout.write(json.dumps(<payload_dict>))
+" | curl -s -w '\n%{http_code}' -X <METHOD> \
+  -H 'Authorization: Bot <token>' \
+  -H 'Content-Type: application/json' \
+  -d @- '<url>'
+```
+
+**8a. Post a comment summarizing what was implemented:**
+
+```bash
+python3 -c "
+import json, sys
+sys.stdout.write(json.dumps({'content': '<summary of what was implemented>'}))
+" | curl -s -w '\n%{http_code}' -X POST \
+  -H 'Authorization: Bot <token>' \
+  -H 'Content-Type: application/json' \
+  -d @- 'https://discord.com/api/v10/channels/$ARGUMENTS/messages'
+```
+
+**8b. Update tags to "Closed" and archive (close) the thread:**
+
+First, fetch the parent forum channel's available tags to find the "Closed" tag ID:
+
+```bash
+curl -s -H "Authorization: Bot <token>" "https://discord.com/api/v10/channels/<parent_id>" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f'{t[\"id\"]}: {t[\"name\"]}') for t in d.get('available_tags',[])]"
+```
+
+The `parent_id` comes from the thread metadata fetched in Step 3.
+
+Then PATCH the thread to set only the "Closed" tag (removing all others) and archive it:
+
+```bash
+python3 -c "
+import json, sys
+sys.stdout.write(json.dumps({'applied_tags': ['<closed_tag_id>'], 'archived': True}))
+" | curl -s -w '\n%{http_code}' -X PATCH \
+  -H 'Authorization: Bot <token>' \
+  -H 'Content-Type: application/json' \
+  -d @- 'https://discord.com/api/v10/channels/$ARGUMENTS'
+```
+
+If any call returns 403, report that the bot lacks permission for that action and move on to the next sub-step.
