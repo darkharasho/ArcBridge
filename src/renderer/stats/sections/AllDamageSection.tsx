@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { Brush, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '../ui/ChartContainer';
 import { Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
@@ -356,6 +356,16 @@ export const AllDamageSection = ({
                                                 />
                                             );
                                         })}
+                                        {drilldownChartData.length > 10 && (
+                                            <Brush
+                                                dataKey="label"
+                                                height={24}
+                                                stroke="rgba(129,140,248,0.4)"
+                                                fill="rgba(15,23,42,0.8)"
+                                                travellerWidth={8}
+                                                tickFormatter={() => ''}
+                                            />
+                                        )}
                                     </LineChart>
                                 </ChartContainer>
                             </div>
