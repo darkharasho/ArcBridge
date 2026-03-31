@@ -206,7 +206,7 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     topSkillDamageSource: 'target',
     topSkillsMetric: 'damage',
     minParticipationPercent: 0,
-    boonBucketIntervalMs: 2000,
+    boonBucketIntervalMs: 5000,
     stackingBoonBucketIntervalMs: 5000
 };
 
