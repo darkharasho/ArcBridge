@@ -281,6 +281,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 case 'cc': return s.cc;
                 case 'stability': return s.stab;
                 case 'revives': return s.revives;
+                case 'downedHealing': return s.healingTotals['downedHealing'] || 0;
                 case 'dps': return s.dps;
                 case 'damage': return s.damage;
                 case 'participation': return s.logsJoined;
@@ -303,6 +304,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             cc: createLB('cc', true),
             stability: createLB('stability', true),
             revives: createLB('revives', true),
+            downedHealing: createLB('downedHealing', true),
             participation: createLB('participation', true),
             dps: createLB('dps', true),
             damage: createLB('damage', true),
@@ -445,7 +447,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 higher?: boolean;
             }> = [
                 { name: 'Down Contribution', weight: activeMvpWeights.offensiveDownContribution, leaderboard: leaderboards.downContrib, getter: (s) => s.downContrib },
-                { name: 'CC', weight: activeMvpWeights.offensiveCc, leaderboard: leaderboards.cc, getter: (s) => s.cc },
                 { name: 'DPS', weight: activeMvpWeights.offensiveDps, leaderboard: leaderboards.dps, getter: (s) => s.dps },
                 { name: 'Damage', weight: activeMvpWeights.offensiveDamage, leaderboard: leaderboards.damage, getter: (s) => s.damage }
             ];
@@ -458,6 +459,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 higher?: boolean;
             }> = [
                 { name: 'Strips', weight: activeMvpWeights.generalStrips, leaderboard: leaderboards.strips, getter: (s) => s.strips },
+                { name: 'CC', weight: activeMvpWeights.generalCc, leaderboard: leaderboards.cc, getter: (s) => s.cc },
                 { name: 'Distance to Tag', weight: activeMvpWeights.generalDistanceToTag, leaderboard: leaderboards.closestToTag, getter: (s) => getVal(s, 'closestToTag'), higher: false },
                 { name: 'Participation', weight: activeMvpWeights.generalParticipation, leaderboard: leaderboards.participation, getter: (s) => s.logsJoined },
                 { name: 'Dodging', weight: activeMvpWeights.generalDodging, leaderboard: leaderboards.dodges, getter: (s) => s.dodges }
@@ -471,6 +473,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 higher?: boolean;
             }> = [
                 { name: 'Healing', weight: activeMvpWeights.defensiveHealing, leaderboard: leaderboards.healing, getter: (s) => s.healing },
+                { name: 'Downed Healing', weight: activeMvpWeights.defensiveDownedHealing, leaderboard: leaderboards.downedHealing, getter: (s) => s.healingTotals['downedHealing'] || 0 },
                 { name: 'Cleanses', weight: activeMvpWeights.defensiveCleanses, leaderboard: leaderboards.cleanses, getter: (s) => s.cleanses },
                 { name: 'Stability', weight: activeMvpWeights.defensiveStability, leaderboard: leaderboards.stability, getter: (s) => s.stab },
                 { name: 'Revives', weight: activeMvpWeights.defensiveRevives, leaderboard: leaderboards.revives, getter: (s) => s.revives }
