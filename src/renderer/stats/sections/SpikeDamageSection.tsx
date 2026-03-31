@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { Brush, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '../ui/ChartContainer';
 import { Zap } from 'lucide-react';
 import { getProfessionColor } from '../../../shared/professionUtils';
@@ -289,6 +289,16 @@ export const SpikeDamageSection = ({
                                         isAnimationActive={false} activeDot={false} dot={makeMarkerDot('down')} />
                                     <Line type="linear" dataKey="deathMarker" name="Death" stroke="transparent" connectNulls={false}
                                         isAnimationActive={false} activeDot={false} dot={makeMarkerDot('death')} />
+                                    {drilldownSeries.length > 10 && (
+                                        <Brush
+                                            dataKey="label"
+                                            height={24}
+                                            stroke="rgba(129,140,248,0.4)"
+                                            fill="rgba(15,23,42,0.8)"
+                                            travellerWidth={8}
+                                            tickFormatter={() => ''}
+                                        />
+                                    )}
                                 </LineChart>
                             </ChartContainer>
                             {hoveredMarkerInfo && (

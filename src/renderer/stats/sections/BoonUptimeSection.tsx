@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bar, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, Brush, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '../ui/ChartContainer';
 import { ChevronDown } from 'lucide-react';
 import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
@@ -467,6 +467,16 @@ export const BoonUptimeSection = ({
                                         strokeDasharray="6 4"
                                         ifOverflow="extendDomain"
                                         label={{ value: '25', position: 'right', fill: '#fbbf24', fontSize: 10 }}
+                                    />
+                                )}
+                                {drilldownHeatData.length > 10 && (
+                                    <Brush
+                                        dataKey="label"
+                                        height={24}
+                                        stroke="rgba(129,140,248,0.4)"
+                                        fill="rgba(15,23,42,0.8)"
+                                        travellerWidth={8}
+                                        tickFormatter={() => ''}
                                     />
                                 )}
                             </ComposedChart>
