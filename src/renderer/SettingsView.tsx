@@ -53,6 +53,7 @@ const SETTINGS_SECTIONS = [
     { id: 'embed-top', label: 'Embed Top Stats' },
     { id: 'help-updates', label: 'Help & Updates' },
     { id: 'dashboard-stats', label: 'Dashboard Stats' },
+    { id: 'boon-uptime-resolution', label: 'Boon Uptime' },
     { id: 'mvp-weighting', label: 'MVP Weighting' },
     { id: 'close-behavior', label: 'Close Behavior' },
     { id: 'export-import', label: 'Export / Import' },
@@ -2081,6 +2082,62 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         );
                                     })}
                                 </div>
+                            </div>
+                        </div>
+                    </SettingsSection>
+
+                    <SettingsSection title="Boon Uptime Resolution" icon={BarChart3} delay={0.19} sectionId="boon-uptime-resolution">
+                        <p className="text-sm text-gray-400 mb-4">
+                            Control the bucket interval used for boon uptime timeline charts. Finer resolution reveals short coverage gaps but increases data size.
+                        </p>
+                        <div className="divide-y divide-white/5">
+                            <div className="py-3">
+                                <div className="text-sm font-medium text-gray-200 mb-2">Non-stacking boons (Protection, Resistance, etc.)</div>
+                                <div className="flex gap-2">
+                                    {([
+                                        { id: 1000, label: '1s' },
+                                        { id: 2000, label: '2s' },
+                                        { id: 3000, label: '3s' },
+                                        { id: 5000, label: '5s' },
+                                    ] as const).map((option) => (
+                                        <button
+                                            key={option.id}
+                                            type="button"
+                                            onClick={() => updateStatsViewSettingValue('boonBucketIntervalMs', option.id)}
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${statsViewSettings.boonBucketIntervalMs === option.id
+                                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                }`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Default: 2s — reveals short boon drops that 5s buckets hide.</div>
+                            </div>
+                            <div className="py-3">
+                                <div className="text-sm font-medium text-gray-200 mb-2">Stacking boons (Might, Stability, etc.)</div>
+                                <div className="flex gap-2">
+                                    {([
+                                        { id: 1000, label: '1s' },
+                                        { id: 2000, label: '2s' },
+                                        { id: 3000, label: '3s' },
+                                        { id: 5000, label: '5s' },
+                                    ] as const).map((option) => (
+                                        <button
+                                            key={option.id}
+                                            type="button"
+                                            onClick={() => updateStatsViewSettingValue('stackingBoonBucketIntervalMs', option.id)}
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${statsViewSettings.stackingBoonBucketIntervalMs === option.id
+                                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                }`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Default: 5s — stacking boons fluctuate constantly so coarser buckets are fine.</div>
                             </div>
                         </div>
                     </SettingsSection>
