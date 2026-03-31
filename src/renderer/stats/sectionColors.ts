@@ -54,6 +54,7 @@ export const SECTION_ACCENT_COLORS: Record<string, string> = {
     'incoming-strike-damage': 'var(--section-defense)',
     'defense-mitigation': 'var(--section-mitigation)',
     'boon-output': 'var(--section-boon)',
+    'all-boons': 'var(--section-boon)',
     'boon-timeline': 'var(--section-boon)',
     'boon-uptime': 'var(--section-boon)',
     'support-detailed': 'var(--section-support)',
