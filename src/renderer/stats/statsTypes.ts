@@ -44,6 +44,7 @@ export interface PlayerSkillDamageEntry {
     damage: number;
     downContribution: number;
     hits: number;
+    casts: number;
     min: number;
     max: number;
 }
