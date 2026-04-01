@@ -66,4 +66,5 @@ export const SECTION_ACCENT_COLORS: Record<string, string> = {
     'sigil-relic-uptime': 'var(--brand-primary)',
     'skill-usage': 'var(--brand-primary)',
     'apm-stats': 'var(--brand-primary)',
+    'player-comparison': 'var(--brand-primary)',
 };
