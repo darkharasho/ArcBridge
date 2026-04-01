@@ -587,7 +587,15 @@ export const PlayerBreakdownSection = ({
                                                                     : 0
                                                             )
                                                         },
-                                                        { label: 'Max Hit', value: formatTopStatValue(activePlayerSkill?.max || 0) }
+                                                        { label: 'Max Hit', value: formatTopStatValue(activePlayerSkill?.max || 0) },
+                                                        { label: 'Casts', value: formatTopStatValue(activePlayerSkill?.casts || 0) },
+                                                        { label: 'Hits', value: formatTopStatValue(activePlayerSkill?.hits || 0) },
+                                                        {
+                                                            label: 'Hits / Cast',
+                                                            value: (activePlayerSkill?.casts || 0) > 0
+                                                                ? formatWithCommas((activePlayerSkill?.hits || 0) / (activePlayerSkill?.casts || 1), 2)
+                                                                : '—'
+                                                        }
                                                     ]).map((row) => (
                                                         <div key={row.label} className="grid grid-cols-[1.2fr_0.8fr] px-3 py-2 text-xs text-[color:var(--text-primary)] border-b border-[color:var(--border-subtle)] hover:bg-[var(--bg-hover)]">
                                                             <div className="font-semibold text-white">{row.label}</div>
