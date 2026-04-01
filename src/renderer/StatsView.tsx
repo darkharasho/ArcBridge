@@ -67,6 +67,7 @@ import { FightCompSection } from './stats/sections/FightCompSection';
 import { SquadDamageComparisonSection } from './stats/sections/SquadDamageComparisonSection';
 import { SquadKillPressureSection } from './stats/sections/SquadKillPressureSection';
 import { SquadTagDistanceDeathsSection } from './stats/sections/SquadTagDistanceDeathsSection';
+import { PlayerComparisonSection } from './stats/sections/PlayerComparisonSection';
 import type { TagDistanceDeathFightSummary } from './stats/computeTagDistanceDeaths';
 import { StatsHeader } from './stats/ui/StatsHeader';
 import { WebUploadBanner } from './stats/ui/WebUploadBanner';
@@ -849,7 +850,10 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const [incomingDamageModSearch, setIncomingDamageModSearch] = useState('');
     const [activeIncomingDamageMod, setActiveIncomingDamageMod] = useState('');
 
-
+    const [comparisonMode, setComparisonMode] = useState<'head-to-head' | 'vs-average'>('head-to-head');
+    const [comparisonCategory, setComparisonCategory] = useState<'offense' | 'defense' | 'support' | 'healing'>('offense');
+    const [comparisonPlayerAKey, setComparisonPlayerAKey] = useState<string | null>(null);
+    const [comparisonPlayerBKey, setComparisonPlayerBKey] = useState<string | null>(null);
 
     const [skillUsagePlayerFilter, setSkillUsagePlayerFilter] = useState('');
     const [skillUsageSkillFilter, setSkillUsageSkillFilter] = useState('');
@@ -4917,6 +4921,16 @@ type SpikeFight = {
                                 formatApmValue={formatApmValue}
                                 formatCastRateValue={formatCastRateValue}
                                 formatCastCountValue={formatCastCountValue}
+                            /> },
+                            { id: 'player-comparison', element: <PlayerComparisonSection
+                                comparisonMode={comparisonMode}
+                                setComparisonMode={setComparisonMode}
+                                comparisonCategory={comparisonCategory}
+                                setComparisonCategory={setComparisonCategory}
+                                playerAKey={comparisonPlayerAKey}
+                                setPlayerAKey={setComparisonPlayerAKey}
+                                playerBKey={comparisonPlayerBKey}
+                                setPlayerBKey={setComparisonPlayerBKey}
                             /> },
                         ])}
                     </>
