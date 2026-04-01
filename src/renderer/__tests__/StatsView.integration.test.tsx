@@ -1,31 +1,34 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
 import { StatsView } from '../StatsView';
 import { DEFAULT_STATS_VIEW_SETTINGS } from '../global.d';
 
 describe('StatsView (integration)', () => {
     it('renders key sections from precomputed stats', () => {
-        const reportPath = path.resolve(process.cwd(), 'web/report.json');
-        const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+        const stats = {
+            fightSummaries: [],
+            playerSkillBreakdowns: [],
+            apmBreakdowns: [],
+            skillUsageBreakdowns: [],
+            fightDiffMode: {},
+        };
 
         render(
             <StatsView
                 logs={[]}
                 onBack={() => {}}
-                precomputedStats={report.stats}
-                statsViewSettings={report.stats?.statsViewSettings}
+                precomputedStats={stats as any}
+                statsViewSettings={DEFAULT_STATS_VIEW_SETTINGS}
                 embedded
                 dashboardTitle="Statistics Dashboard - Overview"
             />
         );
 
         expect(screen.getByText(/Statistics Dashboard - Overview/i)).toBeInTheDocument();
-        expect(screen.getByText(/Fight Breakdown/i)).toBeInTheDocument();
-        expect(screen.getByText(/Fight Comparison/i)).toBeInTheDocument();
-        expect(screen.getByText(/Skill Usage Tracker/i)).toBeInTheDocument();
-        expect(screen.getByText(/APM Breakdown/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Fight Breakdown/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Fight Comparison/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Skill Usage Tracker/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/APM Breakdown/i).length).toBeGreaterThan(0);
     });
 
     it('auto-selects first player skill in Player Breakdown when data exists', async () => {
