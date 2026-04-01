@@ -57,6 +57,7 @@ export const SECTION_ACCENT_COLORS: Record<string, string> = {
     'all-boons': 'var(--section-boon)',
     'boon-timeline': 'var(--section-boon)',
     'boon-uptime': 'var(--section-boon)',
+    'stab-performance': 'var(--section-boon)',
     'support-detailed': 'var(--section-support)',
     'healing-stats': 'var(--section-healing)',
     'healing-breakdown': 'var(--section-healing)',
