@@ -33,7 +33,7 @@ export const DEFAULT_EMBED_STATS = {
 
 export const DEFAULT_MVP_WEIGHTS = {
     offensiveDownContribution: 1,
-    offensiveStrips: 1,
+    generalStrips: 1,
     offensiveDps: 0.2,
     offensiveDamage: 0.2,
     generalCc: 0.7,
@@ -59,7 +59,7 @@ export const normalizeMvpWeights = (weights: unknown) => {
     };
     return {
         offensiveDownContribution: toNum('offensiveDownContribution', 'downContribution', DEFAULT_MVP_WEIGHTS.offensiveDownContribution),
-        offensiveStrips: toNum('offensiveStrips', 'strips', DEFAULT_MVP_WEIGHTS.offensiveStrips),
+        generalStrips: toNum('generalStrips', 'offensiveStrips', toNum('generalStrips', 'strips', DEFAULT_MVP_WEIGHTS.generalStrips)),
         offensiveDps: toNum('offensiveDps', 'dps', DEFAULT_MVP_WEIGHTS.offensiveDps),
         offensiveDamage: toNum('offensiveDamage', 'damage', DEFAULT_MVP_WEIGHTS.offensiveDamage),
         generalCc: toNum('generalCc', 'offensiveCc', toNum('generalCc', 'cc', DEFAULT_MVP_WEIGHTS.generalCc)),

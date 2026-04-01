@@ -93,7 +93,7 @@ export function createElectronAPIMock(overrides?: ElectronAPIMockOverrides): voi
         },
         mvpWeights: {
             offensiveDownContribution: 1,
-            offensiveStrips: 1,
+            generalStrips: 1,
             offensiveDps: 0.2,
             offensiveDamage: 0.2,
             generalCc: 0.7,
