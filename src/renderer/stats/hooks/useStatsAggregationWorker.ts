@@ -47,6 +47,33 @@ export interface AggregationDiagnosticsState {
     droppedLogMessages?: number;
 }
 
+const DETAILS_TOP_LEVEL_DENY = ['phases', 'logErrors'];
+const PLAYER_DENY = ['targetBreakbarDamage1S', 'squadBuffVolumesActive'];
+
+/** Strip fields not needed by computeStatsAggregation before structured-cloning to the worker. */
+export const pruneDetailsForWorker = (details: any): any => {
+    if (!details || typeof details !== 'object') return details;
+    const pruned: any = {};
+    for (const key of Object.keys(details)) {
+        if (!DETAILS_TOP_LEVEL_DENY.includes(key)) {
+            pruned[key] = details[key];
+        }
+    }
+    if (Array.isArray(pruned.players)) {
+        pruned.players = pruned.players.map((player: any) => {
+            if (!player || typeof player !== 'object') return player;
+            const p: any = {};
+            for (const key of Object.keys(player)) {
+                if (!PLAYER_DENY.includes(key)) {
+                    p[key] = player[key];
+                }
+            }
+            return p;
+        });
+    }
+    return pruned;
+};
+
 export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod, detailsCache: detailsCacheProp }: UseStatsAggregationProps) => {
     const detailsCacheContext = useContext(DetailsCacheContext);
     const detailsCache = detailsCacheProp ?? detailsCacheContext;
@@ -102,7 +129,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         }
     };
     const getPrunedLogForWorker = (log: any, details: any, index: number) => {
-        const logWithDetails = details ? { ...log, details } : log;
+        const logWithDetails = details ? { ...log, details: pruneDetailsForWorker(details) } : log;
         const cacheKey = String(log?.filePath || log?.id || `idx-${index}`);
         const detailsRef = details && typeof details === 'object' ? details : null;
         const cached = prunedLogCacheRef.current.get(cacheKey);
