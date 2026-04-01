@@ -126,13 +126,14 @@ export const STATS_TOC_GROUPS: readonly StatsTocGroup[] = [
         id: 'other',
         label: 'Other Metrics',
         icon: Star,
-        sectionIds: ['fight-diff-mode', 'special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats'],
+        sectionIds: ['fight-diff-mode', 'special-buffs', 'sigil-relic-uptime', 'skill-usage', 'apm-stats', 'player-comparison'],
         items: [
             { id: 'fight-diff-mode', label: 'Fight Comparison', icon: GitCompareArrows },
             { id: 'special-buffs', label: 'Special Buffs', icon: Star },
             { id: 'sigil-relic-uptime', label: 'Sigil/Relic Uptime', icon: Gw2SigilIcon },
             { id: 'skill-usage', label: 'Skill Usage', icon: Keyboard },
-            { id: 'apm-stats', label: 'APM Breakdown', icon: Gw2ApmIcon }
+            { id: 'apm-stats', label: 'APM Breakdown', icon: Gw2ApmIcon },
+            { id: 'player-comparison', label: 'Player Comparison', icon: Users }
         ]
     }
 ];

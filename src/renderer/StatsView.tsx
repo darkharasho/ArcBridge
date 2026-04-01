@@ -145,7 +145,8 @@ const ORDERED_SECTION_IDS = [
     'special-buffs',
     'sigil-relic-uptime',
     'skill-usage',
-    'apm-stats'
+    'apm-stats',
+    'player-comparison'
 ] as const;
 
 const EMPTY_SKILL_USAGE_SUMMARY: SkillUsageSummary = {
