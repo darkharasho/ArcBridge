@@ -22,52 +22,17 @@ export function useDetailsHydration({
     const detailsHydrationAttemptsRef = useRef<Map<string, number>>(new Map());
     const MAX_DETAILS_HYDRATION_ATTEMPTS = 8;
 
-    const applyHydratedStatsBatch = useCallback((batch: Array<{ filePath: string; details: any }>) => {
-        if (batch.length === 0) return;
-        // logsForStats is metadata-only — details live in DetailsCache (populated by hydration).
-        // Only update metadata flags here. Do NOT force new references for entries that are
-        // already loaded — that causes rapid worker restarts during hydration which accumulate
-        // memory and can crash the renderer. The final force-touch after hydration completes
-        // (setLogsForStats((prev) => [...prev])) handles the single worker restart.
-        setLogsForStats((currentStatsLogs) => {
-            const updatesByPath = new Map(batch.map((entry) => [entry.filePath, entry.details]));
-            let changed = false;
-            const next = currentStatsLogs.map((entry) => {
-                const filePath = entry.filePath || '';
-                const details = updatesByPath.get(filePath);
-                if (!details) return entry;
-                updatesByPath.delete(filePath);
-                if (entry.statsDetailsLoaded === true && entry.status === 'success') {
-                    // Already marked as loaded — skip. The final force-touch after
-                    // hydration completes will restart the worker with full cache.
-                    return entry;
-                }
-                changed = true;
-                return {
-                    ...entry,
-                    statsDetailsLoaded: true,
-                    detailsFetchExhausted: false,
-                    status: 'success' as const
-                };
-            });
-            if (updatesByPath.size === 0) {
-                return changed ? next : currentStatsLogs;
-            }
-            const additions: ILogData[] = [];
-            updatesByPath.forEach((_details, filePath) => {
-                const base = logsRef.current.find((log) => log.filePath === filePath);
-                additions.push({
-                    ...(base || { id: filePath, filePath, permalink: '' }),
-                    statsDetailsLoaded: true,
-                    detailsFetchExhausted: false,
-                    status: 'success'
-                } as ILogData);
-                changed = true;
-            });
-            if (!changed) return currentStatsLogs;
-            return additions.length > 0 ? [...additions, ...next] : next;
-        });
-    }, [setLogsForStats, logsRef]);
+    const applyHydratedStatsBatch = useCallback((_batch: Array<{ filePath: string; details: any }>) => {
+        // No-op: details are already in DetailsCache (putSync'd before this call).
+        // The main `logs` state gets metadata flags via setLogsDeferred in flushHydratedBatch.
+        // The force-touch after hydration completes (setLogsForStats((prev) => [...prev]))
+        // triggers the single worker restart with a fully warm cache.
+        //
+        // Previously this called setLogsForStats to update statsDetailsLoaded flags,
+        // but that created new array references every 8 hydrated details, restarting
+        // the worker streaming effect and causing an infinite cycling loop on
+        // memory-constrained systems with 30+ logs.
+    }, []);
 
     const fetchLogDetails = useCallback(async (log: ILogData) => {
         if ((detailsCache?.peek(log.id)) || !log.filePath || !window.electronAPI?.getLogDetails) return;
