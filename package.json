@@ -24,6 +24,7 @@
         "build:all": "npm run build && electron-builder --linux --win",
         "build:qa:win": "npm run build && electron-builder --win zip",
         "build:github": "node scripts/build-github.mjs",
+        "prepare:release": "node scripts/prepare-release.mjs",
         "generate:release-notes": "node scripts/generate-release-notes.mjs",
         "dev:fake-first-time": "node scripts/fake-first-time.mjs",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
