@@ -69,10 +69,22 @@ node scripts/prepare-release.mjs <BUMP_TYPE> --skip-release-notes
 
 This script handles: validate → ci:local → version bump + commit + push → git tag + push tag.
 
-After the tag is pushed, GitHub Actions will automatically build the release artifacts and deploy. Tell the user:
-- The tag has been pushed and CI is building
-- Link to the Actions run: `https://github.com/darkharasho/axibridge/actions`
-- The release will appear at `https://github.com/darkharasho/axibridge/releases` once CI completes
+After the tag is pushed, GitHub Actions will automatically build the release artifacts and deploy. Use `gh` to find the specific run IDs and report to the user:
+
+```bash
+# Get the version that was just tagged
+tag=$(git describe --tags --abbrev=0)
+
+# Find the Actions runs triggered by this tag
+gh run list --repo darkharasho/axibridge --limit 5 --json databaseId,name,event,headBranch,url \
+  --jq ".[] | select(.headBranch == \"$tag\")"
+```
+
+Report to the user:
+- The new version number
+- Link to the release page: `https://github.com/darkharasho/axibridge/releases/tag/<TAG>`
+- Link to each GitHub Actions run triggered by the tag (with run name + direct URL)
+- That the release will be published with Linux AppImage and Windows installer once CI completes
 
 ### Local mode (`local_build` argument present)
 
