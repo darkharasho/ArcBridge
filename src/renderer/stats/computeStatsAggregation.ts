@@ -426,8 +426,9 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
         const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass, boonIntervalSettings);
 
         // Classify player roles (support vs damage) for MVP gating
+        // Use all players (not just leaderboardEntries) so the median reflects the full squad
         const roleClassifications = classifyPlayerRoles(
-            leaderboardEntries.map(({ stat }) => stat),
+            playerEntries.map(({ stat }) => stat),
             boonTables,
         );
         for (const [account, classification] of roleClassifications) {
