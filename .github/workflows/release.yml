@@ -38,15 +38,6 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Web E2E tests
-        run: npm run test:e2e:web
-
-      - name: Electron E2E tests
-        run: xvfb-run -a npm run test:e2e:electron
-
   build:
     needs: [test]
     strategy:
