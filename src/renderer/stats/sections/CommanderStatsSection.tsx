@@ -172,7 +172,7 @@ export const CommanderTargetConversionSection = ({
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
                 <Target className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-primary)' }} />
                 <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Target Conversion</h3>
                 <span className="ml-auto text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
@@ -290,7 +290,7 @@ export const CommanderTagMovementSection = ({
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
                 <Route className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-primary)' }} />
                 <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Tag Movement</h3>
                 <span className="ml-auto text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
@@ -409,7 +409,7 @@ export const CommanderTagDeathResponseSection = ({
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
                 <Skull className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-primary)' }} />
                 <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Squad Response To Tag Death</h3>
                 <span className="ml-auto text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
@@ -548,7 +548,7 @@ export const CommanderPushTimingSection = ({
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
                 <Clock3 className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-primary)' }} />
                 <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Push Timing</h3>
                 <span className="ml-auto text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
@@ -741,7 +741,7 @@ export const CommanderStatsSection = ({
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
                 <span className="flex shrink-0" style={{ color: 'var(--brand-primary)' }}><CommanderTagIcon className="w-4 h-4" /></span>
                 <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Commander Stats</h3>
                 <span className="ml-auto text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>{rows.length} Commanders</span>

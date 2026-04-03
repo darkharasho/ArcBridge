@@ -81,7 +81,7 @@ export const SkillUsageSection = ({
         className={`${expandedSection === 'skill-usage' ? 'fixed inset-0 z-50 overflow-y-auto h-screen flex flex-col pb-10' : ''}`}
         style={{ scrollMarginTop: '80px' }}
     >
-        <div className="flex items-center gap-2 mb-3.5">
+        <div className="flex flex-wrap items-center gap-2 mb-3.5">
             <Keyboard className="w-4 h-4 shrink-0 text-slate-400" />
             <h3 className="text-sm font-semibold text-slate-200">Skill Usage Tracker</h3>
             <div className="ml-auto flex items-center gap-2">

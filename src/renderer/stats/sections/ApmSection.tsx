@@ -90,7 +90,7 @@ export const ApmSection = ({
         className={`${expandedSection === 'apm-stats' ? `fixed inset-0 z-50 overflow-y-auto h-screen modal-pane flex flex-col pb-10 ${expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'}` : ''}`}
         style={expandedSection === 'apm-stats' ? { background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' } : undefined}
     >
-        <div className="flex items-center gap-2 mb-3.5">
+        <div className="flex flex-wrap items-center gap-2 mb-3.5">
             <span className="flex shrink-0" style={{ color: 'var(--brand-primary)' }}><Gw2ApmIcon className="w-4 h-4" /></span>
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>APM Breakdown</h3>
             <button

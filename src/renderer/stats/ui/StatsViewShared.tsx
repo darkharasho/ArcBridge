@@ -383,7 +383,7 @@ export const InlineIconLabel = ({
 }) => {
     const resolvedIconUrl = useCachedIconUrl(iconUrl);
     return (
-        <span className={`inline-flex items-center gap-2 min-w-0 ${className}`}>
+        <span className={`${truncateText ? 'flex' : 'inline-flex'} items-center gap-2 min-w-0 ${className}`}>
             {resolvedIconUrl ? (
                 <img src={resolvedIconUrl} alt={name} className={`${iconClassName} shrink-0`} />
             ) : null}

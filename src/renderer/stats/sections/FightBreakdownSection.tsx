@@ -193,10 +193,10 @@ export const FightBreakdownSection = ({
             style={isExpanded ? { background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' } : undefined}
         >
             <div>
-                <div className="flex items-center gap-2 mb-3.5">
+                <div className="flex flex-wrap items-center gap-2 mb-3.5">
                     <Swords className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-primary)' }} />
                     <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Fight Breakdown</h3>
-                    <div className="ml-auto flex items-center gap-2">
+                    <div className="ml-auto flex flex-wrap items-center gap-2 min-w-0">
                         {!isExpanded && (
                             <PillToggleGroup
                                 value={fightBreakdownTab}
@@ -242,7 +242,7 @@ export const FightBreakdownSection = ({
                             <table className="w-full text-xs table-auto min-w-[720px]">
                                 <thead>
                                     <tr className="text-[color:var(--text-secondary)] uppercase tracking-widest text-[10px] border-b border-[color:var(--border-default)]">
-                                        <th className="text-right py-2 px-2 w-8">#</th>
+                                        <th className="text-right py-2 px-3 w-8">#</th>
                                         <th className="text-left py-2 px-3 w-[240px]">Report</th>
                                         <th className="text-left py-2 px-3 w-20">Duration</th>
                                         <th className="text-left py-2 px-3 w-20">Outcome</th>
@@ -299,7 +299,7 @@ export const FightBreakdownSection = ({
                                 <tbody>
                                     {fights.map((fight: any, idx: number) => (
                                         <tr key={fight.id || `${fight.label}-${idx}`} className="border-b border-[color:var(--border-subtle)] hover:bg-[var(--bg-hover)]">
-                                            <td className="py-2 px-2 text-right font-mono text-[color:var(--text-muted)] w-8">{idx + 1}</td>
+                                            <td className="py-2 px-3 text-right font-mono text-[color:var(--text-muted)] w-8">{idx + 1}</td>
                                             <td className="py-2 px-3 w-[240px]">{renderReportCell(fight)}</td>
                                             <td className="py-2 px-3 text-[color:var(--text-primary)] w-20">{fight.duration || '--:--'}</td>
                                             <td

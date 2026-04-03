@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getLogs: () => ipcRenderer.invoke('get-logs'),
     saveLogs: (logs: any[]) => ipcRenderer.send('save-logs', logs),
     openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+    openMobilePreview: (url: string) => ipcRenderer.invoke('open-mobile-preview', url),
     fetchImageAsDataUrl: (url: string) => ipcRenderer.invoke('fetch-image-data-url', url),
     onConsoleLog: (callback: (log: any) => void) => {
         ipcRenderer.on('console-log', (_event, value) => callback(value))

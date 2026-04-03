@@ -51,7 +51,7 @@ export const SigilRelicUptimeSection = ({
             className={`${expandedSection === 'sigil-relic-uptime' ? `fixed inset-0 z-50 overflow-y-auto h-screen modal-pane flex flex-col pb-10 ${expandedSectionClosing ? 'modal-pane-exit' : 'modal-pane-enter'}` : ''}`}
             style={expandedSection === 'sigil-relic-uptime' ? { background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' } : undefined}
         >
-            <div className="flex items-center gap-2 mb-3.5">
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
                 <span className="flex shrink-0" style={{ color: 'var(--section-support)' }}><Gw2SigilIcon className="w-4 h-4" /></span>
                 <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>Sigil/Relic Uptime</h3>
                 <button
