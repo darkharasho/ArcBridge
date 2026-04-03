@@ -29,11 +29,12 @@ const WEIGHTS = {
     healing: 1.0,
     cleanses: 1.0,
     stability: 0.8,
+    totalBoonOutput: 0.8,
     resistance: 0.7,
     might: 0.6,
     regen: 0.5,
-    damage: -0.6,
-    downContrib: -0.8,
+    damage: -0.4,
+    downContrib: -0.6,
 } as const;
 
 /** Players scoring above this multiplier of the squad median support score are classified as support. */
@@ -89,6 +90,21 @@ const extractBoonGeneration = (boonTables: BoonTable[], boonId: string): Map<str
 };
 
 /**
+ * Extract total boon output across ALL boons per player (squad generationMs summed).
+ * Captures broad support contribution even when individual boons are low.
+ */
+const extractTotalBoonOutput = (boonTables: BoonTable[]): Map<string, number> => {
+    const result = new Map<string, number>();
+    for (const table of boonTables) {
+        for (const row of table.rows) {
+            const existing = result.get(row.account) || 0;
+            result.set(row.account, existing + row.categories.squadBuffs.generationMs);
+        }
+    }
+    return result;
+};
+
+/**
  * Classify each player as 'support' or 'damage' based on a weighted support score
  * normalized against the squad median.
  *
@@ -107,11 +123,13 @@ export const classifyPlayerRoles = (
     const mightGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.might);
     const regenGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.regen);
     const resistanceGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.resistance);
+    const totalBoonGen = extractTotalBoonOutput(boonTables);
 
     // Collect per-metric values across all players (non-zero only for median calculation)
     const healingValues = players.map((p) => p.healing).filter((v) => v > 0);
     const cleanseValues = players.map((p) => p.cleanses).filter((v) => v > 0);
     const stabValues = players.map((p) => p.stab).filter((v) => v > 0);
+    const totalBoonValues = players.map((p) => totalBoonGen.get(p.account) || 0).filter((v) => v > 0);
     const mightValues = players.map((p) => mightGen.get(p.account) || 0).filter((v) => v > 0);
     const regenValues = players.map((p) => regenGen.get(p.account) || 0).filter((v) => v > 0);
     const resistValues = players.map((p) => resistanceGen.get(p.account) || 0).filter((v) => v > 0);
@@ -122,6 +140,7 @@ export const classifyPlayerRoles = (
     const medianHealing = computeMedian(healingValues);
     const medianCleanses = computeMedian(cleanseValues);
     const medianStab = computeMedian(stabValues);
+    const medianTotalBoon = computeMedian(totalBoonValues);
     const medianMight = computeMedian(mightValues);
     const medianRegen = computeMedian(regenValues);
     const medianResist = computeMedian(resistValues);
@@ -134,6 +153,7 @@ export const classifyPlayerRoles = (
         { metric: 'Healing', weight: WEIGHTS.healing, getValue: (p) => p.healing, median: medianHealing },
         { metric: 'Cleanses', weight: WEIGHTS.cleanses, getValue: (p) => p.cleanses, median: medianCleanses },
         { metric: 'Stability', weight: WEIGHTS.stability, getValue: (p) => p.stab, median: medianStab },
+        { metric: 'Total Boons', weight: WEIGHTS.totalBoonOutput, getValue: (p) => totalBoonGen.get(p.account) || 0, median: medianTotalBoon },
         { metric: 'Resistance', weight: WEIGHTS.resistance, getValue: (p) => resistanceGen.get(p.account) || 0, median: medianResist },
         { metric: 'Might', weight: WEIGHTS.might, getValue: (p) => mightGen.get(p.account) || 0, median: medianMight },
         { metric: 'Regen', weight: WEIGHTS.regen, getValue: (p) => regenGen.get(p.account) || 0, median: medianRegen },
