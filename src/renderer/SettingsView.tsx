@@ -2660,7 +2660,12 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {sorted.map((c) => (
+                                                        {sorted.map((c, idx) => {
+                                                            const showBelow = idx < 3;
+                                                            const tooltipPosition = showBelow
+                                                                ? { top: '100%', marginTop: 4 }
+                                                                : { bottom: '100%', marginBottom: 4 };
+                                                            return (
                                                             <tr key={c.account} className="border-b border-white/5 hover:bg-white/5 relative group">
                                                                 <td className="px-3 py-1.5 text-gray-200">{c.account}</td>
                                                                 <td className="px-3 py-1.5" style={{ color: getProfessionColor(c.profession) }}>{c.profession}</td>
@@ -2680,8 +2685,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                                 </td>
                                                                 {c.factors && c.factors.length > 0 && (
                                                                     <td className="p-0" style={{ position: 'absolute', left: 0, right: 0, pointerEvents: 'none' }}>
-                                                                        <div className="hidden group-hover:block absolute left-4 bottom-full mb-1 z-50 pointer-events-none">
-                                                                            <div className="rounded-[4px] border border-white/15 px-3 py-2.5 text-[11px] shadow-xl" style={{ background: 'var(--bg-card)', minWidth: 340 }}>
+                                                                        <div className="hidden group-hover:block absolute left-4 z-50 pointer-events-none" style={tooltipPosition}>
+                                                                            <div className="rounded-[4px] border border-white/15 px-3 py-2.5 text-[11px] shadow-2xl" style={{ background: '#1a1d23', minWidth: 340 }}>
                                                                                 <div className="text-gray-300 font-medium mb-1.5">
                                                                                     {c.account} — <span className={c.role === 'support' ? 'text-emerald-300' : 'text-orange-300'}>{c.role}</span>
                                                                                     <span className="text-gray-500 font-normal ml-2">score {c.supportScore.toFixed(2)} / threshold {c.threshold.toFixed(2)}</span>
@@ -2715,7 +2720,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                                     </td>
                                                                 )}
                                                             </tr>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </tbody>
                                                 </table>
                                             </div>
