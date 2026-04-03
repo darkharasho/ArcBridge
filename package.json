@@ -141,11 +141,7 @@
             "target": [
                 "nsis"
             ],
-            "icon": "public/img/AxiBridge-white.png",
-            "signingHashAlgorithms": [
-                "sha256"
-            ],
-            "sign": "./build/sign.js"
+            "icon": "public/img/AxiBridge-white.png"
         },
         "nsis": {
             "oneClick": true,
