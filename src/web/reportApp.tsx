@@ -52,7 +52,8 @@ import {
     Flame,
     ShieldMinus,
     ArrowUpDown,
-    Crosshair
+    Crosshair,
+    Eraser
 } from 'lucide-react';
 
 
@@ -616,13 +617,15 @@ export function ReportApp() {
             id: 'offense',
             label: 'Offensive Stats',
             icon: Swords,
-            sectionIds: ['offense-detailed', 'damage-modifiers', 'player-breakdown', 'damage-breakdown', 'spike-damage', 'conditions-outgoing'],
+            sectionIds: ['offense-detailed', 'damage-modifiers', 'player-breakdown', 'damage-breakdown', 'spike-damage', 'all-damage', 'strip-spikes', 'conditions-outgoing'],
             items: [
                 { id: 'offense-detailed', label: 'Offense Detailed', icon: OffenseSwordIcon },
                 { id: 'damage-modifiers', label: 'Damage Modifiers', icon: Flame },
                 { id: 'player-breakdown', label: 'Player Breakdown', icon: ListTree },
                 { id: 'damage-breakdown', label: 'Damage Breakdown', icon: BarChart3 },
                 { id: 'spike-damage', label: 'Spike Damage', icon: Zap },
+                { id: 'all-damage', label: 'All Damage', icon: Flame },
+                { id: 'strip-spikes', label: 'Strip Spikes', icon: Eraser },
                 { id: 'conditions-outgoing', label: 'Conditions', icon: Skull }
             ]
         },
@@ -630,17 +633,20 @@ export function ReportApp() {
             id: 'defense',
             label: 'Defensive Stats',
             icon: Shield,
-            sectionIds: ['defense-detailed', 'incoming-damage-modifiers', 'incoming-strike-damage', 'defense-mitigation', 'boon-output', 'boon-timeline', 'boon-uptime', 'support-detailed', 'healing-stats'],
+            sectionIds: ['defense-detailed', 'incoming-damage-modifiers', 'incoming-strike-damage', 'defense-mitigation', 'boon-output', 'all-boons', 'boon-timeline', 'boon-uptime', 'stab-performance', 'support-detailed', 'healing-stats', 'healing-breakdown'],
             items: [
                 { id: 'defense-detailed', label: 'Defense Detailed', icon: Shield },
                 { id: 'incoming-damage-modifiers', label: 'Incoming Damage Modifiers', icon: ShieldMinus },
                 { id: 'incoming-strike-damage', label: 'Incoming Strike Damage', icon: ShieldAlert },
                 { id: 'defense-mitigation', label: 'Damage Mitigation', icon: Gw2DamMitIcon },
                 { id: 'boon-output', label: 'Boon Output', icon: Gw2BoonIcon },
+                { id: 'all-boons', label: 'All Boons', icon: Gw2BoonIcon },
                 { id: 'boon-timeline', label: 'Boon Timeline', icon: Gw2AegisIcon },
                 { id: 'boon-uptime', label: 'Boon Uptime', icon: Gw2FuryIcon },
+                { id: 'stab-performance', label: 'Stab Performance', icon: Shield },
                 { id: 'support-detailed', label: 'Support Detailed', icon: SupportPlusIcon },
-                { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse }
+                { id: 'healing-stats', label: 'Healing Stats', icon: HeartPulse },
+                { id: 'healing-breakdown', label: 'Healing Breakdown', icon: ListTree }
             ]
         },
         {

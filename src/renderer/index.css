@@ -340,6 +340,13 @@ svg {
     -ms-user-select: none;
 }
 
+/* Chrome can clip stroke-based SVGs at small sizes when display:block (Tailwind preflight).
+   Force lucide icons to inline-block with visible overflow to prevent invisible strokes. */
+svg.lucide {
+    display: inline-block;
+    overflow: visible;
+}
+
 /* Prevent recharts ResponsiveContainer from measuring -1 dimensions
    when the parent container hasn't laid out yet (e.g. during initial render storm). */
 .recharts-responsive-container {
