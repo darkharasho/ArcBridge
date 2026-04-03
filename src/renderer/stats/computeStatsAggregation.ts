@@ -418,6 +418,23 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             closestToTag: getTopFromLeaderboard(leaderboards.closestToTag)
         };
 
+        // Map data, timeline, boon tables
+        const boonIntervalSettings = {
+            boonBucketIntervalMs: activeStatsViewSettings.boonBucketIntervalMs ?? 5000,
+            stackingBoonBucketIntervalMs: activeStatsViewSettings.stackingBoonBucketIntervalMs ?? 5000,
+        };
+        const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass, boonIntervalSettings);
+
+        // Classify player roles (support vs damage) for MVP gating
+        const roleClassifications = classifyPlayerRoles(
+            leaderboardEntries.map(({ stat }) => stat),
+            boonTables,
+        );
+        for (const [account, classification] of roleClassifications) {
+            const stat = playerStats.get(account);
+            if (stat) stat.roleClassification = classification;
+        }
+
         // MVP Calculation
         const emptyMvpPlacement = { player: 'None', account: 'None', score: -1, profession: 'Unknown', professionList: [] as string[], color: '#64748b', topStats: [] as any[] };
         let offensiveMvp = { ...emptyMvpPlacement };
@@ -550,23 +567,6 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             .slice(0, 25);
         const topSkills = topSkillsMetric === 'downContribution' ? topSkillsByDownContribution : topSkillsByDamage;
         const topIncomingSkills = Object.values(incomingSkillDamageMap).sort((a, b) => b.damage - a.damage).slice(0, 25);
-
-        // Map data, timeline, boon tables
-        const boonIntervalSettings = {
-            boonBucketIntervalMs: activeStatsViewSettings.boonBucketIntervalMs ?? 5000,
-            stackingBoonBucketIntervalMs: activeStatsViewSettings.stackingBoonBucketIntervalMs ?? 5000,
-        };
-        const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass, boonIntervalSettings);
-
-        // Classify player roles (support vs damage) for MVP gating
-        const roleClassifications = classifyPlayerRoles(
-            leaderboardEntries.map(({ stat }) => stat),
-            boonTables,
-        );
-        for (const [account, classification] of roleClassifications) {
-            const stat = playerStats.get(account);
-            if (stat) stat.roleClassification = classification;
-        }
 
         // Pre-compute per-second incoming damage for the boon uptime drilldown overlay.
         // This runs here (not in the renderer) because log.details is guaranteed available.
