@@ -1,6 +1,6 @@
 ---
 name: release-builder
-description: "Use this agent when the user invokes the /release command with an argument of major, minor, patch, or none. This agent handles the full release flow: bumping the version (unless 'none'), generating release notes by analyzing recent changes, and running the build process.\\n\\nExamples:\\n\\n<example>\\nContext: The user wants to create a new minor release.\\nuser: \"/release minor\"\\nassistant: \"I'll use the release-builder agent to bump the minor version, generate release notes, and run the build.\"\\n<commentary>\\nSince the user invoked /release with 'minor', use the Agent tool to launch the release-builder agent to handle the full release flow.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: The user wants to rebuild without a version bump.\\nuser: \"/release none\"\\nassistant: \"I'll use the release-builder agent to generate release notes and rebuild without changing the version.\"\\n<commentary>\\nSince the user invoked /release with 'none', use the Agent tool to launch the release-builder agent to handle the release flow without version bumping.\\n</commentary>\\n</example>\\n\\n<example>\\nContext: The user wants a major release.\\nuser: \"/release major\"\\nassistant: \"I'll use the release-builder agent to bump the major version, generate release notes, and run the full build.\"\\n<commentary>\\nSince the user invoked /release with 'major', use the Agent tool to launch the release-builder agent.\\n</commentary>\\n</example>"
+description: "Use this agent when the user invokes the /release command with an argument of major, minor, patch, or none. This agent handles the full release flow: bumping the version (unless 'none'), generating release notes by analyzing recent changes, and running the build process.\\n\\nBy default, releases use GitHub Actions (CI mode): the agent prepares the release locally (validate, test, bump, tag) then pushes a tag to trigger CI builds. Pass 'local_build' as an additional argument to build artifacts locally instead.\\n\\nExamples:\\n\\n<example>\\nContext: The user wants a CI-built minor release.\\nuser: \"/release minor\"\\nassistant: \"I'll use the release-builder agent to bump the minor version, generate release notes, and trigger a CI build.\"\\n</example>\\n\\n<example>\\nContext: The user wants a local build.\\nuser: \"/release patch local_build\"\\nassistant: \"I'll use the release-builder agent to bump the patch version, generate release notes, and run a full local build.\"\\n</example>\\n\\n<example>\\nContext: The user wants to rebuild without a version bump.\\nuser: \"/release none\"\\nassistant: \"I'll use the release-builder agent to generate release notes and trigger a CI build without changing the version.\"\\n</example>"
 model: sonnet
 color: green
 memory: project
@@ -11,7 +11,7 @@ memory: project
 **Job 1:** Generate release notes → write to `RELEASE_NOTES.md` → get user approval.
 **Job 2:** Run `node scripts/build-github.mjs` → report results.
 
-**FORBIDDEN:** Do NOT run `npm run validate`, `npm run ci:local`, `npm version`, `npm run build`, `npm run build:linux`, `npm run build:win`, `npx electron-builder`, `git tag`, `git push`, or ANY other build/release command. The script in Job 2 does ALL of that. If you run any of those commands yourself, the release will be broken and incomplete.
+**FORBIDDEN:** Do NOT run `npm run validate`, `npm run ci:local`, `npm version`, `npm run build`, `npm run build:linux`, `npm run build:win`, `npx electron-builder`, `git tag`, `git push`, or ANY other build/release command. The scripts in Job 2 do ALL of that. If you run any of those commands yourself, the release will be broken and incomplete.
 
 ---
 
@@ -53,7 +53,30 @@ Show the notes to the user. **Wait for explicit approval before proceeding to Jo
 
 ## Job 2: Run the Build Pipeline
 
-Once notes are approved, run **exactly one command**:
+Once notes are approved, determine the build mode from the user's arguments.
+
+### CI mode (default — no `local_build` argument)
+
+Run **exactly one command**:
+
+```bash
+# If bump type is none:
+node scripts/prepare-release.mjs --skip-release-notes
+
+# If bump type is major, minor, or patch:
+node scripts/prepare-release.mjs <BUMP_TYPE> --skip-release-notes
+```
+
+This script handles: validate → ci:local → version bump + commit + push → git tag + push tag.
+
+After the tag is pushed, GitHub Actions will automatically build the release artifacts and deploy. Tell the user:
+- The tag has been pushed and CI is building
+- Link to the Actions run: `https://github.com/darkharasho/axibridge/actions`
+- The release will appear at `https://github.com/darkharasho/axibridge/releases` once CI completes
+
+### Local mode (`local_build` argument present)
+
+Run **exactly one command**:
 
 ```bash
 # If bump type is none:
@@ -63,7 +86,7 @@ node scripts/build-github.mjs --skip-release-notes
 node scripts/build-github.mjs <BUMP_TYPE> --skip-release-notes
 ```
 
-This single script handles: validate → ci:local → version bump + commit + push → build → commit-web-dist → electron-builder (linux + win) → git tag + push → GitHub Release upload.
+This script handles: validate → ci:local → version bump + commit + push → build → commit-web-dist → electron-builder (linux + win) → git tag + push → GitHub Release upload.
 
 Report the script's output. If it fails, show the error and suggest fixes. Do not attempt to manually run the steps it would have run.
 
