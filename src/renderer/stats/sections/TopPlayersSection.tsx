@@ -208,7 +208,7 @@ export const TopPlayersSection = ({
                                                 : <ShieldCheck className={`w-3.5 h-3.5 ${group.goldIconBadge}`} />}
                                         </span>
                                     </div>
-                                    <div className="flex-1 flex flex-col h-full">
+                                    <div className="flex-1 flex flex-col h-full min-w-0">
                                         <div className="mb-2 flex items-start justify-between gap-3">
                                             <div className="min-w-0 flex-1">
                                                 <div className="text-2xl sm:text-3xl font-black text-white flex flex-wrap items-center gap-2 sm:gap-3">
@@ -236,7 +236,7 @@ export const TopPlayersSection = ({
                                             </div>
                                         </div>
                                         <div className="mt-auto min-h-[58px] sm:min-h-[54px]">
-                                            <div className="space-y-1 sm:space-y-0.5 sm:max-w-[12rem]">
+                                            <div className="space-y-1 sm:space-y-0.5 max-w-[12rem]">
                                                 {(group.gold?.topStats || []).filter((stat: any) => isMvpStatEnabled(stat.name)).slice(0, 3).map((stat: any, i: number) => (
                                                     <div key={i} className={`mvp-stat-pill mvp-stat-pill--gold flex items-center justify-between gap-2 px-2 py-1 text-[11px] sm:gap-1.5 sm:px-1.5 sm:py-0.5 sm:text-[10px] rounded-md border leading-normal ${group.goldStatRow}`}>
                                                         <span className="text-yellow-200/90 font-semibold truncate leading-normal">{stat.name}</span>

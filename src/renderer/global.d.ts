@@ -303,6 +303,7 @@ export interface IElectronAPI {
         walkthroughSeen?: boolean;
     }) => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
+    openMobilePreview: (url: string) => Promise<{ success: boolean, error?: string }>;
     fetchImageAsDataUrl: (url: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>;
     onConsoleLog: (callback: (log: { type: 'info' | 'error', message: string, timestamp: string }) => void) => () => void;
     onConsoleLogHistory: (callback: (logs: Array<{ type: 'info' | 'error', message: string, timestamp: string }>) => void) => () => void;

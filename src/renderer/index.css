@@ -328,13 +328,21 @@ html.web-report,
 body.web-report {
     height: auto;
     min-height: 100%;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     --scrollbar-size: 12px;
 }
 
 body.web-report * {
     scrollbar-width: auto;
     scrollbar-gutter: stable;
+}
+
+@media (max-width: 639px) {
+    body.web-report,
+    body.web-report * {
+        scrollbar-gutter: auto;
+    }
 }
 
 body.web-report *::-webkit-scrollbar {

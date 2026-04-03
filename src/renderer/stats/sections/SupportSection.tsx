@@ -61,7 +61,7 @@ export const SupportSection = ({
         }`}
         style={expandedSection === 'support-detailed' ? { background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-card)' } : undefined}
     >
-        <div className="flex items-center gap-2 mb-3.5">
+        <div className="flex flex-wrap items-center gap-2 mb-3.5">
             <span className="flex shrink-0" style={{ color: 'var(--section-support)' }}><SupportPlusIcon className="w-4 h-4" /></span>
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: 'var(--text-primary)' }}>
                 Support Detailed

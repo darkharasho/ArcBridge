@@ -19,7 +19,7 @@ export const PillToggleGroup = <T extends string>({
     options,
     onChange,
     className = '',
-    activeClassName,
+    activeClassName: _activeClassName,
     inactiveClassName
 }: PillToggleGroupProps<T>) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -38,7 +38,7 @@ export const PillToggleGroup = <T extends string>({
     return (
         <div
             ref={containerRef}
-            className={`pill-toggle-group relative flex items-center gap-1 p-[1px] text-[10px] uppercase tracking-[0.25em] ${className}`}
+            className={`pill-toggle-group relative flex items-center gap-1 p-[1px] text-[10px] uppercase tracking-[0.25em] overflow-x-auto ${className}`}
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '3px', color: 'var(--text-secondary)' }}
         >
             {indicator && (
@@ -61,7 +61,7 @@ export const PillToggleGroup = <T extends string>({
                         key={option.value}
                         type="button"
                         onClick={() => onChange(option.value)}
-                        className={`pill-toggle-option relative px-2.5 py-1 rounded-sm z-[1] ${isActive ? `pill-toggle-option--active ${activeClassName}` : inactiveClassName}`}
+                        className={`pill-toggle-option relative px-2.5 py-1 rounded-sm z-[1] ${isActive ? `pill-toggle-option--active text-[color:var(--brand-primary)]` : inactiveClassName}`}
                     >
                         {option.label}
                     </button>

@@ -31,17 +31,30 @@ export const DevMockBanner = ({
                 )}
             </div>
             {devMockUploadState.url && (
-                <button
-                    onClick={() => {
-                        const url = devMockUploadState.url;
-                        if (url) {
-                            navigator.clipboard.writeText(url).catch(() => {});
-                        }
-                    }}
-                    className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
-                >
-                    Copy Link
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => {
+                            const url = devMockUploadState.url;
+                            if (url && window.electronAPI?.openMobilePreview) {
+                                window.electronAPI.openMobilePreview(url);
+                            }
+                        }}
+                        className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                    >
+                        Mobile
+                    </button>
+                    <button
+                        onClick={() => {
+                            const url = devMockUploadState.url;
+                            if (url) {
+                                navigator.clipboard.writeText(url).catch(() => {});
+                            }
+                        }}
+                        className="px-3 py-1 rounded-full text-[10px] border bg-white/5 text-gray-300 border-white/10 hover:text-white"
+                    >
+                        Copy Link
+                    </button>
+                </div>
             )}
         </div>
     );

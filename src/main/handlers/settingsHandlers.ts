@@ -293,6 +293,25 @@ export function registerSettingsHandlers(opts: SettingsHandlerOptions) {
         }
     });
 
+    ipcMain.handle('open-mobile-preview', async (_event, url: string) => {
+        try {
+            const mobileWindow = new BrowserWindow({
+                width: 393,
+                height: 852,
+                resizable: true,
+                title: 'Mobile Preview',
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                },
+            });
+            mobileWindow.loadURL(url);
+            return { success: true };
+        } catch (err: any) {
+            return { success: false, error: err.message };
+        }
+    });
+
     ipcMain.handle('fetch-image-data-url', async (_event, url: string) => {
         try {
             if (!url || typeof url !== 'string') return { success: false, error: 'Invalid URL.' };
