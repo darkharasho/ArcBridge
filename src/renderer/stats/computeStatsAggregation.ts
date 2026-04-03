@@ -17,6 +17,7 @@ import { computeSpecialTables } from './computeSpecialTables';
 import { computePlayerAggregation, PlayerStats, DamageMitigationRow, DamageMitigationTotals, resolveProfessionLabel } from './computePlayerAggregation';
 import { computeFightBreakdown } from './computeFightBreakdown';
 import { computeTagDistanceDeaths } from './computeTagDistanceDeaths';
+import { classifyPlayerRoles } from './classifyPlayerRoles';
 
 interface UseStatsAggregationProps {
     logs: any[];
@@ -479,7 +480,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 { name: 'Revives', weight: activeMvpWeights.defensiveRevives, leaderboard: leaderboards.revives, getter: (s) => s.revives }
             ];
 
-            const computeCategoryScores = (metrics: typeof offensiveMetrics) => {
+            const computeCategoryScores = (metrics: typeof offensiveMetrics, pool?: typeof leaderboardEntries) => {
                 const scores: any[] = [];
                 const metricRankMaps = metrics.map((metric) => rankByAccount(metric.leaderboard));
                 const buildTopStats = (contribs: any[]) =>
@@ -497,7 +498,7 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                     };
                 };
 
-                leaderboardEntries.forEach(({ stat }) => {
+                (pool || leaderboardEntries).forEach(({ stat }) => {
                     let score = 0;
                     const contribs: any[] = [];
                     metrics.forEach((metric, idx) => {
@@ -524,13 +525,17 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 };
             };
 
-            const offensiveScores = computeCategoryScores([...offensiveMetrics, ...generalMetrics]);
+            const offensiveCandidates = leaderboardEntries.filter(({ stat }) => stat.roleClassification.role === 'damage');
+            const offensivePool = offensiveCandidates.length > 0 ? offensiveCandidates : leaderboardEntries;
+            const offensiveScores = computeCategoryScores([...offensiveMetrics, ...generalMetrics], offensivePool);
             offensiveMvp = offensiveScores.mvp;
             offensiveSilver = offensiveScores.silver;
             offensiveBronze = offensiveScores.bronze;
             offensiveAvgMvpScore = offensiveScores.avgScore;
 
-            const defensiveScores = computeCategoryScores([...defensiveMetrics, ...generalMetrics]);
+            const defensiveCandidates = leaderboardEntries.filter(({ stat }) => stat.roleClassification.role === 'support');
+            const defensivePool = defensiveCandidates.length > 0 ? defensiveCandidates : leaderboardEntries;
+            const defensiveScores = computeCategoryScores([...defensiveMetrics, ...generalMetrics], defensivePool);
             defensiveMvp = defensiveScores.mvp;
             defensiveSilver = defensiveScores.silver;
             defensiveBronze = defensiveScores.bronze;
@@ -552,6 +557,16 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             stackingBoonBucketIntervalMs: activeStatsViewSettings.stackingBoonBucketIntervalMs ?? 5000,
         };
         const { sortedFightLogs, sortedFightLogsWithDetails, mapData, timelineData, boonTables, boonTimeline, boonUptimeTimeline } = computeTimelineAndMapData(logs, validLogs, splitPlayersByClass, boonIntervalSettings);
+
+        // Classify player roles (support vs damage) for MVP gating
+        const roleClassifications = classifyPlayerRoles(
+            leaderboardEntries.map(({ stat }) => stat),
+            boonTables,
+        );
+        for (const [account, classification] of roleClassifications) {
+            const stat = playerStats.get(account);
+            if (stat) stat.roleClassification = classification;
+        }
 
         // Pre-compute per-second incoming damage for the boon uptime drilldown overlay.
         // This runs here (not in the renderer) because log.details is guaranteed available.
