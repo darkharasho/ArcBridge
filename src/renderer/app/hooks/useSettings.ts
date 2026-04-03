@@ -6,7 +6,7 @@ import {
     IStatsViewSettings,
 } from '../../global.d';
 import { Webhook } from '../../WebhookModal';
-import type { ColorPalette } from '../../../shared/webThemes';
+import { PALETTES, type ColorPalette } from '../../../shared/webThemes';
 
 interface UseSettingsOptions {
     onAutoUpdateSettings?: (supported: boolean, reason: string | null) => void;
@@ -106,7 +106,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
 
     useEffect(() => {
         const body = document.body;
-        body.classList.remove('palette-electric-blue', 'palette-refined-cyan', 'palette-amber-warm', 'palette-emerald-mint');
+        for (const id of Object.keys(PALETTES)) body.classList.remove(`palette-${id}`);
         if (colorPalette !== 'electric-blue') {
             body.classList.add(`palette-${colorPalette}`);
         }
