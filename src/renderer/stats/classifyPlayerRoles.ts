@@ -17,28 +17,18 @@ export interface PlayerRoleClassification {
     factors: RoleClassificationFactor[];
 }
 
-/** Boon IDs used for support classification (prefixed with "b" to match boon table format). */
-const SUPPORT_BOON_IDS = {
-    might: 'b740',
-    regen: 'b718',
-    resistance: 'b26980',
-} as const;
-
 /** Metric weights for support score calculation. Positive = support indicator, negative = damage indicator. */
 const WEIGHTS = {
-    healing: 1.0,
-    cleanses: 1.0,
-    stability: 0.8,
-    totalBoonOutput: 0.8,
-    resistance: 0.7,
-    might: 0.6,
-    regen: 0.5,
-    damage: -0.4,
-    downContrib: -0.6,
+    healing: 1.8,
+    cleanses: 1.6,
+    totalBoonOutput: 1.8,
+    dps: -0.8,
+    damage: -1.5,
+    downContrib: -2.5,
 } as const;
 
 /** Players scoring above this multiplier of the squad median support score are classified as support. */
-const THRESHOLD_MULTIPLIER = 1.5;
+const THRESHOLD_MULTIPLIER = 1.25;
 
 /** When the squad median for a metric is zero but the player has a positive value, use this ratio. */
 const OUTLIER_RATIO = 2.0;
@@ -48,6 +38,7 @@ type MinimalPlayerStats = {
     healing: number;
     cleanses: number;
     stab: number;
+    dps: number;
     damage: number;
     downContrib: number;
     healingTotals: Record<string, number>;
@@ -73,21 +64,6 @@ const computeRatio = (value: number, median: number): number => {
     if (median > 0) return value / median;
     if (value > 0) return OUTLIER_RATIO;
     return 0;
-};
-
-/**
- * Extract per-player squad generationMs for a specific boon from boon tables.
- * Returns a Map of account -> generationMs.
- */
-const extractBoonGeneration = (boonTables: BoonTable[], boonId: string): Map<string, number> => {
-    const result = new Map<string, number>();
-    const table = boonTables.find((t) => t.id === boonId);
-    if (!table) return result;
-    for (const row of table.rows) {
-        const existing = result.get(row.account) || 0;
-        result.set(row.account, existing + row.categories.squadBuffs.generationMs);
-    }
-    return result;
 };
 
 /**
@@ -121,9 +97,6 @@ export const classifyPlayerRoles = (
     if (players.length === 0) return result;
 
     // Extract boon generation data per player
-    const mightGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.might);
-    const regenGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.regen);
-    const resistanceGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.resistance);
     const totalBoonGen = extractTotalBoonOutput(boonTables);
 
     // Compute outgoing healing excluding self-healing
@@ -136,22 +109,16 @@ export const classifyPlayerRoles = (
     // Collect per-metric values across all players (non-zero only for median calculation)
     const healingValues = players.map(getOutgoingHealing).filter((v) => v > 0);
     const cleanseValues = players.map((p) => p.cleanses).filter((v) => v > 0);
-    const stabValues = players.map((p) => p.stab).filter((v) => v > 0);
     const totalBoonValues = players.map((p) => totalBoonGen.get(p.account) || 0).filter((v) => v > 0);
-    const mightValues = players.map((p) => mightGen.get(p.account) || 0).filter((v) => v > 0);
-    const regenValues = players.map((p) => regenGen.get(p.account) || 0).filter((v) => v > 0);
-    const resistValues = players.map((p) => resistanceGen.get(p.account) || 0).filter((v) => v > 0);
+    const dpsValues = players.map((p) => p.dps).filter((v) => v > 0);
     const damageValues = players.map((p) => p.damage).filter((v) => v > 0);
     const downContribValues = players.map((p) => p.downContrib).filter((v) => v > 0);
 
     // Compute medians
     const medianHealing = computeMedian(healingValues);
     const medianCleanses = computeMedian(cleanseValues);
-    const medianStab = computeMedian(stabValues);
     const medianTotalBoon = computeMedian(totalBoonValues);
-    const medianMight = computeMedian(mightValues);
-    const medianRegen = computeMedian(regenValues);
-    const medianResist = computeMedian(resistValues);
+    const medianDps = computeMedian(dpsValues);
     const medianDamage = computeMedian(damageValues);
     const medianDownContrib = computeMedian(downContribValues);
 
@@ -160,11 +127,8 @@ export const classifyPlayerRoles = (
     const metricDefs: Array<{ metric: string; weight: number; getValue: (p: MinimalPlayerStats) => number; median: number }> = [
         { metric: 'Healing (others)', weight: WEIGHTS.healing, getValue: getOutgoingHealing, median: medianHealing },
         { metric: 'Cleanses', weight: WEIGHTS.cleanses, getValue: (p) => p.cleanses, median: medianCleanses },
-        { metric: 'Stability', weight: WEIGHTS.stability, getValue: (p) => p.stab, median: medianStab },
         { metric: 'Total Boons', weight: WEIGHTS.totalBoonOutput, getValue: (p) => totalBoonGen.get(p.account) || 0, median: medianTotalBoon },
-        { metric: 'Resistance', weight: WEIGHTS.resistance, getValue: (p) => resistanceGen.get(p.account) || 0, median: medianResist },
-        { metric: 'Might', weight: WEIGHTS.might, getValue: (p) => mightGen.get(p.account) || 0, median: medianMight },
-        { metric: 'Regen', weight: WEIGHTS.regen, getValue: (p) => regenGen.get(p.account) || 0, median: medianRegen },
+        { metric: 'DPS', weight: WEIGHTS.dps, getValue: (p) => p.dps, median: medianDps },
         { metric: 'Damage', weight: WEIGHTS.damage, getValue: (p) => p.damage, median: medianDamage },
         { metric: 'Down Contrib', weight: WEIGHTS.downContrib, getValue: (p) => p.downContrib, median: medianDownContrib },
     ];
@@ -189,11 +153,15 @@ export const classifyPlayerRoles = (
     const medianSupportScore = computeMedian(allSupportScores);
     const threshold = medianSupportScore + Math.abs(medianSupportScore) * (THRESHOLD_MULTIPLIER - 1);
 
-    // Classify and compute confidence
-    const thresholdSpan = Math.abs(threshold - medianSupportScore) || 1;
+    // Classify and compute confidence, normalized per side of the threshold
+    const maxScore = Math.max(...allSupportScores);
+    const minScore = Math.min(...allSupportScores);
+    const supportSpan = Math.abs(maxScore - threshold) || 1;
+    const damageSpan = Math.abs(threshold - minScore) || 1;
     for (const { account, supportScore, factors } of scores) {
         const role: 'support' | 'damage' = supportScore > threshold ? 'support' : 'damage';
-        const distance = Math.abs(supportScore - threshold) / thresholdSpan;
+        const span = role === 'support' ? supportSpan : damageSpan;
+        const distance = Math.abs(supportScore - threshold) / span;
         const confidenceScore = Math.min(distance, 1);
         result.set(account, { role, supportScore, confidenceScore, threshold, factors });
     }
