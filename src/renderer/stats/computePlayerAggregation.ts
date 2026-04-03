@@ -582,7 +582,7 @@ export const computePlayerAggregation = ({
                     offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, defenseMinionDamageTaken: {}, supportActiveMs: 0, supportTotals: {},
                     healingActiveMs: 0, healingTotals: {}, profession: identity.profession, professions: new Set(),
                     professionTimeMs: {}, squadActiveMs: 0, firstSeenFightTs: 0, lastSeenFightTs: 0, lastSeenFightDurationMs: 0, isCommander: false, damage: 0, dps: 0, revives: 0, outgoingConditions: {}, incomingConditions: {}, damageModTotals: {}, incomingDamageModTotals: {}
-                    , roleClassification: { role: 'damage' as const, supportScore: 0, confidenceScore: 0 }
+                    , roleClassification: { role: 'damage' as const, supportScore: 0, confidenceScore: 0, threshold: 0, factors: [] }
                 });
             }
             const s = playerStats.get(key)!;

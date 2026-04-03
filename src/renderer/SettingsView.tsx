@@ -2626,6 +2626,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         role: 'support' | 'damage';
                                         supportScore: number;
                                         confidenceScore: number;
+                                        threshold: number;
+                                        factors: Array<{ metric: string; value: number; median: number; ratio: number; weight: number; contribution: number }>;
                                     }> | undefined;
                                     if (!classifications || classifications.length === 0) {
                                         return (
@@ -2637,12 +2639,14 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     const sorted = [...classifications].sort((a, b) => b.supportScore - a.supportScore);
                                     const supportCount = sorted.filter((c) => c.role === 'support').length;
                                     const damageCount = sorted.filter((c) => c.role === 'damage').length;
+                                    const threshold = sorted[0]?.threshold ?? 0;
                                     return (
                                         <>
                                             <div className="flex items-center gap-4 text-xs text-gray-400">
                                                 <span>{sorted.length} players</span>
                                                 <span className="text-emerald-400">{supportCount} support</span>
                                                 <span className="text-orange-400">{damageCount} damage</span>
+                                                <span>threshold: <span className="text-amber-300 font-mono">{threshold.toFixed(2)}</span></span>
                                             </div>
                                             <div className="rounded-[4px] border border-white/10 overflow-hidden">
                                                 <table className="w-full text-xs">
@@ -2657,7 +2661,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                     </thead>
                                                     <tbody>
                                                         {sorted.map((c) => (
-                                                            <tr key={c.account} className="border-b border-white/5 hover:bg-white/5">
+                                                            <tr key={c.account} className="border-b border-white/5 hover:bg-white/5 relative group">
                                                                 <td className="px-3 py-1.5 text-gray-200">{c.account}</td>
                                                                 <td className="px-3 py-1.5" style={{ color: getProfessionColor(c.profession) }}>{c.profession}</td>
                                                                 <td className="px-3 py-1.5 text-center">
@@ -2674,6 +2678,42 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                                         <span className="text-gray-400 font-mono w-10 text-right">{(c.confidenceScore * 100).toFixed(0)}%</span>
                                                                     </div>
                                                                 </td>
+                                                                {c.factors && c.factors.length > 0 && (
+                                                                    <td className="p-0" style={{ position: 'absolute', left: 0, right: 0, pointerEvents: 'none' }}>
+                                                                        <div className="hidden group-hover:block absolute left-4 bottom-full mb-1 z-50 pointer-events-none">
+                                                                            <div className="rounded-[4px] border border-white/15 px-3 py-2.5 text-[11px] shadow-xl" style={{ background: 'var(--bg-card)', minWidth: 340 }}>
+                                                                                <div className="text-gray-300 font-medium mb-1.5">
+                                                                                    {c.account} — <span className={c.role === 'support' ? 'text-emerald-300' : 'text-orange-300'}>{c.role}</span>
+                                                                                    <span className="text-gray-500 font-normal ml-2">score {c.supportScore.toFixed(2)} / threshold {c.threshold.toFixed(2)}</span>
+                                                                                </div>
+                                                                                <table className="w-full">
+                                                                                    <thead>
+                                                                                        <tr className="text-gray-500">
+                                                                                            <th className="text-left pr-3 pb-0.5 font-medium">Metric</th>
+                                                                                            <th className="text-right pr-3 pb-0.5 font-medium">Value</th>
+                                                                                            <th className="text-right pr-3 pb-0.5 font-medium">Median</th>
+                                                                                            <th className="text-right pr-3 pb-0.5 font-medium">Ratio</th>
+                                                                                            <th className="text-right pr-3 pb-0.5 font-medium">Wt</th>
+                                                                                            <th className="text-right pb-0.5 font-medium">Score</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {c.factors.map((f) => (
+                                                                                            <tr key={f.metric} className={f.contribution > 0 ? 'text-gray-300' : 'text-gray-600'}>
+                                                                                                <td className="pr-3 py-px">{f.metric}</td>
+                                                                                                <td className="text-right pr-3 py-px font-mono">{f.value >= 1000 ? (f.value / 1000).toFixed(1) + 'k' : f.value.toFixed(0)}</td>
+                                                                                                <td className="text-right pr-3 py-px font-mono">{f.median >= 1000 ? (f.median / 1000).toFixed(1) + 'k' : f.median.toFixed(0)}</td>
+                                                                                                <td className="text-right pr-3 py-px font-mono">{f.ratio.toFixed(2)}</td>
+                                                                                                <td className="text-right pr-3 py-px font-mono text-gray-500">{f.weight}</td>
+                                                                                                <td className="text-right py-px font-mono">{f.contribution > 0 ? '+' : ''}{f.contribution.toFixed(2)}</td>
+                                                                                            </tr>
+                                                                                        ))}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                )}
                                                             </tr>
                                                         ))}
                                                     </tbody>

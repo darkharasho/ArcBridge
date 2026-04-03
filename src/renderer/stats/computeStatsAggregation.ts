@@ -854,6 +854,8 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
                 role: c.role,
                 supportScore: c.supportScore,
                 confidenceScore: c.confidenceScore,
+                threshold: c.threshold,
+                factors: c.factors,
             }))
         };
     })();
