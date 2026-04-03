@@ -126,7 +126,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
   publish:
-    needs: [build, deploy-pages]
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -137,4 +137,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          gh release edit "$tag" --draft=false
+          notes=""
+          if [ -f RELEASE_NOTES.md ]; then
+            notes="$(cat RELEASE_NOTES.md)"
+          fi
+          if [ -n "$notes" ]; then
+            gh release edit "$tag" --draft=false --notes "$notes"
+          else
+            gh release edit "$tag" --draft=false
+          fi
