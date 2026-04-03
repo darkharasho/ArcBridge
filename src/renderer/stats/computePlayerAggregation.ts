@@ -9,6 +9,7 @@ import { isResUtilitySkill } from './utils/dashboardUtils';
 import { PlayerSkillDamageEntry, PlayerHealingSkillEntry } from './statsTypes';
 import { PROFESSION_COLORS } from '../../shared/professionUtils';
 import { resolveFightTimestamp } from './utils/timestampUtils';
+import { PlayerRoleClassification } from './classifyPlayerRoles';
 
 export interface PlayerStats {
     name: string;
@@ -53,6 +54,7 @@ export interface PlayerStats {
     incomingConditions: Record<string, any>;
     damageModTotals: Record<string, { damageGain: number; hitCount: number; totalHitCount: number; totalDamage: number }>;
     incomingDamageModTotals: Record<string, { damageGain: number; hitCount: number; totalHitCount: number; totalDamage: number }>;
+    roleClassification: PlayerRoleClassification;
 }
 
 export type DamageMitigationTotals = {
@@ -580,6 +582,7 @@ export const computePlayerAggregation = ({
                     offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, defenseMinionDamageTaken: {}, supportActiveMs: 0, supportTotals: {},
                     healingActiveMs: 0, healingTotals: {}, profession: identity.profession, professions: new Set(),
                     professionTimeMs: {}, squadActiveMs: 0, firstSeenFightTs: 0, lastSeenFightTs: 0, lastSeenFightDurationMs: 0, isCommander: false, damage: 0, dps: 0, revives: 0, outgoingConditions: {}, incomingConditions: {}, damageModTotals: {}, incomingDamageModTotals: {}
+                    , roleClassification: { role: 'damage' as const, supportScore: 0, confidenceScore: 0 }
                 });
             }
             const s = playerStats.get(key)!;
