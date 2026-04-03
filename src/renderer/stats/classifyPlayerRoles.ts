@@ -50,6 +50,7 @@ type MinimalPlayerStats = {
     stab: number;
     damage: number;
     downContrib: number;
+    healingTotals: Record<string, number>;
 };
 
 /**
@@ -125,8 +126,15 @@ export const classifyPlayerRoles = (
     const resistanceGen = extractBoonGeneration(boonTables, SUPPORT_BOON_IDS.resistance);
     const totalBoonGen = extractTotalBoonOutput(boonTables);
 
+    // Compute outgoing healing excluding self-healing
+    const getOutgoingHealing = (p: MinimalPlayerStats) => {
+        const total = p.healingTotals['healing'] || p.healing;
+        const self = p.healingTotals['selfHealing'] || 0;
+        return Math.max(total - self, 0);
+    };
+
     // Collect per-metric values across all players (non-zero only for median calculation)
-    const healingValues = players.map((p) => p.healing).filter((v) => v > 0);
+    const healingValues = players.map(getOutgoingHealing).filter((v) => v > 0);
     const cleanseValues = players.map((p) => p.cleanses).filter((v) => v > 0);
     const stabValues = players.map((p) => p.stab).filter((v) => v > 0);
     const totalBoonValues = players.map((p) => totalBoonGen.get(p.account) || 0).filter((v) => v > 0);
@@ -150,7 +158,7 @@ export const classifyPlayerRoles = (
     // Compute support scores with per-metric breakdown
     // Positive weights = support indicators, negative weights = damage indicators
     const metricDefs: Array<{ metric: string; weight: number; getValue: (p: MinimalPlayerStats) => number; median: number }> = [
-        { metric: 'Healing', weight: WEIGHTS.healing, getValue: (p) => p.healing, median: medianHealing },
+        { metric: 'Healing (others)', weight: WEIGHTS.healing, getValue: getOutgoingHealing, median: medianHealing },
         { metric: 'Cleanses', weight: WEIGHTS.cleanses, getValue: (p) => p.cleanses, median: medianCleanses },
         { metric: 'Stability', weight: WEIGHTS.stability, getValue: (p) => p.stab, median: medianStab },
         { metric: 'Total Boons', weight: WEIGHTS.totalBoonOutput, getValue: (p) => totalBoonGen.get(p.account) || 0, median: medianTotalBoon },
