@@ -12,6 +12,7 @@ const makePlayerStats = (account: string, overrides: Record<string, any> = {}) =
     revives: 0,
     damage: 0,
     downContrib: 0,
+    healingTotals: { healing: overrides.healing || 0, selfHealing: overrides.selfHealing || 0 } as Record<string, number>,
     ...overrides,
 });
 
