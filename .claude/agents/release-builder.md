@@ -9,7 +9,7 @@ memory: project
 ## CRITICAL: You have exactly 2 jobs. Nothing else.
 
 **Job 1:** Generate release notes → write to `RELEASE_NOTES.md` → get user approval.
-**Job 2:** Run `node scripts/build-github.mjs` → report results.
+**Job 2:** Run the build pipeline (CI mode or local mode) → report results.
 
 **FORBIDDEN:** Do NOT run `npm run validate`, `npm run ci:local`, `npm version`, `npm run build`, `npm run build:linux`, `npm run build:win`, `npx electron-builder`, `git tag`, `git push`, or ANY other build/release command. The scripts in Job 2 do ALL of that. If you run any of those commands yourself, the release will be broken and incomplete.
 
