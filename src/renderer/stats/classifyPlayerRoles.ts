@@ -24,14 +24,16 @@ const SUPPORT_BOON_IDS = {
     resistance: 'b26980',
 } as const;
 
-/** Metric weights for support score calculation. */
-const SUPPORT_WEIGHTS = {
+/** Metric weights for support score calculation. Positive = support indicator, negative = damage indicator. */
+const WEIGHTS = {
     healing: 1.0,
     cleanses: 1.0,
     stability: 0.8,
     resistance: 0.7,
     might: 0.6,
     regen: 0.5,
+    damage: -0.6,
+    downContrib: -0.8,
 } as const;
 
 /** Players scoring above this multiplier of the squad median support score are classified as support. */
@@ -45,6 +47,8 @@ type MinimalPlayerStats = {
     healing: number;
     cleanses: number;
     stab: number;
+    damage: number;
+    downContrib: number;
 };
 
 /**
@@ -111,6 +115,8 @@ export const classifyPlayerRoles = (
     const mightValues = players.map((p) => mightGen.get(p.account) || 0).filter((v) => v > 0);
     const regenValues = players.map((p) => regenGen.get(p.account) || 0).filter((v) => v > 0);
     const resistValues = players.map((p) => resistanceGen.get(p.account) || 0).filter((v) => v > 0);
+    const damageValues = players.map((p) => p.damage).filter((v) => v > 0);
+    const downContribValues = players.map((p) => p.downContrib).filter((v) => v > 0);
 
     // Compute medians
     const medianHealing = computeMedian(healingValues);
@@ -119,15 +125,20 @@ export const classifyPlayerRoles = (
     const medianMight = computeMedian(mightValues);
     const medianRegen = computeMedian(regenValues);
     const medianResist = computeMedian(resistValues);
+    const medianDamage = computeMedian(damageValues);
+    const medianDownContrib = computeMedian(downContribValues);
 
     // Compute support scores with per-metric breakdown
+    // Positive weights = support indicators, negative weights = damage indicators
     const metricDefs: Array<{ metric: string; weight: number; getValue: (p: MinimalPlayerStats) => number; median: number }> = [
-        { metric: 'Healing', weight: SUPPORT_WEIGHTS.healing, getValue: (p) => p.healing, median: medianHealing },
-        { metric: 'Cleanses', weight: SUPPORT_WEIGHTS.cleanses, getValue: (p) => p.cleanses, median: medianCleanses },
-        { metric: 'Stability', weight: SUPPORT_WEIGHTS.stability, getValue: (p) => p.stab, median: medianStab },
-        { metric: 'Resistance', weight: SUPPORT_WEIGHTS.resistance, getValue: (p) => resistanceGen.get(p.account) || 0, median: medianResist },
-        { metric: 'Might', weight: SUPPORT_WEIGHTS.might, getValue: (p) => mightGen.get(p.account) || 0, median: medianMight },
-        { metric: 'Regen', weight: SUPPORT_WEIGHTS.regen, getValue: (p) => regenGen.get(p.account) || 0, median: medianRegen },
+        { metric: 'Healing', weight: WEIGHTS.healing, getValue: (p) => p.healing, median: medianHealing },
+        { metric: 'Cleanses', weight: WEIGHTS.cleanses, getValue: (p) => p.cleanses, median: medianCleanses },
+        { metric: 'Stability', weight: WEIGHTS.stability, getValue: (p) => p.stab, median: medianStab },
+        { metric: 'Resistance', weight: WEIGHTS.resistance, getValue: (p) => resistanceGen.get(p.account) || 0, median: medianResist },
+        { metric: 'Might', weight: WEIGHTS.might, getValue: (p) => mightGen.get(p.account) || 0, median: medianMight },
+        { metric: 'Regen', weight: WEIGHTS.regen, getValue: (p) => regenGen.get(p.account) || 0, median: medianRegen },
+        { metric: 'Damage', weight: WEIGHTS.damage, getValue: (p) => p.damage, median: medianDamage },
+        { metric: 'Down Contrib', weight: WEIGHTS.downContrib, getValue: (p) => p.downContrib, median: medianDownContrib },
     ];
 
     const scores: Array<{ account: string; supportScore: number; factors: RoleClassificationFactor[] }> = players.map((p) => {
@@ -144,14 +155,17 @@ export const classifyPlayerRoles = (
     });
 
     // Compute threshold from squad median support score
+    // Use median + |median| * (MULTIPLIER - 1) so the threshold is always above the median,
+    // even when scores are negative (due to damage penalties).
     const allSupportScores = scores.map((s) => s.supportScore);
     const medianSupportScore = computeMedian(allSupportScores);
-    const threshold = medianSupportScore * THRESHOLD_MULTIPLIER;
+    const threshold = medianSupportScore + Math.abs(medianSupportScore) * (THRESHOLD_MULTIPLIER - 1);
 
     // Classify and compute confidence
+    const thresholdSpan = Math.abs(threshold - medianSupportScore) || 1;
     for (const { account, supportScore, factors } of scores) {
-        const role: 'support' | 'damage' = threshold > 0 && supportScore > threshold ? 'support' : 'damage';
-        const distance = threshold > 0 ? Math.abs(supportScore - threshold) / threshold : 0;
+        const role: 'support' | 'damage' = supportScore > threshold ? 'support' : 'damage';
+        const distance = Math.abs(supportScore - threshold) / thresholdSpan;
         const confidenceScore = Math.min(distance, 1);
         result.set(account, { role, supportScore, confidenceScore, threshold, factors });
     }

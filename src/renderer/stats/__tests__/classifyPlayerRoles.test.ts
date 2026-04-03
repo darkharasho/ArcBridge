@@ -10,6 +10,8 @@ const makePlayerStats = (account: string, overrides: Record<string, any> = {}) =
     stab: 0,
     barrier: 0,
     revives: 0,
+    damage: 0,
+    downContrib: 0,
     ...overrides,
 });
 
@@ -35,9 +37,9 @@ const makeBoonTable = (boonId: string, rows: Array<{ account: string; generation
 describe('classifyPlayerRoles', () => {
     it('classifies all-DPS squad as damage', () => {
         const players = [
-            makePlayerStats('dps1', { healing: 0, cleanses: 0, stab: 0 }),
-            makePlayerStats('dps2', { healing: 0, cleanses: 0, stab: 0 }),
-            makePlayerStats('dps3', { healing: 0, cleanses: 0, stab: 0 }),
+            makePlayerStats('dps1', { damage: 500000, downContrib: 80000 }),
+            makePlayerStats('dps2', { damage: 450000, downContrib: 70000 }),
+            makePlayerStats('dps3', { damage: 480000, downContrib: 75000 }),
         ];
         const result = classifyPlayerRoles(players, []);
         expect(result.get('dps1')!.role).toBe('damage');
@@ -47,11 +49,11 @@ describe('classifyPlayerRoles', () => {
 
     it('classifies high-healing player as support in mixed squad', () => {
         const players = [
-            makePlayerStats('healer', { healing: 500000, cleanses: 200, stab: 5000 }),
-            makePlayerStats('offheal', { healing: 50000, cleanses: 30, stab: 500 }),
-            makePlayerStats('dps1', { healing: 200, cleanses: 5, stab: 100 }),
-            makePlayerStats('dps2', { healing: 150, cleanses: 3, stab: 50 }),
-            makePlayerStats('dps3', { healing: 100, cleanses: 2, stab: 80 }),
+            makePlayerStats('healer', { healing: 500000, cleanses: 200, stab: 5000, damage: 50000, downContrib: 5000 }),
+            makePlayerStats('offheal', { healing: 50000, cleanses: 30, stab: 500, damage: 80000, downContrib: 10000 }),
+            makePlayerStats('dps1', { healing: 200, cleanses: 5, stab: 100, damage: 500000, downContrib: 80000 }),
+            makePlayerStats('dps2', { healing: 150, cleanses: 3, stab: 50, damage: 450000, downContrib: 70000 }),
+            makePlayerStats('dps3', { healing: 100, cleanses: 2, stab: 80, damage: 480000, downContrib: 75000 }),
         ];
         const result = classifyPlayerRoles(players, []);
         expect(result.get('healer')!.role).toBe('support');
@@ -61,10 +63,10 @@ describe('classifyPlayerRoles', () => {
 
     it('uses boon generation data for classification', () => {
         const players = [
-            makePlayerStats('buffer', { healing: 1000, cleanses: 50, stab: 8000 }),
-            makePlayerStats('dps1', { healing: 100, cleanses: 5, stab: 100 }),
-            makePlayerStats('dps2', { healing: 50, cleanses: 3, stab: 50 }),
-            makePlayerStats('dps3', { healing: 80, cleanses: 2, stab: 80 }),
+            makePlayerStats('buffer', { healing: 1000, cleanses: 50, stab: 8000, damage: 60000, downContrib: 5000 }),
+            makePlayerStats('dps1', { healing: 100, cleanses: 5, stab: 100, damage: 500000, downContrib: 80000 }),
+            makePlayerStats('dps2', { healing: 50, cleanses: 3, stab: 50, damage: 450000, downContrib: 70000 }),
+            makePlayerStats('dps3', { healing: 80, cleanses: 2, stab: 80, damage: 480000, downContrib: 75000 }),
         ];
         const boonTables = [
             makeBoonTable('b740', [
@@ -93,9 +95,9 @@ describe('classifyPlayerRoles', () => {
 
     it('returns confidence score between 0 and 1', () => {
         const players = [
-            makePlayerStats('healer', { healing: 500000, cleanses: 300, stab: 10000 }),
-            makePlayerStats('dps1', { healing: 0, cleanses: 0, stab: 0 }),
-            makePlayerStats('dps2', { healing: 0, cleanses: 0, stab: 0 }),
+            makePlayerStats('healer', { healing: 500000, cleanses: 300, stab: 10000, damage: 30000, downContrib: 2000 }),
+            makePlayerStats('dps1', { damage: 500000, downContrib: 80000 }),
+            makePlayerStats('dps2', { damage: 450000, downContrib: 70000 }),
         ];
         const result = classifyPlayerRoles(players, []);
         const healer = result.get('healer')!;
@@ -107,7 +109,7 @@ describe('classifyPlayerRoles', () => {
     });
 
     it('handles single player gracefully', () => {
-        const players = [makePlayerStats('solo', { healing: 5000, cleanses: 10, stab: 0 })];
+        const players = [makePlayerStats('solo', { healing: 5000, cleanses: 10, damage: 100000, downContrib: 15000 })];
         const result = classifyPlayerRoles(players, []);
         expect(result.get('solo')).toBeDefined();
         expect(['support', 'damage']).toContain(result.get('solo')!.role);
@@ -120,11 +122,24 @@ describe('classifyPlayerRoles', () => {
 
     it('support player has higher support score than damage player', () => {
         const players = [
-            makePlayerStats('healer', { healing: 400000, cleanses: 250, stab: 8000 }),
-            makePlayerStats('dps1', { healing: 0, cleanses: 5, stab: 0 }),
-            makePlayerStats('dps2', { healing: 50, cleanses: 2, stab: 0 }),
+            makePlayerStats('healer', { healing: 400000, cleanses: 250, stab: 8000, damage: 40000, downContrib: 3000 }),
+            makePlayerStats('dps1', { healing: 0, cleanses: 5, stab: 0, damage: 500000, downContrib: 80000 }),
+            makePlayerStats('dps2', { healing: 50, cleanses: 2, stab: 0, damage: 450000, downContrib: 70000 }),
         ];
         const result = classifyPlayerRoles(players, []);
         expect(result.get('healer')!.supportScore).toBeGreaterThan(result.get('dps1')!.supportScore);
+    });
+
+    it('low-performing support with low damage classified as support over DPS', () => {
+        const players = [
+            makePlayerStats('weakSupport', { healing: 80000, cleanses: 60, stab: 3000, damage: 40000, downContrib: 3000 }),
+            makePlayerStats('dps1', { healing: 0, cleanses: 0, stab: 0, damage: 500000, downContrib: 80000 }),
+            makePlayerStats('dps2', { healing: 0, cleanses: 0, stab: 0, damage: 480000, downContrib: 75000 }),
+            makePlayerStats('dps3', { healing: 0, cleanses: 0, stab: 0, damage: 450000, downContrib: 70000 }),
+            makePlayerStats('dps4', { healing: 0, cleanses: 0, stab: 0, damage: 460000, downContrib: 72000 }),
+        ];
+        const result = classifyPlayerRoles(players, []);
+        expect(result.get('weakSupport')!.role).toBe('support');
+        expect(result.get('weakSupport')!.supportScore).toBeGreaterThan(result.get('dps1')!.supportScore);
     });
 });
