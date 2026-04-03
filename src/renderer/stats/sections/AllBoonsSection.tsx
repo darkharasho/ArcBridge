@@ -4,6 +4,7 @@ import { ChartContainer } from '../ui/ChartContainer';
 import { Maximize2, X, ChevronDown } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { useStatsSharedContext } from '../StatsViewContext';
+import { Gw2BoonIcon } from '../../ui/Gw2BoonIcon';
 import { getProfessionColor } from '../../../shared/professionUtils';
 
 type BoonScope = 'selfBuffs' | 'groupBuffs' | 'squadBuffs' | 'totalBuffs';
@@ -219,6 +220,7 @@ export const AllBoonsSection = ({
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
                 <div className="flex items-center gap-2">
+                    <Gw2BoonIcon className="w-4 h-4" />
                     <span className="text-sm font-semibold text-slate-200">All Boons</span>
 
                     {/* Boon selector dropdown */}

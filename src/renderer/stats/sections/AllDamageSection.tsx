@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Brush, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '../ui/ChartContainer';
-import { Maximize2, X } from 'lucide-react';
+import { Flame, Maximize2, X } from 'lucide-react';
 import { PillToggleGroup } from '../ui/PillToggleGroup';
 import { useStatsSharedContext } from '../StatsViewContext';
 import { getProfessionColor } from '../../../shared/professionUtils';
@@ -142,6 +142,7 @@ export const AllDamageSection = ({
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
                 <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-orange-400" />
                     <span className="text-sm font-semibold text-slate-200">All Damage</span>
                 </div>
                 <div className="flex items-center gap-2">
