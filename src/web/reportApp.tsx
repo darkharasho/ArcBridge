@@ -1,6 +1,6 @@
 import { CSSProperties, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { StatsView } from '../renderer/StatsView';
-import type { ColorPalette } from '../shared/webThemes';
+import { PALETTES, type ColorPalette } from '../shared/webThemes';
 import { readPaletteFromReport } from './paletteReader';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -368,7 +368,7 @@ export function ReportApp() {
     useEffect(() => {
         const body = document.body;
         body.classList.add('web-report');
-        body.classList.remove('palette-electric-blue', 'palette-refined-cyan', 'palette-amber-warm', 'palette-emerald-mint');
+        for (const id of Object.keys(PALETTES)) body.classList.remove(`palette-${id}`);
         if (colorPalette !== 'electric-blue') {
             body.classList.add(`palette-${colorPalette}`);
         }

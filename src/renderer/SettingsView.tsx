@@ -468,7 +468,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         setSplitEnemiesByTeam(Boolean(settings.discordSplitEnemiesByTeam) || Boolean(discordEnemySplitSettings.image || discordEnemySplitSettings.embed || discordEnemySplitSettings.tiled));
         setMvpWeights(normalizeMvpWeights(settings.mvpWeights));
         setStatsViewSettings({ ...DEFAULT_STATS_VIEW_SETTINGS, ...(settings.statsViewSettings || {}) });
-        if (settings.colorPalette && ['electric-blue', 'refined-cyan', 'amber-warm', 'emerald-mint'].includes(settings.colorPalette)) {
+        if (settings.colorPalette && settings.colorPalette in PALETTES) {
             setColorPalette(settings.colorPalette);
         }
         if (typeof settings.glassSurfaces === 'boolean') {
@@ -1241,7 +1241,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     <button
                                         key={palette.id}
                                         type="button"
-                                        onClick={() => setColorPalette(palette.id)}
+                                        onClick={() => { setColorPalette(palette.id); onColorPaletteSaved?.(palette.id); }}
                                         className={`rounded-[4px] border px-3 py-3 text-left transition-colors ${isActive
                                             ? 'border-white/40 bg-white/10'
                                             : 'border-white/10 bg-white/5 hover:border-white/30'
@@ -1259,7 +1259,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         <div className="mt-4">
                             <Toggle
                                 enabled={glassSurfaces}
-                                onChange={(v) => setGlassSurfaces(v)}
+                                onChange={(v) => { setGlassSurfaces(v); onGlassSurfacesSaved?.(v); }}
                                 label="Glass Surfaces"
                                 description="Enable frosted-glass card backgrounds with backdrop blur"
                             />
