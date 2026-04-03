@@ -60,9 +60,8 @@ const nextVersion = bumpType ? bumpVersion(currentVersion, bumpType) : currentVe
 const tagName = `v${nextVersion}`;
 
 try {
-    // Validate and test
+    // Quick local validation (typecheck + lint); full test suite runs in CI
     run(npmCmd, ['run', 'validate']);
-    run(npmCmd, ['run', 'ci:local']);
 
     // Bump version
     if (bumpType) {
