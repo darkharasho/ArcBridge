@@ -2661,7 +2661,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                     </thead>
                                                     <tbody>
                                                         {sorted.map((c, idx) => {
-                                                            const showBelow = idx < 3;
+                                                            const showBelow = idx < 5;
                                                             const tooltipPosition = showBelow
                                                                 ? { top: '100%', marginTop: 4 }
                                                                 : { bottom: '100%', marginBottom: 4 };
