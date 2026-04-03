@@ -845,7 +845,15 @@ export const computeStatsAggregation = ({ logs, precomputedStats, mvpWeights, st
             topStatsLeaderboardsPerMinute: perMinuteLeaderboards,
             offensiveAvgMvpScore,
             defensiveAvgMvpScore,
-            avgMvpScore: offensiveAvgMvpScore
+            avgMvpScore: offensiveAvgMvpScore,
+            roleClassifications: Array.from(roleClassifications.entries()).map(([account, c]) => ({
+                account,
+                profession: playerStats.get(account)?.profession || 'Unknown',
+                professionList: playerStats.get(account)?.professionList || [],
+                role: c.role,
+                supportScore: c.supportScore,
+                confidenceScore: c.confidenceScore,
+            }))
         };
     })();
 

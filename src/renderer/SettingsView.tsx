@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import metricsSpecMarkdown from '../shared/metrics-spec.md?raw';
 import { HowToModal } from './HowToModal';
+import { useStatsStore } from './stats/statsStore';
+import { getProfessionColor } from '../shared/professionUtils';
 import { ProofOfWorkModal } from './ui/ProofOfWorkModal';
 
 // Pure helpers — defined outside the component so they are never recreated on re-render.
@@ -233,6 +235,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [importSelections, setImportSelections] = useState<Record<string, boolean>>({});
     const [howToOpen, setHowToOpen] = useState(false);
     const [devSettingsOpen, setDevSettingsOpen] = useState(false);
+    const [devSettingsTab, setDevSettingsTab] = useState<'tools' | 'classification'>('tools');
+    const statsResult = useStatsStore((s) => s.result);
     const [settingsNavOpen, setSettingsNavOpen] = useState(false);
     const [metricsSpecSearch, setMetricsSpecSearch] = useState('');
     const [metricsSpecSearchResults, setMetricsSpecSearchResults] = useState<Array<{ index: number; text: string; tag: string; section: string; hitId: number }>>([]);
@@ -2526,12 +2530,12 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="app-modal-card w-full max-w-xl rounded-[4px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
+                            className="app-modal-card w-full max-w-4xl rounded-[4px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
                         >
-                            <div className="px-6 pt-6 pb-4 border-b border-white/10 flex items-center justify-between">
+                            <div className="px-6 pt-6 pb-4 border-b border-white/10 flex items-center justify-between shrink-0">
                                 <div>
                                     <div className="text-xs uppercase tracking-widest text-amber-200/70">Developer Settings</div>
                                     <h3 className="text-xl font-semibold text-white">Hidden Tools</h3>
@@ -2545,61 +2549,141 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     <CloseIcon className="w-4 h-4" />
                                 </button>
                             </div>
-                            <div className="px-6 py-5 space-y-3">
-                                <p className="text-sm text-gray-400">
-                                    Troubleshooting and one-off maintenance actions.
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={handleEnsureGithubTemplate}
-                                    className="w-full flex items-center justify-center gap-2 rounded-[4px] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    Ensure GitHub Template
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleClearDpsCache}
-                                    className="w-full flex items-center justify-center gap-2 rounded-[4px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200 hover:bg-rose-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={dpsCacheBusy}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    {dpsCacheBusy ? 'Clearing dps.report cache…' : 'Clear dps.report cache'}
-                                </button>
-                                {(dpsCacheBusy || dpsCacheStatus) && (
-                                    <div className="rounded-[4px] border border-white/10 bg-black/20 px-3 py-2">
-                                        {dpsCacheBusy && (
-                                            <>
-                                                <div className="text-xs text-gray-300 mb-1">{dpsCacheProgressLabel || 'Clearing cache…'}</div>
-                                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-rose-400 transition-all duration-150"
-                                                        style={{ width: `${dpsCacheProgress}%` }}
-                                                    />
-                                                </div>
-                                                <div className="text-[11px] text-gray-500 mt-1">{Math.round(dpsCacheProgress)}%</div>
-                                            </>
-                                        )}
-                                        {dpsCacheStatus && (
-                                            <div className={`text-xs ${dpsCacheStatus.toLowerCase().includes('failed') ? 'text-rose-300' : 'text-emerald-300'}`}>
-                                                {dpsCacheStatus}
+                            <div className="flex gap-2 px-6 pt-4 shrink-0">
+                                {(['tools', 'classification'] as const).map((tab) => (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        onClick={() => setDevSettingsTab(tab)}
+                                        className={`px-3 py-1.5 rounded-[4px] text-xs font-medium transition-colors ${devSettingsTab === tab ? 'bg-amber-500/20 border border-amber-500/40 text-amber-200' : 'border border-white/10 bg-white/5 text-gray-400 hover:text-gray-200'}`}
+                                    >
+                                        {tab === 'tools' ? 'Tools' : 'Player Classification'}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="px-6 py-5 space-y-3 overflow-y-auto min-h-0">
+                                {devSettingsTab === 'tools' && (
+                                    <>
+                                        <p className="text-sm text-gray-400">
+                                            Troubleshooting and one-off maintenance actions.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={handleEnsureGithubTemplate}
+                                            className="w-full flex items-center justify-center gap-2 rounded-[4px] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
+                                        >
+                                            <RefreshCw className="w-4 h-4" />
+                                            Ensure GitHub Template
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearDpsCache}
+                                            className="w-full flex items-center justify-center gap-2 rounded-[4px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200 hover:bg-rose-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={dpsCacheBusy}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            {dpsCacheBusy ? 'Clearing dps.report cache…' : 'Clear dps.report cache'}
+                                        </button>
+                                        {(dpsCacheBusy || dpsCacheStatus) && (
+                                            <div className="rounded-[4px] border border-white/10 bg-black/20 px-3 py-2">
+                                                {dpsCacheBusy && (
+                                                    <>
+                                                        <div className="text-xs text-gray-300 mb-1">{dpsCacheProgressLabel || 'Clearing cache…'}</div>
+                                                        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-rose-400 transition-all duration-150"
+                                                                style={{ width: `${dpsCacheProgress}%` }}
+                                                            />
+                                                        </div>
+                                                        <div className="text-[11px] text-gray-500 mt-1">{Math.round(dpsCacheProgress)}%</div>
+                                                    </>
+                                                )}
+                                                {dpsCacheStatus && (
+                                                    <div className={`text-xs ${dpsCacheStatus.toLowerCase().includes('failed') ? 'text-rose-300' : 'text-emerald-300'}`}>
+                                                        {dpsCacheStatus}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
-                                    </div>
+                                        {githubTemplateStatus && (
+                                            <div className={`text-xs ${githubTemplateStatusKind === 'success'
+                                                ? 'text-emerald-300'
+                                                : githubTemplateStatusKind === 'error'
+                                                    ? 'text-rose-400'
+                                                    : 'text-amber-300'
+                                                }`}
+                                            >
+                                                {githubTemplateStatus}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
-                                {githubTemplateStatus && (
-                                    <div className={`text-xs ${githubTemplateStatusKind === 'success'
-                                        ? 'text-emerald-300'
-                                        : githubTemplateStatusKind === 'error'
-                                            ? 'text-rose-400'
-                                            : 'text-amber-300'
-                                        }`}
-                                    >
-                                        {githubTemplateStatus}
-                                    </div>
-                                )}
+                                {devSettingsTab === 'classification' && (() => {
+                                    const classifications = statsResult?.stats?.roleClassifications as Array<{
+                                        account: string;
+                                        profession: string;
+                                        professionList: string[];
+                                        role: 'support' | 'damage';
+                                        supportScore: number;
+                                        confidenceScore: number;
+                                    }> | undefined;
+                                    if (!classifications || classifications.length === 0) {
+                                        return (
+                                            <div className="text-sm text-gray-500 py-8 text-center">
+                                                No classification data available. Load some logs and open the stats dashboard first.
+                                            </div>
+                                        );
+                                    }
+                                    const sorted = [...classifications].sort((a, b) => b.supportScore - a.supportScore);
+                                    const supportCount = sorted.filter((c) => c.role === 'support').length;
+                                    const damageCount = sorted.filter((c) => c.role === 'damage').length;
+                                    return (
+                                        <>
+                                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                                                <span>{sorted.length} players</span>
+                                                <span className="text-emerald-400">{supportCount} support</span>
+                                                <span className="text-orange-400">{damageCount} damage</span>
+                                            </div>
+                                            <div className="rounded-[4px] border border-white/10 overflow-hidden">
+                                                <table className="w-full text-xs">
+                                                    <thead>
+                                                        <tr className="border-b border-white/10 text-gray-400">
+                                                            <th className="text-left px-3 py-2 font-medium">Player</th>
+                                                            <th className="text-left px-3 py-2 font-medium">Profession</th>
+                                                            <th className="text-center px-3 py-2 font-medium">Role</th>
+                                                            <th className="text-right px-3 py-2 font-medium">Support Score</th>
+                                                            <th className="text-right px-3 py-2 font-medium">Confidence</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {sorted.map((c) => (
+                                                            <tr key={c.account} className="border-b border-white/5 hover:bg-white/5">
+                                                                <td className="px-3 py-1.5 text-gray-200">{c.account}</td>
+                                                                <td className="px-3 py-1.5" style={{ color: getProfessionColor(c.profession) }}>{c.profession}</td>
+                                                                <td className="px-3 py-1.5 text-center">
+                                                                    <span className={`inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-semibold uppercase tracking-wide ${c.role === 'support' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}>
+                                                                        {c.role}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-right text-gray-300 font-mono">{c.supportScore.toFixed(2)}</td>
+                                                                <td className="px-3 py-1.5 text-right">
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                                                            <div className={`h-full rounded-full ${c.role === 'support' ? 'bg-emerald-400' : 'bg-orange-400'}`} style={{ width: `${Math.round(c.confidenceScore * 100)}%` }} />
+                                                                        </div>
+                                                                        <span className="text-gray-400 font-mono w-10 text-right">{(c.confidenceScore * 100).toFixed(0)}%</span>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
-                            <div className="px-6 pb-5 flex justify-end">
+                            <div className="px-6 pb-5 flex justify-end shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => setDevSettingsOpen(false)}
