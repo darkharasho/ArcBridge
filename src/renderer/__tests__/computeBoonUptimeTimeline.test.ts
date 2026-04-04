@@ -53,7 +53,7 @@ describe('computeBoonUptimeTimeline', () => {
             stackingBoonBucketIntervalMs: 5000,
         });
 
-        const protBoon = result.find((b) => b.name === 'Protection');
+        const protBoon = result.find((b: any) => b.name === 'Protection');
         expect(protBoon).toBeDefined();
         expect(protBoon!.intervalMs).toBe(2000);
 
@@ -76,7 +76,7 @@ describe('computeBoonUptimeTimeline', () => {
             stackingBoonBucketIntervalMs: 5000,
         });
 
-        const mightBoon = result.find((b) => b.name === 'Might');
+        const mightBoon = result.find((b: any) => b.name === 'Might');
         expect(mightBoon).toBeDefined();
         expect(mightBoon!.intervalMs).toBe(5000);
 
@@ -96,7 +96,7 @@ describe('computeBoonUptimeTimeline', () => {
 
         const result = computeBoonUptimeTimeline([log]);
 
-        const protBoon = result.find((b) => b.name === 'Protection');
+        const protBoon = result.find((b: any) => b.name === 'Protection');
         expect(protBoon).toBeDefined();
         expect(protBoon!.intervalMs).toBe(5000);
 
@@ -121,7 +121,7 @@ describe('computeBoonUptimeTimeline', () => {
             stackingBoonBucketIntervalMs: 5000,
         });
 
-        const protBoon = result.find((b) => b.name === 'Protection');
+        const protBoon = result.find((b: any) => b.name === 'Protection');
         const buckets = protBoon!.fights[0].values['TestPlayer.1234'].buckets;
         expect(buckets).toEqual([1, 1, 0, 0, 1]);
     });
