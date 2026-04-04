@@ -177,6 +177,23 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('../../workers/statsWorker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (event) => {
+                if (event.data?.type === 'progress') {
+                    const incomingToken = typeof event.data.token === 'number' ? event.data.token : null;
+                    if (incomingToken !== null && incomingToken !== activeTokenRef.current) return;
+                    const ingested = Number(event.data.ingested || 0);
+                    const total = Number(event.data.total || 0);
+                    setAggregationProgress((prev) => {
+                        if (prev.streamed >= ingested && prev.total === total) return prev;
+                        return {
+                            ...prev,
+                            active: true,
+                            phase: 'streaming',
+                            streamed: ingested,
+                            total: total > 0 ? total : prev.total
+                        };
+                    });
+                    return;
+                }
                 if (event.data?.type === 'result') {
                     const incomingToken = typeof event.data.token === 'number' ? event.data.token : null;
                     if (incomingToken !== null && incomingToken !== activeTokenRef.current) {
