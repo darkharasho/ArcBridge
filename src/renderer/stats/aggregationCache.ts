@@ -44,7 +44,7 @@ export class AggregationLRUCache {
     private misses = 0;
 
     constructor(options: CacheOptions = {}) {
-        this.maxEntries = options.maxEntries ?? 5;
+        this.maxEntries = options.maxEntries ?? 2;
         this.debugLogging = options.debugLogging ?? false;
     }
 
@@ -165,7 +165,7 @@ let globalCache: AggregationLRUCache | null = null;
  */
 export function getAggregationCache(debugLogging: boolean = false): AggregationLRUCache {
     if (!globalCache) {
-        globalCache = new AggregationLRUCache({ maxEntries: 5, debugLogging });
+        globalCache = new AggregationLRUCache({ maxEntries: 2, debugLogging });
     }
     return globalCache;
 }
