@@ -47,15 +47,158 @@ export interface AggregationDiagnosticsState {
     droppedLogMessages?: number;
 }
 
-const DETAILS_TOP_LEVEL_DENY = ['phases', 'logErrors'];
-const PLAYER_DENY = ['targetBreakbarDamage1S', 'squadBuffVolumesActive'];
+const DETAILS_TOP_LEVEL_DENY = new Set(['phases', 'logErrors']);
+
+// Fields that are never read by computeStatsAggregation or any of its sub-functions.
+const PLAYER_DENY = new Set([
+    'targetBreakbarDamage1S',
+    'squadBuffVolumesActive',
+    'squadBuffVolumes',
+]);
+
+// Phase-indexed arrays where only [0] is needed by the aggregation pipeline.
+// Keeping all phases doubles/triples memory for no benefit.
+const PLAYER_PHASE0_ONLY = new Set([
+    'dpsAll',
+    'statsAll',
+    'defenses',
+    'support',
+]);
+
+/** Trim a phase-indexed array to only the first element. */
+const takePhase0 = (arr: any): any[] | undefined => {
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    return [arr[0]];
+};
+
+/**
+ * Trim per-second cumulative arrays to phase 0 only.
+ * damage1S shape: [phase][second] → keep only [0]
+ * damageTaken1S shape: same as damage1S
+ */
+const trim1SPhase0 = (arr: any): any[] | undefined => {
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    return [arr[0]];
+};
+
+/**
+ * Trim targetDamage1S to phase 0 per target.
+ * Shape A: [phase][target][time] → keep [0] only
+ * Shape B: [target][phase][time] → keep target[0] per target
+ */
+const trimTargetDamage1S = (arr: any): any[] | undefined => {
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    const first = arr[0];
+    if (!Array.isArray(first)) return undefined;
+    // Shape A: [phase][target][time] — first[0] is array of arrays
+    if (Array.isArray(first[0]) && Array.isArray(first[0][0])) {
+        return [first]; // keep phase 0 only
+    }
+    // Shape B: [target][phase][time] — first[0] is array of numbers
+    if (Array.isArray(first[0]) && !Array.isArray(first[0][0])) {
+        return arr.map((target: any) => {
+            if (!Array.isArray(target) || target.length === 0) return target;
+            return [target[0]]; // keep phase 0 per target
+        });
+    }
+    return [first];
+};
+
+// Fields used from outgoingHealingAllies phase entries: healing, downedHealing
+// Fields used from outgoingBarrierAllies phase entries: barrier
+const HEALING_PHASE_KEEP = new Set(['healing', 'downedHealing']);
+const BARRIER_PHASE_KEEP = new Set(['barrier']);
+
+/** Slim ally phase entries to only the fields the aggregation reads. */
+const pruneAllyPhases = (allies: any[], keepFields: Set<string>): any[] => {
+    return allies.map((allyPhases: any) => {
+        if (!Array.isArray(allyPhases)) return allyPhases;
+        return allyPhases.map((phase: any) => {
+            if (!phase || typeof phase !== 'object') return phase;
+            const slim: any = {};
+            for (const key of keepFields) {
+                if (key in phase) slim[key] = phase[key];
+            }
+            return slim;
+        });
+    });
+};
+
+/**
+ * Trim extHealingStats/extBarrierStats:
+ * - totalHealingDist/totalBarrierDist: [phase][entry] — only [0] is accessed.
+ * - outgoingHealingAllies: [ally][phase] — all allies needed, but only healing/downedHealing fields.
+ * - outgoingBarrierAllies: [ally][phase] — all allies needed, but only barrier field.
+ */
+const pruneExtStats = (ext: any): any => {
+    if (!ext || typeof ext !== 'object') return ext;
+    const pruned: any = {};
+    for (const key of Object.keys(ext)) {
+        const val = ext[key];
+        if (Array.isArray(val) && val.length > 1 && (
+            key === 'totalHealingDist' || key === 'totalBarrierDist'
+        )) {
+            pruned[key] = [val[0]];
+        } else if (Array.isArray(val) && key === 'outgoingHealingAllies') {
+            pruned[key] = pruneAllyPhases(val, HEALING_PHASE_KEEP);
+        } else if (Array.isArray(val) && key === 'outgoingBarrierAllies') {
+            pruned[key] = pruneAllyPhases(val, BARRIER_PHASE_KEEP);
+        } else {
+            pruned[key] = val;
+        }
+    }
+    return pruned;
+};
+
+// combatReplayData fields used: positions, dead, down, start
+const COMBAT_REPLAY_KEEP = new Set(['positions', 'dead', 'down', 'start']);
+
+/** Strip unused combatReplayData fields (orientations ~111 KB/log, dc, iconURL, end). */
+const pruneCombatReplay = (cr: any): any => {
+    if (!cr || typeof cr !== 'object') return cr;
+    const pruned: any = {};
+    for (const key of Object.keys(cr)) {
+        if (COMBAT_REPLAY_KEEP.has(key)) {
+            pruned[key] = cr[key];
+        }
+    }
+    return pruned;
+};
+
+// buffData[0] fields used: uptime, presence (all other fields like generated,
+// overstacked, wasted, byExtension etc are unused — ~649 KB/log savings)
+const BUFF_DATA_KEEP = new Set(['uptime', 'presence']);
+
+/** Trim buffUptimes entries: keep id, statesPerSource, and only uptime/presence from buffData[0]. */
+const pruneBuffUptimes = (uptimes: any): any => {
+    if (!Array.isArray(uptimes)) return uptimes;
+    return uptimes.map((buff: any) => {
+        if (!buff || typeof buff !== 'object') return buff;
+        const slimBuff: any = {};
+        for (const key of Object.keys(buff)) {
+            if (key === 'buffData') {
+                const bd0 = Array.isArray(buff.buffData) ? buff.buffData[0] : null;
+                if (bd0 && typeof bd0 === 'object') {
+                    const slim: any = {};
+                    for (const f of BUFF_DATA_KEEP) {
+                        if (f in bd0) slim[f] = bd0[f];
+                    }
+                    slimBuff.buffData = [slim];
+                }
+            } else {
+                slimBuff[key] = buff[key];
+            }
+        }
+        return slimBuff;
+    });
+};
 
 /** Strip fields not needed by computeStatsAggregation before structured-cloning to the worker. */
 export const pruneDetailsForWorker = (details: any): any => {
     if (!details || typeof details !== 'object') return details;
     const pruned: any = {};
     for (const key of Object.keys(details)) {
-        if (!DETAILS_TOP_LEVEL_DENY.includes(key)) {
+        if (!DETAILS_TOP_LEVEL_DENY.has(key)) {
             pruned[key] = details[key];
         }
     }
@@ -64,11 +207,63 @@ export const pruneDetailsForWorker = (details: any): any => {
             if (!player || typeof player !== 'object') return player;
             const p: any = {};
             for (const key of Object.keys(player)) {
-                if (!PLAYER_DENY.includes(key)) {
-                    p[key] = player[key];
+                if (PLAYER_DENY.has(key)) continue;
+                if (PLAYER_PHASE0_ONLY.has(key)) {
+                    const trimmed = takePhase0(player[key]);
+                    if (trimmed) p[key] = trimmed;
+                    continue;
                 }
+                if (key === 'damage1S' || key === 'damageTaken1S' || key === 'powerDamage1S') {
+                    const trimmed = trim1SPhase0(player[key]);
+                    if (trimmed) p[key] = trimmed;
+                    continue;
+                }
+                if (key === 'targetDamage1S' || key === 'targetPowerDamage1S') {
+                    const trimmed = trimTargetDamage1S(player[key]);
+                    if (trimmed) p[key] = trimmed;
+                    continue;
+                }
+                if (key === 'extHealingStats' || key === 'extBarrierStats') {
+                    p[key] = pruneExtStats(player[key]);
+                    continue;
+                }
+                if (key === 'combatReplayData') {
+                    p[key] = pruneCombatReplay(player[key]);
+                    continue;
+                }
+                if (key === 'buffUptimes') {
+                    p[key] = pruneBuffUptimes(player[key]);
+                    continue;
+                }
+                p[key] = player[key];
             }
             return p;
+        });
+    }
+    // Prune targets the same way (incoming strike damage uses target.damage1S)
+    if (Array.isArray(pruned.targets)) {
+        pruned.targets = pruned.targets.map((target: any) => {
+            if (!target || typeof target !== 'object') return target;
+            const t: any = {};
+            for (const key of Object.keys(target)) {
+                if (key === 'damage1S' || key === 'damageTaken1S' || key === 'powerDamage1S') {
+                    const trimmed = trim1SPhase0(target[key]);
+                    if (trimmed) t[key] = trimmed;
+                    continue;
+                }
+                if (key === 'targetDamage1S' || key === 'targetPowerDamage1S') {
+                    const trimmed = trimTargetDamage1S(target[key]);
+                    if (trimmed) t[key] = trimmed;
+                    continue;
+                }
+                if (PLAYER_PHASE0_ONLY.has(key)) {
+                    const trimmed = takePhase0(target[key]);
+                    if (trimmed) t[key] = trimmed;
+                    continue;
+                }
+                t[key] = target[key];
+            }
+            return t;
         });
     }
     return pruned;
