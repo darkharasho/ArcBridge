@@ -306,6 +306,12 @@ function App() {
     const calculatingCount = logs.filter((log) => log.status === 'calculating').length;
 
     useEffect(() => {
+        // Don't promote calculating → success while aggregation is actively
+        // streaming or computing. Logs should stay "calculating" until the
+        // incremental aggregator has ingested them and stats are ready.
+        if (aggregationProgress?.active && (aggregationProgress.phase === 'streaming' || aggregationProgress.phase === 'computing')) {
+            return;
+        }
         if (!logs.some((log) => log.status === 'calculating')) {
             return;
         }
@@ -320,7 +326,7 @@ function App() {
             });
             return changed ? next : currentLogs;
         });
-    }, [logs, setLogsDeferred]);
+    }, [logs, setLogsDeferred, aggregationProgress]);
 
     useEffect(() => {
         if (bulkUploadMode && calculatingCount > 1) {
@@ -394,22 +400,30 @@ function App() {
         bulkUploadExpectedRef.current = null;
         bulkUploadCompletedRef.current = 0;
         setBulkUploadMode(false);
-        const kickOffStatsCompute = (delayMs = 0) => {
-            window.setTimeout(() => {
-                bulkStatsAwaitingRef.current = true;
-                setLogsForStats((prev) => {
-                    const source = prev === logsRef.current ? [...logsRef.current] : logsRef.current;
-                    return stripDetailsFromEntries(source);
-                });
-                const flushId = requestFlush?.();
-                if (flushId) {
-                    bulkFlushIdRef.current = flushId;
-                }
-            }, delayMs);
-        };
-        kickOffStatsCompute(0);
+        // Publish logsForStats synchronously so the worker begins streaming in the
+        // same React batch as bulkUploadMode=false — avoids a render where
+        // StatsView sees statsDataProgress.total>0 but logs.length===0 ("0/65").
+        bulkStatsAwaitingRef.current = true;
+        setLogsForStats((prev) => {
+            const source = prev === logsRef.current ? [...logsRef.current] : logsRef.current;
+            return stripDetailsFromEntries(source);
+        });
+        const flushId = requestFlush?.();
+        if (flushId) {
+            bulkFlushIdRef.current = flushId;
+        }
         // Run a second kickoff after queued state flushes so late upload updates are included.
-        kickOffStatsCompute(420);
+        window.setTimeout(() => {
+            bulkStatsAwaitingRef.current = true;
+            setLogsForStats((prev) => {
+                const source = prev === logsRef.current ? [...logsRef.current] : logsRef.current;
+                return stripDetailsFromEntries(source);
+            });
+            const flushId2 = requestFlush?.();
+            if (flushId2) {
+                bulkFlushIdRef.current = flushId2;
+            }
+        }, 420);
         if (viewRef.current === 'stats') {
             window.setTimeout(() => scheduleDetailsHydration(true), 0);
             window.setTimeout(() => scheduleDetailsHydration(true), 500);

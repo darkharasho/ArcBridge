@@ -242,6 +242,32 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     void storeDiagnostics;
     const { stats, skillUsageData: computedSkillUsageData } = aggregationResult;
     const aggregationSettling = useMemo(() => {
+        // Prefer real aggregation progress over the generic "Preparing" placeholder.
+        // This avoids showing "Preparing fights for stats" when the worker is already
+        // streaming but logsForStats hasn't fully synced into StatsView yet.
+        const total = Math.max(0, Number(aggregationProgress?.total || logs.length || 0));
+        const phase = aggregationProgress?.phase;
+        const active = Boolean(aggregationProgress?.active)
+            && (phase === 'streaming' || phase === 'computing')
+            && total > 0;
+        if (active) {
+            const streamed = Math.min(Math.max(Number(aggregationProgress?.streamed || 0), 0), total);
+            const phaseLabel = phase === 'streaming'
+                ? 'Loading fight data'
+                : 'Finalizing squad stats';
+            const progressText = phase === 'streaming'
+                ? `${streamed} of ${total} fights loaded`
+                : 'All fights loaded • calculating final totals';
+            const progressPercent = phase === 'streaming'
+                ? Math.max(1, Math.min(99, Math.round((streamed / total) * 100)))
+                : 99;
+            return {
+                active: true,
+                phaseLabel,
+                progressText,
+                progressPercent
+            };
+        }
         // "Syncing" state: statsDataProgress reports logs but logs prop hasn't updated yet
         // Skip syncing state if all fights are unavailable — let detailsProgress show that instead
         const detailsTotal = Math.max(0, Number(statsDataProgress?.total || logs.length || 0));
@@ -255,34 +281,11 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
                 progressPercent: 5
             };
         }
-        const total = Math.max(0, Number(aggregationProgress?.total || logs.length || 0));
-        const phase = aggregationProgress?.phase;
-        const active = Boolean(aggregationProgress?.active)
-            && (phase === 'streaming' || phase === 'computing')
-            && total > 0;
-        if (!active) {
-            return {
-                active: false,
-                phaseLabel: '',
-                progressText: '',
-                progressPercent: 0
-            };
-        }
-        const streamed = Math.min(Math.max(Number(aggregationProgress?.streamed || 0), 0), total);
-        const phaseLabel = phase === 'streaming'
-            ? 'Loading fight data'
-            : 'Finalizing squad stats';
-        const progressText = phase === 'streaming'
-            ? `${streamed} of ${total} fights loaded`
-            : 'All fights loaded • calculating final totals';
-        const progressPercent = phase === 'streaming'
-            ? Math.max(1, Math.min(99, Math.round((streamed / total) * 100)))
-            : 99;
         return {
-            active: true,
-            phaseLabel,
-            progressText,
-            progressPercent
+            active: false,
+            phaseLabel: '',
+            progressText: '',
+            progressPercent: 0
         };
     }, [aggregationProgress, statsDataProgress, logs.length]);
 
