@@ -1,19 +1,12 @@
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { IncrementalAggregator } from '../stats/incrementalAggregation';
 
-type WorkerPayload = {
-    logs: any[];
-    precomputedStats?: any;
-    mvpWeights?: any;
-    statsViewSettings?: any;
-    disruptionMethod?: any;
-};
-
-let latestPayload: WorkerPayload | null = null;
+let aggregator: IncrementalAggregator | null = null;
 let computeId = 0;
 let currentToken = 0;
 let pendingFlushId: number | null = null;
 let expectedLogCount = 0;
 let droppedLogMessages = 0;
+let ingestedLogCount = 0;
 
 const hasMismatchedToken = (data: any) =>
     typeof data?.token === 'number' && data.token !== currentToken;
@@ -63,28 +56,27 @@ const stripTransferHeavySkillRows = (result: any) => {
 };
 
 const computeAndPost = () => {
-    if (!latestPayload) return;
+    if (!aggregator) return;
     computeId += 1;
     const flushId = pendingFlushId;
     pendingFlushId = null;
     const computeStartedAt = performance.now();
     let result: any;
     try {
-        result = computeStatsAggregation({ ...latestPayload, includePlayerSkillMap: false });
+        result = aggregator.finalize();
     } catch (err) {
-        console.error('[StatsWorker] computeStatsAggregation threw:', err);
-        // Post an empty result so the main thread doesn't hang waiting
+        console.error('[StatsWorker] aggregator.finalize() threw:', err);
         (self as any).postMessage({
             type: 'result',
             result: { stats: null, skillUsageData: null },
             computeId,
-            logCount: latestPayload.logs.length,
+            logCount: ingestedLogCount,
             token: currentToken,
             completedAt: Date.now(),
             flushId,
             diagnostics: {
                 computeMs: Math.max(0, performance.now() - computeStartedAt),
-                logsInPayload: latestPayload.logs.length,
+                logsInPayload: ingestedLogCount,
                 expectedLogCount,
                 droppedLogMessages,
                 error: err instanceof Error ? err.message : String(err)
@@ -99,13 +91,13 @@ const computeAndPost = () => {
         type: 'result',
         result,
         computeId,
-        logCount: latestPayload.logs.length,
+        logCount: ingestedLogCount,
         token: currentToken,
         completedAt: Date.now(),
         flushId,
         diagnostics: {
             computeMs,
-            logsInPayload: latestPayload.logs.length,
+            logsInPayload: ingestedLogCount,
             expectedLogCount,
             droppedLogMessages,
             transferStripStats,
@@ -121,7 +113,8 @@ const computeAndPost = () => {
 self.onmessage = (event: MessageEvent) => {
     const data = event.data;
     if (data?.type === 'reset') {
-        latestPayload = { logs: [] };
+        aggregator = new IncrementalAggregator();
+        ingestedLogCount = 0;
         if (typeof data.token === 'number') {
             currentToken = data.token;
         }
@@ -130,28 +123,27 @@ self.onmessage = (event: MessageEvent) => {
         pendingFlushId = null;
         return;
     }
-    if (hasMismatchedToken(data)) {
-        return;
-    }
+    if (hasMismatchedToken(data)) return;
     if (data?.type === 'settings') {
-        latestPayload = {
-            logs: latestPayload?.logs || [],
+        aggregator = new IncrementalAggregator({
             precomputedStats: data.payload?.precomputedStats,
             mvpWeights: data.payload?.mvpWeights,
             statsViewSettings: data.payload?.statsViewSettings,
-            disruptionMethod: data.payload?.disruptionMethod
-        };
+            disruptionMethod: data.payload?.disruptionMethod,
+        });
+        ingestedLogCount = 0;
         return;
     }
     if (data?.type === 'log') {
-        if (!latestPayload) {
-            latestPayload = { logs: [] };
+        if (!aggregator) {
+            aggregator = new IncrementalAggregator();
         }
-        if (expectedLogCount > 0 && latestPayload.logs.length >= expectedLogCount) {
+        if (expectedLogCount > 0 && ingestedLogCount >= expectedLogCount) {
             droppedLogMessages += 1;
             return;
         }
-        latestPayload.logs.push(data.payload);
+        aggregator.ingestLog(data.payload);
+        ingestedLogCount += 1;
         return;
     }
     if (data?.type === 'flush') {
