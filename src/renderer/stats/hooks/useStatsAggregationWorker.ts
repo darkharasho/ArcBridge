@@ -1,6 +1,7 @@
 import { startTransition, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { DisruptionMethod, IMvpWeights, IStatsViewSettings } from '../../global.d';
 import { computeStatsAggregation } from '../computeStatsAggregation';
+import { IncrementalAggregator } from '../incrementalAggregation';
 import { DetailsCacheContext } from '../../cache/DetailsCacheContext';
 import type { DetailsCache } from '../../cache/DetailsCache';
 
@@ -435,21 +436,25 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         const startedAt = Date.now();
         const computeStartedAt = performance.now();
 
-        // Assemble details from cache for inline computation
-        const logsWithDetails = logs.map((log: any) => {
+        const aggregator = new IncrementalAggregator({
+            precomputedStats, mvpWeights,
+            statsViewSettings: aggregationStatsViewSettings,
+            disruptionMethod
+        });
+
+        for (const log of logs) {
             const logId = log?.id || log?.filePath;
             const cachedDetails = detailsCache && logId ? detailsCache.peek(logId) : null;
-            if (cachedDetails) {
-                return { ...log, details: cachedDetails };
-            }
-            return log;
-        });
+            const logWithDetails = cachedDetails ? { ...log, details: cachedDetails } : log;
+            aggregator.ingestLog(logWithDetails);
+            // logWithDetails goes out of scope — eligible for GC
+        }
 
         let result: any;
         try {
-            result = computeStatsAggregation({ logs: logsWithDetails, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+            result = aggregator.finalize();
         } catch (err) {
-            console.error('[StatsAggregation] Fallback computation failed:', err);
+            console.error('[StatsAggregation] Fallback finalize failed:', err);
             result = { stats: null, skillUsageData: null };
         }
 
