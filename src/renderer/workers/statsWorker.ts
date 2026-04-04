@@ -144,6 +144,12 @@ self.onmessage = (event: MessageEvent) => {
         }
         aggregator.ingestLog(data.payload);
         ingestedLogCount += 1;
+        (self as any).postMessage({
+            type: 'progress',
+            ingested: ingestedLogCount,
+            total: expectedLogCount,
+            token: currentToken
+        });
         return;
     }
     if (data?.type === 'flush') {
