@@ -132,7 +132,7 @@ function App() {
     const detailsCacheRef = useRef<DetailsCache | null>(null);
     if (!detailsCacheRef.current) {
         detailsCacheRef.current = new DetailsCache({
-            lruCapacity: 50,
+            lruCapacity: 15,
             resolveDetails: () => null,
             fetchDetails: async (logId: string) => {
                 const log = logsRef.current.find((l: any) => l.id === logId || l.filePath === logId);

@@ -100,7 +100,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     const streamIdleCallbackRef = useRef<number | null>(null);
     const lastStreamProgressUpdateRef = useRef(0);
     const streamSessionRef = useRef(0);
-    const prunedLogCacheRef = useRef<Map<string, { sourceLog: any; sourceDetails: any; pruned: any }>>(new Map());
+    const prunedLogCacheRef = useRef<Map<string, { sourceLog: any; sourceDetails: WeakRef<object> | null; pruned: any }>>(new Map());
     const aggregationSettingsKeyRef = useRef<string>('');
     const aggregationSettingsRef = useRef<IStatsViewSettings | undefined>(undefined);
     const lastFallbackComputeKeyRef = useRef('');
@@ -134,7 +134,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         const detailsRef = details && typeof details === 'object' ? details : null;
         const cached = prunedLogCacheRef.current.get(cacheKey);
         if (cached) {
-            if (detailsRef && cached.sourceDetails === detailsRef) {
+            if (detailsRef && cached.sourceDetails?.deref() === detailsRef) {
                 return cached.pruned;
             }
             if (!detailsRef && cached.sourceLog === logWithDetails) {
@@ -144,7 +144,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         const pruned = logWithDetails;
         prunedLogCacheRef.current.set(cacheKey, {
             sourceLog: logWithDetails,
-            sourceDetails: detailsRef,
+            sourceDetails: detailsRef ? new WeakRef(detailsRef) : null,
             pruned
         });
         return pruned;
