@@ -1,10 +1,6 @@
 import { resolveFightTimestamp } from './utils/timestampUtils';
 import { sanitizeWvwLabel, buildFightLabel, resolveMapName } from './utils/labelUtils';
 
-export function computeBoonUptimeTimeline(
-    validLogs: any[],
-    settings?: { boonBucketIntervalMs: number; stackingBoonBucketIntervalMs: number }
-) {
 type UptimePlayer = {
     key: string;
     account: string;
@@ -38,10 +34,21 @@ type UptimeBucket = {
     players: Map<string, UptimePlayer>;
     fights: UptimeFight[];
 };
-const defaultBoonIntervalMs = settings?.boonBucketIntervalMs ?? 5000;
-const defaultStackingIntervalMs = settings?.stackingBoonBucketIntervalMs ?? 5000;
-const boonBuckets = new Map<string, UptimeBucket>();
-const ensureBoonBucket = (boonId: string, meta?: any) => {
+
+export interface BoonUptimeTimelineAccumulator {
+    boonBuckets: Map<string, UptimeBucket>;
+    defaultBoonIntervalMs: number;
+    defaultStackingIntervalMs: number;
+    logIndex: number;
+}
+
+const ensureBoonBucket = (
+    boonBuckets: Map<string, UptimeBucket>,
+    boonId: string,
+    defaultBoonIntervalMs: number,
+    defaultStackingIntervalMs: number,
+    meta?: any
+) => {
     if (!boonBuckets.has(boonId)) {
         const stacking = Boolean(meta?.stacking);
         boonBuckets.set(boonId, {
@@ -123,133 +130,163 @@ const createFightValue = (buckets: number[]): UptimeFightValue => {
     return { total, peak, buckets };
 };
 
-validLogs
-    .map((log) => ({ log, ts: resolveFightTimestamp(log?.details, log) }))
-    .sort((a, b) => a.ts - b.ts)
-    .forEach(({ log }, index) => {
-        const details = log?.details;
-        if (!details) return;
-        const players = Array.isArray(details.players) ? details.players : [];
-        const squadPlayers = players.filter((p: any) => !p?.notInSquad);
-        if (squadPlayers.length <= 0) return;
-        const durationMs = Math.max(0, Number(details?.durationMS || 0));
-        const buffMap = (details?.buffMap && typeof details.buffMap === 'object')
-            ? details.buffMap
-            : {};
-        const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
-        const mapName = resolveMapName(details, log);
-        const fullLabel = buildFightLabel(fightName, String(mapName || ''));
-        const fightValuesByBoon = new Map<string, Map<string, UptimeFightValue>>();
-        const fightPlayerSeenByBoon = new Map<string, Set<string>>();
+export function createBoonUptimeTimelineAccumulator(
+    settings?: { boonBucketIntervalMs: number; stackingBoonBucketIntervalMs: number }
+): BoonUptimeTimelineAccumulator {
+    return {
+        boonBuckets: new Map<string, UptimeBucket>(),
+        defaultBoonIntervalMs: settings?.boonBucketIntervalMs ?? 5000,
+        defaultStackingIntervalMs: settings?.stackingBoonBucketIntervalMs ?? 5000,
+        logIndex: 0
+    };
+}
 
-        squadPlayers.forEach((player: any) => {
-            const account = String(player?.account || player?.name || 'Unknown');
-            const key = account;
-            const profession = String(player?.profession || 'Unknown');
-            const buffUptimes = Array.isArray(player?.buffUptimes) ? player.buffUptimes : [];
-            buffUptimes.forEach((buff: any) => {
-                const boonIdNum = Number(buff?.id);
-                if (!Number.isFinite(boonIdNum)) return;
-                const boonId = `b${boonIdNum}`;
-                const meta = buffMap[boonId] || {};
-                const classification = String(meta?.classification || '');
-                if (classification && classification !== 'Boon') return;
-                const statesPerSource = (buff?.statesPerSource && typeof buff.statesPerSource === 'object')
-                    ? buff.statesPerSource
-                    : null;
-                if (!statesPerSource) return;
-                const boonBucket = ensureBoonBucket(boonId, meta);
-                const intervalMs = boonBucket.intervalMs;
-                const boonBucketCount = Math.max(1, Math.ceil(Math.max(1, durationMs) / intervalMs));
-                const buckets = sampleStackTimeline(
-                    statesPerSource as Record<string, any>,
-                    boonBucketCount,
-                    Boolean(meta?.stacking),
-                    String(meta?.name || ''),
-                    intervalMs
-                );
-                const fightValue = createFightValue(buckets);
-                if (fightValue.total <= 0 && fightValue.peak <= 0) return;
+export function ingestLogBoonUptimeTimeline(log: any, acc: BoonUptimeTimelineAccumulator): void {
+    const index = acc.logIndex;
+    acc.logIndex += 1;
+    const { boonBuckets, defaultBoonIntervalMs, defaultStackingIntervalMs } = acc;
 
-                const playerEntry = boonBucket.players.get(key) || {
-                    key,
-                    account,
-                    displayName: account,
-                    profession,
-                    professionList: profession && profession !== 'Unknown' ? [profession] : [],
-                    logs: 0,
-                    total: 0,
-                    peak: 0
-                };
-                if (profession && profession !== 'Unknown' && !playerEntry.professionList.includes(profession)) {
-                    playerEntry.professionList.push(profession);
-                }
-                if ((!playerEntry.profession || playerEntry.profession === 'Unknown') && profession && profession !== 'Unknown') {
-                    playerEntry.profession = profession;
-                }
-                const seen = fightPlayerSeenByBoon.get(boonId) || new Set<string>();
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    playerEntry.logs += 1;
-                    fightPlayerSeenByBoon.set(boonId, seen);
-                }
-                playerEntry.total += fightValue.total;
-                playerEntry.peak = Math.max(playerEntry.peak, fightValue.peak);
-                boonBucket.players.set(key, playerEntry);
-                const fightValues = fightValuesByBoon.get(boonId) || new Map<string, UptimeFightValue>();
-                fightValues.set(key, fightValue);
-                fightValuesByBoon.set(boonId, fightValues);
-            });
-        });
+    const details = log?.details;
+    if (!details) return;
+    const players = Array.isArray(details.players) ? details.players : [];
+    const squadPlayers = players.filter((p: any) => !p?.notInSquad);
+    if (squadPlayers.length <= 0) return;
+    const durationMs = Math.max(0, Number(details?.durationMS || 0));
+    const buffMap = (details?.buffMap && typeof details.buffMap === 'object')
+        ? details.buffMap
+        : {};
+    const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
+    const mapName = resolveMapName(details, log);
+    const fullLabel = buildFightLabel(fightName, String(mapName || ''));
+    const fightValuesByBoon = new Map<string, Map<string, UptimeFightValue>>();
+    const fightPlayerSeenByBoon = new Map<string, Set<string>>();
 
-        fightValuesByBoon.forEach((playerValues, boonId) => {
-            const boonBucket = boonBuckets.get(boonId);
-            if (!boonBucket) return;
-            const values: Record<string, UptimeFightValue> = {};
-            let maxTotal = 0;
-            playerValues.forEach((fightValue, playerKey) => {
-                values[playerKey] = {
-                    total: Number(fightValue.total || 0),
-                    peak: Number(fightValue.peak || 0),
-                    buckets: Array.isArray(fightValue.buckets)
-                        ? fightValue.buckets.map((entry: any) => Number(entry || 0))
-                        : []
-                };
-                maxTotal = Math.max(maxTotal, Number(fightValue.peak || 0));
-            });
-            if (Object.keys(values).length === 0) return;
-            boonBucket.fights.push({
-                id: log.filePath || log.id || `fight-${index + 1}`,
-                shortLabel: `F${index + 1}`,
-                fullLabel,
-                timestamp: resolveFightTimestamp(details, log),
-                durationMs,
-                values,
-                maxTotal
-            });
+    squadPlayers.forEach((player: any) => {
+        const account = String(player?.account || player?.name || 'Unknown');
+        const key = account;
+        const profession = String(player?.profession || 'Unknown');
+        const buffUptimes = Array.isArray(player?.buffUptimes) ? player.buffUptimes : [];
+        buffUptimes.forEach((buff: any) => {
+            const boonIdNum = Number(buff?.id);
+            if (!Number.isFinite(boonIdNum)) return;
+            const boonId = `b${boonIdNum}`;
+            const meta = buffMap[boonId] || {};
+            const classification = String(meta?.classification || '');
+            if (classification && classification !== 'Boon') return;
+            const statesPerSource = (buff?.statesPerSource && typeof buff.statesPerSource === 'object')
+                ? buff.statesPerSource
+                : null;
+            if (!statesPerSource) return;
+            const boonBucket = ensureBoonBucket(boonBuckets, boonId, defaultBoonIntervalMs, defaultStackingIntervalMs, meta);
+            const intervalMs = boonBucket.intervalMs;
+            const boonBucketCount = Math.max(1, Math.ceil(Math.max(1, durationMs) / intervalMs));
+            const buckets = sampleStackTimeline(
+                statesPerSource as Record<string, any>,
+                boonBucketCount,
+                Boolean(meta?.stacking),
+                String(meta?.name || ''),
+                intervalMs
+            );
+            const fightValue = createFightValue(buckets);
+            if (fightValue.total <= 0 && fightValue.peak <= 0) return;
+
+            const playerEntry = boonBucket.players.get(key) || {
+                key,
+                account,
+                displayName: account,
+                profession,
+                professionList: profession && profession !== 'Unknown' ? [profession] : [],
+                logs: 0,
+                total: 0,
+                peak: 0
+            };
+            if (profession && profession !== 'Unknown' && !playerEntry.professionList.includes(profession)) {
+                playerEntry.professionList.push(profession);
+            }
+            if ((!playerEntry.profession || playerEntry.profession === 'Unknown') && profession && profession !== 'Unknown') {
+                playerEntry.profession = profession;
+            }
+            const seen = fightPlayerSeenByBoon.get(boonId) || new Set<string>();
+            if (!seen.has(key)) {
+                seen.add(key);
+                playerEntry.logs += 1;
+                fightPlayerSeenByBoon.set(boonId, seen);
+            }
+            playerEntry.total += fightValue.total;
+            playerEntry.peak = Math.max(playerEntry.peak, fightValue.peak);
+            boonBucket.players.set(key, playerEntry);
+            const fightValues = fightValuesByBoon.get(boonId) || new Map<string, UptimeFightValue>();
+            fightValues.set(key, fightValue);
+            fightValuesByBoon.set(boonId, fightValues);
         });
     });
 
-return Array.from(boonBuckets.values())
-    .map((bucket) => ({
-        id: bucket.id,
-        name: bucket.name || bucket.id,
-        icon: bucket.icon,
-        stacking: bucket.stacking,
-        intervalMs: bucket.intervalMs,
-        players: Array.from(bucket.players.values()).sort((a, b) => {
-            const peakDiff = Number(b.peak || 0) - Number(a.peak || 0);
-            if (peakDiff !== 0) return peakDiff;
-            const totalDiff = Number(b.total || 0) - Number(a.total || 0);
-            if (totalDiff !== 0) return totalDiff;
-            return String(a.displayName || '').localeCompare(String(b.displayName || ''));
-        }),
-        fights: [...bucket.fights].sort((a, b) => {
-            if (a.timestamp > 0 && b.timestamp > 0 && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
-            return a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true });
-        })
-    }))
-    .filter((boon) => boon.players.length > 0 && boon.fights.length > 0)
-    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    fightValuesByBoon.forEach((playerValues, boonId) => {
+        const boonBucket = boonBuckets.get(boonId);
+        if (!boonBucket) return;
+        const values: Record<string, UptimeFightValue> = {};
+        let maxTotal = 0;
+        playerValues.forEach((fightValue, playerKey) => {
+            values[playerKey] = {
+                total: Number(fightValue.total || 0),
+                peak: Number(fightValue.peak || 0),
+                buckets: Array.isArray(fightValue.buckets)
+                    ? fightValue.buckets.map((entry: any) => Number(entry || 0))
+                    : []
+            };
+            maxTotal = Math.max(maxTotal, Number(fightValue.peak || 0));
+        });
+        if (Object.keys(values).length === 0) return;
+        boonBucket.fights.push({
+            id: log.filePath || log.id || `fight-${index + 1}`,
+            shortLabel: `F${index + 1}`,
+            fullLabel,
+            timestamp: resolveFightTimestamp(details, log),
+            durationMs,
+            values,
+            maxTotal
+        });
+    });
+}
 
+export function finalizeBoonUptimeTimeline(acc: BoonUptimeTimelineAccumulator): any {
+    return Array.from(acc.boonBuckets.values())
+        .map((bucket) => ({
+            id: bucket.id,
+            name: bucket.name || bucket.id,
+            icon: bucket.icon,
+            stacking: bucket.stacking,
+            intervalMs: bucket.intervalMs,
+            players: Array.from(bucket.players.values()).sort((a, b) => {
+                const peakDiff = Number(b.peak || 0) - Number(a.peak || 0);
+                if (peakDiff !== 0) return peakDiff;
+                const totalDiff = Number(b.total || 0) - Number(a.total || 0);
+                if (totalDiff !== 0) return totalDiff;
+                return String(a.displayName || '').localeCompare(String(b.displayName || ''));
+            }),
+            fights: [...bucket.fights].sort((a, b) => {
+                if (a.timestamp > 0 && b.timestamp > 0 && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+                return a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true });
+            })
+        }))
+        .filter((boon) => boon.players.length > 0 && boon.fights.length > 0)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+}
+
+export function computeBoonUptimeTimeline(
+    validLogs: any[],
+    settings?: { boonBucketIntervalMs: number; stackingBoonBucketIntervalMs: number }
+) {
+    const acc = createBoonUptimeTimelineAccumulator(settings);
+
+    const sorted = validLogs
+        .map((log) => ({ log, ts: resolveFightTimestamp(log?.details, log) }))
+        .sort((a, b) => a.ts - b.ts)
+        .map(({ log }) => log);
+
+    for (const log of sorted) {
+        ingestLogBoonUptimeTimeline(log, acc);
+    }
+
+    return finalizeBoonUptimeTimeline(acc);
 }
