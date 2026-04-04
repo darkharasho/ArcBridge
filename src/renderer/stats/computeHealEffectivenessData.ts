@@ -91,56 +91,61 @@ const extractPhaseEntries = (value: any) => {
     return [];
 };
 
+export function ingestLogHealEffectiveness(log: any, index: number): HealEffectivenessFight | null {
+    const details = log?.details;
+    if (!details) return null;
+
+    const players = Array.isArray(details.players) ? details.players : [];
+    const squadPlayers = players.filter((player: any) => !player?.notInSquad);
+    const incomingDamage = squadPlayers.reduce((sum: number, player: any) => (
+        sum + Number(player?.defenses?.[0]?.damageTaken || 0)
+    ), 0);
+    const healing = squadPlayers.reduce((sum: number, player: any) => sum + computeOutgoingHealing(player), 0);
+    const barrier = squadPlayers.reduce((sum: number, player: any) => sum + computeOutgoingBarrier(player), 0);
+
+    const healingSkillMap = new Map<number, HealEffectivenessSkillRow>();
+    const incomingSkillMap = new Map<number, HealEffectivenessSkillRow>();
+
+    squadPlayers.forEach((player: any) => {
+        aggregateRows(
+            healingSkillMap,
+            extractPhaseEntries(player?.extHealingStats?.totalHealingDist),
+            details,
+            'totalHealing'
+        );
+
+        const damageTakenPhases = Array.isArray(player?.totalDamageTaken) ? player.totalDamageTaken : [];
+        damageTakenPhases.forEach((phaseEntries: any) => {
+            aggregateRows(incomingSkillMap, phaseEntries, details, 'totalDamage');
+        });
+    });
+
+    const fightName = sanitizeWvwLabel(details?.fightName || log?.fightName || `Fight ${index + 1}`);
+    const mapName = resolveMapName(details, log);
+
+    return {
+        id: log.filePath || log.id || `fight-${index + 1}`,
+        shortLabel: `F${index + 1}`,
+        fullLabel: buildFightLabel(fightName, String(mapName || '')),
+        timestamp: resolveFightTimestamp(details, log),
+        incomingDamage,
+        healing,
+        barrier,
+        healingSkills: Array.from(healingSkillMap.values())
+            .sort((a, b) => b.amount - a.amount || b.hits - a.hits || a.skillName.localeCompare(b.skillName))
+            .slice(0, 25),
+        incomingDamageSkills: Array.from(incomingSkillMap.values())
+            .sort((a, b) => b.amount - a.amount || b.hits - a.hits || a.skillName.localeCompare(b.skillName))
+            .slice(0, 25)
+    };
+}
+
 export const computeHealEffectivenessData = (validLogs: any[]): HealEffectivenessFight[] => {
     return validLogs
         .map((log) => ({ log, timestamp: resolveFightTimestamp(log?.details, log) }))
         .sort((a, b) => a.timestamp - b.timestamp)
         .flatMap(({ log }, index) => {
-            const details = log?.details;
-            if (!details) return [];
-
-            const players = Array.isArray(details.players) ? details.players : [];
-            const squadPlayers = players.filter((player: any) => !player?.notInSquad);
-            const incomingDamage = squadPlayers.reduce((sum: number, player: any) => (
-                sum + Number(player?.defenses?.[0]?.damageTaken || 0)
-            ), 0);
-            const healing = squadPlayers.reduce((sum: number, player: any) => sum + computeOutgoingHealing(player), 0);
-            const barrier = squadPlayers.reduce((sum: number, player: any) => sum + computeOutgoingBarrier(player), 0);
-
-            const healingSkillMap = new Map<number, HealEffectivenessSkillRow>();
-            const incomingSkillMap = new Map<number, HealEffectivenessSkillRow>();
-
-            squadPlayers.forEach((player: any) => {
-                aggregateRows(
-                    healingSkillMap,
-                    extractPhaseEntries(player?.extHealingStats?.totalHealingDist),
-                    details,
-                    'totalHealing'
-                );
-
-                const damageTakenPhases = Array.isArray(player?.totalDamageTaken) ? player.totalDamageTaken : [];
-                damageTakenPhases.forEach((phaseEntries: any) => {
-                    aggregateRows(incomingSkillMap, phaseEntries, details, 'totalDamage');
-                });
-            });
-
-            const fightName = sanitizeWvwLabel(details?.fightName || log?.fightName || `Fight ${index + 1}`);
-            const mapName = resolveMapName(details, log);
-
-            return [{
-                id: log.filePath || log.id || `fight-${index + 1}`,
-                shortLabel: `F${index + 1}`,
-                fullLabel: buildFightLabel(fightName, String(mapName || '')),
-                timestamp: resolveFightTimestamp(details, log),
-                incomingDamage,
-                healing,
-                barrier,
-                healingSkills: Array.from(healingSkillMap.values())
-                    .sort((a, b) => b.amount - a.amount || b.hits - a.hits || a.skillName.localeCompare(b.skillName))
-                    .slice(0, 25),
-                incomingDamageSkills: Array.from(incomingSkillMap.values())
-                    .sort((a, b) => b.amount - a.amount || b.hits - a.hits || a.skillName.localeCompare(b.skillName))
-                    .slice(0, 25)
-            }];
+            const result = ingestLogHealEffectiveness(log, index);
+            return result ? [result] : [];
         });
 };

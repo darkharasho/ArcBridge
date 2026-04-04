@@ -80,7 +80,6 @@ const getFightOutcome = (details: any) => {
     return false;
 };
 
-export function computeCommanderStats(sortedFightLogsWithDetails: any[]) {
 const parseCommanderBoonUptime = (player: any, buffMap: Record<string, any>) => {
     const uptimes = Array.isArray(player?.buffUptimes) ? player.buffUptimes : [];
     let weightedPercent = 0;
@@ -285,7 +284,7 @@ const collectIncomingBoonRows = (player: any, buffMap: Record<string, any>, dura
         .sort((a, b) => b.uptimePct - a.uptimePct || b.uptimeMs - a.uptimeMs || a.name.localeCompare(b.name));
 };
 
-const commanders = new Map<string, {
+type CommanderEntry = {
     key: string;
     account: string;
     characterNames: Set<string>;
@@ -360,7 +359,8 @@ const commanders = new Map<string, {
         incomingDamageBuckets5s: number[];
         incomingBoonBuckets5s: number[];
     }>;
-}>();
+};
+
 const EARLY_PUSH_WINDOW_MS = 15_000;
 const STALLED_PUSH_WINDOW_MS = 15_000;
 const toReplayPairs = (value: any): Array<[number, number]> => {
@@ -453,7 +453,7 @@ const computeMovementMetrics = (combatReplayData: any, durationMs: number, inchT
     };
 };
 
-sortedFightLogsWithDetails.forEach(({ log }, idx) => {
+export function ingestLogCommanderStats(log: any, idx: number, commanders: Map<string, CommanderEntry>): void {
     const details = log?.details;
     if (!details) return;
     const players = Array.isArray(details?.players) ? details.players : [];
@@ -708,6 +708,13 @@ sortedFightLogsWithDetails.forEach(({ log }, idx) => {
         incomingDamageBuckets5s,
         incomingBoonBuckets5s
     });
+}
+
+export function computeCommanderStats(sortedFightLogsWithDetails: any[]) {
+const commanders = new Map<string, CommanderEntry>();
+
+sortedFightLogsWithDetails.forEach(({ log }, idx) => {
+    ingestLogCommanderStats(log, idx, commanders);
 });
 
 const rows = Array.from(commanders.values())
