@@ -114,19 +114,31 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
             return;
         }
         if (statsBatchTimerRef.current) return;
+        // 400ms is long enough to batch rapid state changes (e.g. status updates
+        // during upload) while being short enough that the stats dashboard feels
+        // responsive for single-log watcher updates where details arrive via
+        // IPC prewarm before the log state settles.
         statsBatchTimerRef.current = window.setTimeout(() => {
             statsBatchTimerRef.current = null;
-            // Don't publish while details are still being hydrated — the
-            // hasPendingStatsDetails effect will publish once hydration finishes,
-            // ensuring the worker sees a complete cache on its first run.
-            if (hasPendingStatsDetailsRef.current) return;
+            // If details are still being hydrated, retry after a short delay
+            // instead of dropping the publish entirely — the previous behaviour
+            // left the stats stale until the next log arrived.
+            if (hasPendingStatsDetailsRef.current) {
+                statsBatchTimerRef.current = window.setTimeout(() => {
+                    statsBatchTimerRef.current = null;
+                    publishLogsForStats(logsRef.current);
+                }, 600);
+                return;
+            }
             publishLogsForStats(logsRef.current);
-        }, 1200);
+        }, 400);
     }, [logs, bulkUploadMode, publishLogsForStats]);
 
     useEffect(() => {
         logsRef.current = logs;
     }, [logs]);
+
+    const lengthMismatchFollowUpRef = useRef<number | null>(null);
 
     useEffect(() => {
         return () => {
@@ -134,13 +146,28 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
                 window.clearTimeout(statsBatchTimerRef.current);
                 statsBatchTimerRef.current = null;
             }
+            if (lengthMismatchFollowUpRef.current !== null) {
+                window.clearTimeout(lengthMismatchFollowUpRef.current);
+                lengthMismatchFollowUpRef.current = null;
+            }
         };
     }, []);
-
     useEffect(() => {
         if (bulkUploadMode) return;
         if (logsForStats.length === logs.length) return;
         publishLogsForStats(logsRef.current);
+        // Schedule a follow-up publish: the initial publish often captures the
+        // log while it is still 'uploading' (no details). The upload-complete
+        // event arrives shortly after with details prewarmed in the cache.
+        // Without this follow-up, the stats won't reflect the completed log
+        // until the debounce timer fires or the next log arrives.
+        if (lengthMismatchFollowUpRef.current !== null) {
+            window.clearTimeout(lengthMismatchFollowUpRef.current);
+        }
+        lengthMismatchFollowUpRef.current = window.setTimeout(() => {
+            lengthMismatchFollowUpRef.current = null;
+            publishLogsForStats(logsRef.current);
+        }, 300);
     }, [bulkUploadMode, logs.length, logsForStats.length, publishLogsForStats]);
 
     useEffect(() => {
