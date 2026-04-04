@@ -41,6 +41,17 @@ export interface AllDamageData {
     players: AllDamagePlayer[];
 }
 
+export interface AllDamageAccumulator {
+    fights: AllDamageFight[];
+    playerAgg: Map<string, AllDamagePlayer>;
+    /** Running fight index counter. */
+    fightIndex: number;
+}
+
+export interface AllDamageIngestOptions {
+    splitPlayersByClass?: boolean;
+}
+
 function toPerSecond(series: number[]): number[] {
     if (!Array.isArray(series) || series.length === 0) return [];
     const deltas: number[] = [];
@@ -162,108 +173,122 @@ function extractSkillRows(player: any, details: any): AllDamagePlayerBucket['ski
         .sort((a, b) => b.damage - a.damage);
 }
 
-export function computeAllDamageData(validLogs: any[], splitPlayersByClass = false): AllDamageData {
-    const fights: AllDamageFight[] = [];
-    const playerAgg = new Map<string, AllDamagePlayer>();
+export function createAllDamageAccumulator(): AllDamageAccumulator {
+    return {
+        fights: [],
+        playerAgg: new Map(),
+        fightIndex: 0,
+    };
+}
 
-    validLogs
-        .map((log) => ({ log, ts: resolveFightTimestamp(log?.details, log) }))
-        .sort((a, b) => a.ts - b.ts)
-        .forEach(({ log }, index) => {
-            const details = log?.details;
-            if (!details) return;
+export function ingestLogAllDamage(log: any, acc: AllDamageAccumulator, options: AllDamageIngestOptions = {}): void {
+    const splitPlayersByClass = options.splitPlayersByClass ?? false;
+    const details = log?.details;
+    if (!details) return;
 
-            const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
-            const mapName = resolveMapName(details, log);
-            const fullLabel = buildFightLabel(fightName, String(mapName || ''));
-            const durationMs = Number(details.durationMS || 0);
-            const players = Array.isArray(details.players) ? details.players : [];
+    const index = acc.fightIndex++;
+    const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
+    const mapName = resolveMapName(details, log);
+    const fullLabel = buildFightLabel(fightName, String(mapName || ''));
+    const durationMs = Number(details.durationMS || 0);
+    const players = Array.isArray(details.players) ? details.players : [];
 
-            const fightPlayers: AllDamagePlayerBucket[] = [];
-            let fightTotalDamage = 0;
-            let fightTotalDown = 0;
+    const fightPlayers: AllDamagePlayerBucket[] = [];
+    let fightTotalDamage = 0;
+    let fightTotalDown = 0;
 
-            players.forEach((player: any) => {
-                if (player?.notInSquad) return;
-                const account = String(player?.account || player?.name || 'Unknown');
-                const characterName = String(player?.character_name || player?.display_name || player?.name || '');
-                const profession = String(player?.profession || 'Unknown');
-                const key = splitPlayersByClass && profession !== 'Unknown' ? `${account}::${profession}` : account;
+    players.forEach((player: any) => {
+        if (player?.notInSquad) return;
+        const account = String(player?.account || player?.name || 'Unknown');
+        const characterName = String(player?.character_name || player?.display_name || player?.name || '');
+        const profession = String(player?.profession || 'Unknown');
+        const key = splitPlayersByClass && profession !== 'Unknown' ? `${account}::${profession}` : account;
 
-                const perSecond = extractPerSecondDamage(player);
-                const durationBuckets = Math.max(0, Math.ceil(durationMs / 5000));
-                const damageBuckets = Math.max(0, Math.ceil(perSecond.length / 5));
-                const bucketCount = Math.max(durationBuckets, damageBuckets);
-                const rawBuckets = getBuckets(perSecond, 5);
-                const buckets5s = Array.from({ length: bucketCount }, (_, idx) => Number(rawBuckets[idx] || 0));
+        const perSecond = extractPerSecondDamage(player);
+        const durationBuckets = Math.max(0, Math.ceil(durationMs / 5000));
+        const damageBuckets = Math.max(0, Math.ceil(perSecond.length / 5));
+        const bucketCount = Math.max(durationBuckets, damageBuckets);
+        const rawBuckets = getBuckets(perSecond, 5);
+        const buckets5s = Array.from({ length: bucketCount }, (_, idx) => Number(rawBuckets[idx] || 0));
 
-                // Compute per-player damage total from dpsAll or sum of perSecond
-                const totalDamage = Number(player?.dpsAll?.[0]?.damage || 0) || perSecond.reduce((sum, v) => sum + v, 0);
-                const totalDownContribution = Number(player?.dpsAll?.[0]?.downContribution || 0)
-                    || Number(player?.statsAll?.[0]?.downContribution || 0)
-                    || 0;
+        // Compute per-player damage total from dpsAll or sum of perSecond
+        const totalDamage = Number(player?.dpsAll?.[0]?.damage || 0) || perSecond.reduce((sum, v) => sum + v, 0);
+        const totalDownContribution = Number(player?.dpsAll?.[0]?.downContribution || 0)
+            || Number(player?.statsAll?.[0]?.downContribution || 0)
+            || 0;
 
-                // Down contribution 5s buckets (proportional)
-                const downRatio = totalDamage > 0 ? Math.min(1, Math.max(0, totalDownContribution / totalDamage)) : 0;
-                const buckets5sDown = buckets5s.map((v) => Math.round(v * downRatio));
+        // Down contribution 5s buckets (proportional)
+        const downRatio = totalDamage > 0 ? Math.min(1, Math.max(0, totalDownContribution / totalDamage)) : 0;
+        const buckets5sDown = buckets5s.map((v) => Math.round(v * downRatio));
 
-                const skillRows = extractSkillRows(player, details);
+        const skillRows = extractSkillRows(player, details);
 
-                fightPlayers.push({
-                    key,
-                    account,
-                    displayName: characterName || account,
-                    profession,
-                    professionList: [profession].filter((p) => p !== 'Unknown'),
-                    buckets5s,
-                    buckets5sDown,
-                    totalDamage,
-                    totalDownContribution,
-                    skillRows,
-                });
-
-                fightTotalDamage += totalDamage;
-                fightTotalDown += totalDownContribution;
-
-                // Aggregate player totals
-                const existing = playerAgg.get(key);
-                if (existing) {
-                    existing.logs += 1;
-                    existing.totalDamage += totalDamage;
-                    existing.totalDownContribution += totalDownContribution;
-                    if (!existing.professionList.includes(profession) && profession !== 'Unknown') {
-                        existing.professionList.push(profession);
-                    }
-                } else {
-                    playerAgg.set(key, {
-                        key,
-                        account,
-                        displayName: characterName || account,
-                        profession,
-                        professionList: [profession].filter((p) => p !== 'Unknown'),
-                        logs: 1,
-                        totalDamage,
-                        totalDownContribution,
-                    });
-                }
-            });
-
-            // Sort players within fight by total damage descending
-            fightPlayers.sort((a, b) => b.totalDamage - a.totalDamage);
-
-            fights.push({
-                id: String(log?.filePath || log?.id || `fight-${index + 1}`),
-                shortLabel: `F${index + 1}`,
-                fullLabel,
-                timestamp: resolveFightTimestamp(details, log),
-                totalDamage: fightTotalDamage,
-                totalDownContribution: fightTotalDown,
-                durationMs,
-                players: fightPlayers,
-            });
+        fightPlayers.push({
+            key,
+            account,
+            displayName: characterName || account,
+            profession,
+            professionList: [profession].filter((p) => p !== 'Unknown'),
+            buckets5s,
+            buckets5sDown,
+            totalDamage,
+            totalDownContribution,
+            skillRows,
         });
 
-    const players = Array.from(playerAgg.values()).sort((a, b) => b.totalDamage - a.totalDamage);
+        fightTotalDamage += totalDamage;
+        fightTotalDown += totalDownContribution;
 
-    return { fights, players };
+        // Aggregate player totals
+        const existing = acc.playerAgg.get(key);
+        if (existing) {
+            existing.logs += 1;
+            existing.totalDamage += totalDamage;
+            existing.totalDownContribution += totalDownContribution;
+            if (!existing.professionList.includes(profession) && profession !== 'Unknown') {
+                existing.professionList.push(profession);
+            }
+        } else {
+            acc.playerAgg.set(key, {
+                key,
+                account,
+                displayName: characterName || account,
+                profession,
+                professionList: [profession].filter((p) => p !== 'Unknown'),
+                logs: 1,
+                totalDamage,
+                totalDownContribution,
+            });
+        }
+    });
+
+    // Sort players within fight by total damage descending
+    fightPlayers.sort((a, b) => b.totalDamage - a.totalDamage);
+
+    acc.fights.push({
+        id: String(log?.filePath || log?.id || `fight-${index + 1}`),
+        shortLabel: `F${index + 1}`,
+        fullLabel,
+        timestamp: resolveFightTimestamp(details, log),
+        totalDamage: fightTotalDamage,
+        totalDownContribution: fightTotalDown,
+        durationMs,
+        players: fightPlayers,
+    });
+}
+
+export function finalizeAllDamage(acc: AllDamageAccumulator): AllDamageData {
+    const players = Array.from(acc.playerAgg.values()).sort((a, b) => b.totalDamage - a.totalDamage);
+    return { fights: acc.fights, players };
+}
+
+export function computeAllDamageData(validLogs: any[], splitPlayersByClass = false): AllDamageData {
+    const sorted = validLogs
+        .map((log) => ({ log, ts: resolveFightTimestamp(log?.details, log) }))
+        .sort((a, b) => a.ts - b.ts)
+        .map(({ log }) => log);
+
+    const acc = createAllDamageAccumulator();
+    for (const log of sorted) ingestLogAllDamage(log, acc, { splitPlayersByClass });
+    return finalizeAllDamage(acc);
 }
