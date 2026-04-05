@@ -878,31 +878,35 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
         >
             <div className="rounded-[4px] overflow-hidden" style={{ position: 'relative' }}>
-            {(arrivalEmitter || snapEmitter || removalEmitter) && (
+            {(snapEmitter || removalEmitter) && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }}>
-                    {arrivalEmitter}
                     {snapEmitter}
                     {removalEmitter}
                 </div>
             )}
             {/* Collapsed View */}
             <div className={`p-4 flex items-center gap-4${snapActive ? ' particle-snap-active' : ''}`}>
-                <div
-                    data-status={statusKey}
-                    className={`recent-activity-status-badge w-10 h-10 rounded-[4px] flex items-center justify-center border transition-all shrink-0 ${isQueued ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
-                    isPending ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
-                        isUploading ? 'bg-blue-500/20 border-blue-500/30 text-blue-400 animate-pulse' :
-                            isCalculating ? 'bg-amber-500/20 border-amber-400/30 text-amber-300 animate-pulse' :
-                                isDiscord ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 animate-pulse' :
-                                    hasError ? 'bg-red-500/20 border-red-500/30 text-red-400' :
-                                        'bg-green-500/20 border-green-500/30 text-green-400'
-                    }`}
-                >
-                    {badgePuffEmitter}
-                    {discordEmitter}
-                    <span className="font-bold text-xs uppercase">
-                        {isQueued ? 'QUE' : isPending ? 'PEN' : isUploading ? '...' : isCalculating ? 'CAL' : isDiscord ? 'DC' : hasError ? 'ERR' : 'LOG'}
-                    </span>
+                <div className="relative shrink-0">
+                    <div
+                        data-status={statusKey}
+                        className={`recent-activity-status-badge w-10 h-10 rounded-[4px] flex items-center justify-center border transition-all ${isQueued ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
+                        isPending ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
+                            isUploading ? 'bg-blue-500/20 border-blue-500/30 text-blue-400 animate-pulse' :
+                                isCalculating ? 'bg-amber-500/20 border-amber-400/30 text-amber-300 animate-pulse' :
+                                    isDiscord ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 animate-pulse' :
+                                        hasError ? 'bg-red-500/20 border-red-500/30 text-red-400' :
+                                            'bg-green-500/20 border-green-500/30 text-green-400'
+                        }`}
+                    >
+                        {badgePuffEmitter}
+                        {discordEmitter}
+                        <span className="font-bold text-xs uppercase">
+                            {isQueued ? 'QUE' : isPending ? 'PEN' : isUploading ? '...' : isCalculating ? 'CAL' : isDiscord ? 'DC' : hasError ? 'ERR' : 'LOG'}
+                        </span>
+                    </div>
+                    <div style={{ position: 'absolute', top: '50%', right: 0, pointerEvents: 'none' }}>
+                        {arrivalEmitter}
+                    </div>
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-3">
