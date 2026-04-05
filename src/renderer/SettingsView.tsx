@@ -1057,6 +1057,10 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         setStatsViewSettings(prev => ({ ...prev, topStatsMode: mode }));
     }, []);
 
+    const updateInterruptMode = useCallback((mode: IStatsViewSettings['interruptMode']) => {
+        setStatsViewSettings(prev => ({ ...prev, interruptMode: mode }));
+    }, []);
+
     const updateMaxTopRows = useCallback((value: number) => {
         const clamped = Math.min(10, Math.max(1, Math.floor(value)));
         setEmbedStats(prev => ({ ...prev, maxTopListRows: clamped }));
@@ -1941,6 +1945,29 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     ))}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">Applies to Top Stats cards and breakdown.</div>
+                            </div>
+                            <div className="py-3 border-t border-white/5">
+                                <div className="text-sm font-medium text-gray-200 mb-2">Interrupt Display</div>
+                                <div className="flex gap-2 flex-wrap">
+                                    {([
+                                        { id: 'ccOnly', label: 'CC Only' },
+                                        { id: 'separate', label: 'CC + Interrupts (Separate)' },
+                                        { id: 'combined', label: 'CC + Interrupts (Combined)' }
+                                    ] as const).map((option) => (
+                                        <button
+                                            key={option.id}
+                                            type="button"
+                                            onClick={() => updateInterruptMode(option.id)}
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${statsViewSettings.interruptMode === option.id
+                                                ? 'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                                                : 'bg-white/5 text-gray-400 border-white/10 hover:text-gray-200'
+                                                }`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Show interrupts alongside or combined with CC on the leaderboard.</div>
                             </div>
                             <div className="py-3 border-t border-white/5">
                                 <div className="text-sm font-medium text-gray-200 mb-2">Top Skills Source</div>
