@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload, ChevronDown } from 'lucide-react';
+import { Settings, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload, ChevronDown, Search } from 'lucide-react';
 import { IEmbedStatSettings, DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, normalizeMvpWeights } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { PALETTES, type ColorPalette, DEFAULT_PALETTE_ID } from '../shared/webThemes';
@@ -145,13 +145,14 @@ const Toggle = memo(function Toggle({ enabled, onChange, label, description }: {
 );
 
 // Section component for grouping settings
-function SettingsSection({ title, icon: Icon, children, delay = 0, action, sectionId }: {
+function SettingsSection({ title, icon: Icon, children, delay = 0, action, sectionId, hidden }: {
     title: string;
     icon: React.ElementType;
     children: React.ReactNode;
     delay?: number;
     action?: React.ReactNode;
     sectionId?: string;
+    hidden?: boolean;
 }) {
     return (
         <motion.div
@@ -159,7 +160,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action, secti
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay }}
             className="rounded-[4px] p-6"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)', display: hidden ? 'none' : undefined }}
             id={sectionId}
             data-settings-section={sectionId ? 'true' : undefined}
             data-settings-label={sectionId ? title : undefined}
@@ -238,6 +239,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [devSettingsTab, setDevSettingsTab] = useState<'tools' | 'classification'>('tools');
     const statsResult = useStatsStore((s) => s.result);
     const [settingsNavOpen, setSettingsNavOpen] = useState(false);
+    const [settingsSearch, setSettingsSearch] = useState('');
+    const [settingsSearchHidden, setSettingsSearchHidden] = useState<Set<string>>(new Set());
     const [metricsSpecSearch, setMetricsSpecSearch] = useState('');
     const [metricsSpecSearchResults, setMetricsSpecSearchResults] = useState<Array<{ index: number; text: string; tag: string; section: string; hitId: number }>>([]);
     const [metricsSpecSearchFocused, setMetricsSpecSearchFocused] = useState(false);
@@ -718,6 +721,27 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         setImportSelections((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
+    // Settings search: scan rendered text content of each section and hide non-matches
+    useEffect(() => {
+        const query = settingsSearch.trim().toLowerCase();
+        if (!query) {
+            setSettingsSearchHidden(new Set());
+            return;
+        }
+        const container = settingsScrollRef.current;
+        if (!container) return;
+        const hidden = new Set<string>();
+        for (const section of SETTINGS_SECTIONS) {
+            const el = container.querySelector<HTMLElement>(`#${section.id}`);
+            if (!el) { hidden.add(section.id); continue; }
+            const text = el.textContent?.toLowerCase() ?? '';
+            if (!text.includes(query)) {
+                hidden.add(section.id);
+            }
+        }
+        setSettingsSearchHidden(hidden);
+    }, [settingsSearch]);
+
     const scrollToSettingsSection = (id: string) => {
         const container = settingsScrollRef.current;
         if (!container) return;
@@ -1193,19 +1217,32 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         style={{ willChange: 'transform, opacity' }}
                     >
                         <div className="rounded-[4px] p-3" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border-default)' }}>
-                            <div className="text-[11px] uppercase tracking-[0.25em] text-gray-500 mb-2">Quick Actions</div>
-                            <button
-                                onClick={() => scrollToSettingsSection('appearance')}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[4px] border border-white/10 bg-white/5 text-xs font-semibold text-gray-200 hover:bg-white/10 transition-colors"
-                            >
-                                <span>Jump to Top</span>
-                                <ChevronDown className="w-3.5 h-3.5 -rotate-90" />
-                            </button>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    value={settingsSearch}
+                                    onChange={(e) => setSettingsSearch(e.target.value)}
+                                    placeholder="Search settings…"
+                                    className="w-full pl-8 pr-7 py-2 rounded-[4px] border border-white/10 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors"
+                                    style={{ background: 'var(--bg-input)' }}
+                                />
+                                {settingsSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSettingsSearch('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                                    >
+                                        <CloseIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="rounded-[4px] p-3 flex-1 min-h-0" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border-default)' }}>
                             <div className="text-[11px] uppercase tracking-[0.25em] text-gray-500 mb-2">Sections</div>
                             <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-2">
                                 {SETTINGS_SECTIONS.map((item, index) => {
+                                    if (settingsSearchHidden.has(item.id)) return null;
                                     return (
                                         <button
                                             key={item.id}
@@ -1220,6 +1257,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         </button>
                                     );
                                 })}
+                                {settingsSearch && settingsSearchHidden.size === SETTINGS_SECTIONS.length && (
+                                    <div className="text-xs text-gray-500 py-2 text-center">No matches</div>
+                                )}
                             </div>
                         </div>
                     </motion.aside>
@@ -1231,7 +1271,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     transition={{ duration: 1, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
                     className="min-h-0 overflow-y-auto pr-2 space-y-4"
                 >
-                    <SettingsSection title="Appearance" icon={Sparkles} delay={0.02} sectionId="appearance">
+                    <SettingsSection title="Appearance" icon={Sparkles} delay={0.02} sectionId="appearance" hidden={settingsSearchHidden.has('appearance')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Choose a color palette for the interface accent colors.
                         </p>
@@ -1270,7 +1310,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         </div>
                     </SettingsSection>
                     {/* DPS Report Token Section */}
-                    <SettingsSection title="dps.report User Token" icon={Key} delay={0.05} sectionId="dps-token">
+                    <SettingsSection title="dps.report User Token" icon={Key} delay={0.05} sectionId="dps-token" hidden={settingsSearchHidden.has('dps-token')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Optional: Add your dps.report user token to associate uploads with your account.
                             You can find your token at{' '}
@@ -1325,6 +1365,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         icon={Cloud}
                         delay={0.08}
                         sectionId="github-pages"
+                        hidden={settingsSearchHidden.has('github-pages')}
                         action={githubAuthStatus === 'connected' ? (
                             <button
                                 onClick={() => {
@@ -1624,7 +1665,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     </SettingsSection>
 
                     {/* Discord Embed Stats - Summary Sections */}
-                    <SettingsSection title="Discord Embed - Summary Sections" icon={Users} delay={0.1} sectionId="embed-summary">
+                    <SettingsSection title="Discord Embed - Summary Sections" icon={Users} delay={0.1} sectionId="embed-summary" hidden={settingsSearchHidden.has('embed-summary')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Configure which summary sections appear in Discord embed notifications.
                         </p>
@@ -1673,7 +1714,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     </SettingsSection>
 
                     {/* Discord Embed Stats - Top Lists */}
-                    <SettingsSection title="Discord Embed - Top Stats Lists" icon={BarChart3} delay={0.15} sectionId="embed-top">
+                    <SettingsSection title="Discord Embed - Top Stats Lists" icon={BarChart3} delay={0.15} sectionId="embed-top" hidden={settingsSearchHidden.has('embed-top')}>
                         <p className="text-sm text-gray-400 mb-2">
                             Configure which top stat player lists appear in Discord embed notifications.
                         </p>
@@ -1840,7 +1881,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     </SettingsSection>
 
                     <div ref={helpUpdatesRef}>
-                        <SettingsSection title="Help & Updates" icon={Sparkles} delay={0.18} sectionId="help-updates">
+                        <SettingsSection title="Help & Updates" icon={Sparkles} delay={0.18} sectionId="help-updates" hidden={settingsSearchHidden.has('help-updates')}>
                             <p className="text-sm text-gray-400 mb-4">
                                 Review release notes, reopen onboarding, or browse the complete feature guide.
                             </p>
@@ -1870,7 +1911,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         </SettingsSection>
                     </div>
 
-                    <SettingsSection title="Dashboard - Top Stats & MVP" icon={BarChart3} delay={0.18} sectionId="dashboard-stats">
+                    <SettingsSection title="Dashboard - Top Stats & MVP" icon={BarChart3} delay={0.18} sectionId="dashboard-stats" hidden={settingsSearchHidden.has('dashboard-stats')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Control the calculation and display of the top stats cards and MVP highlights.
                         </p>
@@ -2117,7 +2158,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         </div>
                     </SettingsSection>
 
-                    <SettingsSection title="Boon Uptime Resolution" icon={BarChart3} delay={0.19} sectionId="boon-uptime-resolution">
+                    <SettingsSection title="Boon Uptime Resolution" icon={BarChart3} delay={0.19} sectionId="boon-uptime-resolution" hidden={settingsSearchHidden.has('boon-uptime-resolution')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Control the bucket interval used for boon uptime timeline charts. Finer resolution reveals short coverage gaps but increases data size.
                         </p>
@@ -2174,7 +2215,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     </SettingsSection>
 
                     {/* Close Behavior Section */}
-                    <SettingsSection title="MVP Weighting" icon={BarChart3} delay={0.18} sectionId="mvp-weighting">
+                    <SettingsSection title="MVP Weighting" icon={BarChart3} delay={0.18} sectionId="mvp-weighting" hidden={settingsSearchHidden.has('mvp-weighting')}>
                         <div className="flex items-center justify-between mb-4">
                             <p className="text-sm text-gray-400">
                                 Offensive and Defensive MVP use separate scoring weights. 0 disables a stat.
@@ -2273,7 +2314,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     </SettingsSection>
 
                     {/* Close Behavior Section */}
-                    <SettingsSection title="Window Close Behavior" icon={Minimize} delay={0.2} sectionId="close-behavior">
+                    <SettingsSection title="Window Close Behavior" icon={Minimize} delay={0.2} sectionId="close-behavior" hidden={settingsSearchHidden.has('close-behavior')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Choose what happens when you click the close button.
                         </p>
@@ -2308,7 +2349,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         </div>
                     </SettingsSection>
 
-                    <SettingsSection title="Export / Import Settings" icon={Download} delay={0.2} sectionId="export-import">
+                    <SettingsSection title="Export / Import Settings" icon={Download} delay={0.2} sectionId="export-import" hidden={settingsSearchHidden.has('export-import')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Save your current configuration to a file or import it on another machine.
                         </p>
@@ -2337,7 +2378,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         )}
                     </SettingsSection>
 
-                    <div id="legal" data-settings-section="true" data-settings-label="Legal" className="rounded-[4px] p-4 text-xs text-gray-400" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                    <div id="legal" data-settings-section="true" data-settings-label="Legal" className="rounded-[4px] p-4 text-xs text-gray-400" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', display: settingsSearchHidden.has('legal') ? 'none' : undefined }}>
                         <div className="flex items-center justify-between mb-2">
                             <div className="text-sm font-semibold text-gray-200">Legal Notice</div>
                             <div className="flex items-center gap-2">
@@ -2451,6 +2492,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             </div>
                             <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-2 pb-4">
                                 {SETTINGS_SECTIONS.map((item) => {
+                                    if (settingsSearchHidden.has(item.id)) return null;
                                     return (
                                         <button
                                             key={item.id}
