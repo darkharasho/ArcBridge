@@ -213,7 +213,7 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     minParticipationPercent: 0,
     boonBucketIntervalMs: 5000,
     stackingBoonBucketIntervalMs: 5000,
-    interruptMode: 'ccOnly'
+    interruptMode: 'separate'
 };
 
 export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {
