@@ -1376,3 +1376,36 @@ function finalizeCommanderStatsFromMap(commanders: Map<string, any>): { rows: an
 
     return { rows };
 }
+
+/**
+ * Synchronous convenience wrapper — drop-in replacement for the old
+ * batch `computeStatsAggregation()`.  Creates an IncrementalAggregator,
+ * ingests every log, and finalizes in one call.
+ */
+export const computeStatsSync = ({
+    logs,
+    precomputedStats,
+    mvpWeights,
+    statsViewSettings,
+    disruptionMethod,
+    includePlayerSkillMap,
+}: {
+    logs: any[];
+    precomputedStats?: any;
+    mvpWeights?: IMvpWeights;
+    statsViewSettings?: IStatsViewSettings;
+    disruptionMethod?: DisruptionMethod;
+    includePlayerSkillMap?: boolean;
+}): { stats: any; skillUsageData: any } => {
+    const aggregator = new IncrementalAggregator({
+        precomputedStats,
+        mvpWeights,
+        statsViewSettings,
+        disruptionMethod,
+        includePlayerSkillMap,
+    });
+    for (const log of logs) {
+        aggregator.ingestLog(log);
+    }
+    return aggregator.finalize();
+};
