@@ -14,7 +14,7 @@ import { useStatsDataProgress } from './app/hooks/useStatsDataProgress';
 import { useSettings } from './app/hooks/useSettings';
 import { useUploadRetryQueue } from './app/hooks/useUploadRetryQueue';
 import { useAppNavigation } from './app/hooks/useAppNavigation';
-import { shouldAttemptStatsSyncRecovery } from './stats/utils/statsSyncRecovery';
+
 import { useLogQueue } from './app/hooks/useLogQueue';
 import { useDetailsHydration } from './app/hooks/useDetailsHydration';
 import { useUploadListeners } from './app/hooks/useUploadListeners';
@@ -126,9 +126,8 @@ function App() {
         logsForStats,
         setLogsForStats,
         logsRef,
-        bulkCalculatingActive,
-        setBulkCalculatingActive,
-    } = useLogsForStats({ logs, bulkUploadMode });
+    } = useLogsForStats({ logs });
+    const [bulkCalculatingActive, setBulkCalculatingActive] = useState(false);
     const detailsCacheRef = useRef<DetailsCache | null>(null);
     if (!detailsCacheRef.current) {
         detailsCacheRef.current = new DetailsCache({
@@ -238,7 +237,7 @@ function App() {
     const lastUploadCompleteAtRef = useRef(0);
     const bulkStatsAwaitingRef = useRef(false);
     const bulkFlushIdRef = useRef<number | null>(null);
-    const statsSyncRecoveryAtRef = useRef(0);
+
 
     useEffect(() => {
         if (!bulkStatsAwaitingRef.current) {
@@ -293,7 +292,6 @@ function App() {
         setLogsForStats,
         detailsCache: detailsCacheRef.current,
     });
-
     const selectedWebhook = useMemo(
         () => webhooks.find((hook) => hook.id === selectedWebhookId) || null,
         [webhooks, selectedWebhookId]
@@ -447,10 +445,10 @@ function App() {
         bulkUploadExpectedRef.current = null;
         bulkUploadCompletedRef.current = 0;
         setBulkUploadMode(false);
-        // Publish logsForStats synchronously so the worker begins streaming in the
-        // same React batch as bulkUploadMode=false — avoids a render where
-        // StatsView sees statsDataProgress.total>0 but logs.length===0 ("0/65").
+        // Mark that we're awaiting the worker to catch up with the full log set.
         bulkStatsAwaitingRef.current = true;
+        // Publish logsForStats synchronously so the worker begins streaming in the
+        // same React batch as bulkUploadMode=false.
         setLogsForStats((prev) => {
             const source = prev === logsRef.current ? [...logsRef.current] : logsRef.current;
             return stripDetailsFromEntries(source);
@@ -526,44 +524,6 @@ function App() {
     const { totalUploads, statusCounts, winLoss, squadKdr } = useDashboardStats(logs);
 
     const statsDataProgress = useStatsDataProgress(logs, view, isBulkUploadActive);
-
-    useEffect(() => {
-        if (logs.length === 0) return;
-        const now = Date.now();
-        const canAttempt = now - statsSyncRecoveryAtRef.current > 1500;
-        if (!canAttempt) return;
-        const shouldRecover = shouldAttemptStatsSyncRecovery({
-            view,
-            bulkUploadMode,
-            liveLogs: logs,
-            statsLogs: logsForStats,
-            progress: {
-                total: statsDataProgress.total,
-                pending: statsDataProgress.pending,
-                unavailable: statsDataProgress.unavailable
-            }
-        });
-        if (!shouldRecover) return;
-        statsSyncRecoveryAtRef.current = now;
-        setLogsForStats((prev) => {
-            if (prev.length === logsRef.current.length && prev.length > 0) return prev;
-            const source = logsRef.current.length > 0 ? logsRef.current : logs;
-            return stripDetailsFromEntries(source);
-        });
-        scheduleDetailsHydration(true);
-    }, [
-        view,
-        bulkUploadMode,
-        logs.length,
-        logs,
-        logsForStats,
-        logsRef,
-        statsDataProgress.pending,
-        statsDataProgress.total,
-        statsDataProgress.unavailable,
-        setLogsForStats,
-        scheduleDetailsHydration
-    ]);
 
     useUploadListeners({
         queueLogUpdate,
