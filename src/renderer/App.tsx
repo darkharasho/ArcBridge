@@ -445,18 +445,6 @@ function App() {
         if (flushId) {
             bulkFlushIdRef.current = flushId;
         }
-        // Run a second kickoff after queued state flushes so late upload updates are included.
-        window.setTimeout(() => {
-            bulkStatsAwaitingRef.current = true;
-            setLogsForStats((prev) => {
-                const source = prev === logsRef.current ? [...logsRef.current] : logsRef.current;
-                return stripDetailsFromEntries(source);
-            });
-            const flushId2 = requestFlush?.();
-            if (flushId2) {
-                bulkFlushIdRef.current = flushId2;
-            }
-        }, 420);
         if (viewRef.current === 'stats') {
             window.setTimeout(() => scheduleDetailsHydration(true), 0);
             window.setTimeout(() => scheduleDetailsHydration(true), 500);
