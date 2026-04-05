@@ -89,7 +89,7 @@ const loadTsModule = (filePath) => {
     return module.exports;
 };
 
-const computeStatsAggregation = loadTsModule(path.join(cwd, 'src/renderer/stats/computeStatsAggregation.ts')).computeStatsAggregation;
+const computeStatsSync = loadTsModule(path.join(cwd, 'src/renderer/stats/incrementalAggregation.ts')).computeStatsSync;
 const statsMetrics = loadTsModule(path.join(cwd, 'src/renderer/stats/statsMetrics.ts'));
 const conditionsMetrics = loadTsModule(path.join(cwd, 'src/shared/conditionsMetrics.ts'));
 const NON_DAMAGING = statsMetrics.NON_DAMAGING_CONDITIONS || new Set();
@@ -131,7 +131,7 @@ const logs = inputs.map((filePath) => {
     return { filePath, status: 'success', details };
 }).filter(Boolean);
 
-const aggregation = computeStatsAggregation({ logs, statsViewSettings, mvpWeights, disruptionMethod: 'count' });
+const aggregation = computeStatsSync({ logs, statsViewSettings, mvpWeights, disruptionMethod: 'count' });
 const result = aggregation?.stats || aggregation || {};
 
 const mismatches = [];
