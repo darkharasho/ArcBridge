@@ -14,7 +14,7 @@ describe('normalizeQueuedLogStatus', () => {
         expect(result.status).toBe('calculating');
     });
 
-    it('promotes calculating once stats have been computed (statsDetailsLoaded)', () => {
+    it('keeps calculating even with statsDetailsLoaded (promotion via aggregation only)', () => {
         const result = normalizeQueuedLogStatus({
             id: 'log-2',
             filePath: 'two.zevtc',
@@ -24,7 +24,9 @@ describe('normalizeQueuedLogStatus', () => {
             statsDetailsLoaded: true,
         } as ILogData);
 
-        expect(result.status).toBe('success');
+        // normalizeQueuedLogStatus no longer promotes based on statsDetailsLoaded.
+        // Promotion is handled by the aggregation-aware effect in App.tsx.
+        expect(result.status).toBe('calculating');
     });
 
     it('keeps calculating when detailsAvailable but stats not yet computed', () => {
