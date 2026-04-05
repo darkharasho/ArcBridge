@@ -3,7 +3,7 @@ import './particles.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Origin = 'center' | 'left' | 'top' | 'edges' | { x: number; y: number };
+type Origin = 'center' | 'left' | 'right' | 'top' | 'edges' | { x: number; y: number };
 type Direction = 'out' | 'in';
 
 export interface ParticleEmitterProps {
@@ -46,6 +46,8 @@ function resolveOrigin(origin: Origin, spread: number): { x: number; y: number }
     switch (origin) {
         case 'left':
             return { x: -spread / 2, y: 0 };
+        case 'right':
+            return { x: 0, y: 0 };
         case 'top':
             return { x: 0, y: -spread / 2 };
         case 'edges': {
@@ -113,7 +115,10 @@ export function ParticleEmitter({
         return Array.from({ length: actualCount }, () => {
             // Resolve origin per-particle so 'edges' distributes around the perimeter
             const o = resolveOrigin(origin, spread);
-            const angle = rand(0, Math.PI * 2);
+            // 'right' constrains to a rightward cone (±45°), others use full 360°
+            const angle = origin === 'right'
+                ? rand(-Math.PI / 4, Math.PI / 4)
+                : rand(0, Math.PI * 2);
             const distance = rand(spread * 0.3, spread);
             const diameter = rand(minSize, maxSize);
             const delay = rand(0, duration * 0.15);

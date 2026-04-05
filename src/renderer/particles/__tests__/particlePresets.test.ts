@@ -23,7 +23,7 @@ describe('PRESETS', () => {
     describe.each(PRESET_NAMES)('%s has required fields with valid values', (name) => {
         it('has a valid origin', () => {
             const preset = PRESETS[name] as ParticlePreset;
-            const validOrigins = ['center', 'left', 'top', 'edges'];
+            const validOrigins = ['center', 'left', 'right', 'top', 'edges'];
             const origin = preset.origin;
             const isValid =
                 validOrigins.includes(origin as string) ||
