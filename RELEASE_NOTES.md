@@ -1,17 +1,17 @@
 # Release Notes
 
-Version v2.3.1 — April 4, 2026
+Version v2.3.2 — April 5, 2026
 
-## New Loading Spinner
+## Cleaner Stats Internals
 
-Replaced the full-width progress bar with a compact particle spinner, right-aligned next to the witty loading remarks. The stats page no longer locks scrolling or disables actions while logs are processing — you can browse whatever's already computed while the rest loads in.
+The stats pipeline got a significant cleanup under the hood. The old code used 7 overlapping timers to decide when to publish log data to the stats worker — a 400ms debounce, a 600ms retry, a 300ms follow-up, plus four more for edge cases. All of that is now a single 400ms debounce. Snapshot key deduplication prevents unnecessary recomputes when the data hasn't actually changed.
 
-All the dissolve overlay effects (shimmer, floating particles, section gating) are gone. Sections render freely as data arrives.
+The `statsSyncRecovery` mechanism (a polling loop that detected when stats got stuck and force-resynced) is gone entirely — the simplified pipeline makes it unnecessary.
 
-## Stats Pipeline Fix
+## Details Status Cleanup
 
-Fixed the core issue where the stats page showed all zeros after uploading logs, even though the dashboard said everything was done.
+Log detail-fetching state used to be tracked by five separate boolean flags (`detailsAvailable`, `detailsLoading`, `statsDetailsLoaded`, `detailsFetchExhausted`, `detailsKnownUnavailable`). These are now a single `detailsStatus` field with clear states: `idle`, `available`, `loading`, `loaded`, `exhausted`, `unavailable`. Less state to get out of sync, fewer impossible combinations to guard against.
 
-What was happening: the worker would process all your logs before fight details had actually been fetched from dps.report, compute stats from empty data, then never reprocess once the real data arrived. On top of that, the dashboard was using a different status check than the log list — the dashboard would say "17 success" while the log list still showed "CAL" for everything.
+## Single Stats Codepath
 
-Now logs stay in "calculating" until their fight details are actually in the cache and the worker has used them. Dashboard and log list always agree on status, and the worker re-streams with real data once details arrive.
+The old batch `computeStatsAggregation` function (870 lines) is deleted. All stats computation now goes through the incremental aggregator, whether you have 1 log or 100. The worker and inline paths share the same code.
