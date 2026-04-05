@@ -723,6 +723,19 @@ export class IncrementalAggregator {
             });
         };
 
+        /** Derive a per-second or per-minute leaderboard from an already-sorted raw leaderboard. */
+        const deriveLeaderboard = (
+            rawLeaderboard: Array<{ rank: number; account: string; profession: string; professionList?: string[]; value: number; count?: number }>,
+            getVariantVal: (s: PlayerStats, k: string) => number,
+            key: string,
+        ): typeof rawLeaderboard => {
+            return rawLeaderboard.map((entry) => {
+                const stat = playerStats.get(entry.account);
+                const value = stat ? getVariantVal(stat, key) : 0;
+                return { ...entry, value };
+            });
+        };
+
         const playerEntries = Array.from(playerStats.values()).map(stat => {
             const list = Array.from(stat.professions).filter(p => p !== 'Unknown');
             stat.professionList = list;
@@ -879,21 +892,10 @@ export class IncrementalAggregator {
             return getPerSecondVal(s, k) * 60;
         };
         Object.values(statKeys).forEach((k) => {
-            const higherIsBetter = k !== 'closestToTag';
-            perSecondLeaderboards[k] = buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: getPerSecondVal(stat, k),
-                count: stat.logsJoined
-            })), higherIsBetter);
-            perMinuteLeaderboards[k] = buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: getPerMinuteVal(stat, k),
-                count: stat.logsJoined
-            })), higherIsBetter);
+            const rawLB = leaderboards[k as keyof typeof leaderboards];
+            if (!rawLB) return;
+            perSecondLeaderboards[k] = deriveLeaderboard(rawLB, getPerSecondVal, k);
+            perMinuteLeaderboards[k] = deriveLeaderboard(rawLB, getPerMinuteVal, k);
         });
 
         topStatsPerSecond.maxDownContrib = getTopFromLeaderboard(perSecondLeaderboards.downContrib);
