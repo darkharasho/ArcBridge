@@ -92,6 +92,8 @@ export function ParticleEmitter({
     onComplete,
 }: ParticleEmitterProps) {
     const prefersReducedMotion = usePrefersReducedMotion();
+    const isBulkUploading = document.body.classList.contains('bulk-uploading');
+    const suppressed = prefersReducedMotion || isBulkUploading;
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
@@ -104,7 +106,7 @@ export function ParticleEmitter({
 
     // Generate particle styles once on mount
     const particles = useMemo<ParticleStyle[]>(() => {
-        if (prefersReducedMotion) return [];
+        if (suppressed) return [];
 
         const [minSize, maxSize] = size;
 
@@ -164,7 +166,7 @@ export function ParticleEmitter({
 
             return style;
         });
-    }, [actualCount, direction, duration, glow, origin, prefersReducedMotion, spread, size]);
+    }, [actualCount, direction, duration, glow, origin, suppressed, spread, size]);
 
     // Schedule onComplete callback
     useEffect(() => {
@@ -182,6 +184,10 @@ export function ParticleEmitter({
         overflow: 'visible',
         pointerEvents: 'none',
     };
+
+    if (isBulkUploading) {
+        return null;
+    }
 
     if (prefersReducedMotion) {
         return (
