@@ -122,6 +122,9 @@ export function useDetailsHydration({
                     const hasStaleDetails = cachedDetails && (!cachedDetails.damageModMap || !cachedDetails.conditionMetrics || targetsLackBuffs);
                     if (hasStaleDetails) return Boolean(log.permalink);
                     if (cachedDetails) return false;
+                    // Already hydrated this session → details are in IndexedDB.
+                    // The worker reads via getLocal (LRU + IDB), so no re-fetch needed.
+                    if (log.statsDetailsLoaded) return false;
                     if (log.detailsAvailable) return true;
                     return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink);
                 })

@@ -420,10 +420,26 @@ export class IncrementalAggregator {
         const mapName = resolveMapName(details, log);
         this.mapCounts[mapName] = (this.mapCounts[mapName] || 0) + 1;
 
-        // Store minimal data for boon tables (need details reference)
-        // buildBoonTables needs: details.durationMS, details.buffMap, details.players[].account/profession/name/group/activeTimes/selfBuffs/groupBuffs/squadBuffs/notInSquad
-        // We store a lightweight copy
-        this.boonTableLogs.push({ details });
+        // Store only the fields buildBoonTables actually reads — the full
+        // details object is far too large to keep for every log (OOM at ~89 logs).
+        this.boonTableLogs.push({
+            details: details ? {
+                durationMS: details.durationMS,
+                buffMap: details.buffMap,
+                players: (details.players || []).map((p: any) => ({
+                    account: p.account,
+                    name: p.name,
+                    character_name: p.character_name,
+                    profession: p.profession,
+                    group: p.group,
+                    activeTimes: p.activeTimes ? [p.activeTimes[0]] : [],
+                    notInSquad: p.notInSquad,
+                    selfBuffs: p.selfBuffs,
+                    groupBuffs: p.groupBuffs,
+                    squadBuffs: p.squadBuffs,
+                })),
+            } : undefined,
+        });
 
         // Commander stats - use the stored result from accumulator
         // We call ingestLogCommanderStats but need the sorted index later.
