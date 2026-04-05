@@ -94,7 +94,9 @@ export function useDetailsHydration({
                 statsDetailsLoaded: true,
                 detailsLoading: false,
                 detailsFetchExhausted: false,
-                status: 'success'
+                // Don't force status to 'success' — let the aggregation
+                // pipeline promote calculating → success after the worker
+                // has actually ingested this log.
             };
             return updated;
         });
@@ -157,14 +159,15 @@ export function useDetailsHydration({
                     const next = currentLogs.map((entry) => {
                         const filePath = entry.filePath || '';
                         if (!updatesByPath.has(filePath)) return entry;
-                        if (entry.statsDetailsLoaded && entry.status === 'success') return entry;
+                        if (entry.statsDetailsLoaded) return entry;
                         changed = true;
                         return {
                             ...entry,
                             detailsAvailable: true,
                             statsDetailsLoaded: true,
                             detailsFetchExhausted: false,
-                            status: 'success' as const
+                            // Don't force status — aggregation pipeline controls
+                            // calculating → success promotion.
                         };
                     });
                     return changed ? next : currentLogs;
