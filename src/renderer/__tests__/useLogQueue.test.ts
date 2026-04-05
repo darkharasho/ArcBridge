@@ -8,7 +8,8 @@ describe('normalizeQueuedLogStatus', () => {
             filePath: 'one.zevtc',
             permalink: 'https://dps.report/example',
             status: 'success',
-            detailsAvailable: true
+            detailsAvailable: true,
+            detailsStatus: 'available',
         } as ILogData);
 
         expect(result.status).toBe('calculating');
@@ -22,6 +23,7 @@ describe('normalizeQueuedLogStatus', () => {
             status: 'calculating',
             detailsAvailable: true,
             statsDetailsLoaded: true,
+            detailsStatus: 'loaded',
         } as ILogData);
 
         // normalizeQueuedLogStatus no longer promotes based on statsDetailsLoaded.
@@ -36,6 +38,7 @@ describe('normalizeQueuedLogStatus', () => {
             permalink: 'https://dps.report/example',
             status: 'calculating',
             detailsAvailable: true,
+            detailsStatus: 'available',
         } as ILogData);
 
         expect(result.status).toBe('calculating');
@@ -49,7 +52,8 @@ describe('normalizeQueuedLogStatus', () => {
             status: 'calculating',
             detailsAvailable: false,
             detailsFetchExhausted: true,
-            detailsKnownUnavailable: true
+            detailsKnownUnavailable: true,
+            detailsStatus: 'unavailable',
         } as ILogData);
 
         expect(result.status).toBe('success');

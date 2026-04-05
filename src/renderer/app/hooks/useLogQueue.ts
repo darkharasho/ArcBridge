@@ -1,30 +1,32 @@
 import { startTransition, useCallback, useEffect, useRef } from 'react';
 
 export const normalizeQueuedLogStatus = (candidate: ILogData): ILogData => {
+    const ds = candidate.detailsStatus || 'idle';
+
+    // Legacy boolean normalization (during migration — remove when booleans are deleted)
     if (candidate.detailsAvailable && candidate.detailsFetchExhausted) {
         candidate = { ...candidate, detailsFetchExhausted: false };
     }
     if (candidate.detailsAvailable && candidate.detailsKnownUnavailable) {
         candidate = { ...candidate, detailsKnownUnavailable: false };
     }
-    // Only promote calculating → success for terminal states where details
-    // will never arrive. Normal promotion (after aggregator ingestion) is
-    // handled by the per-log effect in App.tsx, not here.
-    const detailsTerminal = Boolean(candidate.detailsKnownUnavailable)
-        || (candidate.detailsAvailable === false)
-        || Boolean(candidate.detailsFetchExhausted);
-    if (candidate.status === 'calculating' && detailsTerminal) {
+
+    // Promote calculating → success for terminal states where details will never arrive.
+    const detailsTerminal = ds === 'exhausted' || ds === 'unavailable' || ds === 'idle';
+    if (candidate.status === 'calculating' && detailsTerminal && !candidate.detailsAvailable) {
         return { ...candidate, status: 'success' as const };
     }
+
+    // Demote success → calculating when details are available but not yet loaded.
     if (
         candidate.status === 'success'
-        && candidate.detailsAvailable
-        && !candidate.statsDetailsLoaded
-        && !candidate.detailsFetchExhausted
-        && !candidate.detailsKnownUnavailable
+        && (ds === 'available' || (candidate.detailsAvailable && !candidate.statsDetailsLoaded))
+        && ds !== 'exhausted'
+        && ds !== 'unavailable'
     ) {
         return { ...candidate, status: 'calculating' as const };
     }
+
     return candidate;
 };
 
