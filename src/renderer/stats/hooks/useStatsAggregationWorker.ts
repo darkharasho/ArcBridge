@@ -104,6 +104,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     const aggregationSettingsKeyRef = useRef<string>('');
     const aggregationSettingsRef = useRef<IStatsViewSettings | undefined>(undefined);
     const lastFallbackComputeKeyRef = useRef('');
+    const lastSettledSettingsKeyRef = useRef<string>('');
     const expectedLogCountRef = useRef(0);
     const [aggregationProgress, setAggregationProgress] = useState<AggregationProgressState>({
         active: false,
@@ -161,6 +162,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         delete stripped.topStatsMode;
         delete stripped.roundCountStats;
         delete stripped.showTopStats;
+        delete stripped.interruptMode;
         const nextKey = JSON.stringify(stripped);
         if (aggregationSettingsKeyRef.current !== nextKey) {
             aggregationSettingsKeyRef.current = nextKey;
@@ -168,6 +170,19 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         }
         return aggregationSettingsRef.current;
     }, [statsViewSettings]);
+
+    // Stable key representing the current computation-affecting inputs.
+    // Used to detect when settings have changed but the worker hasn't produced
+    // a result yet — so we can show the spinner during that gap.
+    const currentComputeInputsKey = useMemo(() => {
+        return JSON.stringify({
+            svs: aggregationSettingsKeyRef.current,
+            dm: disruptionMethod,
+            mvp: mvpWeights,
+        });
+    }, [aggregationStatsViewSettings, disruptionMethod, mvpWeights]);
+    const currentComputeInputsKeyRef = useRef(currentComputeInputsKey);
+    currentComputeInputsKeyRef.current = currentComputeInputsKey;
 
     useEffect(() => {
         if (typeof Worker === 'undefined') return;
@@ -247,6 +262,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
                             });
                         }
                         if (tokenMatches && logCount >= expectedCount) {
+                            lastSettledSettingsKeyRef.current = currentComputeInputsKeyRef.current;
                             setAggregationProgress((prev) => ({
                                 ...prev,
                                 active: expectedCount > 0,
@@ -502,6 +518,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         if (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker) return;
         if (lastFallbackComputeKeyRef.current === fallbackComputeKey) return;
         lastFallbackComputeKeyRef.current = fallbackComputeKey;
+        lastSettledSettingsKeyRef.current = currentComputeInputsKey;
         setComputeTick((prev) => prev + 1);
         setLastComputedLogCount(logs.length);
         setLastComputedToken(activeTokenRef.current);
@@ -531,7 +548,16 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
             }
         })())
         : result;
-    const resolvedAggregationProgress = (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker)
+    // Detect when computation-affecting settings changed but worker hasn't
+    // produced a result yet.  During this gap the progress state still reads
+    // 'settled' from the previous computation — override it to show the
+    // particle spinner so the dashboard doesn't flash stale data.
+    const settingsPendingRecalc = logs.length > 0
+        && shouldUseWorker && !workerFailed
+        && lastSettledSettingsKeyRef.current !== ''
+        && currentComputeInputsKey !== lastSettledSettingsKeyRef.current;
+
+    const baseAggregationProgress = (!workerFailed && typeof Worker !== 'undefined' && shouldUseWorker)
         ? aggregationProgress
         : {
             active: logs.length > 0,
@@ -541,6 +567,15 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
             startedAt: 0,
             completedAt: Date.now()
         };
+
+    const resolvedAggregationProgress = settingsPendingRecalc
+        && (baseAggregationProgress.phase === 'settled' || baseAggregationProgress.phase === 'idle')
+        ? {
+            ...baseAggregationProgress,
+            active: true,
+            phase: 'computing' as const,
+        }
+        : baseAggregationProgress;
 
     return {
         result: resolvedResult,
