@@ -604,6 +604,7 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     detailsAvailable: hasDetails,
                     detailsFetchExhausted: detailsKnownUnavailable,
                     detailsKnownUnavailable,
+                    detailsStatus: detailsKnownUnavailable ? 'unavailable' as const : hasDetails ? 'available' as const : 'idle' as const,
                     playerCount,
                     dashboardSummary
                 });
@@ -617,6 +618,7 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     detailsAvailable: hasDetails,
                     detailsFetchExhausted: detailsKnownUnavailable,
                     detailsKnownUnavailable,
+                    detailsStatus: detailsKnownUnavailable ? 'unavailable' as const : hasDetails ? 'available' as const : 'idle' as const,
                     playerCount,
                     dashboardSummary
                 });
