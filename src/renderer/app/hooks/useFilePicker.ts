@@ -254,7 +254,8 @@ export function useFilePicker({
                 status: 'queued',
                 fightName: fileName,
                 uploadTime: Date.now() / 1000,
-                permalink: ''
+                permalink: '',
+                detailsStatus: 'idle' as const
             });
         });
 

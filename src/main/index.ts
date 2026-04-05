@@ -601,9 +601,6 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     ...detailsSummary,
                     filePath,
                     status: hasDetails ? 'calculating' : 'success',
-                    detailsAvailable: hasDetails,
-                    detailsFetchExhausted: detailsKnownUnavailable,
-                    detailsKnownUnavailable,
                     detailsStatus: detailsKnownUnavailable ? 'unavailable' as const : hasDetails ? 'available' as const : 'idle' as const,
                     playerCount,
                     dashboardSummary
@@ -615,9 +612,6 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     ...detailsSummary,
                     filePath,
                     status: hasDetails ? 'calculating' : 'success',
-                    detailsAvailable: hasDetails,
-                    detailsFetchExhausted: detailsKnownUnavailable,
-                    detailsKnownUnavailable,
                     detailsStatus: detailsKnownUnavailable ? 'unavailable' as const : hasDetails ? 'available' as const : 'idle' as const,
                     playerCount,
                     dashboardSummary

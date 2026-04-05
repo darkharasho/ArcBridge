@@ -75,7 +75,6 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
             }
             changed = true;
             const nextEntry: ILogData = { ...entry };
-            nextEntry.statsDetailsLoaded = true;
             nextEntry.detailsStatus = 'loaded';
             // Don't promote status here — aggregation pipeline controls it.
             return nextEntry;

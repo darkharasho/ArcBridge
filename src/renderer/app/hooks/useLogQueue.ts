@@ -1,29 +1,16 @@
 import { startTransition, useCallback, useEffect, useRef } from 'react';
 
 export const normalizeQueuedLogStatus = (candidate: ILogData): ILogData => {
-    const ds = candidate.detailsStatus || 'idle';
-
-    // Legacy boolean normalization (during migration — remove when booleans are deleted)
-    if (candidate.detailsAvailable && candidate.detailsFetchExhausted) {
-        candidate = { ...candidate, detailsFetchExhausted: false };
-    }
-    if (candidate.detailsAvailable && candidate.detailsKnownUnavailable) {
-        candidate = { ...candidate, detailsKnownUnavailable: false };
-    }
+    const ds = candidate.detailsStatus;
 
     // Promote calculating → success for terminal states where details will never arrive.
     const detailsTerminal = ds === 'exhausted' || ds === 'unavailable' || ds === 'idle';
-    if (candidate.status === 'calculating' && detailsTerminal && !candidate.detailsAvailable) {
+    if (candidate.status === 'calculating' && detailsTerminal) {
         return { ...candidate, status: 'success' as const };
     }
 
     // Demote success → calculating when details are available but not yet loaded.
-    if (
-        candidate.status === 'success'
-        && (ds === 'available' || (candidate.detailsAvailable && !candidate.statsDetailsLoaded))
-        && ds !== 'exhausted'
-        && ds !== 'unavailable'
-    ) {
+    if (candidate.status === 'success' && ds === 'available') {
         return { ...candidate, status: 'calculating' as const };
     }
 

@@ -370,12 +370,7 @@ declare global {
         uploadTime?: number;
         encounterDuration?: string;
         fightName?: string;
-        detailsLoading?: boolean;
-        detailsAvailable?: boolean;
-        statsDetailsLoaded?: boolean;
-        detailsFetchExhausted?: boolean;
-        detailsKnownUnavailable?: boolean;
-        detailsStatus?: DetailsStatus;
+        detailsStatus: DetailsStatus;
         splitEnemiesByTeam?: boolean;
         dashboardSummary?: {
             hasPlayers: boolean;

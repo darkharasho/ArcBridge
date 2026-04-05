@@ -40,7 +40,7 @@ export function useDetailsHydration({
             const idx = currentLogs.findIndex((entry) => entry.filePath === log.filePath);
             if (idx < 0) return currentLogs;
             const updated = [...currentLogs];
-            updated[idx] = { ...updated[idx], detailsLoading: true, detailsStatus: 'loading' as const };
+            updated[idx] = { ...updated[idx], detailsStatus: 'loading' as const };
             return updated;
         });
         let timeoutId: number | null = null;
@@ -67,14 +67,10 @@ export function useDetailsHydration({
                 updated[idx] = terminal
                     ? {
                         ...existing,
-                        detailsLoading: false,
-                        detailsAvailable: false,
-                        detailsFetchExhausted: true,
-                        detailsKnownUnavailable: true,
                         detailsStatus: 'unavailable' as const,
                         status: existing.status === 'error' ? 'error' : 'success'
                     }
-                    : { ...existing, detailsLoading: false, detailsStatus: existing.detailsStatus === 'loading' ? 'idle' as const : existing.detailsStatus };
+                    : { ...existing, detailsStatus: existing.detailsStatus === 'loading' ? 'idle' as const : existing.detailsStatus };
                 return updated;
             });
             return;
@@ -91,11 +87,7 @@ export function useDetailsHydration({
             const existing = updated[existingIndex];
             updated[existingIndex] = {
                 ...existing,
-                detailsAvailable: true,
-                statsDetailsLoaded: true,
                 detailsStatus: 'loaded' as const,
-                detailsLoading: false,
-                detailsFetchExhausted: false,
                 // Don't force status to 'success' — let the aggregation
                 // pipeline promote calculating → success after the worker
                 // has actually ingested this log.
@@ -168,10 +160,7 @@ export function useDetailsHydration({
                         changed = true;
                         return {
                             ...entry,
-                            detailsAvailable: true,
-                            statsDetailsLoaded: true,
                             detailsStatus: 'loaded' as const,
-                            detailsFetchExhausted: false,
                             // Don't force status — aggregation pipeline controls
                             // calculating → success promotion.
                         };
@@ -269,10 +258,7 @@ export function useDetailsHydration({
                         const nextStatus: ILogData['status'] = entry.status === 'error' ? 'error' : 'success';
                         return {
                             ...entry,
-                            detailsAvailable: false,
-                            detailsFetchExhausted: true,
-                            detailsKnownUnavailable: terminalFailures.has(filePath) || entry.detailsKnownUnavailable,
-                            detailsStatus: (terminalFailures.has(filePath) || entry.detailsKnownUnavailable) ? 'unavailable' as const : 'exhausted' as const,
+                            detailsStatus: (terminalFailures.has(filePath) || entry.detailsStatus === 'unavailable') ? 'unavailable' as const : 'exhausted' as const,
                             status: nextStatus
                         };
                     });
