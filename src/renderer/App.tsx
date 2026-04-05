@@ -15,7 +15,7 @@ import { useSettings } from './app/hooks/useSettings';
 import { useUploadRetryQueue } from './app/hooks/useUploadRetryQueue';
 import { useAppNavigation } from './app/hooks/useAppNavigation';
 import { shouldAttemptStatsSyncRecovery } from './stats/utils/statsSyncRecovery';
-import { normalizeQueuedLogStatus, useLogQueue } from './app/hooks/useLogQueue';
+import { useLogQueue } from './app/hooks/useLogQueue';
 import { useDetailsHydration } from './app/hooks/useDetailsHydration';
 import { useUploadListeners } from './app/hooks/useUploadListeners';
 import { extractDroppedLogFiles } from './app/utils/droppedFiles';
@@ -306,24 +306,25 @@ function App() {
     const calculatingCount = logs.filter((log) => log.status === 'calculating').length;
 
     useEffect(() => {
-        // Per-log promotion: as the worker ingests each log, promote it from
-        // calculating → success so the sidebar shows real-time progress.
-        // During active streaming, promote only the first N logs (matching
-        // logsForStats order) where N = aggregationProgress.streamed.
-        // When aggregation is settled/idle, promote all remaining calculating logs.
+        // Per-log promotion: promote calculating → success based on aggregation state.
+        // - streaming: promote first N logs (N = aggregationProgress.streamed)
+        // - settled: promote all remaining (worker finished)
+        // - idle/computing: don't promote (worker not started or finalizing)
         if (!logs.some((log) => log.status === 'calculating')) {
             return;
         }
         const phase = aggregationProgress?.phase;
-        const isStreaming = aggregationProgress?.active && (phase === 'streaming' || phase === 'computing');
+        const isActive = aggregationProgress?.active;
         const streamed = Math.max(0, Number(aggregationProgress?.streamed || 0));
 
-        if (isStreaming && streamed === 0) {
-            // Worker is active but hasn't ingested anything yet — don't promote
+        if (phase === 'idle' || (isActive && phase === 'computing')) {
+            // idle: worker hasn't started yet — don't promote
+            // computing: finalize running — wait for settled
             return;
         }
 
-        if (isStreaming) {
+        if (isActive && phase === 'streaming') {
+            if (streamed === 0) return;
             // Build set of log identifiers that the worker has ingested
             // (first `streamed` entries in logsForStats order)
             const ingestedIds = new Set<string>();
@@ -345,16 +346,14 @@ function App() {
                 });
                 return changed ? next : currentLogs;
             });
-        } else {
-            // Aggregation settled or idle — promote all calculating logs via normalize
+        } else if (phase === 'settled') {
+            // Worker finished — promote all remaining calculating logs
             setLogsDeferred((currentLogs) => {
                 let changed = false;
                 const next = currentLogs.map((entry) => {
                     if (entry.status !== 'calculating') return entry;
-                    const normalized = normalizeQueuedLogStatus(entry);
-                    if (normalized.status === entry.status) return entry;
                     changed = true;
-                    return normalized;
+                    return { ...entry, status: 'success' as const };
                 });
                 return changed ? next : currentLogs;
             });
@@ -445,13 +444,10 @@ function App() {
         if (flushId) {
             bulkFlushIdRef.current = flushId;
         }
-        if (viewRef.current === 'stats') {
-            window.setTimeout(() => scheduleDetailsHydration(true), 0);
-            window.setTimeout(() => scheduleDetailsHydration(true), 500);
-        } else {
-            window.setTimeout(() => scheduleDetailsHydration(true), 180);
-            window.setTimeout(() => scheduleDetailsHydration(true), 620);
-        }
+        // Single hydration pass — the isBulkUploadActive transition effect
+        // will schedule another if needed.
+        const hydrationDelay = viewRef.current === 'stats' ? 0 : 180;
+        window.setTimeout(() => scheduleDetailsHydration(true), hydrationDelay);
     }, [scheduleDetailsHydration, requestFlush, setLogsForStats]);
 
     const flushPendingStatsRemovals = useCallback(() => {
