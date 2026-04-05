@@ -9,7 +9,7 @@ export interface ParticlePreset {
 }
 
 export const PRESETS = {
-    logArrival: { origin: 'right', direction: 'out', count: 22, spread: 180, duration: 1000, size: [3, 7], glow: true },
+    logArrival: { origin: 'right', direction: 'out', count: 20, spread: 130, duration: 1200, size: [2, 5], glow: true },
     uploadSnap: { origin: 'edges', direction: 'in', count: 18, spread: 100, duration: 550, size: [3, 6], glow: true },
     statusBadgePuff: { origin: 'center', direction: 'out', count: 8, spread: 30, duration: 400, size: [2, 4], glow: true },
     discordSent: { origin: 'center', direction: 'out', count: 14, spread: 60, duration: 500, size: [3, 5], glow: true },

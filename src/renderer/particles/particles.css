@@ -1,4 +1,8 @@
 @keyframes particle-fly {
+    from {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
     to {
         transform: var(--particle-end-transform);
         opacity: 0;
