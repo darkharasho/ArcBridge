@@ -186,10 +186,105 @@ const sortByFightOrder = (a: { timestamp: number; originalIndex: number }, b: { 
     return a.originalIndex - b.originalIndex;
 };
 
+const enrichPrecomputedStats = (input: any, logs: any[]) => {
+        if (!input || typeof input !== 'object') return input;
+        const fights = Array.isArray(input.fightBreakdown) ? input.fightBreakdown : null;
+        if (!fights || fights.length === 0) return input;
+        const hasTeamBreakdown = (value: any) =>
+            Array.isArray(value) && value.some((entry) => entry && Number(entry.count) > 0);
+
+        const byId = new Map<string, any>();
+        const byPermalink = new Map<string, any>();
+        logs.forEach((log: any) => {
+            const id = log?.filePath || log?.id;
+            if (id) byId.set(String(id), log);
+            const link = log?.permalink || log?.details?.permalink;
+            if (typeof link === 'string' && link.trim()) {
+                byPermalink.set(link.trim(), log);
+            }
+        });
+
+        const normalizedFights = fights.map((fight: any) => {
+            if (!fight || typeof fight !== 'object') return fight;
+            const keyId = fight.id ? String(fight.id) : '';
+            const keyPermalink = typeof fight.permalink === 'string' ? fight.permalink.trim() : '';
+            const matchedLog = (keyId ? byId.get(keyId) : undefined) || (keyPermalink ? byPermalink.get(keyPermalink) : undefined);
+            if (!matchedLog) return fight;
+
+            let nextFight = fight;
+            if (Number(fight.timestamp) <= 0) {
+                const resolved = resolveFightTimestamp(matchedLog?.details, matchedLog);
+                if (resolved) nextFight = { ...nextFight, timestamp: resolved };
+            }
+            const detailsTeamBreakdown = matchedLog?.details?.teamBreakdown;
+            if (hasTeamBreakdown(detailsTeamBreakdown)) {
+                nextFight = { ...nextFight, teamBreakdown: detailsTeamBreakdown };
+            }
+            return nextFight;
+        });
+
+        const existingDiff = Array.isArray((input as any).fightDiffMode) ? (input as any).fightDiffMode : [];
+        const hasUsableExistingDiff = existingDiff.some((fight: any) => (
+            Array.isArray(fight?.targetFocus) && fight.targetFocus.some((row: any) => Number(row?.damage || 0) > 0 || Number(row?.hits || 0) > 0)
+        ));
+        const derivedFightDiffMode = hasUsableExistingDiff ? existingDiff : normalizedFights.map((fight: any, idx: number) => {
+            const enemyClassCounts = (fight && typeof fight.enemyClassCounts === 'object' && fight.enemyClassCounts)
+                ? fight.enemyClassCounts
+                : {};
+            const classRows = Object.entries(enemyClassCounts as Record<string, number>)
+                .map(([label, count]) => ({ label: String(label || 'Unknown'), count: Number(count || 0) }))
+                .filter((row) => row.count > 0)
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+            const totalCount = classRows.reduce((sum, row) => sum + row.count, 0);
+            const targetFocus = classRows.map((row) => ({
+                label: row.label,
+                damage: row.count,
+                hits: 0,
+                share: totalCount > 0 ? row.count / totalCount : 0
+            }));
+            const enemyDowns = Number(fight?.enemyDowns || 0);
+            const enemyDeaths = Number(fight?.enemyDeaths || 0);
+            const squadDowns = Number(fight?.alliesDown || 0);
+            const squadDeaths = Number(fight?.alliesDead || 0);
+            const totalOutgoingDamage = Number(fight?.totalOutgoingDamage || 0);
+            const totalIncomingDamage = Number(fight?.totalIncomingDamage || 0);
+            const squadMetrics = [
+                { metricId: 'winFlag', metricLabel: 'Win (1) / Loss (0)', higherIsBetter: true, value: fight?.isWin ? 1 : 0 },
+                { metricId: 'squadCount', metricLabel: 'Squad Size', higherIsBetter: true, value: Number(fight?.squadCount || 0) },
+                { metricId: 'enemyCount', metricLabel: 'Enemy Count', higherIsBetter: false, value: Number(fight?.enemyCount || 0) },
+                { metricId: 'squadKdr', metricLabel: 'Squad KDR', higherIsBetter: true, value: squadDeaths > 0 ? (enemyDeaths / squadDeaths) : enemyDeaths },
+                { metricId: 'enemyDeaths', metricLabel: 'Enemy Deaths', higherIsBetter: true, value: enemyDeaths },
+                { metricId: 'enemyDowns', metricLabel: 'Enemy Downs', higherIsBetter: true, value: enemyDowns },
+                { metricId: 'squadDeaths', metricLabel: 'Squad Deaths', higherIsBetter: false, value: squadDeaths },
+                { metricId: 'squadDowns', metricLabel: 'Squad Downs', higherIsBetter: false, value: squadDowns },
+                { metricId: 'damageDelta', metricLabel: 'Damage Delta', higherIsBetter: true, value: totalOutgoingDamage - totalIncomingDamage },
+                { metricId: 'outgoingDamage', metricLabel: 'Outgoing Damage', higherIsBetter: true, value: totalOutgoingDamage },
+                { metricId: 'incomingDamage', metricLabel: 'Incoming Damage', higherIsBetter: false, value: totalIncomingDamage },
+                { metricId: 'barrierIncomingAbsorb', metricLabel: 'Barrier Absorption (Incoming)', higherIsBetter: true, value: Number(fight?.incomingBarrierAbsorbed || 0) },
+                { metricId: 'enemyBarrierAbsorb', metricLabel: 'Enemy Barrier Absorption', higherIsBetter: false, value: Number(fight?.outgoingBarrierAbsorbed || 0) },
+                { metricId: 'alliesRevived', metricLabel: 'Allies Revived (Players)', higherIsBetter: true, value: Number(fight?.alliesRevived || 0) }
+            ];
+            return {
+                id: String(fight?.id || `fight-${idx + 1}`),
+                shortLabel: `F${idx + 1}`,
+                fullLabel: `${String(fight?.mapName || fight?.label || 'Unknown Map')} • ${String(fight?.duration || '--:--')}`,
+                mapName: String(fight?.mapName || ''),
+                timestamp: Number(fight?.timestamp || 0),
+                duration: String(fight?.duration || '--:--'),
+                isWin: Boolean(fight?.isWin),
+                targetFocus,
+                squadMetrics
+            };
+        });
+
+        return { ...input, fightBreakdown: normalizedFights, fightDiffMode: derivedFightDiffMode };
+};
+
 export class IncrementalAggregator {
     private options: IncrementalAggregatorOptions;
     private logCount = 0;
     private validLogCount = 0;
+    private precomputedLogs: any[] = [];
 
     // Settings
     private activeStatsViewSettings: IStatsViewSettings;
@@ -286,6 +381,7 @@ export class IncrementalAggregator {
                 hasDetailedRoster: this.hasDetailedRoster(log),
                 originalIndex: this.logCount,
             });
+            this.precomputedLogs.push(log);
             this.logCount++;
             return;
         }
@@ -469,9 +565,10 @@ export class IncrementalAggregator {
     /** Finalize aggregation and return the result. */
     finalize(): { stats: any; skillUsageData: any } {
         if (this.options.precomputedStats) {
-            // Not implemented for precomputed - would need enrichment logic
-            // Return precomputed stats as-is (the batch path handles this)
-            return { stats: this.options.precomputedStats, skillUsageData: null };
+            return {
+                stats: enrichPrecomputedStats(this.options.precomputedStats, this.precomputedLogs),
+                skillUsageData: null,
+            };
         }
 
         const total = this.validLogCount;
