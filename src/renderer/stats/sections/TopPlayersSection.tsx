@@ -1,10 +1,11 @@
-import { Activity, Crown, Crosshair, Flame, Hammer, HelpingHand, Shield, ShieldCheck, Sparkles, Star, Wind, Zap, Trophy } from 'lucide-react';
+import { Activity, Ban, Crown, Crosshair, Flame, Hammer, HelpingHand, Shield, ShieldCheck, Sparkles, Star, Wind, Zap, Trophy } from 'lucide-react';
 import { useStatsSharedContext } from '../StatsViewContext';
 
 type TopPlayersSectionProps = {
     showTopStats: boolean;
     showMvp: boolean;
     topStatsMode: 'total' | 'perSecond' | 'perMinute';
+    interruptMode: 'ccOnly' | 'separate' | 'combined';
     expandedLeader: string | null;
     setExpandedLeader: (value: string | null | ((prev: string | null) => string | null)) => void;
     formatTopStatValue: (value: number) => string;
@@ -19,7 +20,8 @@ const colorClasses: Record<string, { bg: string; text: string }> = {
     blue: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
     pink: { bg: 'bg-pink-500/20', text: 'text-pink-400' },
     cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400' },
-    indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' }
+    indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
+    orange: { bg: 'bg-orange-500/20', text: 'text-orange-400' }
 };
 
 const LeaderCard = ({ icon: Icon, title, data, color, unit = '', onClick, active, rows, formatValue, renderProfessionIcon }: any) => {
@@ -121,6 +123,7 @@ export const TopPlayersSection = ({
     showTopStats,
     showMvp,
     topStatsMode,
+    interruptMode,
     expandedLeader,
     setExpandedLeader,
     formatTopStatValue,
@@ -333,7 +336,12 @@ export const TopPlayersSection = ({
                     { icon: Wind, title: `${titlePrefix}Dodges${titleSuffix}`, data: topStatsData.maxDodges, color: 'cyan', statKey: 'dodges', higherIsBetter: true },
                     { icon: Zap, title: `${titlePrefix}Strips${titleSuffix}`, data: topStatsData.maxStrips, color: 'purple', statKey: 'strips', higherIsBetter: true },
                     { icon: Flame, title: `${titlePrefix}Cleanses${titleSuffix}`, data: topStatsData.maxCleanses, color: 'blue', statKey: 'cleanses', higherIsBetter: true },
-                    { icon: Hammer, title: `${titlePrefix}CC${titleSuffix}`, data: topStatsData.maxCC, color: 'pink', statKey: 'cc', higherIsBetter: true },
+                    ...(interruptMode === 'combined'
+                        ? [{ icon: Hammer, title: `${titlePrefix}CC + Interrupts${titleSuffix}`, data: topStatsData.maxCCAndInterrupts, color: 'pink', statKey: 'ccAndInterrupts', higherIsBetter: true }]
+                        : [{ icon: Hammer, title: `${titlePrefix}CC${titleSuffix}`, data: topStatsData.maxCC, color: 'pink', statKey: 'cc', higherIsBetter: true }]),
+                    ...(interruptMode === 'separate'
+                        ? [{ icon: Ban, title: `${titlePrefix}Interrupts${titleSuffix}`, data: topStatsData.maxInterrupts, color: 'orange', statKey: 'interrupts', higherIsBetter: true }]
+                        : []),
                     { icon: ShieldCheck, title: `${titlePrefix}Stab Gen${titleSuffix}`, data: topStatsData.maxStab, color: 'cyan', statKey: 'stability', higherIsBetter: true },
                     { icon: Crosshair, title: 'Closest to Tag', data: topStatsData.closestToTag, color: 'indigo', unit: 'dist', statKey: 'closestToTag', higherIsBetter: false }
                 ];

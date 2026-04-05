@@ -54,6 +54,7 @@ describe('TopPlayersSection', () => {
                     showTopStats={true}
                     showMvp={false}
                     topStatsMode="total"
+                    interruptMode="ccOnly"
                     expandedLeader={null}
                     setExpandedLeader={() => {}}
                     formatTopStatValue={(value) => `${Math.round(value)}u`}
