@@ -50,7 +50,7 @@ export interface AggregationDiagnosticsState {
 const DETAILS_TOP_LEVEL_DENY = ['phases', 'logErrors'];
 const PLAYER_DENY = ['targetBreakbarDamage1S', 'squadBuffVolumesActive'];
 
-/** Strip fields not needed by computeStatsAggregation before structured-cloning to the worker. */
+/** Strip fields not needed by stats aggregation before structured-cloning to the worker. */
 export const pruneDetailsForWorker = (details: any): any => {
     if (!details || typeof details !== 'object') return details;
     const pruned: any = {};
