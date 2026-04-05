@@ -261,6 +261,7 @@ export interface IElectronAPI {
         disruptionMethod: DisruptionMethod;
         colorPalette?: ColorPalette;
         glassSurfaces?: boolean;
+        particlesEnabled?: boolean;
         autoUpdateSupported?: boolean;
         autoUpdateDisabledReason?: string | null;
         githubRepoOwner?: string | null;
@@ -296,6 +297,7 @@ export interface IElectronAPI {
         disruptionMethod?: DisruptionMethod;
         colorPalette?: ColorPalette;
         glassSurfaces?: boolean;
+        particlesEnabled?: boolean;
         githubRepoOwner?: string | null;
         githubRepoName?: string | null;
         githubBranch?: string | null;
