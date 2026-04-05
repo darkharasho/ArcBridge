@@ -1,4 +1,3 @@
-import { PROFESSION_COLORS } from '../../shared/professionUtils';
 import { resolveFightTimestamp } from './utils/timestampUtils';
 import { resolveMapName } from './utils/labelUtils';
 import { formatDurationMs } from './utils/dashboardUtils';
@@ -12,37 +11,7 @@ import {
     computeSquadBarrier as getPlayerSquadBarrier,
     computeOutgoingCrowdControl as getPlayerOutgoingCrowdControl,
 } from '../../shared/combatMetrics';
-
-const knownProfessionNames = new Set(Object.keys(PROFESSION_COLORS));
-const knownProfessionList = Object.keys(PROFESSION_COLORS)
-    .filter((name) => name && name !== 'Unknown')
-    .sort((a, b) => b.length - a.length);
-const baseProfessionNames = [
-    'Guardian',
-    'Revenant',
-    'Warrior',
-    'Engineer',
-    'Ranger',
-    'Thief',
-    'Elementalist',
-    'Mesmer',
-    'Necromancer'
-];
-const resolveProfessionLabel = (name?: string) => {
-    if (!name) return 'Unknown';
-    const cleaned = String(name)
-        .replace(/\s*\([^)]*\)\s*$/, '')
-        .replace(/\s*\[[^\]]*\]\s*$/, '')
-        .replace(/\s\d+$/, '')
-        .trim();
-    if (knownProfessionNames.has(cleaned)) return cleaned;
-    const lower = cleaned.toLowerCase();
-    for (const prof of knownProfessionList) {
-        if (lower.includes(prof.toLowerCase())) return prof;
-    }
-    const baseMatch = baseProfessionNames.find((prof) => lower.includes(prof.toLowerCase()));
-    return baseMatch || cleaned || 'Unknown';
-};
+import { resolveProfessionLabel } from './computePlayerAggregation';
 
 const getFightDownsDeaths = (details: any) => {
     const players = details?.players || [];
