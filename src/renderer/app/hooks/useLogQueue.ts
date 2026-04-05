@@ -7,12 +7,14 @@ export const normalizeQueuedLogStatus = (candidate: ILogData): ILogData => {
     if (candidate.detailsAvailable && candidate.detailsKnownUnavailable) {
         candidate = { ...candidate, detailsKnownUnavailable: false };
     }
-    const detailsResolved = Boolean(candidate.detailsAvailable)
-        || Boolean(candidate.statsDetailsLoaded)
+    // Only promote calculating → success when stats have actually been computed
+    // for this log. detailsAvailable alone is NOT sufficient — it just means the
+    // details exist on the server, not that the aggregator has processed them.
+    const statsComputed = Boolean(candidate.statsDetailsLoaded)
         || Boolean(candidate.detailsKnownUnavailable)
         || (candidate.detailsAvailable === false)
         || Boolean(candidate.detailsFetchExhausted);
-    if (candidate.status === 'calculating' && detailsResolved) {
+    if (candidate.status === 'calculating' && statsComputed) {
         return { ...candidate, status: 'success' as const };
     }
     if (
