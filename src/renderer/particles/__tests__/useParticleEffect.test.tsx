@@ -125,4 +125,48 @@ describe('useParticleEffect', () => {
         // emitterNode should now be null → no particle-dot elements
         expect(anchor.querySelectorAll('.particle-dot').length).toBe(0);
     });
+
+    it('caps active emitters at 5: 6th trigger is ignored', () => {
+        // Render 6 independent harnesses and fire each once.
+        // The first 5 should show particles; the 6th should not.
+        const longPreset: ParticlePreset = { ...testPreset, duration: 10000 };
+
+        function MultiHarness({ id }: { id: number }) {
+            const { emitterNode, trigger } = useParticleEffect();
+            return (
+                <div>
+                    <div data-testid={`anchor-${id}`}>{emitterNode}</div>
+                    <button onClick={() => trigger(longPreset)}>fire-{id}</button>
+                </div>
+            );
+        }
+
+        render(
+            <>
+                <MultiHarness id={1} />
+                <MultiHarness id={2} />
+                <MultiHarness id={3} />
+                <MultiHarness id={4} />
+                <MultiHarness id={5} />
+                <MultiHarness id={6} />
+            </>
+        );
+
+        // Fire the first 5
+        for (let i = 1; i <= 5; i++) {
+            act(() => { screen.getByRole('button', { name: `fire-${i}` }).click(); });
+        }
+
+        // Each of the first 5 anchors should have particles
+        for (let i = 1; i <= 5; i++) {
+            expect(screen.getByTestId(`anchor-${i}`).querySelectorAll('.particle-dot').length).toBeGreaterThan(0);
+        }
+
+        // Fire the 6th — should be suppressed by the cap
+        act(() => { screen.getByRole('button', { name: 'fire-6' }).click(); });
+        expect(screen.getByTestId('anchor-6').querySelectorAll('.particle-dot').length).toBe(0);
+
+        // Drain the counter by advancing time so onComplete fires for all 5 active emitters
+        act(() => { vi.advanceTimersByTime(longPreset.duration + 150 + 10); });
+    });
 });

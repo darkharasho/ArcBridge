@@ -141,6 +141,16 @@ describe('ParticleEmitter', () => {
         expect(wrapper.style.position).toBe('relative');
     });
 
+    it('renders nothing when body has bulk-uploading class', () => {
+        document.body.classList.add('bulk-uploading');
+        const { container } = render(
+            <ParticleEmitter origin="center" direction="out" count={10} spread={50} duration={300} size={[2, 4]} />
+        );
+        expect(container.querySelectorAll('.particle-dot').length).toBe(0);
+        expect(container.querySelector('.particle-pulse-fallback')).toBeNull();
+        document.body.classList.remove('bulk-uploading');
+    });
+
     it('applies glow box-shadow to particles when glow prop is true', () => {
         const { container } = render(
             <ParticleEmitter
