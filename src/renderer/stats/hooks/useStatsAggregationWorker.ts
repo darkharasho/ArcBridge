@@ -294,6 +294,11 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
         streamSessionRef.current = streamSession;
         let cancelled = false;
         try {
+            // ── Full reset path ──
+            // Always reset and re-stream when logsForStats changes reference.
+            // The snapshot key in useLogsForStats prevents spurious reference
+            // changes; when it DOES change, it means log content or details
+            // availability changed and we need fresh aggregation.
             expectedLogCountRef.current = logs.length;
             workerAggregationStartedAtRef.current = Date.now();
             setAggregationDiagnostics(null);

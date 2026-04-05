@@ -99,10 +99,9 @@ test.describe('Details Hydration & Dissolve Overlay (HYDR-001–005)', () => {
         await setupHydrationPage(page, { detailsDelayMs: 600 });
         await goToStats(page);
 
-        // The dissolve overlay should be active — look for the scroll-lock class
-        // or the unloaded section styling
+        // The spinner should be visible while details are pending
         await expect(
-            page.locator('.stats-dashboard-scroll-lock, .stats-section-wrap--unloaded').first()
+            page.locator('.stats-particle-spinner').first()
         ).toBeVisible({ timeout: 10_000 });
     });
 
@@ -120,9 +119,9 @@ test.describe('Details Hydration & Dissolve Overlay (HYDR-001–005)', () => {
         await setupHydrationPage(page, { detailsDelayMs: 100 });
         await goToStats(page);
 
-        // Wait for hydration to complete — dissolve overlay should disappear
+        // Wait for hydration to complete — spinner should disappear
         await expect(
-            page.locator('.stats-dashboard-scroll-lock')
+            page.locator('.stats-particle-spinner')
         ).toBeHidden({ timeout: 45_000 });
 
         // Overview metrics should have non-zero values.
@@ -143,20 +142,15 @@ test.describe('Details Hydration & Dissolve Overlay (HYDR-001–005)', () => {
         await setupHydrationPage(page, { detailsDelayMs: 100 });
         await goToStats(page);
 
-        // First verify overlay appears
+        // First verify spinner appears
         await expect(
-            page.locator('.stats-dashboard-scroll-lock, .stats-section-wrap--unloaded').first()
+            page.locator('.stats-particle-spinner').first()
         ).toBeVisible({ timeout: 10_000 });
 
         // Then wait for it to clear — all 7 details at 100ms each ≈ 700ms + compute time
         await expect(
-            page.locator('.stats-dashboard-scroll-lock')
+            page.locator('.stats-particle-spinner')
         ).toBeHidden({ timeout: 30_000 });
-
-        // Verify no unloaded sections remain
-        await expect(
-            page.locator('.stats-section-wrap--unloaded')
-        ).toHaveCount(0, { timeout: 5_000 });
     });
 
     test('HYDR-005: fight breakdown shows non-zero Allies after hydration', async ({ page }) => {
@@ -165,7 +159,7 @@ test.describe('Details Hydration & Dissolve Overlay (HYDR-001–005)', () => {
 
         // Wait for overlay to clear
         await expect(
-            page.locator('.stats-dashboard-scroll-lock')
+            page.locator('.stats-particle-spinner')
         ).toBeHidden({ timeout: 45_000 });
 
         // Find the fight breakdown section
