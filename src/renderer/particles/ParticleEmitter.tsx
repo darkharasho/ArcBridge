@@ -3,7 +3,7 @@ import './particles.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Origin = 'center' | 'left' | 'right' | 'top' | 'edges' | { x: number; y: number };
+type Origin = 'center' | 'left' | 'right' | 'top' | 'edges' | 'surface' | { x: number; y: number };
 type Direction = 'out' | 'in';
 
 export interface ParticleEmitterProps {
@@ -14,6 +14,7 @@ export interface ParticleEmitterProps {
     duration: number;
     size: [number, number];
     glow?: boolean;
+    color?: string;
     onComplete?: () => void;
 }
 
@@ -47,7 +48,8 @@ function resolveOrigin(origin: Origin, spread: number): { x: number; y: number }
         case 'left':
             return { x: -spread / 2, y: 0 };
         case 'right':
-            return { x: 0, y: 0 };
+            // Distribute along the vertical right edge of the badge (~40px tall)
+            return { x: 0, y: rand(-20, 20) };
         case 'top':
             return { x: 0, y: -spread / 2 };
         case 'edges': {
@@ -58,6 +60,9 @@ function resolveOrigin(origin: Origin, spread: number): { x: number; y: number }
                 y: Math.sin(angle) * spread / 2,
             };
         }
+        case 'surface':
+            // Random point across a card-shaped rectangle (wide, short)
+            return { x: rand(-spread, spread), y: rand(-spread / 6, spread / 6) };
         case 'center':
         default:
             return { x: 0, y: 0 };
@@ -91,11 +96,13 @@ export function ParticleEmitter({
     duration,
     size,
     glow = false,
+    color,
     onComplete,
 }: ParticleEmitterProps) {
     const prefersReducedMotion = usePrefersReducedMotion();
     const isBulkUploading = document.body.classList.contains('bulk-uploading');
-    const suppressed = prefersReducedMotion || isBulkUploading;
+    const particlesDisabled = document.body.classList.contains('particles-disabled');
+    const suppressed = prefersReducedMotion || isBulkUploading || particlesDisabled;
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
@@ -115,9 +122,9 @@ export function ParticleEmitter({
         return Array.from({ length: actualCount }, () => {
             // Resolve origin per-particle so 'edges' distributes around the perimeter
             const o = resolveOrigin(origin, spread);
-            // 'right' constrains to a rightward cone (±45°), others use full 360°
+            // 'right' fires nearly horizontal (±12°), others use full 360°
             const angle = origin === 'right'
-                ? rand(-Math.PI / 4, Math.PI / 4)
+                ? rand(-Math.PI / 15, Math.PI / 15)
                 : rand(0, Math.PI * 2);
             const distance = rand(spread * 0.3, spread);
             const diameter = rand(minSize, maxSize);
@@ -125,7 +132,8 @@ export function ParticleEmitter({
             const delay = origin === 'right'
                 ? rand(0, duration * 0.06)
                 : rand(0, duration * 0.15);
-            const opacity = rand(0.5, 1.0);
+            // 'right' starts vivid and dense; others use wider opacity range
+            const opacity = origin === 'right' ? rand(0.85, 1.0) : rand(0.5, 1.0);
 
             let endTransform: string;
 
@@ -154,12 +162,13 @@ export function ParticleEmitter({
                 startY = o.y + Math.sin(angle) * distance - diameter / 2;
             }
 
+            const particleColor = color || 'var(--brand-primary)';
             const style: ParticleStyle = {
                 position: 'absolute',
                 width: `${diameter}px`,
                 height: `${diameter}px`,
                 borderRadius: '50%',
-                background: 'var(--brand-primary)',
+                background: particleColor,
                 left: `${startX}px`,
                 top: `${startY}px`,
                 opacity,
@@ -169,12 +178,14 @@ export function ParticleEmitter({
 
             if (glow) {
                 const glowSize = Math.round(diameter * 1.5);
-                style.boxShadow = `0 0 ${glowSize}px color-mix(in srgb, var(--brand-primary) 40%, transparent)`;
+                style.boxShadow = color
+                    ? `0 0 ${glowSize}px ${color}66`
+                    : `0 0 ${glowSize}px color-mix(in srgb, var(--brand-primary) 40%, transparent)`;
             }
 
             return style;
         });
-    }, [actualCount, direction, duration, glow, origin, suppressed, spread, size]);
+    }, [actualCount, color, direction, duration, glow, origin, suppressed, spread, size]);
 
     // Schedule onComplete callback
     useEffect(() => {
@@ -193,7 +204,7 @@ export function ParticleEmitter({
         pointerEvents: 'none',
     };
 
-    if (isBulkUploading) {
+    if (isBulkUploading || particlesDisabled) {
         return null;
     }
 

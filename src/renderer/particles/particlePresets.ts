@@ -1,20 +1,21 @@
 export interface ParticlePreset {
-    origin: 'center' | 'left' | 'right' | 'top' | 'edges' | { x: number; y: number };
+    origin: 'center' | 'left' | 'right' | 'top' | 'edges' | 'surface' | { x: number; y: number };
     direction: 'out' | 'in';
     count: number;
     spread: number;
     duration: number;
     size: [number, number];
     glow?: boolean;
+    color?: string;
 }
 
 export const PRESETS = {
     logArrival: { origin: 'right', direction: 'out', count: 20, spread: 130, duration: 1200, size: [2, 5], glow: true },
-    uploadSnap: { origin: 'edges', direction: 'in', count: 18, spread: 100, duration: 550, size: [3, 6], glow: true },
-    statusBadgePuff: { origin: 'center', direction: 'out', count: 8, spread: 30, duration: 400, size: [2, 4], glow: true },
-    discordSent: { origin: 'center', direction: 'out', count: 14, spread: 60, duration: 500, size: [3, 5], glow: true },
-    statsSectionAppear: { origin: 'top', direction: 'out', count: 6, spread: 25, duration: 400, size: [1.5, 3] },
-    logRemoval: { origin: 'center', direction: 'out', count: 16, spread: 120, duration: 550, size: [3, 6], glow: true },
-    bulkUploadComplete: { origin: 'top', direction: 'out', count: 24, spread: 150, duration: 700, size: [2, 5], glow: true },
-    tabTransition: { origin: 'edges', direction: 'out', count: 8, spread: 40, duration: 350, size: [1.5, 3] },
+    uploadSuccess: { origin: 'right', direction: 'out', count: 20, spread: 130, duration: 1200, size: [2, 5], glow: true, color: '#4ade80' },
+    statusBadgePuff: { origin: 'center', direction: 'out', count: 14, spread: 80, duration: 1200, size: [3, 6], glow: true },
+    discordSent: { origin: 'right', direction: 'out', count: 20, spread: 130, duration: 1200, size: [2, 5], glow: true, color: '#a78bfa' },
+    statsSectionAppear: { origin: 'top', direction: 'out', count: 12, spread: 80, duration: 1200, size: [3, 6], glow: true },
+    logRemoval: { origin: 'surface', direction: 'out', count: 40, spread: 350, duration: 1400, size: [3, 7], glow: true },
+    bulkUploadComplete: { origin: 'top', direction: 'out', count: 30, spread: 300, duration: 1600, size: [4, 8], glow: true },
+    tabTransition: { origin: 'edges', direction: 'out', count: 30, spread: 400, duration: 1200, size: [3, 7], glow: true },
 } as const satisfies Record<string, ParticlePreset>;

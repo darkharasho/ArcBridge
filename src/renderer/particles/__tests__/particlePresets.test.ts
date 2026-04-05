@@ -3,7 +3,7 @@ import { PRESETS, type ParticlePreset } from '../particlePresets';
 
 const PRESET_NAMES = [
     'logArrival',
-    'uploadSnap',
+    'uploadSuccess',
     'statusBadgePuff',
     'discordSent',
     'statsSectionAppear',
@@ -23,7 +23,7 @@ describe('PRESETS', () => {
     describe.each(PRESET_NAMES)('%s has required fields with valid values', (name) => {
         it('has a valid origin', () => {
             const preset = PRESETS[name] as ParticlePreset;
-            const validOrigins = ['center', 'left', 'right', 'top', 'edges'];
+            const validOrigins = ['center', 'left', 'right', 'top', 'edges', 'surface'];
             const origin = preset.origin;
             const isValid =
                 validOrigins.includes(origin as string) ||
@@ -63,20 +63,19 @@ describe('PRESETS', () => {
         });
     });
 
-    it('uploadSnap is the only preset with direction "in"', () => {
+    it('no presets use direction "in"', () => {
         const inPresets = Object.entries(PRESETS).filter(
             ([, preset]) => (preset as ParticlePreset).direction === 'in'
         );
-        expect(inPresets).toHaveLength(1);
-        expect(inPresets[0][0]).toBe('uploadSnap');
+        expect(inPresets).toHaveLength(0);
     });
 
-    it('bulkUploadComplete has the highest count of all presets', () => {
+    it('logRemoval has the highest count of all presets', () => {
         const counts = Object.entries(PRESETS).map(([name, preset]) => ({
             name,
             count: (preset as ParticlePreset).count,
         }));
         const maxCount = Math.max(...counts.map((p) => p.count));
-        expect((PRESETS.bulkUploadComplete as ParticlePreset).count).toBe(maxCount);
+        expect((PRESETS.logRemoval as ParticlePreset).count).toBe(maxCount);
     });
 });

@@ -52,6 +52,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
         setStatsViewSettings,
         setColorPalette,
         setGlassSurfaces,
+        particlesEnabled,
+        setParticlesEnabled,
         handleWebUpload,
         selectedWebhookId,
         setEmbedStatSettings,
@@ -109,9 +111,9 @@ export function AppLayout({ ctx }: { ctx: any }) {
     useEffect(() => {
         if (view !== prevViewRef.current) {
             prevViewRef.current = view;
-            triggerTabTransition(PRESETS.tabTransition);
+            if (particlesEnabled) triggerTabTransition(PRESETS.tabTransition);
         }
-    }, [view, triggerTabTransition]);
+    }, [view, particlesEnabled, triggerTabTransition]);
 
     // Stable setters that skip updates when values haven't changed (prevents unnecessary aggregation recalcs)
     const stableSetStatsViewSettings = useCallback((next: any) => {
@@ -368,6 +370,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
                             onDisruptionMethodSaved={stableSetDisruptionMethod}
                             onColorPaletteSaved={setColorPalette}
                             onGlassSurfacesSaved={setGlassSurfaces}
+                            onParticlesEnabledSaved={setParticlesEnabled}
+                            particlesEnabled={particlesEnabled}
                             developerSettingsTrigger={developerSettingsTrigger}
                             helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
                             onHelpUpdatesFocusConsumed={handleHelpUpdatesFocusConsumed}
