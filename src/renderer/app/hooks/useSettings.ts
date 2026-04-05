@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS,
-    DEFAULT_GLASS_SURFACES, DEFAULT_MVP_WEIGHTS,
+    DEFAULT_GLASS_SURFACES, DEFAULT_PARTICLES_ENABLED, DEFAULT_MVP_WEIGHTS,
     DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IEmbedStatSettings, IMvpWeights, normalizeMvpWeights,
     IStatsViewSettings,
 } from '../../global.d';
@@ -21,6 +21,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [colorPalette, setColorPalette] = useState<ColorPalette>('electric-blue');
     const [glassSurfaces, setGlassSurfaces] = useState(DEFAULT_GLASS_SURFACES);
+    const [particlesEnabled, setParticlesEnabled] = useState(DEFAULT_PARTICLES_ENABLED);
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
     const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
 
@@ -75,6 +76,9 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
             if (typeof settings.glassSurfaces === 'boolean') {
                 setGlassSurfaces(settings.glassSurfaces);
             }
+            if (typeof settings.particlesEnabled === 'boolean') {
+                setParticlesEnabled(settings.particlesEnabled);
+            }
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
             }
@@ -111,7 +115,8 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
             body.classList.add(`palette-${colorPalette}`);
         }
         body.classList.toggle('glass-surfaces', glassSurfaces);
-    }, [colorPalette, glassSurfaces]);
+        body.classList.toggle('particles-disabled', !particlesEnabled);
+    }, [colorPalette, glassSurfaces, particlesEnabled]);
 
     return useMemo(() => ({
         logDirectory, setLogDirectory,
@@ -122,6 +127,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         disruptionMethod, setDisruptionMethod,
         colorPalette, setColorPalette,
         glassSurfaces, setGlassSurfaces,
+        particlesEnabled, setParticlesEnabled,
         webhooks, setWebhooks,
         selectedWebhookId, setSelectedWebhookId,
         handleUpdateSettings,
@@ -133,7 +139,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         shouldOpenWhatsNew,
     }), [
         logDirectory, notificationType, embedStatSettings, mvpWeights,
-        statsViewSettings, disruptionMethod, colorPalette, glassSurfaces,
+        statsViewSettings, disruptionMethod, colorPalette, glassSurfaces, particlesEnabled,
         webhooks, selectedWebhookId, handleUpdateSettings, handleSelectDirectory,
         settingsLoaded, whatsNewVersion, whatsNewNotes, walkthroughSeen,
         shouldOpenWhatsNew,

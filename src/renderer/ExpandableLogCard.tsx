@@ -11,6 +11,10 @@ import { getProfessionIconPath } from './classIconUtils';
 import { TIMESTAMP_MS_THRESHOLD } from '../shared/constants';
 import { useLogDetails } from './cache/useLogDetails';
 
+// Track which logs have already played their arrival/success animations (survives virtualization remounts)
+const seenArrivalIds = new Set<string>();
+const seenSuccessIds = new Set<string>();
+
 interface ExpandableLogCardProps {
     log: any;
     isExpanded: boolean;
@@ -19,13 +23,14 @@ interface ExpandableLogCardProps {
     onRemove?: () => void;
     layoutEnabled?: boolean;
     motionEnabled?: boolean;
+    particlesEnabled?: boolean;
     embedStatSettings?: IEmbedStatSettings;
     disruptionMethod?: DisruptionMethod;
     useClassIcons?: boolean;
 }
 
 const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>(
-    ({ log, isExpanded, onToggle, onCancel, onRemove, layoutEnabled = true, motionEnabled = true, embedStatSettings, disruptionMethod, useClassIcons }, ref) => {
+    ({ log, isExpanded, onToggle, onCancel, onRemove, layoutEnabled = true, motionEnabled = true, particlesEnabled = true, embedStatSettings, disruptionMethod, useClassIcons }, ref) => {
     const { details: cachedDetails } = useLogDetails(
         isExpanded ? log.id : undefined
     );
@@ -106,33 +111,39 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
     const { emitterNode: removalEmitter, trigger: triggerRemoval } = useParticleEffect();
     const { emitterNode: discordEmitter, trigger: triggerDiscord } = useParticleEffect();
     const [snapActive, setSnapActive] = useState(false);
+    const [dissolving, setDissolving] = useState(false);
 
-    const hasTriggeredArrival = useRef(false);
+    const logIdentity = String(log.filePath || log.id || '');
     useEffect(() => {
-        if (motionEnabled && !hasTriggeredArrival.current) {
-            hasTriggeredArrival.current = true;
+        if (motionEnabled && particlesEnabled && logIdentity && !seenArrivalIds.has(logIdentity)) {
+            seenArrivalIds.add(logIdentity);
             triggerArrival(PRESETS.logArrival);
         }
-    }, [motionEnabled, triggerArrival]);
+    }, [motionEnabled, particlesEnabled, logIdentity, triggerArrival]);
 
     const prevStatusRef = useRef(log.status);
     useEffect(() => {
-        if (log.status !== prevStatusRef.current) {
-            const prevStatus = prevStatusRef.current;
-            prevStatusRef.current = log.status;
-            if (motionEnabled) {
-                triggerBadgePuff(PRESETS.statusBadgePuff);
-                if (log.status === 'success' && prevStatus !== 'success') {
-                    triggerSnap(PRESETS.uploadSnap);
-                    setSnapActive(true);
-                    setTimeout(() => setSnapActive(false), PRESETS.uploadSnap.duration + 100);
-                }
-                if (prevStatus === 'discord') {
-                    triggerDiscord(PRESETS.discordSent);
-                }
+        const statusChanged = log.status !== prevStatusRef.current;
+        const prevStatus = prevStatusRef.current;
+        prevStatusRef.current = log.status;
+
+        if (!motionEnabled || !particlesEnabled || !logIdentity) return;
+
+        // Fire upload snap when reaching success for the first time (handles both
+        // live transitions and cards that mount already in success state)
+        if (log.status === 'success' && !seenSuccessIds.has(logIdentity)) {
+            seenSuccessIds.add(logIdentity);
+            triggerSnap(PRESETS.uploadSuccess);
+            setSnapActive(true);
+            setTimeout(() => setSnapActive(false), PRESETS.uploadSuccess.duration + 100);
+            if (statusChanged) triggerBadgePuff(PRESETS.statusBadgePuff);
+        } else if (statusChanged) {
+            triggerBadgePuff(PRESETS.statusBadgePuff);
+            if (prevStatus === 'discord') {
+                triggerDiscord(PRESETS.discordSent);
             }
         }
-    }, [log.status, motionEnabled, triggerBadgePuff, triggerSnap, triggerDiscord]);
+    }, [log.status, logIdentity, motionEnabled, particlesEnabled, triggerBadgePuff, triggerSnap, triggerDiscord]);
     const parseFilenameTimestampMs = (value: unknown) => {
         if (typeof value !== 'string' || value.trim().length === 0) return null;
         const withoutPath = value.split(/[\\\/]/).pop() || value;
@@ -864,9 +875,11 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
     const motionProps = motionEnabled
         ? {
             initial: { opacity: 0, x: 20, scale: 0.95 },
-            animate: { opacity: 1, x: 0, scale: 1 },
+            animate: dissolving
+                ? { opacity: 0, height: 0, marginBottom: 0, transition: { duration: 0.8, ease: 'easeIn' } }
+                : { opacity: 1, x: 0, scale: 1 },
             exit: { opacity: 0, x: 40, scale: 0.96 },
-            layout: layoutEnabled
+            layout: layoutEnabled && !dissolving
         }
         : {};
 
@@ -875,15 +888,14 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             ref={ref}
             {...motionProps}
             className="rounded-[4px] transition-all mb-3 group matte-log-card"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
+            style={{ position: 'relative', background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)', overflow: 'visible' }}
         >
-            <div className="rounded-[4px] overflow-hidden" style={{ position: 'relative' }}>
-            {(snapEmitter || removalEmitter) && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }}>
-                    {snapEmitter}
+            {removalEmitter && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10, overflow: 'visible' }}>
                     {removalEmitter}
                 </div>
             )}
+            <div className="rounded-[4px]" style={{ position: 'relative', overflow: dissolving ? 'visible' : 'hidden' }}>
             {/* Collapsed View */}
             <div className={`p-4 flex items-center gap-4${snapActive ? ' particle-snap-active' : ''}`}>
                 <div className="relative shrink-0">
@@ -899,13 +911,14 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         }`}
                     >
                         {badgePuffEmitter}
-                        {discordEmitter}
                         <span className="font-bold text-xs uppercase">
                             {isQueued ? 'QUE' : isPending ? 'PEN' : isUploading ? '...' : isCalculating ? 'CAL' : isDiscord ? 'DC' : hasError ? 'ERR' : 'LOG'}
                         </span>
                     </div>
                     <div style={{ position: 'absolute', top: '50%', right: 0, pointerEvents: 'none' }}>
                         {arrivalEmitter}
+                        {snapEmitter}
+                        {discordEmitter}
                     </div>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -926,10 +939,13 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (motionEnabled) {
+                                if (motionEnabled && particlesEnabled) {
+                                    setDissolving(true);
                                     triggerRemoval(PRESETS.logRemoval);
+                                    setTimeout(() => onRemove?.(), 800);
+                                } else {
+                                    onRemove?.();
                                 }
-                                setTimeout(() => onRemove?.(), 50);
                             }}
                             className="p-2 rounded-[4px] border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all"
                             title="Remove log from recent activity"
@@ -1138,6 +1154,7 @@ const areEqual = (prev: ExpandableLogCardProps, next: ExpandableLogCardProps) =>
         && prev.isExpanded === next.isExpanded
         && prev.layoutEnabled === next.layoutEnabled
         && prev.motionEnabled === next.motionEnabled
+        && prev.particlesEnabled === next.particlesEnabled
         && prev.embedStatSettings === next.embedStatSettings
         && prev.disruptionMethod === next.disruptionMethod
         && prev.useClassIcons === next.useClassIcons;

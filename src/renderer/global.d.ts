@@ -234,6 +234,7 @@ export const DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS: IDiscordEnemySplitSettings = 
 };
 
 export const DEFAULT_GLASS_SURFACES = false;
+export const DEFAULT_PARTICLES_ENABLED = true;
 
 export interface IElectronAPI {
     selectDirectory: () => Promise<string | null>;
