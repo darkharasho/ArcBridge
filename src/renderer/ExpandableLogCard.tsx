@@ -878,8 +878,9 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
         >
             <div className="rounded-[4px] overflow-hidden" style={{ position: 'relative' }}>
-            {(snapEmitter || removalEmitter) && (
+            {(arrivalEmitter || snapEmitter || removalEmitter) && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }}>
+                    {arrivalEmitter}
                     {snapEmitter}
                     {removalEmitter}
                 </div>
@@ -897,7 +898,6 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                                         'bg-green-500/20 border-green-500/30 text-green-400'
                     }`}
                 >
-                    {arrivalEmitter}
                     {badgePuffEmitter}
                     {discordEmitter}
                     <span className="font-bold text-xs uppercase">
