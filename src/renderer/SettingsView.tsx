@@ -73,6 +73,7 @@ const IMPORT_SETTING_META: Array<{ key: string; label: string; description: stri
     { key: 'closeBehavior', label: 'Close Behavior', description: 'Minimize vs quit on close.', section: 'App' },
     { key: 'colorPalette', label: 'Color Palette', description: 'Accent color palette for the UI.', section: 'App' },
     { key: 'glassSurfaces', label: 'Glass Surfaces', description: 'Enable frosted-glass card surfaces.', section: 'App' },
+    { key: 'particlesEnabled', label: 'Particle Effects', description: 'Enable particle animations and effects.', section: 'App' },
     { key: 'embedStatSettings', label: 'Embed Stat Toggles', description: 'Discord embed sections and lists.', section: 'Stats' },
     { key: 'mvpWeights', label: 'MVP Weights', description: 'Score weighting for MVP.', section: 'Stats' },
     { key: 'statsViewSettings', label: 'Stats View Settings', description: 'Dashboard stats configuration.', section: 'Stats' },
@@ -98,8 +99,10 @@ interface SettingsViewProps {
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
     onColorPaletteSaved?: (palette: ColorPalette) => void;
     onGlassSurfacesSaved?: (glass: boolean) => void;
+    onParticlesEnabledSaved?: (enabled: boolean) => void;
     colorPalette?: ColorPalette;
     glassSurfaces?: boolean;
+    particlesEnabled?: boolean;
     developerSettingsTrigger?: number;
     isBulkUploadActive?: boolean;
 }
@@ -179,7 +182,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action, secti
     );
 }
 
-export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
+export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
 
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
@@ -190,6 +193,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [colorPalette, setColorPalette] = useState<ColorPalette>(colorPaletteProp ?? DEFAULT_PALETTE_ID);
     const [glassSurfaces, setGlassSurfaces] = useState(glassSurfacesProp ?? false);
+    const [particlesEnabled, setParticlesEnabled] = useState(particlesEnabledProp ?? true);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -476,6 +480,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         }
         if (typeof settings.glassSurfaces === 'boolean') {
             setGlassSurfaces(settings.glassSurfaces);
+        }
+        if (typeof settings.particlesEnabled === 'boolean') {
+            setParticlesEnabled(settings.particlesEnabled);
         }
         if (settings.disruptionMethod) {
             setDisruptionMethod(settings.disruptionMethod);
@@ -782,6 +789,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
             disruptionMethod: disruptionMethod,
             colorPalette,
             glassSurfaces,
+            particlesEnabled,
             githubRepoName: githubRepoName || null,
             githubRepoOwner: githubRepoOwner || null,
             githubToken: githubToken || null,
@@ -794,6 +802,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         onDisruptionMethodSaved?.(disruptionMethod);
         onColorPaletteSaved?.(colorPalette);
         onGlassSurfacesSaved?.(glassSurfaces);
+        onParticlesEnabledSaved?.(particlesEnabled);
 
         setTimeout(() => {
             setIsSaving(false);
@@ -818,6 +827,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         disruptionMethod,
         colorPalette,
         glassSurfaces,
+        particlesEnabled,
         githubRepoName,
         githubRepoOwner,
         githubToken,
@@ -1306,6 +1316,12 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 onChange={(v) => { setGlassSurfaces(v); onGlassSurfacesSaved?.(v); }}
                                 label="Glass Surfaces"
                                 description="Enable frosted-glass card backgrounds with backdrop blur"
+                            />
+                            <Toggle
+                                enabled={particlesEnabled}
+                                onChange={(v) => { setParticlesEnabled(v); onParticlesEnabledSaved?.(v); }}
+                                label="Particle Effects"
+                                description="Show particle animations on log events, button hover, and view transitions"
                             />
                         </div>
                     </SettingsSection>

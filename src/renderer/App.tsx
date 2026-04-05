@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParticleEffect, PRESETS, ParticleHover } from './particles';
 import { useStatsStore, hashAggregationSettings } from './stats/statsStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FolderOpen, UploadCloud, FileText, Settings, ChevronDown, Trash2, FilePlus2 } from 'lucide-react';
@@ -59,6 +60,7 @@ function App() {
         disruptionMethod, setDisruptionMethod,
         colorPalette, setColorPalette,
         glassSurfaces, setGlassSurfaces,
+        particlesEnabled, setParticlesEnabled,
         webhooks, setWebhooks,
         selectedWebhookId, setSelectedWebhookId,
         handleUpdateSettings,
@@ -396,6 +398,16 @@ function App() {
         bulkUploadModeRef.current = bulkUploadMode;
     }, [bulkUploadMode]);
 
+    const { emitterNode: bulkCompleteEmitter, trigger: triggerBulkComplete } = useParticleEffect();
+
+    const prevBulkModeRef = useRef(bulkUploadMode);
+    useEffect(() => {
+        if (prevBulkModeRef.current && !bulkUploadMode && particlesEnabled) {
+            triggerBulkComplete(PRESETS.bulkUploadComplete);
+        }
+        prevBulkModeRef.current = bulkUploadMode;
+    }, [bulkUploadMode, triggerBulkComplete]);
+
     useEffect(() => {
         if (bulkUploadMode) return;
         const hasPendingDetailsHydration = logs.some((log) => {
@@ -596,14 +608,16 @@ function App() {
                             }}
                         />
                     </div>
-                    <button
-                        onClick={handleSelectDirectory}
-                        className="shrink-0 rounded-[4px] w-8 h-8 flex items-center justify-center border transition-colors"
-                        style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)', color: 'var(--brand-primary)' }}
-                        title="Browse..."
-                    >
-                        <FolderOpen className="w-3.5 h-3.5" />
-                    </button>
+                    <ParticleHover className="shrink-0 rounded-[4px]" disabled={!particlesEnabled}>
+                        <button
+                            onClick={handleSelectDirectory}
+                            className="rounded-[4px] w-8 h-8 flex items-center justify-center border transition-colors"
+                            style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)', color: 'var(--brand-primary)' }}
+                            title="Browse..."
+                        >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                        </button>
+                    </ParticleHover>
                 </div>
             </div>
 
@@ -654,14 +668,16 @@ function App() {
                             <ChevronDown className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${webhookDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
                     </div>
-                    <button
-                        onClick={() => setWebhookModalOpen(true)}
-                        className="shrink-0 rounded-[4px] w-8 h-8 flex items-center justify-center gap-2 border transition-colors"
-                        style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)', color: 'var(--brand-primary)' }}
-                        title="Manage Webhooks"
-                    >
-                        <Settings className="w-3.5 h-3.5" />
-                    </button>
+                    <ParticleHover className="shrink-0 rounded-[4px]" disabled={!particlesEnabled}>
+                        <button
+                            onClick={() => setWebhookModalOpen(true)}
+                            className="rounded-[4px] w-8 h-8 flex items-center justify-center gap-2 border transition-colors"
+                            style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-border)', color: 'var(--brand-primary)' }}
+                            title="Manage Webhooks"
+                        >
+                            <Settings className="w-3.5 h-3.5" />
+                        </button>
+                    </ParticleHover>
                 </div>
             </div>
 
@@ -746,15 +762,17 @@ function App() {
                     Recent Activity
                 </h2>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => filePickerState.setFilePickerOpen(true)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] font-medium border transition-colors"
-                        style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-bg)', color: 'var(--brand-primary)' }}
-                        title="Select logs to upload"
-                    >
-                        <FilePlus2 className="w-3 h-3" />
-                        Add Logs
-                    </button>
+                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled}>
+                        <button
+                            onClick={() => filePickerState.setFilePickerOpen(true)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] font-medium border transition-colors"
+                            style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-bg)', color: 'var(--brand-primary)' }}
+                            title="Select logs to upload"
+                        >
+                            <FilePlus2 className="w-3 h-3" />
+                            Add Logs
+                        </button>
+                    </ParticleHover>
                     <button
                         onClick={clearLogsFromActivity}
                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] font-medium border transition-colors"
@@ -848,6 +866,7 @@ function App() {
                                     }}
                                     layoutEnabled={false}
                                     motionEnabled={false}
+                                    particlesEnabled={particlesEnabled}
                                     onCancel={() => {
                                         removeLogFromActivity(log);
                                     }}
@@ -858,6 +877,10 @@ function App() {
                                 />
                             ))
                         ) : (
+                            <>
+                            <div style={{ position: 'relative', width: '100%', pointerEvents: 'none', zIndex: 10 }}>
+                                {bulkCompleteEmitter}
+                            </div>
                             <AnimatePresence initial={false}>
                                 {logListVirtualization.visibleLogs.map((log) => (
                                     <ExpandableLogCard
@@ -873,6 +896,7 @@ function App() {
                                         }}
                                         layoutEnabled={!isBulkUploadActive}
                                         motionEnabled={!isBulkUploadActive}
+                                        particlesEnabled={particlesEnabled}
                                         onCancel={() => {
                                             removeLogFromActivity(log);
                                         }}
@@ -883,6 +907,7 @@ function App() {
                                     />
                                 ))}
                             </AnimatePresence>
+                            </>
                         )}
                         {logListVirtualization.enabled && logListVirtualization.bottomSpacer > 0 && (
                             <div aria-hidden="true" style={{ height: `${logListVirtualization.bottomSpacer}px` }} />
@@ -897,14 +922,14 @@ function App() {
         ...filePickerState, logDirectory
     }), [filePickerState, logDirectory]);
     const appLayoutCtx = useMemo(() => ({
-        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
+        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, particlesEnabled, setParticlesEnabled, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
     }), [
         shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded,
         updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason,
         view, appVersion, showTerminal, webUploadState,
         logsForStats, mvpWeights, disruptionMethod, statsViewSettings,
         computedStats, computedSkillUsageData, aggregationProgress,
-        aggregationDiagnostics, statsDataProgress, colorPalette, glassSurfaces,
+        aggregationDiagnostics, statsDataProgress, colorPalette, glassSurfaces, particlesEnabled,
         selectedWebhookId, developerSettingsTrigger, helpUpdatesFocusTrigger,
         activityPanel, configurationPanel, filePickerCtx,
         webhookDropdownOpen, webhookDropdownStyle, webhooks, handleUpdateSettings,
