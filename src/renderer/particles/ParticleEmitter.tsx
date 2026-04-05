@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './particles.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,9 +20,17 @@ export interface ParticleEmitterProps {
 // ─── Hook: usePrefersReducedMotion ────────────────────────────────────────────
 
 function usePrefersReducedMotion(): boolean {
-    if (typeof window === 'undefined') return false;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    return mq.matches;
+    const [reduced, setReduced] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    });
+    useEffect(() => {
+        const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
+    return reduced;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -98,10 +106,11 @@ export function ParticleEmitter({
     const particles = useMemo<ParticleStyle[]>(() => {
         if (prefersReducedMotion) return [];
 
-        const o = resolveOrigin(origin, spread);
         const [minSize, maxSize] = size;
 
         return Array.from({ length: actualCount }, () => {
+            // Resolve origin per-particle so 'edges' distributes around the perimeter
+            const o = resolveOrigin(origin, spread);
             const angle = rand(0, Math.PI * 2);
             const distance = rand(spread * 0.3, spread);
             const diameter = rand(minSize, maxSize);
