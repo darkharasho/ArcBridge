@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParticleEffect, PRESETS } from './particles';
 import { useStatsStore, hashAggregationSettings } from './stats/statsStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FolderOpen, UploadCloud, FileText, Settings, ChevronDown, Trash2, FilePlus2 } from 'lucide-react';
@@ -395,6 +396,16 @@ function App() {
     useEffect(() => {
         bulkUploadModeRef.current = bulkUploadMode;
     }, [bulkUploadMode]);
+
+    const { emitterNode: bulkCompleteEmitter, trigger: triggerBulkComplete } = useParticleEffect();
+
+    const prevBulkModeRef = useRef(bulkUploadMode);
+    useEffect(() => {
+        if (prevBulkModeRef.current && !bulkUploadMode) {
+            triggerBulkComplete(PRESETS.bulkUploadComplete);
+        }
+        prevBulkModeRef.current = bulkUploadMode;
+    }, [bulkUploadMode, triggerBulkComplete]);
 
     useEffect(() => {
         if (bulkUploadMode) return;
@@ -858,6 +869,10 @@ function App() {
                                 />
                             ))
                         ) : (
+                            <>
+                            <div style={{ position: 'relative', width: '100%', pointerEvents: 'none', zIndex: 10 }}>
+                                {bulkCompleteEmitter}
+                            </div>
                             <AnimatePresence initial={false}>
                                 {logListVirtualization.visibleLogs.map((log) => (
                                     <ExpandableLogCard
@@ -883,6 +898,7 @@ function App() {
                                     />
                                 ))}
                             </AnimatePresence>
+                            </>
                         )}
                         {logListVirtualization.enabled && logListVirtualization.bottomSpacer > 0 && (
                             <div aria-hidden="true" style={{ height: `${logListVirtualization.bottomSpacer}px` }} />
