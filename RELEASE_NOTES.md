@@ -1,17 +1,19 @@
 # Release Notes
 
-Version v2.3.2 — April 5, 2026
+Version v2.3.3 — April 5, 2026
 
-## Cleaner Stats Internals
+## Particle Effects
 
-The stats pipeline got a significant cleanup under the hood. The old code used 7 overlapping timers to decide when to publish log data to the stats worker — a 400ms debounce, a 600ms retry, a 300ms follow-up, plus four more for edge cases. All of that is now a single 400ms debounce. Snapshot key deduplication prevents unnecessary recomputes when the data hasn't actually changed.
+The app now has particle animations on key events. Log cards burst from the status badge when they arrive, green particles shoot right when an upload completes, purple ones fire when a Discord webhook sends. Removing a log dissolves the card into scattered particles. Switching tabs throws a scatter across the view, and bulk upload completion gets a celebratory burst from the top.
 
-The `statsSyncRecovery` mechanism (a polling loop that detected when stats got stuck and force-resynced) is gone entirely — the simplified pipeline makes it unnecessary.
+Hovering primary buttons emits slow ambient particles from the edges — small, square-ish, drifting outward.
 
-## Details Status Cleanup
+All of it respects `prefers-reduced-motion` (falls back to a subtle pulse) and is suppressed during bulk uploads so it doesn't tank performance. There's a toggle in Settings > Appearance to turn it all off.
 
-Log detail-fetching state used to be tracked by five separate boolean flags (`detailsAvailable`, `detailsLoading`, `statsDetailsLoaded`, `detailsFetchExhausted`, `detailsKnownUnavailable`). These are now a single `detailsStatus` field with clear states: `idle`, `available`, `loading`, `loaded`, `exhausted`, `unavailable`. Less state to get out of sync, fewer impossible combinations to guard against.
+## Settings Search
 
-## Single Stats Codepath
+The settings page now has a search bar at the top. Filters sections as you type — useful now that the page has grown.
 
-The old batch `computeStatsAggregation` function (870 lines) is deleted. All stats computation now goes through the incremental aggregator, whether you have 1 log or 100. The worker and inline paths share the same code.
+## Outgoing Interrupts Leaderboard
+
+New metric in the stats leaderboard: outgoing interrupts (stuns, dazes, knockdowns, etc.). Counts how often each player interrupted enemies.
