@@ -489,7 +489,7 @@ Top Incoming Skills are derived from `totalDamageTaken`:
 - `hits = sum(entry.hits)`
 
 Implementation: `src/renderer/stats/computePlayerAggregation.ts` (skill damage map aggregation);
-`src/renderer/stats/computeStatsAggregation.ts` (sorting and top-N selection).
+`src/renderer/stats/incrementalAggregation.ts` (sorting and top-N selection).
 
 ## Boon Output
 
@@ -789,7 +789,7 @@ Implementation:
 Detailed tables aggregate the per-player totals defined in:
 - `src/renderer/stats/statsMetrics.ts` (metric definitions)
 - `src/shared/dashboardMetrics.ts` (per-player metric extraction)
-- `src/renderer/stats/computeStatsAggregation.ts` (aggregation)
+- `src/renderer/stats/incrementalAggregation.ts` (aggregation)
 
 Defense Detailed includes a derived metric:
 - `Minion Damage Taken`:
@@ -1063,7 +1063,7 @@ Implementation: `src/renderer/stats/computeTimelineAndMapData.ts` (timeline, map
 Squad composition is derived from each player's resolved profession name
 and aggregated across logs.
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+Implementation: `src/renderer/stats/incrementalAggregation.ts`.
 
 ## Attendance Ledger
 
@@ -1123,7 +1123,7 @@ Rows are sorted by:
 
 Rows with `account` missing/`"Unknown"` are excluded from final output.
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts` (`attendanceData`).
+Implementation: `src/renderer/stats/incrementalAggregation.ts` (`attendanceData`).
 
 ## Squad Comp By Fight
 
@@ -1175,7 +1175,7 @@ Per fight:
 - `duration`: `formatDurationMs(details.durationMS)`
 - `parties`: sorted party rows with class counts and account list
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts` (`squadCompByFight`).
+Implementation: `src/renderer/stats/incrementalAggregation.ts` (`squadCompByFight`).
 
 ## Top Stats / MVP
 
@@ -1187,7 +1187,7 @@ via `statsViewSettings` + `mvpWeights`.
 Participation is computed as `logsJoined` (number of logs where the player
 appears in the squad).
 
-Implementation: `src/renderer/stats/computeStatsAggregation.ts`.
+Implementation: `src/renderer/stats/incrementalAggregation.ts`.
 
 ## Damage Modifiers (Outgoing + Incoming)
 
@@ -1292,7 +1292,7 @@ Expanded view: dense table with modifiers as columns and players as rows.
 - Types: `src/shared/dpsReportTypes.ts` (`DamageModifierInfo`, `DamageModifierData`)
 - Pruning: `src/main/detailsProcessing.ts` (`pruneDetailsForStats`)
 - Player aggregation: `src/renderer/stats/computePlayerAggregation.ts`
-- Stats aggregation: `src/renderer/stats/computeStatsAggregation.ts`
+- Stats aggregation: `src/renderer/stats/incrementalAggregation.ts`
 - UI component: `src/renderer/stats/sections/DamageModifiersSection.tsx`
 
 ## Known Caveats
