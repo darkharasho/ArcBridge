@@ -6,7 +6,7 @@ export function useDetailsHydration({
     logsRef,
     setLogs,
     setLogsDeferred,
-    setLogsForStats,
+    setLogsForStats: _setLogsForStats,
     detailsCache,
 }: {
     viewRef: React.MutableRefObject<string>;
@@ -229,13 +229,9 @@ export function useDetailsHydration({
             };
             await Promise.all(Array.from({ length: Math.min(maxConcurrent, candidates.length) }, () => runWorker()));
             flushHydratedBatch();
-            // After all hydrations complete, force a final logsForStats touch
-            // so the worker restarts with a fully populated DetailsCache.
-            // Intermediate flushes may have restarted the worker mid-hydration,
-            // causing it to miss details that weren't cached yet.
-            if (hydratedBatch.length === 0 && candidates.length > 0) {
-                setLogsForStats((prev) => [...prev]);
-            }
+            // Details are now in the cache. The worker will pick them up on
+            // its next run — no need to force a logsForStats touch that would
+            // restart the worker and reprocess all logs from scratch.
             const retryableFailures: string[] = [];
             const exhaustedFailures: string[] = [];
             failedPaths.forEach((filePath) => {
