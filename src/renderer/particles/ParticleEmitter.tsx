@@ -121,7 +121,10 @@ export function ParticleEmitter({
                 : rand(0, Math.PI * 2);
             const distance = rand(spread * 0.3, spread);
             const diameter = rand(minSize, maxSize);
-            const delay = rand(0, duration * 0.15);
+            // 'right' uses tighter stagger (all fire nearly together), others spread more
+            const delay = origin === 'right'
+                ? rand(0, duration * 0.06)
+                : rand(0, duration * 0.15);
             const opacity = rand(0.5, 1.0);
 
             let endTransform: string;
