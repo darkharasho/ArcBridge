@@ -40,7 +40,7 @@ export function useDetailsHydration({
             const idx = currentLogs.findIndex((entry) => entry.filePath === log.filePath);
             if (idx < 0) return currentLogs;
             const updated = [...currentLogs];
-            updated[idx] = { ...updated[idx], detailsLoading: true };
+            updated[idx] = { ...updated[idx], detailsLoading: true, detailsStatus: 'loading' as const };
             return updated;
         });
         let timeoutId: number | null = null;
@@ -71,9 +71,10 @@ export function useDetailsHydration({
                         detailsAvailable: false,
                         detailsFetchExhausted: true,
                         detailsKnownUnavailable: true,
+                        detailsStatus: 'unavailable' as const,
                         status: existing.status === 'error' ? 'error' : 'success'
                     }
-                    : { ...existing, detailsLoading: false };
+                    : { ...existing, detailsLoading: false, detailsStatus: existing.detailsStatus === 'loading' ? 'idle' as const : existing.detailsStatus };
                 return updated;
             });
             return;
@@ -92,6 +93,7 @@ export function useDetailsHydration({
                 ...existing,
                 detailsAvailable: true,
                 statsDetailsLoaded: true,
+                detailsStatus: 'loaded' as const,
                 detailsLoading: false,
                 detailsFetchExhausted: false,
                 // Don't force status to 'success' — let the aggregation
@@ -124,8 +126,8 @@ export function useDetailsHydration({
                     if (cachedDetails) return false;
                     // Already hydrated this session → details are in IndexedDB.
                     // The worker reads via getLocal (LRU + IDB), so no re-fetch needed.
-                    if (log.statsDetailsLoaded) return false;
-                    if (log.detailsAvailable) return true;
+                    if (log.detailsStatus === 'loaded') return false;
+                    if (log.detailsStatus === 'available') return true;
                     return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink);
                 })
                 .sort((a, b) => {
@@ -162,12 +164,13 @@ export function useDetailsHydration({
                     const next = currentLogs.map((entry) => {
                         const filePath = entry.filePath || '';
                         if (!updatesByPath.has(filePath)) return entry;
-                        if (entry.statsDetailsLoaded) return entry;
+                        if (entry.detailsStatus === 'loaded') return entry;
                         changed = true;
                         return {
                             ...entry,
                             detailsAvailable: true,
                             statsDetailsLoaded: true,
+                            detailsStatus: 'loaded' as const,
                             detailsFetchExhausted: false,
                             // Don't force status — aggregation pipeline controls
                             // calculating → success promotion.
@@ -259,7 +262,7 @@ export function useDetailsHydration({
                     const next = currentLogs.map((entry) => {
                         const filePath = entry.filePath || '';
                         if (!exhaustedSet.has(filePath)) return entry;
-                        if (entry.detailsFetchExhausted && !entry.detailsAvailable && entry.status !== 'calculating') {
+                        if ((entry.detailsStatus === 'exhausted' || entry.detailsStatus === 'unavailable') && entry.status !== 'calculating') {
                             return entry;
                         }
                         changed = true;
@@ -269,6 +272,7 @@ export function useDetailsHydration({
                             detailsAvailable: false,
                             detailsFetchExhausted: true,
                             detailsKnownUnavailable: terminalFailures.has(filePath) || entry.detailsKnownUnavailable,
+                            detailsStatus: (terminalFailures.has(filePath) || entry.detailsKnownUnavailable) ? 'unavailable' as const : 'exhausted' as const,
                             status: nextStatus
                         };
                     });
