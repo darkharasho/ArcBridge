@@ -15,6 +15,7 @@ import { WhatsNewModal } from '../WhatsNewModal';
 import { FilePickerModal } from './FilePickerModal';
 import { WebUploadOverlay } from './WebUploadOverlay';
 import { FightReportHistoryView } from '../FightReportHistoryView';
+import { useParticleEffect, PRESETS } from '../particles';
 
 
 export function AppLayout({ ctx }: { ctx: any }) {
@@ -102,6 +103,15 @@ export function AppLayout({ ctx }: { ctx: any }) {
             }
         };
     }, []);
+
+    const { emitterNode: tabEmitter, trigger: triggerTabTransition } = useParticleEffect();
+    const prevViewRef = useRef(view);
+    useEffect(() => {
+        if (view !== prevViewRef.current) {
+            prevViewRef.current = view;
+            triggerTabTransition(PRESETS.tabTransition);
+        }
+    }, [view, triggerTabTransition]);
 
     // Stable setters that skip updates when values haven't changed (prevents unnecessary aggregation recalcs)
     const stableSetStatsViewSettings = useCallback((next: any) => {
@@ -303,6 +313,10 @@ export function AppLayout({ ctx }: { ctx: any }) {
                     isDev={isDev}
                     setWebUploadState={setWebUploadState}
                 />
+
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 20 }}>
+                    {tabEmitter}
+                </div>
 
                 {view === 'dashboard' && (
                     <div className="flex flex-1 min-h-0 relative flex-col">
