@@ -40,7 +40,7 @@ export function useDetailsHydration({
             const idx = currentLogs.findIndex((entry) => entry.filePath === log.filePath);
             if (idx < 0) return currentLogs;
             const updated = [...currentLogs];
-            updated[idx] = { ...updated[idx], detailsLoading: true };
+            updated[idx] = { ...updated[idx], detailsStatus: 'loading' as const };
             return updated;
         });
         let timeoutId: number | null = null;
@@ -67,13 +67,10 @@ export function useDetailsHydration({
                 updated[idx] = terminal
                     ? {
                         ...existing,
-                        detailsLoading: false,
-                        detailsAvailable: false,
-                        detailsFetchExhausted: true,
-                        detailsKnownUnavailable: true,
+                        detailsStatus: 'unavailable' as const,
                         status: existing.status === 'error' ? 'error' : 'success'
                     }
-                    : { ...existing, detailsLoading: false };
+                    : { ...existing, detailsStatus: existing.detailsStatus === 'loading' ? 'idle' as const : existing.detailsStatus };
                 return updated;
             });
             return;
@@ -90,10 +87,7 @@ export function useDetailsHydration({
             const existing = updated[existingIndex];
             updated[existingIndex] = {
                 ...existing,
-                detailsAvailable: true,
-                statsDetailsLoaded: true,
-                detailsLoading: false,
-                detailsFetchExhausted: false,
+                detailsStatus: 'loaded' as const,
                 // Don't force status to 'success' — let the aggregation
                 // pipeline promote calculating → success after the worker
                 // has actually ingested this log.
@@ -122,7 +116,10 @@ export function useDetailsHydration({
                     const hasStaleDetails = cachedDetails && (!cachedDetails.damageModMap || !cachedDetails.conditionMetrics || targetsLackBuffs);
                     if (hasStaleDetails) return Boolean(log.permalink);
                     if (cachedDetails) return false;
-                    if (log.detailsAvailable) return true;
+                    // Already hydrated this session → details are in IndexedDB.
+                    // The worker reads via getLocal (LRU + IDB), so no re-fetch needed.
+                    if (log.detailsStatus === 'loaded') return false;
+                    if (log.detailsStatus === 'available') return true;
                     return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink);
                 })
                 .sort((a, b) => {
@@ -159,13 +156,11 @@ export function useDetailsHydration({
                     const next = currentLogs.map((entry) => {
                         const filePath = entry.filePath || '';
                         if (!updatesByPath.has(filePath)) return entry;
-                        if (entry.statsDetailsLoaded) return entry;
+                        if (entry.detailsStatus === 'loaded') return entry;
                         changed = true;
                         return {
                             ...entry,
-                            detailsAvailable: true,
-                            statsDetailsLoaded: true,
-                            detailsFetchExhausted: false,
+                            detailsStatus: 'loaded' as const,
                             // Don't force status — aggregation pipeline controls
                             // calculating → success promotion.
                         };
@@ -256,16 +251,14 @@ export function useDetailsHydration({
                     const next = currentLogs.map((entry) => {
                         const filePath = entry.filePath || '';
                         if (!exhaustedSet.has(filePath)) return entry;
-                        if (entry.detailsFetchExhausted && !entry.detailsAvailable && entry.status !== 'calculating') {
+                        if ((entry.detailsStatus === 'exhausted' || entry.detailsStatus === 'unavailable') && entry.status !== 'calculating') {
                             return entry;
                         }
                         changed = true;
                         const nextStatus: ILogData['status'] = entry.status === 'error' ? 'error' : 'success';
                         return {
                             ...entry,
-                            detailsAvailable: false,
-                            detailsFetchExhausted: true,
-                            detailsKnownUnavailable: terminalFailures.has(filePath) || entry.detailsKnownUnavailable,
+                            detailsStatus: (terminalFailures.has(filePath) || entry.detailsStatus === 'unavailable') ? 'unavailable' as const : 'exhausted' as const,
                             status: nextStatus
                         };
                     });

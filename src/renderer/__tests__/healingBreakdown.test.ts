@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { computeStatsSync as computeStatsAggregation } from '../stats/incrementalAggregation';
 
 const makeLog = (overrides: any = {}) => ({
     filePath: overrides.filePath || 'test-log-1',

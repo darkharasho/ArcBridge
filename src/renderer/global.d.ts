@@ -354,6 +354,8 @@ export interface IElectronAPI {
     sendRendererDiagnostics: (payload: { heapUsed: number; heapTotal: number; heapLimit: number; logCount: number }) => void;
 }
 
+type DetailsStatus = 'idle' | 'loading' | 'available' | 'loaded' | 'exhausted' | 'unavailable';
+
 declare global {
     interface Window {
         electronAPI: IElectronAPI;
@@ -368,11 +370,7 @@ declare global {
         uploadTime?: number;
         encounterDuration?: string;
         fightName?: string;
-        detailsLoading?: boolean;
-        detailsAvailable?: boolean;
-        statsDetailsLoaded?: boolean;
-        detailsFetchExhausted?: boolean;
-        detailsKnownUnavailable?: boolean;
+        detailsStatus: DetailsStatus;
         splitEnemiesByTeam?: boolean;
         dashboardSummary?: {
             hasPlayers: boolean;

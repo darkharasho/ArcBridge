@@ -3,28 +3,16 @@ import { DetailsCacheContext } from '../../cache/DetailsCacheContext';
 
 interface UseLogsForStatsOptions {
     logs: ILogData[];
-    bulkUploadMode: boolean;
 }
 
-export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions) {
+export function useLogsForStats({ logs }: UseLogsForStatsOptions) {
     const detailsCache = useContext(DetailsCacheContext);
 
     const [logsForStats, setLogsForStats] = useState<ILogData[]>(logs);
-    const [bulkCalculatingActive, setBulkCalculatingActive] = useState(false);
     const logsRef = useRef<ILogData[]>(logs);
-    const statsBatchTimerRef = useRef<number | null>(null);
     const statsObjectIdMapRef = useRef<WeakMap<object, number>>(new WeakMap());
     const nextStatsObjectIdRef = useRef(1);
     const lastPublishedStatsKeyRef = useRef('');
-    const hasPendingStatsDetailsRef = useRef(false);
-
-    const hasPendingStatsDetails = logs.some((log) => {
-        if (detailsCache?.peek(log.id) || log.statsDetailsLoaded) return false;
-        if (log.detailsKnownUnavailable) return false;
-        if (log.detailsAvailable) return true;
-        return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink) && !log.detailsFetchExhausted;
-    });
-    hasPendingStatsDetailsRef.current = hasPendingStatsDetails;
 
     const getStatsObjectId = useCallback((value: unknown): number => {
         if (!value || typeof value !== 'object') return 0;
@@ -67,15 +55,13 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
             const identity = String(entry?.filePath || entry?.id || `idx-${index}`);
             const previousEntry = previousByIdentity.get(identity);
             if (!previousEntry) return entry;
-            // Details now live exclusively in DetailsCache — no need to rescue from state
-            const shouldCarryStatsLoaded = !entry.statsDetailsLoaded && !!previousEntry.statsDetailsLoaded;
+            const shouldCarryStatsLoaded = entry.detailsStatus !== 'loaded' && previousEntry.detailsStatus === 'loaded';
             if (!shouldCarryStatsLoaded) {
                 return entry;
             }
             changed = true;
             const nextEntry: ILogData = { ...entry };
-            nextEntry.statsDetailsLoaded = true;
-            // Don't promote status here — aggregation pipeline controls it.
+            nextEntry.detailsStatus = 'loaded';
             return nextEntry;
         });
         return changed ? merged : entries;
@@ -96,86 +82,43 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
         });
     }, [buildStatsSnapshotKey, mergeLogsForStatsSnapshot]);
 
+    // Keep snapshot key in sync when logsForStats changes externally (e.g. removals)
     useEffect(() => {
         lastPublishedStatsKeyRef.current = buildStatsSnapshotKey(logsForStats);
     }, [buildStatsSnapshotKey, logsForStats]);
 
     useEffect(() => {
-        if (bulkUploadMode) {
-            if (statsBatchTimerRef.current) {
-                window.clearTimeout(statsBatchTimerRef.current);
-                statsBatchTimerRef.current = null;
-            }
-            return;
-        }
-        if (statsBatchTimerRef.current) return;
-        // 400ms is long enough to batch rapid state changes (e.g. status updates
-        // during upload) while being short enough that the stats dashboard feels
-        // responsive for single-log watcher updates where details arrive via
-        // IPC prewarm before the log state settles.
-        statsBatchTimerRef.current = window.setTimeout(() => {
-            statsBatchTimerRef.current = null;
-            // If details are still being hydrated, retry after a short delay
-            // instead of dropping the publish entirely — the previous behaviour
-            // left the stats stale until the next log arrived.
-            if (hasPendingStatsDetailsRef.current) {
-                statsBatchTimerRef.current = window.setTimeout(() => {
-                    statsBatchTimerRef.current = null;
-                    publishLogsForStats(logsRef.current);
-                }, 600);
-                return;
-            }
-            publishLogsForStats(logsRef.current);
-        }, 400);
-    }, [logs, bulkUploadMode, publishLogsForStats]);
-
-    useEffect(() => {
         logsRef.current = logs;
     }, [logs]);
 
-    const lengthMismatchFollowUpRef = useRef<number | null>(null);
+    // Debounced publish: batch rapid logs changes (queue flushes, status updates)
+    // into a single logsForStats update.  Without debouncing, each logs change
+    // produces a new logsForStats reference → restarts the worker → the worker
+    // never settles → calculating logs never promote to success.
+    // 400ms matches the base branch's debounce window.
+    const publishTimerRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (publishTimerRef.current !== null) {
+            window.clearTimeout(publishTimerRef.current);
+        }
+        publishTimerRef.current = window.setTimeout(() => {
+            publishTimerRef.current = null;
+            publishLogsForStats(logsRef.current);
+        }, 400);
+    }, [logs, publishLogsForStats]);
 
     useEffect(() => {
         return () => {
-            if (statsBatchTimerRef.current) {
-                window.clearTimeout(statsBatchTimerRef.current);
-                statsBatchTimerRef.current = null;
-            }
-            if (lengthMismatchFollowUpRef.current !== null) {
-                window.clearTimeout(lengthMismatchFollowUpRef.current);
-                lengthMismatchFollowUpRef.current = null;
+            if (publishTimerRef.current !== null) {
+                window.clearTimeout(publishTimerRef.current);
+                publishTimerRef.current = null;
             }
         };
     }, []);
-    useEffect(() => {
-        if (bulkUploadMode) return;
-        if (logsForStats.length === logs.length) return;
-        publishLogsForStats(logsRef.current);
-        // Schedule a follow-up publish: the initial publish often captures the
-        // log while it is still 'uploading' (no details). The upload-complete
-        // event arrives shortly after with details prewarmed in the cache.
-        // Without this follow-up, the stats won't reflect the completed log
-        // until the debounce timer fires or the next log arrives.
-        if (lengthMismatchFollowUpRef.current !== null) {
-            window.clearTimeout(lengthMismatchFollowUpRef.current);
-        }
-        lengthMismatchFollowUpRef.current = window.setTimeout(() => {
-            lengthMismatchFollowUpRef.current = null;
-            publishLogsForStats(logsRef.current);
-        }, 300);
-    }, [bulkUploadMode, logs.length, logsForStats.length, publishLogsForStats]);
-
-    useEffect(() => {
-        if (bulkUploadMode) return;
-        if (hasPendingStatsDetails) return;
-        publishLogsForStats(logsRef.current);
-    }, [bulkUploadMode, hasPendingStatsDetails, publishLogsForStats]);
 
     return {
         logsForStats,
         setLogsForStats,
         logsRef,
-        bulkCalculatingActive,
-        setBulkCalculatingActive,
     };
 }

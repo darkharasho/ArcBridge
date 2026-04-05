@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { computeStatsSync as computeStatsAggregation } from '../stats/incrementalAggregation';
 
 type FixturePlayer = {
     account?: string;

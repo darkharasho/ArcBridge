@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
-import { computeStatsAggregation } from '../computeStatsAggregation';
+import { computeStatsSync } from '../incrementalAggregation';
 import { DetailsCacheContext } from '../../cache/DetailsCacheContext';
 
 interface UseStatsUploadsProps {
@@ -133,7 +133,7 @@ export const useStatsUploads = ({
             return baseStats;
         }
         try {
-            const computed = computeStatsAggregation({
+            const computed = computeStatsSync({
                 logs,
                 statsViewSettings: activeStatsViewSettings
             });

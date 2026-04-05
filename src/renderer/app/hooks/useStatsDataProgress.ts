@@ -36,19 +36,20 @@ export function useStatsDataProgress(
         let pending = 0;
         let unavailable = 0;
         logs.forEach((log) => {
-            if (log.detailsAvailable || log.statsDetailsLoaded) {
+            const ds = log.detailsStatus || 'idle';
+            if (ds === 'available' || ds === 'loaded') {
                 return;
             }
-            if (log.detailsKnownUnavailable) {
+            if (ds === 'unavailable') {
                 unavailable += 1;
                 return;
             }
-            if (log.detailsAvailable) {
-                pending += 1;
+            if (ds === 'exhausted') {
+                unavailable += 1;
                 return;
             }
             const status = log.status || 'queued';
-            const canHydrateFromPermalink = (status === 'success' || status === 'calculating' || status === 'discord') && Boolean(log.permalink) && !log.detailsFetchExhausted;
+            const canHydrateFromPermalink = (status === 'success' || status === 'calculating' || status === 'discord') && Boolean(log.permalink);
             if (canHydrateFromPermalink) {
                 pending += 1;
                 return;

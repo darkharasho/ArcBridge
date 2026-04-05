@@ -42,7 +42,7 @@
         "prebuild:app:test": "cross-env NODE_OPTIONS=--max-old-space-size=6144 vite build",
         "build:electron:test": "vite build && tsc -p electron/tsconfig.json",
         "test:unit": "vitest run",
-        "test:regression:stats": "vitest run src/main/__tests__/uploader.detailFetch.test.ts src/renderer/__tests__/statsSyncRecovery.test.ts src/renderer/__tests__/StatsView.integration.test.tsx",
+        "test:regression:stats": "vitest run src/main/__tests__/uploader.detailFetch.test.ts src/renderer/__tests__/StatsView.integration.test.tsx",
         "test:unit:watch": "vitest",
         "test:e2e": "npm run test:e2e:web && npm run test:e2e:app && npm run test:e2e:electron",
         "test:e2e:web": "playwright test --config playwright.web.config.ts",

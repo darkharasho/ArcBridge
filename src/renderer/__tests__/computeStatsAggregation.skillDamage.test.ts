@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { computeStatsSync as computeStatsAggregation } from '../stats/incrementalAggregation';
 
 describe('computeStatsAggregation (skill damage source reconciliation)', () => {
     it('uses buffMap skill names when skillMap entry is missing', () => {
