@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { computeStatsSync as computeStatsAggregation } from '../stats/incrementalAggregation';
 
 describe('computeStatsAggregation (attendance ledger)', () => {
     it('uses fight start/end timestamps before uploadTime for squad-time spans', () => {

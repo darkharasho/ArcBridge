@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { computeStatsSync as computeStatsAggregation } from '../stats/incrementalAggregation';
 
 describe('computeStatsAggregation (fight coverage)', () => {
     it('keeps non-detailed uploads visible in timeline and fight breakdown', () => {
