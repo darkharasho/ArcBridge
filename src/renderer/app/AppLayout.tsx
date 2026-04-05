@@ -15,6 +15,7 @@ import { WhatsNewModal } from '../WhatsNewModal';
 import { FilePickerModal } from './FilePickerModal';
 import { WebUploadOverlay } from './WebUploadOverlay';
 import { FightReportHistoryView } from '../FightReportHistoryView';
+import { useParticleEffect, PRESETS } from '../particles';
 
 
 export function AppLayout({ ctx }: { ctx: any }) {
@@ -51,6 +52,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
         setStatsViewSettings,
         setColorPalette,
         setGlassSurfaces,
+        particlesEnabled,
+        setParticlesEnabled,
         handleWebUpload,
         selectedWebhookId,
         setEmbedStatSettings,
@@ -102,6 +105,15 @@ export function AppLayout({ ctx }: { ctx: any }) {
             }
         };
     }, []);
+
+    const { emitterNode: tabEmitter, trigger: triggerTabTransition } = useParticleEffect();
+    const prevViewRef = useRef(view);
+    useEffect(() => {
+        if (view !== prevViewRef.current) {
+            prevViewRef.current = view;
+            if (particlesEnabled) triggerTabTransition(PRESETS.tabTransition);
+        }
+    }, [view, particlesEnabled, triggerTabTransition]);
 
     // Stable setters that skip updates when values haven't changed (prevents unnecessary aggregation recalcs)
     const stableSetStatsViewSettings = useCallback((next: any) => {
@@ -304,6 +316,10 @@ export function AppLayout({ ctx }: { ctx: any }) {
                     setWebUploadState={setWebUploadState}
                 />
 
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 20 }}>
+                    {tabEmitter}
+                </div>
+
                 {view === 'dashboard' && (
                     <div className="flex flex-1 min-h-0 relative flex-col">
                         <div className="dashboard-view dashboard-modern flex flex-1 min-h-0 overflow-hidden matte-dashboard-shell">
@@ -354,6 +370,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
                             onDisruptionMethodSaved={stableSetDisruptionMethod}
                             onColorPaletteSaved={setColorPalette}
                             onGlassSurfacesSaved={setGlassSurfaces}
+                            onParticlesEnabledSaved={setParticlesEnabled}
+                            particlesEnabled={particlesEnabled}
                             developerSettingsTrigger={developerSettingsTrigger}
                             helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
                             onHelpUpdatesFocusConsumed={handleHelpUpdatesFocusConsumed}
