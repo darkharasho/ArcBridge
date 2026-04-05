@@ -69,18 +69,13 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
             if (!previousEntry) return entry;
             // Details now live exclusively in DetailsCache — no need to rescue from state
             const shouldCarryStatsLoaded = !entry.statsDetailsLoaded && !!previousEntry.statsDetailsLoaded;
-            const shouldPromoteStatus = shouldCarryStatsLoaded && entry.status === 'calculating';
-            if (!shouldCarryStatsLoaded && !shouldPromoteStatus) {
+            if (!shouldCarryStatsLoaded) {
                 return entry;
             }
             changed = true;
             const nextEntry: ILogData = { ...entry };
-            if (shouldCarryStatsLoaded) {
-                nextEntry.statsDetailsLoaded = true;
-            }
-            if (shouldPromoteStatus) {
-                nextEntry.status = 'success';
-            }
+            nextEntry.statsDetailsLoaded = true;
+            // Don't promote status here — aggregation pipeline controls it.
             return nextEntry;
         });
         return changed ? merged : entries;
