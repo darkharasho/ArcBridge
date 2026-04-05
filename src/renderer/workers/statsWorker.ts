@@ -7,6 +7,7 @@ let pendingFlushId: number | null = null;
 let expectedLogCount = 0;
 let droppedLogMessages = 0;
 let ingestedLogCount = 0;
+let lastProgressPostAt = 0;
 
 const hasMismatchedToken = (data: any) =>
     typeof data?.token === 'number' && data.token !== currentToken;
@@ -120,6 +121,7 @@ self.onmessage = (event: MessageEvent) => {
         }
         expectedLogCount = Math.max(0, Number(data.totalLogs || 0));
         droppedLogMessages = 0;
+        lastProgressPostAt = 0;
         pendingFlushId = null;
         return;
     }
@@ -144,12 +146,19 @@ self.onmessage = (event: MessageEvent) => {
         }
         aggregator.ingestLog(data.payload);
         ingestedLogCount += 1;
-        (self as any).postMessage({
-            type: 'progress',
-            ingested: ingestedLogCount,
-            total: expectedLogCount,
-            token: currentToken
-        });
+        // Throttle progress messages to avoid flooding the main thread with
+        // renders. Post at most every 250ms, but always post the final one.
+        const now = performance.now();
+        const isLast = expectedLogCount > 0 && ingestedLogCount >= expectedLogCount;
+        if (isLast || now - lastProgressPostAt >= 250) {
+            lastProgressPostAt = now;
+            (self as any).postMessage({
+                type: 'progress',
+                ingested: ingestedLogCount,
+                total: expectedLogCount,
+                token: currentToken
+            });
+        }
         return;
     }
     if (data?.type === 'flush') {
