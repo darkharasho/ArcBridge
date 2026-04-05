@@ -1,4 +1,5 @@
-import { forwardRef, memo, useEffect, useState } from 'react';
+import { forwardRef, memo, useEffect, useRef, useState } from 'react';
+import { useParticleEffect, PRESETS } from './particles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink, Trash2 } from 'lucide-react';
 import { getPlayerDamage, getPlayerDps, getPlayerDownsTaken, getPlayerDeaths, getPlayerDamageTaken, getPlayerDodges, getPlayerMissed, getPlayerBlocked, getPlayerEvaded, getPlayerResurrects, getTargetStatTotal } from '../shared/dashboardMetrics';
@@ -97,6 +98,41 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
         }, 30000);
         return () => window.clearInterval(timer);
     }, []);
+
+    // Particle effects
+    const { emitterNode: arrivalEmitter, trigger: triggerArrival } = useParticleEffect();
+    const { emitterNode: badgePuffEmitter, trigger: triggerBadgePuff } = useParticleEffect();
+    const { emitterNode: snapEmitter, trigger: triggerSnap } = useParticleEffect();
+    const { emitterNode: removalEmitter, trigger: triggerRemoval } = useParticleEffect();
+    const { emitterNode: discordEmitter, trigger: triggerDiscord } = useParticleEffect();
+    const [snapActive, setSnapActive] = useState(false);
+
+    const hasTriggeredArrival = useRef(false);
+    useEffect(() => {
+        if (motionEnabled && !hasTriggeredArrival.current) {
+            hasTriggeredArrival.current = true;
+            triggerArrival(PRESETS.logArrival);
+        }
+    }, [motionEnabled, triggerArrival]);
+
+    const prevStatusRef = useRef(log.status);
+    useEffect(() => {
+        if (log.status !== prevStatusRef.current) {
+            const prevStatus = prevStatusRef.current;
+            prevStatusRef.current = log.status;
+            if (motionEnabled) {
+                triggerBadgePuff(PRESETS.statusBadgePuff);
+                if (log.status === 'success' && prevStatus !== 'success') {
+                    triggerSnap(PRESETS.uploadSnap);
+                    setSnapActive(true);
+                    setTimeout(() => setSnapActive(false), PRESETS.uploadSnap.duration + 100);
+                }
+                if (prevStatus === 'discord') {
+                    triggerDiscord(PRESETS.discordSent);
+                }
+            }
+        }
+    }, [log.status, motionEnabled, triggerBadgePuff, triggerSnap, triggerDiscord]);
     const parseFilenameTimestampMs = (value: unknown) => {
         if (typeof value !== 'string' || value.trim().length === 0) return null;
         const withoutPath = value.split(/[\\\/]/).pop() || value;
@@ -841,9 +877,15 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
             className="rounded-[4px] transition-all mb-3 group matte-log-card"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-card)' }}
         >
-            <div className="rounded-[4px] overflow-hidden">
+            <div className="rounded-[4px] overflow-hidden" style={{ position: 'relative' }}>
+            {(snapEmitter || removalEmitter) && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }}>
+                    {snapEmitter}
+                    {removalEmitter}
+                </div>
+            )}
             {/* Collapsed View */}
-            <div className="p-4 flex items-center gap-4">
+            <div className={`p-4 flex items-center gap-4${snapActive ? ' particle-snap-active' : ''}`}>
                 <div
                     data-status={statusKey}
                     className={`recent-activity-status-badge w-10 h-10 rounded-[4px] flex items-center justify-center border transition-all shrink-0 ${isQueued ? 'bg-slate-500/20 border-slate-400/30 text-slate-300 animate-pulse' :
@@ -855,6 +897,9 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                                         'bg-green-500/20 border-green-500/30 text-green-400'
                     }`}
                 >
+                    {arrivalEmitter}
+                    {badgePuffEmitter}
+                    {discordEmitter}
                     <span className="font-bold text-xs uppercase">
                         {isQueued ? 'QUE' : isPending ? 'PEN' : isUploading ? '...' : isCalculating ? 'CAL' : isDiscord ? 'DC' : hasError ? 'ERR' : 'LOG'}
                     </span>
@@ -877,7 +922,10 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onRemove?.();
+                                if (motionEnabled) {
+                                    triggerRemoval(PRESETS.logRemoval);
+                                }
+                                setTimeout(() => onRemove?.(), 50);
                             }}
                             className="p-2 rounded-[4px] border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all"
                             title="Remove log from recent activity"
