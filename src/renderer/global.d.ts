@@ -84,6 +84,7 @@ export interface IStatsViewSettings {
     minParticipationPercent: number;
     boonBucketIntervalMs: number;
     stackingBoonBucketIntervalMs: number;
+    interruptMode: 'ccOnly' | 'separate' | 'combined';
 }
 
 export interface IDiscordEnemySplitSettings {
@@ -211,7 +212,8 @@ export const DEFAULT_STATS_VIEW_SETTINGS: IStatsViewSettings = {
     topSkillsMetric: 'damage',
     minParticipationPercent: 0,
     boonBucketIntervalMs: 5000,
-    stackingBoonBucketIntervalMs: 5000
+    stackingBoonBucketIntervalMs: 5000,
+    interruptMode: 'separate'
 };
 
 export const DEFAULT_WEB_UPLOAD_STATE: IWebUploadState = {

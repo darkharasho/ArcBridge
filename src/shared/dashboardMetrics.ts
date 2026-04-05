@@ -54,7 +54,7 @@ export const getPlayerEvaded = (player: Player) =>
 export const getPlayerDownsTaken = (player: Player) =>
     player.defenses?.[0]?.downCount || 0;
 
-export const getTargetStatTotal = (player: Player, field: 'killed' | 'downed' | 'againstDownedCount') => {
+export const getTargetStatTotal = (player: Player, field: 'killed' | 'downed' | 'againstDownedCount' | 'interrupts') => {
     let total = 0;
     const statsTargets = player.statsTargets || [];
     for (const targetStats of statsTargets) {
@@ -64,6 +64,9 @@ export const getTargetStatTotal = (player: Player, field: 'killed' | 'downed' | 
     }
     return total;
 };
+
+export const getPlayerOutgoingInterrupts = (player: Player): number =>
+    getTargetStatTotal(player, 'interrupts');
 
 export const getPlayerDashboardTotals = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) => ({
     downContrib: computeDownContribution(player),

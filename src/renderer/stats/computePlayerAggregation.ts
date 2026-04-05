@@ -1,5 +1,5 @@
 
-import { getPlayerCleanses, getPlayerStrips } from "../../shared/dashboardMetrics";
+import { getPlayerCleanses, getPlayerStrips, getPlayerOutgoingInterrupts } from "../../shared/dashboardMetrics";
 import { applySquadStabilityGeneration as applyStabilityGeneration, computeDownContribution as getPlayerDownContribution, computeSquadHealing as getPlayerSquadHealing, computeSquadBarrier as getPlayerSquadBarrier, computeOutgoingCrowdControl as getPlayerOutgoingCrowdControl } from "../../shared/combatMetrics";
 import { Player } from '../../shared/dpsReportTypes';
 import { DisruptionMethod } from '../global.d';
@@ -22,6 +22,7 @@ export interface PlayerStats {
     healing: number;
     barrier: number;
     cc: number;
+    interrupts: number;
     logsJoined: number;
     totalDist: number;
     distCount: number;
@@ -620,7 +621,7 @@ export const ingestLogPlayerData = (log: any, acc: PlayerAggregationAccumulators
 
         if (!acc.playerStats.has(key)) {
             acc.playerStats.set(key, {
-                name, account: identity.accountLabel, characterNames: new Set<string>(), downContrib: 0, cleanses: 0, strips: 0, stab: 0, healing: 0, barrier: 0, cc: 0, logsJoined: 0,
+                name, account: identity.accountLabel, characterNames: new Set<string>(), downContrib: 0, cleanses: 0, strips: 0, stab: 0, healing: 0, barrier: 0, cc: 0, interrupts: 0, logsJoined: 0,
                 totalDist: 0, distCount: 0, dodges: 0, downs: 0, deaths: 0, totalFightMs: 0,
                 offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, defenseMinionDamageTaken: {}, supportActiveMs: 0, supportTotals: {},
                 healingActiveMs: 0, healingTotals: {}, profession: identity.profession, professions: new Set(),
@@ -644,6 +645,7 @@ export const ingestLogPlayerData = (log: any, acc: PlayerAggregationAccumulators
         s.healing += getPlayerSquadHealing(p);
         s.barrier += getPlayerSquadBarrier(p);
         s.cc += getPlayerOutgoingCrowdControl(p, method);
+        s.interrupts += getPlayerOutgoingInterrupts(p);
         s.stab += p.stabGeneration || 0;
 
         const dist = getDistanceToTag(p);

@@ -802,6 +802,8 @@ export class IncrementalAggregator {
                 case 'strips': return s.strips;
                 case 'cleanses': return s.cleanses;
                 case 'cc': return s.cc;
+                case 'interrupts': return s.interrupts;
+                case 'ccAndInterrupts': return s.cc + s.interrupts;
                 case 'stability': return s.stab;
                 case 'revives': return s.revives;
                 case 'downedHealing': return s.healingTotals['downedHealing'] || 0;
@@ -825,6 +827,8 @@ export class IncrementalAggregator {
             strips: createLB('strips', true),
             cleanses: createLB('cleanses', true),
             cc: createLB('cc', true),
+            interrupts: createLB('interrupts', true),
+            ccAndInterrupts: createLB('ccAndInterrupts', true),
             stability: createLB('stability', true),
             revives: createLB('revives', true),
             downedHealing: createLB('downedHealing', true),
@@ -842,6 +846,8 @@ export class IncrementalAggregator {
             strips: 'strips',
             cleanses: 'cleanses',
             cc: 'cc',
+            interrupts: 'interrupts',
+            ccAndInterrupts: 'ccAndInterrupts',
             stability: 'stability',
             closestToTag: 'closestToTag'
         } as const;
@@ -865,6 +871,8 @@ export class IncrementalAggregator {
             maxStrips: getTopFromLeaderboard([]),
             maxCleanses: getTopFromLeaderboard([]),
             maxCC: getTopFromLeaderboard([]),
+            maxInterrupts: getTopFromLeaderboard([]),
+            maxCCAndInterrupts: getTopFromLeaderboard([]),
             maxStab: getTopFromLeaderboard([]),
             closestToTag: getTopFromLeaderboard([])
         };
@@ -876,6 +884,8 @@ export class IncrementalAggregator {
             maxStrips: getTopFromLeaderboard([]),
             maxCleanses: getTopFromLeaderboard([]),
             maxCC: getTopFromLeaderboard([]),
+            maxInterrupts: getTopFromLeaderboard([]),
+            maxCCAndInterrupts: getTopFromLeaderboard([]),
             maxStab: getTopFromLeaderboard([]),
             closestToTag: getTopFromLeaderboard([])
         };
@@ -905,6 +915,8 @@ export class IncrementalAggregator {
         topStatsPerSecond.maxStrips = getTopFromLeaderboard(perSecondLeaderboards.strips);
         topStatsPerSecond.maxCleanses = getTopFromLeaderboard(perSecondLeaderboards.cleanses);
         topStatsPerSecond.maxCC = getTopFromLeaderboard(perSecondLeaderboards.cc);
+        topStatsPerSecond.maxInterrupts = getTopFromLeaderboard(perSecondLeaderboards.interrupts);
+        topStatsPerSecond.maxCCAndInterrupts = getTopFromLeaderboard(perSecondLeaderboards.ccAndInterrupts);
         topStatsPerSecond.maxStab = getTopFromLeaderboard(perSecondLeaderboards.stability);
         topStatsPerSecond.closestToTag = getTopFromLeaderboard(perSecondLeaderboards.closestToTag);
         topStatsPerMinute.maxDownContrib = getTopFromLeaderboard(perMinuteLeaderboards.downContrib);
@@ -914,6 +926,8 @@ export class IncrementalAggregator {
         topStatsPerMinute.maxStrips = getTopFromLeaderboard(perMinuteLeaderboards.strips);
         topStatsPerMinute.maxCleanses = getTopFromLeaderboard(perMinuteLeaderboards.cleanses);
         topStatsPerMinute.maxCC = getTopFromLeaderboard(perMinuteLeaderboards.cc);
+        topStatsPerMinute.maxInterrupts = getTopFromLeaderboard(perMinuteLeaderboards.interrupts);
+        topStatsPerMinute.maxCCAndInterrupts = getTopFromLeaderboard(perMinuteLeaderboards.ccAndInterrupts);
         topStatsPerMinute.maxStab = getTopFromLeaderboard(perMinuteLeaderboards.stability);
         topStatsPerMinute.closestToTag = getTopFromLeaderboard(perMinuteLeaderboards.closestToTag);
 
@@ -925,6 +939,8 @@ export class IncrementalAggregator {
             maxStrips: getTopFromLeaderboard(leaderboards.strips),
             maxCleanses: getTopFromLeaderboard(leaderboards.cleanses),
             maxCC: getTopFromLeaderboard(leaderboards.cc),
+            maxInterrupts: getTopFromLeaderboard(leaderboards.interrupts),
+            maxCCAndInterrupts: getTopFromLeaderboard(leaderboards.ccAndInterrupts),
             maxStab: getTopFromLeaderboard(leaderboards.stability),
             closestToTag: getTopFromLeaderboard(leaderboards.closestToTag)
         };
