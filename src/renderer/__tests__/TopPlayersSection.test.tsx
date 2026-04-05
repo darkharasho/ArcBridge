@@ -54,6 +54,7 @@ describe('TopPlayersSection', () => {
                     showTopStats={true}
                     showMvp={false}
                     topStatsMode="total"
+                    interruptMode="ccOnly"
                     expandedLeader={null}
                     setExpandedLeader={() => {}}
                     formatTopStatValue={(value) => `${Math.round(value)}u`}
@@ -64,5 +65,92 @@ describe('TopPlayersSection', () => {
 
         expect(screen.getByText('374000u')).toBeInTheDocument();
         expect(screen.queryByText('4000u')).not.toBeInTheDocument();
+    });
+
+    const makeEmptyStat = () => ({ value: 0, player: '-', profession: 'Unknown', professionList: [], count: 0 });
+
+    const makeStatsWithInterrupts = () => ({
+        maxDownContrib: makeEmptyStat(),
+        maxBarrier: makeEmptyStat(),
+        maxHealing: makeEmptyStat(),
+        maxDodges: makeEmptyStat(),
+        maxStrips: makeEmptyStat(),
+        maxCleanses: makeEmptyStat(),
+        maxCC: { value: 50, player: 'CCPlayer.1234', profession: 'Warrior', professionList: ['Warrior'], count: 5 },
+        maxInterrupts: { value: 30, player: 'IntPlayer.5678', profession: 'Mesmer', professionList: ['Mesmer'], count: 5 },
+        maxCCAndInterrupts: { value: 80, player: 'BothPlayer.9999', profession: 'Guardian', professionList: ['Guardian'], count: 5 },
+        maxStab: makeEmptyStat(),
+        closestToTag: makeEmptyStat(),
+        leaderboards: {
+            cc: [{ rank: 1, account: 'CCPlayer.1234', profession: 'Warrior', professionList: ['Warrior'], value: 50, count: 5 }],
+            interrupts: [{ rank: 1, account: 'IntPlayer.5678', profession: 'Mesmer', professionList: ['Mesmer'], value: 30, count: 5 }],
+            ccAndInterrupts: [{ rank: 1, account: 'BothPlayer.9999', profession: 'Guardian', professionList: ['Guardian'], value: 80, count: 5 }],
+        }
+    });
+
+    it('shows only CC card when interruptMode is ccOnly', () => {
+        const stats = makeStatsWithInterrupts();
+        render(
+            <StatsSharedContext.Provider value={makeContextValue(stats, (v) => `${Math.round(v)}u`, () => null)}>
+                <TopPlayersSection
+                    showTopStats={true}
+                    showMvp={false}
+                    topStatsMode="total"
+                    interruptMode="ccOnly"
+                    expandedLeader={null}
+                    setExpandedLeader={() => {}}
+                    formatTopStatValue={(v) => `${Math.round(v)}u`}
+                    isMvpStatEnabled={() => true}
+                />
+            </StatsSharedContext.Provider>
+        );
+
+        expect(screen.getByText('Total CC')).toBeInTheDocument();
+        expect(screen.queryByText('Total Interrupts')).not.toBeInTheDocument();
+        expect(screen.queryByText('Total CC + Interrupts')).not.toBeInTheDocument();
+    });
+
+    it('shows CC and Interrupts as separate cards when interruptMode is separate', () => {
+        const stats = makeStatsWithInterrupts();
+        render(
+            <StatsSharedContext.Provider value={makeContextValue(stats, (v) => `${Math.round(v)}u`, () => null)}>
+                <TopPlayersSection
+                    showTopStats={true}
+                    showMvp={false}
+                    topStatsMode="total"
+                    interruptMode="separate"
+                    expandedLeader={null}
+                    setExpandedLeader={() => {}}
+                    formatTopStatValue={(v) => `${Math.round(v)}u`}
+                    isMvpStatEnabled={() => true}
+                />
+            </StatsSharedContext.Provider>
+        );
+
+        expect(screen.getByText('Total CC')).toBeInTheDocument();
+        expect(screen.getByText('Total Interrupts')).toBeInTheDocument();
+        expect(screen.queryByText('Total CC + Interrupts')).not.toBeInTheDocument();
+    });
+
+    it('shows combined CC + Interrupts card when interruptMode is combined', () => {
+        const stats = makeStatsWithInterrupts();
+        render(
+            <StatsSharedContext.Provider value={makeContextValue(stats, (v) => `${Math.round(v)}u`, () => null)}>
+                <TopPlayersSection
+                    showTopStats={true}
+                    showMvp={false}
+                    topStatsMode="total"
+                    interruptMode="combined"
+                    expandedLeader={null}
+                    setExpandedLeader={() => {}}
+                    formatTopStatValue={(v) => `${Math.round(v)}u`}
+                    isMvpStatEnabled={() => true}
+                />
+            </StatsSharedContext.Provider>
+        );
+
+        expect(screen.queryByText('Total CC')).not.toBeInTheDocument();
+        expect(screen.queryByText('Total Interrupts')).not.toBeInTheDocument();
+        expect(screen.getByText('Total CC + Interrupts')).toBeInTheDocument();
     });
 });

@@ -200,6 +200,7 @@ export interface StatsTarget {
     downContribution: number;
     againstDownedCount: number;
     againstDownedDamage: number;
+    interrupts?: number;
 }
 
 

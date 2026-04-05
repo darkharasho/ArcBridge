@@ -61,7 +61,8 @@ describe('computeStatsAggregation (min participation threshold)', () => {
                 topSkillsMetric: 'damage',
                 minParticipationPercent: 0,
                 boonBucketIntervalMs: 5000,
-                stackingBoonBucketIntervalMs: 5000
+                stackingBoonBucketIntervalMs: 5000,
+                interruptMode: 'ccOnly' as const
             }
         });
 
@@ -103,7 +104,8 @@ describe('computeStatsAggregation (min participation threshold)', () => {
                 topSkillsMetric: 'damage',
                 minParticipationPercent: 80,
                 boonBucketIntervalMs: 5000,
-                stackingBoonBucketIntervalMs: 5000
+                stackingBoonBucketIntervalMs: 5000,
+                interruptMode: 'ccOnly' as const
             }
         });
 
@@ -155,7 +157,8 @@ describe('computeStatsAggregation (min participation threshold)', () => {
                 topSkillsMetric: 'damage',
                 minParticipationPercent: 80,
                 boonBucketIntervalMs: 5000,
-                stackingBoonBucketIntervalMs: 5000
+                stackingBoonBucketIntervalMs: 5000,
+                interruptMode: 'ccOnly' as const
             }
         });
 
