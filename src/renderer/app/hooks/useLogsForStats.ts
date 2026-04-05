@@ -19,10 +19,11 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
     const hasPendingStatsDetailsRef = useRef(false);
 
     const hasPendingStatsDetails = logs.some((log) => {
-        if (detailsCache?.peek(log.id) || log.statsDetailsLoaded) return false;
-        if (log.detailsKnownUnavailable) return false;
-        if (log.detailsAvailable) return true;
-        return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink) && !log.detailsFetchExhausted;
+        const ds = log.detailsStatus || 'idle';
+        if (detailsCache?.peek(log.id) || ds === 'loaded') return false;
+        if (ds === 'unavailable' || ds === 'exhausted') return false;
+        if (ds === 'available') return true;
+        return (log.status === 'success' || log.status === 'calculating' || log.status === 'discord') && Boolean(log.permalink);
     });
     hasPendingStatsDetailsRef.current = hasPendingStatsDetails;
 
@@ -68,13 +69,14 @@ export function useLogsForStats({ logs, bulkUploadMode }: UseLogsForStatsOptions
             const previousEntry = previousByIdentity.get(identity);
             if (!previousEntry) return entry;
             // Details now live exclusively in DetailsCache — no need to rescue from state
-            const shouldCarryStatsLoaded = !entry.statsDetailsLoaded && !!previousEntry.statsDetailsLoaded;
+            const shouldCarryStatsLoaded = entry.detailsStatus !== 'loaded' && previousEntry.detailsStatus === 'loaded';
             if (!shouldCarryStatsLoaded) {
                 return entry;
             }
             changed = true;
             const nextEntry: ILogData = { ...entry };
             nextEntry.statsDetailsLoaded = true;
+            nextEntry.detailsStatus = 'loaded';
             // Don't promote status here — aggregation pipeline controls it.
             return nextEntry;
         });
