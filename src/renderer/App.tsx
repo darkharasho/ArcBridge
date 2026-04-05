@@ -266,7 +266,11 @@ function App() {
             let changed = false;
             const next = currentLogs.map<ILogData>((log) => {
                 if (log.status === 'calculating') {
-                    if (log.detailsAvailable && !detailsCacheRef.current?.peek(log.id) && !log.statsDetailsLoaded) {
+                    // Only promote if details are in cache (worker used them)
+                    // or details will never arrive.
+                    const hasDetails = Boolean(detailsCacheRef.current?.peek(log.id));
+                    const detailsWontArrive = Boolean(log.detailsFetchExhausted || log.detailsKnownUnavailable);
+                    if (!hasDetails && !detailsWontArrive) {
                         return log;
                     }
                     changed = true;
@@ -341,17 +345,24 @@ function App() {
                     if (entry.status !== 'calculating') return entry;
                     const id = String(entry?.filePath || entry?.id || '');
                     if (!id || !ingestedIds.has(id)) return entry;
+                    // Only promote if details were available for the worker to use
+                    const hasDetails = Boolean(detailsCacheRef.current?.peek(entry.id));
+                    const detailsWontArrive = Boolean(entry.detailsFetchExhausted || entry.detailsKnownUnavailable);
+                    if (!hasDetails && !detailsWontArrive) return entry;
                     changed = true;
                     return { ...entry, status: 'success' as const };
                 });
                 return changed ? next : currentLogs;
             });
         } else if (phase === 'settled') {
-            // Worker finished — promote all remaining calculating logs
+            // Worker finished — promote only logs whose details are available
             setLogsDeferred((currentLogs) => {
                 let changed = false;
                 const next = currentLogs.map((entry) => {
                     if (entry.status !== 'calculating') return entry;
+                    const hasDetails = Boolean(detailsCacheRef.current?.peek(entry.id));
+                    const detailsWontArrive = Boolean(entry.detailsFetchExhausted || entry.detailsKnownUnavailable);
+                    if (!hasDetails && !detailsWontArrive) return entry;
                     changed = true;
                     return { ...entry, status: 'success' as const };
                 });

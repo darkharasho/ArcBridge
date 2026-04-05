@@ -25,8 +25,6 @@ const resolveDashboardStatus = (log: ILogData) => {
     if (log.status === 'queued' || log.status === 'pending' || log.status === 'uploading' || log.status === 'retrying' || log.status === 'discord') {
         return log.status;
     }
-    if (log.detailsAvailable && !log.statsDetailsLoaded) return 'calculating';
-    if (log.status === 'calculating' && log.statsDetailsLoaded) return 'success';
     if (log.status === 'calculating') return 'calculating';
     return log.status || 'queued';
 };

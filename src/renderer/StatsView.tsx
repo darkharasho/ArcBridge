@@ -191,7 +191,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const statsLoadingJokeCursorRef = useRef(0);
     const statsLoadingJokeTimerRef = useRef<number | null>(null);
     const statsLoadingJokeLastChangeRef = useRef(0);
-    const progressHighWaterRef = useRef(0);
+
     const isSectionVisibleFast = useCallback(
         (id: string) => (sectionVisibility ? sectionVisibility(id) : true),
         [sectionVisibility]
@@ -317,23 +317,9 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
         return { active: false, phaseLabel: '', progressText: '', progressPercent: 0 };
     }, [statsDataProgress, logs.length]);
 
-    // High-water mark: never let the progress bar go backwards while loading is active.
-    // Reset when settling becomes inactive (new cycle).
-    if (!aggregationSettling.active) {
-        progressHighWaterRef.current = 0;
-    } else {
-        progressHighWaterRef.current = Math.max(progressHighWaterRef.current, aggregationSettling.progressPercent);
-    }
-    const settlingProgressPercent = aggregationSettling.active
-        ? progressHighWaterRef.current
-        : aggregationSettling.progressPercent;
-
     const showDissolveLoading = aggregationSettling.active && !embedded;
-    const dissolveBarTitle = aggregationSettling.phaseLabel;
-    const dissolveBarMeta = aggregationSettling.progressText;
 
-    const [dissolveCompleting, setDissolveCompleting] = useState(false);
-    // statsActionsDisabled is computed after dissolveActive is defined (below)
+    // Joke rotation for the loading spinner
     useEffect(() => {
         if (statsLoadingJokeTimerRef.current !== null) {
             window.clearTimeout(statsLoadingJokeTimerRef.current);
@@ -379,105 +365,12 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
             }
         };
     }, [showDissolveLoading]);
-    // Trigger 500ms completion animation when progress reaches 100%
-    useEffect(() => {
-        if (settlingProgressPercent >= 100 && aggregationSettling.active && !embedded) {
-            setDissolveCompleting(true);
-            const timer = setTimeout(() => setDissolveCompleting(false), 1600);
-            return () => clearTimeout(timer);
-        }
-    }, [settlingProgressPercent, aggregationSettling.active, embedded]);
 
-    // Only clear dissolveCompleting early if settling never reached 100% or embedded flips
-    useEffect(() => {
-        if ((!aggregationSettling.active && settlingProgressPercent < 100) || embedded) {
-            setDissolveCompleting(false);
-        }
-    }, [aggregationSettling.active, settlingProgressPercent, embedded]);
-
-    const rawDissolveActive = (showDissolveLoading && settlingProgressPercent < 100) || dissolveCompleting;
-
-    // Compare computed fights against expected fights to decide if loading is done.
-    // Expected = total uploaded logs minus errored/unavailable ones.
-    // Computed = fights the aggregation actually produced (stats.total).
-    // Loading stays active until computed >= expected (or expected is 0).
-    const computedFights = Number((stats as any)?.total || 0);
-    const expectedFights = Math.max(0, (statsDataProgress?.total ?? 0) - (statsDataProgress?.unavailable ?? 0));
-    const aggregationSettled = aggregationProgress?.phase === 'settled';
-    const detailsPending = (statsDataProgress?.pending ?? 0) > 0;
-    const allFightsComputed = expectedFights === 0 || computedFights >= expectedFights || (aggregationSettled && !detailsPending);
-
-    // dissolveActive: active during aggregation settling or while awaiting all fights
-    const awaitingData = !embedded && !allFightsComputed;
-    const dissolveActive = rawDissolveActive || awaitingData;
-    const statsActionsDisabled = dissolveActive;
-
-    // Latch dissolveActive so shimmer doesn't restart on progress ticks.
-    // Once active, stay active until dissolve fully completes.
-    const [stableDissolveActive, setStableDissolveActive] = useState(false);
-    useEffect(() => {
-        if (dissolveActive && !stableDissolveActive) {
-            setStableDissolveActive(true);
-        } else if (!dissolveActive && !dissolveCompleting && stableDissolveActive) {
-            setStableDissolveActive(false);
-        }
-    }, [dissolveActive, dissolveCompleting, stableDissolveActive]);
-
-    const sectionWrapClass = stableDissolveActive
-        ? (dissolveCompleting ? 'stats-section-wrap stats-section-wrap--materializing' : 'stats-section-wrap stats-section-wrap--unloaded')
-        : 'stats-section-wrap';
-
-    type DissolveParticle = { top: string; left: string; size: number; dur: string; delay: string; color: string; dx: string; dy: string; ex: string; ey: string };
-    const dissolveParticlesRef = useRef<DissolveParticle[]>([]);
-    const ambientParticlesRef = useRef<DissolveParticle[]>([]);
-
-    const makeParticle = (topRange: [number, number], leftRange: [number, number], colors: string[]): DissolveParticle => {
-        const drift = () => `${-160 + Math.floor(Math.random() * 320)}px`;
-        return {
-            top: `${topRange[0] + Math.random() * (topRange[1] - topRange[0])}%`,
-            left: `${leftRange[0] + Math.random() * (leftRange[1] - leftRange[0])}%`,
-            size: 4 + Math.floor(Math.random() * 10),
-            dur: `${8 + Math.random() * 8}s`,
-            delay: `${Math.random() * 6}s`,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            dx: drift(), dy: drift(), ex: drift(), ey: drift(),
-        };
-    };
-    if (dissolveParticlesRef.current.length === 0) {
-        const colors = ['var(--brand-primary)', 'var(--brand-secondary)'];
-        for (let i = 0; i < 14; i++) {
-            dissolveParticlesRef.current.push(makeParticle([5, 90], [3, 95], colors));
-        }
-    }
-    if (ambientParticlesRef.current.length === 0) {
-        const colors = ['var(--brand-primary)', 'var(--brand-secondary)'];
-        for (let i = 0; i < 28; i++) {
-            ambientParticlesRef.current.push(makeParticle([2, 98], [1, 99], colors));
-        }
-    }
+    const statsActionsDisabled = false;
 
     const renderSectionWrap = (children: React.ReactNode) => (
-        <div className={sectionWrapClass}>
+        <div className="stats-section-wrap">
             {children}
-            {dissolveActive && !dissolveCompleting && dissolveParticlesRef.current.map((p, i) => (
-                <span
-                    key={i}
-                    className="stats-dissolve-particle"
-                    style={{
-                        top: p.top,
-                        left: p.left,
-                        width: p.size,
-                        height: p.size,
-                        background: `color-mix(in srgb, ${p.color} 50%, transparent)`,
-                        ['--p-dur' as any]: p.dur,
-                        ['--p-delay' as any]: p.delay,
-                        ['--p-dx' as any]: p.dx,
-                        ['--p-dy' as any]: p.dy,
-                        ['--p-ex' as any]: p.ex,
-                        ['--p-ey' as any]: p.ey,
-                    }}
-                />
-            ))}
         </div>
     );
 
@@ -548,18 +441,17 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
         );
     };
 
-    const sectionsReady = !showDissolveLoading;
-    const needsTopSkillsData = sectionsReady && (
+    const needsTopSkillsData = (
         isSectionVisibleFast('top-skills-outgoing')
         || isSectionVisibleFast('player-breakdown')
         || isSectionVisibleFast('damage-breakdown')
     );
-    const needsSkillUsageData = sectionsReady && isSectionVisibleFast('skill-usage');
-    const needsApmData = sectionsReady && isSectionVisibleFast('apm-stats');
-    const needsSpikeData = sectionsReady && isSectionVisibleFast('spike-damage');
-    const needsIncomingStrikeData = sectionsReady && isSectionVisibleFast('incoming-strike-damage');
-    const needsAllDamageData = sectionsReady && isSectionVisibleFast('all-damage');
-    const needsConditionData = sectionsReady && isSectionVisibleFast('conditions-outgoing');
+    const needsSkillUsageData = isSectionVisibleFast('skill-usage');
+    const needsApmData = isSectionVisibleFast('apm-stats');
+    const needsSpikeData = isSectionVisibleFast('spike-damage');
+    const needsIncomingStrikeData = isSectionVisibleFast('incoming-strike-damage');
+    const needsAllDamageData = isSectionVisibleFast('all-damage');
+    const needsConditionData = isSectionVisibleFast('conditions-outgoing');
 
     const safeStats = useMemo(() => {
         const source = stats && typeof stats === 'object' ? stats : {};
@@ -645,7 +537,6 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
 
     useEffect(() => {
         if (!window?.electronAPI?.fetchImageAsDataUrl) return;
-        if (showDissolveLoading) return;
         let cancelled = false;
         const run = () => {
             if (cancelled) return;
@@ -705,7 +596,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
                 window.clearTimeout(handle);
             }
         };
-    }, [safeStats, showDissolveLoading, needsTopSkillsData]);
+    }, [safeStats, needsTopSkillsData]);
 
     const skillUsageData = useMemo(() => {
         const source = (precomputedStats?.skillUsageData ?? computedSkillUsageData) as Partial<SkillUsageSummary> | undefined;
@@ -746,7 +637,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
 
     const {
         scrollContainerRef,
-    } = useStatsNavigation(embedded, true, dissolveActive);
+    } = useStatsNavigation(embedded, true);
 
     const {
         devMockUploadState,
@@ -4220,12 +4111,7 @@ type SpikeFight = {
             backgroundImage: 'linear-gradient(160deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.04) 70%)'
         }
         : undefined, [embedded]);
-    const resolvedScrollContainerStyle: CSSProperties | undefined = useMemo(() => dissolveActive
-        ? {
-            ...(scrollContainerStyle || {}),
-            overflowY: 'hidden' as const
-        }
-        : scrollContainerStyle, [dissolveActive, scrollContainerStyle]);
+    const resolvedScrollContainerStyle = scrollContainerStyle;
 
 
     const formatSkillUsageValue = (val: number) => {
@@ -4329,52 +4215,43 @@ type SpikeFight = {
                 devMockAvailable={devMockAvailable}
                 devMockUploadState={devMockUploadState}
             />
-            {/* Dissolve bar: aggregation settling */}
-            {aggregationSettling.active && (
-                <div className="mb-3 text-xs">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                            {!embedded && <span className="stats-dissolve-heartbeat" />}
-                            <span className="font-medium">{dissolveBarTitle}</span>
-                            <span style={{ opacity: 0.7 }}>{dissolveBarMeta}</span>
+            {/* Processing indicator: particle spinner with witty remarks (desktop) */}
+            {(aggregationSettling.active || detailsProgress.active) && !embedded && (
+                <div className="mb-3 flex items-center justify-end gap-3 text-xs min-w-0">
+                    {aggregationSettling.active && statsSettlingBannerJoke && (
+                        <div className="stats-dissolve-joke">{statsSettlingBannerJoke}</div>
+                    )}
+                    {!aggregationSettling.active && detailsProgress.active && (
+                        <span className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                            {detailsProgress.phaseLabel} {detailsProgress.progressText}
+                        </span>
+                    )}
+                    <div className="stats-particle-spinner">
+                        <div className="stats-particle-spinner__ring" />
+                        <div className="stats-particle-spinner__orbit">
+                            <span className="stats-particle-spinner__particle" />
+                            <span className="stats-particle-spinner__particle" />
+                            <span className="stats-particle-spinner__particle" />
+                            <span className="stats-particle-spinner__particle" />
                         </div>
                     </div>
-                    {!embedded && aggregationSettling.active && (
-                        <div className="stats-dissolve-bar">
-                            <div
-                                className="stats-dissolve-bar__fill"
-                                style={{ width: `${settlingProgressPercent}%` }}
-                            />
-                            <div style={{ position: 'absolute', left: `${settlingProgressPercent}%`, top: '50%', transform: 'translateY(-50%)', transition: 'left 0.6s ease' }}>
-                                <span className="stats-dissolve-bar__particle" />
-                                <span className="stats-dissolve-bar__particle" />
-                                <span className="stats-dissolve-bar__particle" />
-                                <span className="stats-dissolve-bar__particle" />
-                                <span className="stats-dissolve-bar__particle" />
-                            </div>
-                        </div>
-                    )}
-                    {!embedded && dissolveActive && statsSettlingBannerJoke && (
-                        <div className="stats-dissolve-joke mt-2">{statsSettlingBannerJoke}</div>
-                    )}
                 </div>
             )}
-            {/* Details progress: non-blocking indicator shown after dissolve completes */}
-            {!aggregationSettling.active && detailsProgress.active && (
+            {/* Embedded mode: text-only status labels (no spinner) */}
+            {embedded && aggregationSettling.active && (
                 <div className="mb-3 text-xs">
                     <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                        {!embedded && <span className="stats-dissolve-heartbeat" />}
+                        <span className="font-medium">{aggregationSettling.phaseLabel}</span>
+                        <span style={{ opacity: 0.7 }}>{aggregationSettling.progressText}</span>
+                    </div>
+                </div>
+            )}
+            {embedded && !aggregationSettling.active && detailsProgress.active && (
+                <div className="mb-3 text-xs">
+                    <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                         <span className="font-medium">{detailsProgress.phaseLabel}</span>
                         <span style={{ opacity: 0.7 }}>{detailsProgress.progressText}</span>
                     </div>
-                    {!embedded && (
-                        <div className="stats-dissolve-bar">
-                            <div
-                                className="stats-dissolve-bar__fill"
-                                style={{ width: `${detailsProgress.progressPercent}%` }}
-                            />
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -4384,33 +4261,9 @@ type SpikeFight = {
                 <div
                     id="stats-dashboard-container"
                     ref={scrollContainerRef}
-                    className={`${scrollContainerClass} ${embedded ? '' : 'flex-1'} ${dissolveActive ? 'stats-dashboard-scroll-lock' : ''}`}
+                    className={`${scrollContainerClass} ${embedded ? '' : 'flex-1'}`}
                     style={resolvedScrollContainerStyle}
                 >
-                {/* Ambient dissolve particles that float across the entire dashboard (fills gaps between sections) */}
-                {dissolveActive && !dissolveCompleting && (
-                    <div className="stats-dissolve-ambient" aria-hidden>
-                        {ambientParticlesRef.current.map((p, i) => (
-                            <span
-                                key={i}
-                                className="stats-dissolve-particle"
-                                style={{
-                                    top: p.top,
-                                    left: p.left,
-                                    width: p.size,
-                                    height: p.size,
-                                    background: `color-mix(in srgb, ${p.color} 40%, transparent)`,
-                                    ['--p-dur' as any]: p.dur,
-                                    ['--p-delay' as any]: p.delay,
-                                    ['--p-dx' as any]: p.dx,
-                                    ['--p-dy' as any]: p.dy,
-                                    ['--p-ex' as any]: p.ex,
-                                    ['--p-ey' as any]: p.ey,
-                                }}
-                            />
-                        ))}
-                    </div>
-                )}
                 <StatsSharedContext.Provider value={sharedCtxValue}>
                 {useModernLayout ? (
                     <div className="stats-layout stats-layout-modern grid gap-4 grid-cols-1">
