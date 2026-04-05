@@ -414,13 +414,29 @@ export class IncrementalAggregator {
         const enemies = enemyTargets.length > 0 ? enemyTargets.length : summaryEnemyCount;
         const friendlyCount = players.length > 0 ? players.length : squadCount;
 
+        const timestamp = resolveFightTimestamp(details, log);
+
         this.timelineEntries.push({
-            timestamp: resolveFightTimestamp(details, log),
+            timestamp,
             squadCount,
             friendlyCount,
             enemies,
             isWin: resolveFightOutcomeForDisplay(details, log),
             originalIndex: idx,
+        });
+
+        // Fight breakdown and diff mode for ALL logs (including non-detailed placeholders)
+        this.fightBreakdowns.push({
+            timestamp,
+            originalIndex: idx,
+            result: ingestLogFightBreakdown(log, idx), // idx is temporary, will be re-assigned in finalize
+        });
+
+        this.fightDiffModes.push({
+            timestamp,
+            originalIndex: idx,
+            hasDetailedRoster: hasDetail,
+            result: ingestLogFightDiffMode(log, idx), // idx is temporary
         });
 
         if (!hasDetail) return;
@@ -455,24 +471,6 @@ export class IncrementalAggregator {
         // 2. Core player aggregation
         precomputeGlobalEnemySkillStats(log, this.playerAcc);
         ingestLogPlayerData(log, this.playerAcc, this.playerOptions);
-
-        // 3. Per-fight results (store results, discard log)
-        const timestamp = resolveFightTimestamp(details, log);
-
-        // Fight breakdown
-        this.fightBreakdowns.push({
-            timestamp,
-            originalIndex: idx,
-            result: ingestLogFightBreakdown(log, idx), // idx is temporary, will be re-assigned in finalize
-        });
-
-        // Fight diff mode
-        this.fightDiffModes.push({
-            timestamp,
-            originalIndex: idx,
-            hasDetailedRoster: hasDetail,
-            result: ingestLogFightDiffMode(log, idx), // idx is temporary
-        });
 
         // Heal effectiveness
         this.healEffectivenessResults.push({
