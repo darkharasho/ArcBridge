@@ -164,7 +164,6 @@ export function ParticleEmitter({
 
             return style;
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [actualCount, direction, duration, glow, origin, prefersReducedMotion, spread, size]);
 
     // Schedule onComplete callback

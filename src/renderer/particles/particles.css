@@ -24,3 +24,12 @@
     animation: particle-pulse 600ms ease-in-out 1;
     pointer-events: none;
 }
+
+.particle-snap-active {
+    animation: particle-snap-sharpen 500ms ease-out forwards;
+}
+
+@keyframes particle-snap-sharpen {
+    0% { filter: blur(1px); }
+    100% { filter: blur(0); }
+}
