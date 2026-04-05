@@ -306,27 +306,60 @@ function App() {
     const calculatingCount = logs.filter((log) => log.status === 'calculating').length;
 
     useEffect(() => {
-        // Don't promote calculating → success while aggregation is actively
-        // streaming or computing. Logs should stay "calculating" until the
-        // incremental aggregator has ingested them and stats are ready.
-        if (aggregationProgress?.active && (aggregationProgress.phase === 'streaming' || aggregationProgress.phase === 'computing')) {
-            return;
-        }
+        // Per-log promotion: as the worker ingests each log, promote it from
+        // calculating → success so the sidebar shows real-time progress.
+        // During active streaming, promote only the first N logs (matching
+        // logsForStats order) where N = aggregationProgress.streamed.
+        // When aggregation is settled/idle, promote all remaining calculating logs.
         if (!logs.some((log) => log.status === 'calculating')) {
             return;
         }
-        setLogsDeferred((currentLogs) => {
-            let changed = false;
-            const next = currentLogs.map((entry) => {
-                if (entry.status !== 'calculating') return entry;
-                const normalized = normalizeQueuedLogStatus(entry);
-                if (normalized.status === entry.status) return entry;
-                changed = true;
-                return normalized;
+        const phase = aggregationProgress?.phase;
+        const isStreaming = aggregationProgress?.active && (phase === 'streaming' || phase === 'computing');
+        const streamed = Math.max(0, Number(aggregationProgress?.streamed || 0));
+
+        if (isStreaming && streamed === 0) {
+            // Worker is active but hasn't ingested anything yet — don't promote
+            return;
+        }
+
+        if (isStreaming) {
+            // Build set of log identifiers that the worker has ingested
+            // (first `streamed` entries in logsForStats order)
+            const ingestedIds = new Set<string>();
+            for (let i = 0; i < Math.min(streamed, logsForStats.length); i++) {
+                const log = logsForStats[i];
+                const id = String(log?.filePath || log?.id || '');
+                if (id) ingestedIds.add(id);
+            }
+            if (ingestedIds.size === 0) return;
+
+            setLogsDeferred((currentLogs) => {
+                let changed = false;
+                const next = currentLogs.map((entry) => {
+                    if (entry.status !== 'calculating') return entry;
+                    const id = String(entry?.filePath || entry?.id || '');
+                    if (!id || !ingestedIds.has(id)) return entry;
+                    changed = true;
+                    return { ...entry, status: 'success' as const };
+                });
+                return changed ? next : currentLogs;
             });
-            return changed ? next : currentLogs;
-        });
-    }, [logs, setLogsDeferred, aggregationProgress]);
+        } else {
+            // Aggregation settled or idle — promote all calculating logs via normalize
+            setLogsDeferred((currentLogs) => {
+                let changed = false;
+                const next = currentLogs.map((entry) => {
+                    if (entry.status !== 'calculating') return entry;
+                    const normalized = normalizeQueuedLogStatus(entry);
+                    if (normalized.status === entry.status) return entry;
+                    changed = true;
+                    return normalized;
+                });
+                return changed ? next : currentLogs;
+            });
+        }
+    }, [logs, setLogsDeferred, aggregationProgress, logsForStats]);
 
     useEffect(() => {
         if (bulkUploadMode && calculatingCount > 1) {

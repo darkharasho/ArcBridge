@@ -14,23 +14,29 @@ describe('normalizeQueuedLogStatus', () => {
         expect(result.status).toBe('calculating');
     });
 
-    it('promotes stale calculating updates once details are already resolved', () => {
+    it('promotes calculating once stats have been computed (statsDetailsLoaded)', () => {
         const result = normalizeQueuedLogStatus({
             id: 'log-2',
             filePath: 'two.zevtc',
             permalink: 'https://dps.report/example',
             status: 'calculating',
             detailsAvailable: true,
-            details: {
-                fightName: 'Fight',
-                encounterDuration: '1m',
-                success: true,
-                uploadTime: 1,
-                players: [{ name: 'Player' }]
-            } as any
+            statsDetailsLoaded: true,
         } as ILogData);
 
         expect(result.status).toBe('success');
+    });
+
+    it('keeps calculating when detailsAvailable but stats not yet computed', () => {
+        const result = normalizeQueuedLogStatus({
+            id: 'log-2b',
+            filePath: 'two-b.zevtc',
+            permalink: 'https://dps.report/example',
+            status: 'calculating',
+            detailsAvailable: true,
+        } as ILogData);
+
+        expect(result.status).toBe('calculating');
     });
 
     it('promotes calculating when details are known unavailable', () => {
