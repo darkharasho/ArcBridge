@@ -269,7 +269,8 @@ function App() {
                     // Only promote if details are in cache (worker used them)
                     // or details will never arrive.
                     const hasDetails = Boolean(detailsCacheRef.current?.peek(log.id));
-                    const detailsWontArrive = Boolean(log.detailsFetchExhausted || log.detailsKnownUnavailable);
+                    const ds = log.detailsStatus || 'idle';
+                    const detailsWontArrive = ds === 'exhausted' || ds === 'unavailable';
                     if (!hasDetails && !detailsWontArrive) {
                         return log;
                     }
@@ -347,7 +348,8 @@ function App() {
                     if (!id || !ingestedIds.has(id)) return entry;
                     // Only promote if details were available for the worker to use
                     const hasDetails = Boolean(detailsCacheRef.current?.peek(entry.id));
-                    const detailsWontArrive = Boolean(entry.detailsFetchExhausted || entry.detailsKnownUnavailable);
+                    const ds = entry.detailsStatus || 'idle';
+                    const detailsWontArrive = ds === 'exhausted' || ds === 'unavailable';
                     if (!hasDetails && !detailsWontArrive) return entry;
                     changed = true;
                     return { ...entry, status: 'success' as const };
@@ -361,7 +363,8 @@ function App() {
                 const next = currentLogs.map((entry) => {
                     if (entry.status !== 'calculating') return entry;
                     const hasDetails = Boolean(detailsCacheRef.current?.peek(entry.id));
-                    const detailsWontArrive = Boolean(entry.detailsFetchExhausted || entry.detailsKnownUnavailable);
+                    const ds = entry.detailsStatus || 'idle';
+                    const detailsWontArrive = ds === 'exhausted' || ds === 'unavailable';
                     if (!hasDetails && !detailsWontArrive) return entry;
                     changed = true;
                     return { ...entry, status: 'success' as const };
@@ -398,9 +401,10 @@ function App() {
     useEffect(() => {
         if (bulkUploadMode) return;
         const hasPendingDetailsHydration = logs.some((log) => {
-            if (detailsCacheRef.current?.peek(log.id) || log.statsDetailsLoaded) return false;
-            if (log.detailsFetchExhausted || log.detailsKnownUnavailable) return false;
-            if (log.detailsAvailable) return true;
+            const ds = log.detailsStatus || 'idle';
+            if (detailsCacheRef.current?.peek(log.id) || ds === 'loaded') return false;
+            if (ds === 'exhausted' || ds === 'unavailable') return false;
+            if (ds === 'available') return true;
             const status = log.status || 'queued';
             return (status === 'success' || status === 'calculating' || status === 'discord') && Boolean(log.permalink);
         });
