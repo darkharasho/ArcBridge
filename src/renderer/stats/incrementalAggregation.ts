@@ -186,10 +186,105 @@ const sortByFightOrder = (a: { timestamp: number; originalIndex: number }, b: { 
     return a.originalIndex - b.originalIndex;
 };
 
+const enrichPrecomputedStats = (input: any, logs: any[]) => {
+        if (!input || typeof input !== 'object') return input;
+        const fights = Array.isArray(input.fightBreakdown) ? input.fightBreakdown : null;
+        if (!fights || fights.length === 0) return input;
+        const hasTeamBreakdown = (value: any) =>
+            Array.isArray(value) && value.some((entry) => entry && Number(entry.count) > 0);
+
+        const byId = new Map<string, any>();
+        const byPermalink = new Map<string, any>();
+        logs.forEach((log: any) => {
+            const id = log?.filePath || log?.id;
+            if (id) byId.set(String(id), log);
+            const link = log?.permalink || log?.details?.permalink;
+            if (typeof link === 'string' && link.trim()) {
+                byPermalink.set(link.trim(), log);
+            }
+        });
+
+        const normalizedFights = fights.map((fight: any) => {
+            if (!fight || typeof fight !== 'object') return fight;
+            const keyId = fight.id ? String(fight.id) : '';
+            const keyPermalink = typeof fight.permalink === 'string' ? fight.permalink.trim() : '';
+            const matchedLog = (keyId ? byId.get(keyId) : undefined) || (keyPermalink ? byPermalink.get(keyPermalink) : undefined);
+            if (!matchedLog) return fight;
+
+            let nextFight = fight;
+            if (Number(fight.timestamp) <= 0) {
+                const resolved = resolveFightTimestamp(matchedLog?.details, matchedLog);
+                if (resolved) nextFight = { ...nextFight, timestamp: resolved };
+            }
+            const detailsTeamBreakdown = matchedLog?.details?.teamBreakdown;
+            if (hasTeamBreakdown(detailsTeamBreakdown)) {
+                nextFight = { ...nextFight, teamBreakdown: detailsTeamBreakdown };
+            }
+            return nextFight;
+        });
+
+        const existingDiff = Array.isArray((input as any).fightDiffMode) ? (input as any).fightDiffMode : [];
+        const hasUsableExistingDiff = existingDiff.some((fight: any) => (
+            Array.isArray(fight?.targetFocus) && fight.targetFocus.some((row: any) => Number(row?.damage || 0) > 0 || Number(row?.hits || 0) > 0)
+        ));
+        const derivedFightDiffMode = hasUsableExistingDiff ? existingDiff : normalizedFights.map((fight: any, idx: number) => {
+            const enemyClassCounts = (fight && typeof fight.enemyClassCounts === 'object' && fight.enemyClassCounts)
+                ? fight.enemyClassCounts
+                : {};
+            const classRows = Object.entries(enemyClassCounts as Record<string, number>)
+                .map(([label, count]) => ({ label: String(label || 'Unknown'), count: Number(count || 0) }))
+                .filter((row) => row.count > 0)
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+            const totalCount = classRows.reduce((sum, row) => sum + row.count, 0);
+            const targetFocus = classRows.map((row) => ({
+                label: row.label,
+                damage: row.count,
+                hits: 0,
+                share: totalCount > 0 ? row.count / totalCount : 0
+            }));
+            const enemyDowns = Number(fight?.enemyDowns || 0);
+            const enemyDeaths = Number(fight?.enemyDeaths || 0);
+            const squadDowns = Number(fight?.alliesDown || 0);
+            const squadDeaths = Number(fight?.alliesDead || 0);
+            const totalOutgoingDamage = Number(fight?.totalOutgoingDamage || 0);
+            const totalIncomingDamage = Number(fight?.totalIncomingDamage || 0);
+            const squadMetrics = [
+                { metricId: 'winFlag', metricLabel: 'Win (1) / Loss (0)', higherIsBetter: true, value: fight?.isWin ? 1 : 0 },
+                { metricId: 'squadCount', metricLabel: 'Squad Size', higherIsBetter: true, value: Number(fight?.squadCount || 0) },
+                { metricId: 'enemyCount', metricLabel: 'Enemy Count', higherIsBetter: false, value: Number(fight?.enemyCount || 0) },
+                { metricId: 'squadKdr', metricLabel: 'Squad KDR', higherIsBetter: true, value: squadDeaths > 0 ? (enemyDeaths / squadDeaths) : enemyDeaths },
+                { metricId: 'enemyDeaths', metricLabel: 'Enemy Deaths', higherIsBetter: true, value: enemyDeaths },
+                { metricId: 'enemyDowns', metricLabel: 'Enemy Downs', higherIsBetter: true, value: enemyDowns },
+                { metricId: 'squadDeaths', metricLabel: 'Squad Deaths', higherIsBetter: false, value: squadDeaths },
+                { metricId: 'squadDowns', metricLabel: 'Squad Downs', higherIsBetter: false, value: squadDowns },
+                { metricId: 'damageDelta', metricLabel: 'Damage Delta', higherIsBetter: true, value: totalOutgoingDamage - totalIncomingDamage },
+                { metricId: 'outgoingDamage', metricLabel: 'Outgoing Damage', higherIsBetter: true, value: totalOutgoingDamage },
+                { metricId: 'incomingDamage', metricLabel: 'Incoming Damage', higherIsBetter: false, value: totalIncomingDamage },
+                { metricId: 'barrierIncomingAbsorb', metricLabel: 'Barrier Absorption (Incoming)', higherIsBetter: true, value: Number(fight?.incomingBarrierAbsorbed || 0) },
+                { metricId: 'enemyBarrierAbsorb', metricLabel: 'Enemy Barrier Absorption', higherIsBetter: false, value: Number(fight?.outgoingBarrierAbsorbed || 0) },
+                { metricId: 'alliesRevived', metricLabel: 'Allies Revived (Players)', higherIsBetter: true, value: Number(fight?.alliesRevived || 0) }
+            ];
+            return {
+                id: String(fight?.id || `fight-${idx + 1}`),
+                shortLabel: `F${idx + 1}`,
+                fullLabel: `${String(fight?.mapName || fight?.label || 'Unknown Map')} • ${String(fight?.duration || '--:--')}`,
+                mapName: String(fight?.mapName || ''),
+                timestamp: Number(fight?.timestamp || 0),
+                duration: String(fight?.duration || '--:--'),
+                isWin: Boolean(fight?.isWin),
+                targetFocus,
+                squadMetrics
+            };
+        });
+
+        return { ...input, fightBreakdown: normalizedFights, fightDiffMode: derivedFightDiffMode };
+};
+
 export class IncrementalAggregator {
     private options: IncrementalAggregatorOptions;
     private logCount = 0;
     private validLogCount = 0;
+    private precomputedLogs: any[] = [];
 
     // Settings
     private activeStatsViewSettings: IStatsViewSettings;
@@ -286,6 +381,7 @@ export class IncrementalAggregator {
                 hasDetailedRoster: this.hasDetailedRoster(log),
                 originalIndex: this.logCount,
             });
+            this.precomputedLogs.push(log);
             this.logCount++;
             return;
         }
@@ -318,13 +414,29 @@ export class IncrementalAggregator {
         const enemies = enemyTargets.length > 0 ? enemyTargets.length : summaryEnemyCount;
         const friendlyCount = players.length > 0 ? players.length : squadCount;
 
+        const timestamp = resolveFightTimestamp(details, log);
+
         this.timelineEntries.push({
-            timestamp: resolveFightTimestamp(details, log),
+            timestamp,
             squadCount,
             friendlyCount,
             enemies,
             isWin: resolveFightOutcomeForDisplay(details, log),
             originalIndex: idx,
+        });
+
+        // Fight breakdown and diff mode for ALL logs (including non-detailed placeholders)
+        this.fightBreakdowns.push({
+            timestamp,
+            originalIndex: idx,
+            result: ingestLogFightBreakdown(log, idx), // idx is temporary, will be re-assigned in finalize
+        });
+
+        this.fightDiffModes.push({
+            timestamp,
+            originalIndex: idx,
+            hasDetailedRoster: hasDetail,
+            result: ingestLogFightDiffMode(log, idx), // idx is temporary
         });
 
         if (!hasDetail) return;
@@ -359,24 +471,6 @@ export class IncrementalAggregator {
         // 2. Core player aggregation
         precomputeGlobalEnemySkillStats(log, this.playerAcc);
         ingestLogPlayerData(log, this.playerAcc, this.playerOptions);
-
-        // 3. Per-fight results (store results, discard log)
-        const timestamp = resolveFightTimestamp(details, log);
-
-        // Fight breakdown
-        this.fightBreakdowns.push({
-            timestamp,
-            originalIndex: idx,
-            result: ingestLogFightBreakdown(log, idx), // idx is temporary, will be re-assigned in finalize
-        });
-
-        // Fight diff mode
-        this.fightDiffModes.push({
-            timestamp,
-            originalIndex: idx,
-            hasDetailedRoster: hasDetail,
-            result: ingestLogFightDiffMode(log, idx), // idx is temporary
-        });
 
         // Heal effectiveness
         this.healEffectivenessResults.push({
@@ -420,10 +514,26 @@ export class IncrementalAggregator {
         const mapName = resolveMapName(details, log);
         this.mapCounts[mapName] = (this.mapCounts[mapName] || 0) + 1;
 
-        // Store minimal data for boon tables (need details reference)
-        // buildBoonTables needs: details.durationMS, details.buffMap, details.players[].account/profession/name/group/activeTimes/selfBuffs/groupBuffs/squadBuffs/notInSquad
-        // We store a lightweight copy
-        this.boonTableLogs.push({ details });
+        // Store only the fields buildBoonTables actually reads — the full
+        // details object is far too large to keep for every log (OOM at ~89 logs).
+        this.boonTableLogs.push({
+            details: details ? {
+                durationMS: details.durationMS,
+                buffMap: details.buffMap,
+                players: (details.players || []).map((p: any) => ({
+                    account: p.account,
+                    name: p.name,
+                    character_name: p.character_name,
+                    profession: p.profession,
+                    group: p.group,
+                    activeTimes: p.activeTimes ? [p.activeTimes[0]] : [],
+                    notInSquad: p.notInSquad,
+                    selfBuffs: p.selfBuffs,
+                    groupBuffs: p.groupBuffs,
+                    squadBuffs: p.squadBuffs,
+                })),
+            } : undefined,
+        });
 
         // Commander stats - use the stored result from accumulator
         // We call ingestLogCommanderStats but need the sorted index later.
@@ -453,9 +563,10 @@ export class IncrementalAggregator {
     /** Finalize aggregation and return the result. */
     finalize(): { stats: any; skillUsageData: any } {
         if (this.options.precomputedStats) {
-            // Not implemented for precomputed - would need enrichment logic
-            // Return precomputed stats as-is (the batch path handles this)
-            return { stats: this.options.precomputedStats, skillUsageData: null };
+            return {
+                stats: enrichPrecomputedStats(this.options.precomputedStats, this.precomputedLogs),
+                skillUsageData: null,
+            };
         }
 
         const total = this.validLogCount;
@@ -609,6 +720,19 @@ export class IncrementalAggregator {
                     lastValue = item.value;
                 }
                 return { rank: lastRank, ...item };
+            });
+        };
+
+        /** Derive a per-second or per-minute leaderboard from an already-sorted raw leaderboard. */
+        const deriveLeaderboard = (
+            rawLeaderboard: Array<{ rank: number; account: string; profession: string; professionList?: string[]; value: number; count?: number }>,
+            getVariantVal: (s: PlayerStats, k: string) => number,
+            key: string,
+        ): typeof rawLeaderboard => {
+            return rawLeaderboard.map((entry) => {
+                const stat = playerStats.get(entry.account);
+                const value = stat ? getVariantVal(stat, key) : 0;
+                return { ...entry, value };
             });
         };
 
@@ -768,21 +892,10 @@ export class IncrementalAggregator {
             return getPerSecondVal(s, k) * 60;
         };
         Object.values(statKeys).forEach((k) => {
-            const higherIsBetter = k !== 'closestToTag';
-            perSecondLeaderboards[k] = buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: getPerSecondVal(stat, k),
-                count: stat.logsJoined
-            })), higherIsBetter);
-            perMinuteLeaderboards[k] = buildLeaderboard(leaderboardEntries.map(({ stat }) => ({
-                account: stat.account,
-                profession: stat.profession,
-                professionList: stat.professionList,
-                value: getPerMinuteVal(stat, k),
-                count: stat.logsJoined
-            })), higherIsBetter);
+            const rawLB = leaderboards[k as keyof typeof leaderboards];
+            if (!rawLB) return;
+            perSecondLeaderboards[k] = deriveLeaderboard(rawLB, getPerSecondVal, k);
+            perMinuteLeaderboards[k] = deriveLeaderboard(rawLB, getPerMinuteVal, k);
         });
 
         topStatsPerSecond.maxDownContrib = getTopFromLeaderboard(perSecondLeaderboards.downContrib);
@@ -1360,3 +1473,36 @@ function finalizeCommanderStatsFromMap(commanders: Map<string, any>): { rows: an
 
     return { rows };
 }
+
+/**
+ * Synchronous convenience wrapper — drop-in replacement for the old
+ * batch `computeStatsAggregation()`.  Creates an IncrementalAggregator,
+ * ingests every log, and finalizes in one call.
+ */
+export const computeStatsSync = ({
+    logs,
+    precomputedStats,
+    mvpWeights,
+    statsViewSettings,
+    disruptionMethod,
+    includePlayerSkillMap,
+}: {
+    logs: any[];
+    precomputedStats?: any;
+    mvpWeights?: IMvpWeights;
+    statsViewSettings?: IStatsViewSettings;
+    disruptionMethod?: DisruptionMethod;
+    includePlayerSkillMap?: boolean;
+}): { stats: any; skillUsageData: any } => {
+    const aggregator = new IncrementalAggregator({
+        precomputedStats,
+        mvpWeights,
+        statsViewSettings,
+        disruptionMethod,
+        includePlayerSkillMap,
+    });
+    for (const log of logs) {
+        aggregator.ingestLog(log);
+    }
+    return aggregator.finalize();
+};

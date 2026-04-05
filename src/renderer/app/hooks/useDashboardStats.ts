@@ -15,7 +15,7 @@ type DashboardSummaryCacheEntry = {
     logRef: ILogData;
     status: ILogData['status'];
     error: any;
-    detailsAvailable: boolean | undefined;
+    detailsStatus: ILogData['detailsStatus'];
     summary: DashboardLogSummary;
 };
 
@@ -95,14 +95,14 @@ export function useDashboardStats(logs: ILogData[]) {
                 && cached.logRef === log
                 && cached.status === log.status
                 && cached.error === log.error
-                && cached.detailsAvailable === log.detailsAvailable
+                && cached.detailsStatus === log.detailsStatus
             );
             const summary = canReuse ? cached!.summary : buildDashboardLogSummary(log);
             nextCache.set(cacheKey, {
                 logRef: log,
                 status: log.status,
                 error: log.error,
-                detailsAvailable: log.detailsAvailable,
+                detailsStatus: log.detailsStatus,
                 summary
             });
 

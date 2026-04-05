@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { StatsView } from '../StatsView';
-import { computeStatsAggregation } from '../stats/computeStatsAggregation';
+import { computeStatsSync as computeStatsAggregation } from '../stats/incrementalAggregation';
 import { DEFAULT_STATS_VIEW_SETTINGS } from '../global.d';
 
 describe('StatsView (healing integration)', () => {

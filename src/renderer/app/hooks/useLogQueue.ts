@@ -1,30 +1,19 @@
 import { startTransition, useCallback, useEffect, useRef } from 'react';
 
 export const normalizeQueuedLogStatus = (candidate: ILogData): ILogData => {
-    if (candidate.detailsAvailable && candidate.detailsFetchExhausted) {
-        candidate = { ...candidate, detailsFetchExhausted: false };
-    }
-    if (candidate.detailsAvailable && candidate.detailsKnownUnavailable) {
-        candidate = { ...candidate, detailsKnownUnavailable: false };
-    }
-    // Only promote calculating → success for terminal states where details
-    // will never arrive. Normal promotion (after aggregator ingestion) is
-    // handled by the per-log effect in App.tsx, not here.
-    const detailsTerminal = Boolean(candidate.detailsKnownUnavailable)
-        || (candidate.detailsAvailable === false)
-        || Boolean(candidate.detailsFetchExhausted);
+    const ds = candidate.detailsStatus;
+
+    // Promote calculating → success for terminal states where details will never arrive.
+    const detailsTerminal = ds === 'exhausted' || ds === 'unavailable' || ds === 'idle';
     if (candidate.status === 'calculating' && detailsTerminal) {
         return { ...candidate, status: 'success' as const };
     }
-    if (
-        candidate.status === 'success'
-        && candidate.detailsAvailable
-        && !candidate.statsDetailsLoaded
-        && !candidate.detailsFetchExhausted
-        && !candidate.detailsKnownUnavailable
-    ) {
+
+    // Demote success → calculating when details are available but not yet loaded.
+    if (candidate.status === 'success' && ds === 'available') {
         return { ...candidate, status: 'calculating' as const };
     }
+
     return candidate;
 };
 

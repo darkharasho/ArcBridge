@@ -84,7 +84,9 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         : isDiscord ? 'discord'
                             : hasError ? 'error'
                                 : 'success';
-    const isCancellable = Boolean(!log.detailsAvailable && !isExpanded && onCancel && (isQueued || isPending || isUploading || isRetrying));
+    const ds = log.detailsStatus || 'idle';
+    const detailsNotReady = ds !== 'available' && ds !== 'loaded';
+    const isCancellable = Boolean(detailsNotReady && !isExpanded && onCancel && (isQueued || isPending || isUploading || isRetrying));
     const canRemove = Boolean(onRemove && !isCancellable);
     const squadDisplayCount = shouldComputeDetails ? squadPlayers.length : squadPlayerCount;
     const nonSquadDisplayCount = shouldComputeDetails ? nonSquadPlayers.length : nonSquadPlayerCount;
@@ -893,19 +895,19 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                             }
                             onToggle();
                         }}
-                        disabled={Boolean(log.detailsLoading) || (!log.detailsAvailable && !isExpanded && !onCancel)}
+                        disabled={ds === 'loading' || (detailsNotReady && !isExpanded && !onCancel)}
                         className={`px-3 py-1.5 rounded-[4px] text-xs font-medium transition-all flex items-center gap-1 border ${isCancellable
                             ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20'
-                            : log.detailsLoading
+                            : ds === 'loading'
                                 ? 'bg-white/5 text-gray-500 border-white/10 cursor-not-allowed'
-                                : !log.detailsAvailable && !isExpanded && !onCancel
+                                : detailsNotReady && !isExpanded && !onCancel
                                     ? 'bg-white/5 text-gray-600 border-white/5 cursor-not-allowed opacity-50'
                                     : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white group-hover:border-white/20'
                             }`}
                     >
                         {isCancellable ? (
                             <><span>Cancel</span></>
-                        ) : log.detailsLoading ? (
+                        ) : ds === 'loading' ? (
                             <><span>Loading…</span></>
                         ) : isExpanded ? (
                             <><ChevronUp className="w-3 h-3" /><span>Hide</span></>
