@@ -65,6 +65,17 @@ export const getTargetStatTotal = (player: Player, field: 'killed' | 'downed' | 
     return total;
 };
 
+export const getPlayerOutgoingInterrupts = (player: Player): number => {
+    let total = 0;
+    const statsTargets = player.statsTargets || [];
+    for (const targetStats of statsTargets) {
+        if (targetStats && targetStats.length > 0) {
+            total += Number((targetStats[0] as any).interrupts || 0);
+        }
+    }
+    return total;
+};
+
 export const getPlayerDashboardTotals = (player: Player, method: DisruptionMethod = DEFAULT_DISRUPTION_METHOD) => ({
     downContrib: computeDownContribution(player),
     cleanses: getPlayerCleanses(player),
