@@ -1,7 +1,6 @@
 import { startTransition, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { DisruptionMethod, IMvpWeights, IStatsViewSettings } from '../../global.d';
-import { computeStatsAggregation } from '../computeStatsAggregation';
-import { IncrementalAggregator } from '../incrementalAggregation';
+import { IncrementalAggregator, computeStatsSync } from '../incrementalAggregation';
 import { DetailsCacheContext } from '../../cache/DetailsCacheContext';
 import type { DetailsCache } from '../../cache/DetailsCache';
 
@@ -83,9 +82,9 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     const [result, setResult] = useState(() => {
         if (typeof Worker !== 'undefined' && shouldUseWorker) {
             // Avoid blocking initial mount on large datasets; worker will publish the first full result.
-            return computeStatsAggregation({ logs: [], precomputedStats: undefined, mvpWeights, statsViewSettings, disruptionMethod });
+            return computeStatsSync({ logs: [], precomputedStats: undefined, mvpWeights, statsViewSettings, disruptionMethod });
         }
-        return computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod });
+        return computeStatsSync({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod });
     });
     const [computeTick, setComputeTick] = useState(0);
     const [lastComputedLogCount, setLastComputedLogCount] = useState(0);
@@ -525,7 +524,7 @@ export const useStatsAggregationWorker = ({ logs, precomputedStats, mvpWeights, 
     const resolvedResult = (workerFailed || typeof Worker === 'undefined' || !shouldUseWorker)
         ? (fallback?.result ?? (() => {
             try {
-                return computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
+                return computeStatsSync({ logs, precomputedStats, mvpWeights, statsViewSettings: aggregationStatsViewSettings, disruptionMethod });
             } catch (err) {
                 console.error('[StatsAggregation] Inline fallback failed:', err);
                 return { stats: null, skillUsageData: null };

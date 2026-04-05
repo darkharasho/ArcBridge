@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { computeStatsAggregation } from '../computeStatsAggregation';
+import { computeStatsSync } from '../incrementalAggregation';
 import type { DisruptionMethod, IMvpWeights, IStatsViewSettings } from '../../global.d';
 
 interface UseStatsAggregationProps {
@@ -12,7 +12,7 @@ interface UseStatsAggregationProps {
 
 export const useStatsAggregation = ({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }: UseStatsAggregationProps) => {
     return useMemo(
-        () => computeStatsAggregation({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }),
+        () => computeStatsSync({ logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod }),
         [logs, precomputedStats, mvpWeights, statsViewSettings, disruptionMethod]
     );
 };
