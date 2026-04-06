@@ -762,7 +762,12 @@ export class IncrementalAggregator {
         const hasMitigationTotals = (totals: DamageMitigationTotals) => Object.values(totals).some((value) => value > 0);
 
         const hydrateMitigationRow = <T extends DamageMitigationRow>(row: T): T => {
-            const stat = playerStats.get(row.account);
+            // When splitPlayersByClass is enabled, playerStats keys are "account::profession"
+            // but row.account is just the plain account name. Try the split key first.
+            let stat = playerStats.get(row.account);
+            if (!stat && this.splitPlayersByClass && row.profession) {
+                stat = playerStats.get(`${row.account}::${row.profession}`);
+            }
             if (!stat) {
                 const fallbackList = row.professionList.length > 0 ? row.professionList : (row.profession ? [row.profession] : []);
                 return { ...row, professionList: fallbackList };
