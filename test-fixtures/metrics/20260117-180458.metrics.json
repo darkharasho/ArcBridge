@@ -2,11 +2,11 @@
   "specVersion": "unknown",
   "method": "count",
   "source": "test-fixtures/boon/20260117-180458.json",
-  "generatedAt": "2026-03-15T03:07:46.785Z",
+  "generatedAt": "2026-04-06T02:02:45.656Z",
   "metrics": [
     {
       "name": "Dub Grumble",
-      "account": "VividHaven.8543",
+      "account": "HarborJet.5544",
       "profession": "Virtuoso",
       "group": 2,
       "notInSquad": false,
@@ -28,7 +28,7 @@
     },
     {
       "name": "Guardian Kamoidra",
-      "account": "DaringOak.1257",
+      "account": "UmberJet.2928",
       "profession": "Dragonhunter",
       "group": 2,
       "notInSquad": false,
@@ -50,7 +50,7 @@
     },
     {
       "name": "Ha Ha Veil Go Brrr",
-      "account": "SableDawn.4229",
+      "account": "IronHaven.2896",
       "profession": "Troubadour",
       "group": 2,
       "notInSquad": false,
@@ -72,7 +72,7 @@
     },
     {
       "name": "Siival Of The Mists",
-      "account": "PrimeLagoon.7353",
+      "account": "OakMeadow.2981",
       "profession": "Virtuoso",
       "group": 2,
       "notInSquad": false,
@@ -94,7 +94,7 @@
     },
     {
       "name": "Sir Koala X",
-      "account": "GildedFlare.6950",
+      "account": "WildBloom.7060",
       "profession": "Luminary",
       "group": 2,
       "notInSquad": false,
@@ -116,7 +116,7 @@
     },
     {
       "name": "Breaknbads",
-      "account": "LivelyLane.3504",
+      "account": "IvoryDawn.4403",
       "profession": "Spellbreaker",
       "group": 3,
       "notInSquad": false,
@@ -138,7 +138,7 @@
     },
     {
       "name": "Corsair Wag",
-      "account": "QuickLaurel.3974",
+      "account": "StormMeadow.6379",
       "profession": "Troubadour",
       "group": 3,
       "notInSquad": false,
@@ -160,7 +160,7 @@
     },
     {
       "name": "Jakarua Eywata",
-      "account": "JadeForge.1633",
+      "account": "RusticCedar.1864",
       "profession": "Druid",
       "group": 3,
       "notInSquad": false,
@@ -182,7 +182,7 @@
     },
     {
       "name": "Rate My Flesh Golem",
-      "account": "WovenSage.3694",
+      "account": "WiseBeacon.4080",
       "profession": "Reaper",
       "group": 3,
       "notInSquad": false,
@@ -204,7 +204,7 @@
     },
     {
       "name": "Sayuri Moriko",
-      "account": "StormForest.1582",
+      "account": "AmberHollow.9854",
       "profession": "Luminary",
       "group": 3,
       "notInSquad": false,
@@ -226,7 +226,7 @@
     },
     {
       "name": "Hera Twix",
-      "account": "AmberGarden.8616",
+      "account": "GildedJourney.8223",
       "profession": "Druid",
       "group": 4,
       "notInSquad": false,
@@ -248,7 +248,7 @@
     },
     {
       "name": "Kotton Kandy Randy",
-      "account": "BrightVale.7732",
+      "account": "AshenJet.4980",
       "profession": "Reaper",
       "group": 4,
       "notInSquad": false,
@@ -270,7 +270,7 @@
     },
     {
       "name": "Lady Andromeda Rose",
-      "account": "LivelyRune.3981",
+      "account": "OakSpark.3206",
       "profession": "Troubadour",
       "group": 4,
       "notInSquad": false,
@@ -292,7 +292,7 @@
     },
     {
       "name": "Necro Of Fatalis",
-      "account": "UmberMeadow.3309",
+      "account": "WovenVale.8117",
       "profession": "Reaper",
       "group": 4,
       "notInSquad": false,
@@ -314,7 +314,7 @@
     },
     {
       "name": "Protectress Kali",
-      "account": "RavenLaurel.8404",
+      "account": "WildDrift.3267",
       "profession": "Luminary",
       "group": 4,
       "notInSquad": false,
@@ -336,7 +336,7 @@
     },
     {
       "name": "Brakmariana",
-      "account": "SilverVista.9933",
+      "account": "AshenLaurel.2994",
       "profession": "Troubadour",
       "group": 5,
       "notInSquad": false,
@@ -358,7 +358,7 @@
     },
     {
       "name": "Color Of Life",
-      "account": "HiddenSage.8025",
+      "account": "BrightSummit.6125",
       "profession": "Firebrand",
       "group": 5,
       "notInSquad": false,
@@ -380,7 +380,7 @@
     },
     {
       "name": "Fibbs The Dead",
-      "account": "LunarLagoon.7629",
+      "account": "BrightRune.7739",
       "profession": "Reaper",
       "group": 5,
       "notInSquad": false,
@@ -402,7 +402,7 @@
     },
     {
       "name": "Haro Forge",
-      "account": "PrimeMeadow.3275",
+      "account": "GildedBloom.1887",
       "profession": "Amalgam",
       "group": 5,
       "notInSquad": false,
@@ -424,7 +424,7 @@
     },
     {
       "name": "Tengu Very Much",
-      "account": "QuietCedar.7723",
+      "account": "VerdantRidge.8177",
       "profession": "Druid",
       "group": 5,
       "notInSquad": false,
@@ -446,7 +446,7 @@
     },
     {
       "name": "Lenoreleii",
-      "account": "OakDrift.8648",
+      "account": "ScarletSummit.2126",
       "profession": "Amalgam",
       "group": 6,
       "notInSquad": false,
@@ -468,7 +468,7 @@
     },
     {
       "name": "Luckgivers Illusion",
-      "account": "GildedWisp.4687",
+      "account": "RusticWillow.5785",
       "profession": "Troubadour",
       "group": 6,
       "notInSquad": false,
@@ -490,7 +490,7 @@
     },
     {
       "name": "Mylania Svenson",
-      "account": "RoyalField.8359",
+      "account": "DuskyGlen.1577",
       "profession": "Luminary",
       "group": 6,
       "notInSquad": false,
@@ -512,7 +512,7 @@
     },
     {
       "name": "R O O M B A",
-      "account": "RusticEmber.1258",
+      "account": "CloudShore.5668",
       "profession": "Druid",
       "group": 6,
       "notInSquad": false,
@@ -534,7 +534,7 @@
     },
     {
       "name": "Revan Belladonna",
-      "account": "LunarRiver.1649",
+      "account": "VelvetDrift.5549",
       "profession": "Reaper",
       "group": 6,
       "notInSquad": false,
@@ -556,7 +556,7 @@
     },
     {
       "name": "Birdman Jackman",
-      "account": "StoneLeaf.9850",
+      "account": "RoyalFalcon.5152",
       "profession": "Untamed",
       "group": 7,
       "notInSquad": false,
@@ -578,7 +578,7 @@
     },
     {
       "name": "Eve Clearwater",
-      "account": "ScarletSong.8904",
+      "account": "WovenThorn.5639",
       "profession": "Evoker",
       "group": 7,
       "notInSquad": false,
@@ -600,7 +600,7 @@
     },
     {
       "name": "Mal Incendia",
-      "account": "WiseLeaf.3890",
+      "account": "FeralSpark.2569",
       "profession": "Amalgam",
       "group": 7,
       "notInSquad": false,
@@ -622,7 +622,7 @@
     },
     {
       "name": "Momma Miko",
-      "account": "RoyalJet.5879",
+      "account": "SwiftShore.8351",
       "profession": "Luminary",
       "group": 7,
       "notInSquad": false,
@@ -644,7 +644,7 @@
     },
     {
       "name": "Tricky Thorn",
-      "account": "RusticCrest.1631",
+      "account": "PlacidWillow.4120",
       "profession": "Chronomancer",
       "group": 7,
       "notInSquad": false,
@@ -666,7 +666,7 @@
     },
     {
       "name": "Mesmer Hatt",
-      "account": "NimbleHarbor.9206",
+      "account": "HiddenThorn.9126",
       "profession": "Troubadour",
       "group": 8,
       "notInSquad": false,
@@ -688,7 +688,7 @@
     },
     {
       "name": "Nim Iss",
-      "account": "AmberFalcon.9946",
+      "account": "AshenRange.6264",
       "profession": "Holosmith",
       "group": 8,
       "notInSquad": false,
@@ -710,7 +710,7 @@
     },
     {
       "name": "Radburne",
-      "account": "CalmThorn.4212",
+      "account": "DaringCanyon.5440",
       "profession": "Luminary",
       "group": 8,
       "notInSquad": false,
@@ -732,7 +732,7 @@
     },
     {
       "name": "Sunny Dispositíon",
-      "account": "EchoWave.8663",
+      "account": "BrightBeacon.9265",
       "profession": "Amalgam",
       "group": 8,
       "notInSquad": false,
@@ -754,7 +754,7 @@
     },
     {
       "name": "Tehryan",
-      "account": "UmberMesa.4702",
+      "account": "WiseHorizon.8292",
       "profession": "Evoker",
       "group": 8,
       "notInSquad": false,
