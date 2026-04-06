@@ -117,17 +117,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          if [ -f RELEASE_NOTES.md ]; then
+            gh release edit "$tag" --notes-file RELEASE_NOTES.md
+          fi
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          notes=""
-          if [ -f RELEASE_NOTES.md ]; then
-            notes="$(cat RELEASE_NOTES.md)"
-          fi
-          if [ -n "$notes" ]; then
-            gh release edit "$tag" --draft=false --notes "$notes"
-          else
-            gh release edit "$tag" --draft=false
-          fi
+          gh release edit "$tag" --draft=false
