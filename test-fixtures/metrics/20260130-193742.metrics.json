@@ -2,7 +2,7 @@
   "specVersion": "unknown",
   "method": "count",
   "source": "test-fixtures/boon/20260130-193742.json",
-  "generatedAt": "2026-03-15T03:07:47.396Z",
+  "generatedAt": "2026-04-06T02:02:48.890Z",
   "metrics": [
     {
       "name": "Shaia Atra",
@@ -87,7 +87,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 2284,
+      "downContribution": 2974,
       "squadBarrier": 0,
       "squadHealing": 4029,
       "stabGeneration": 558.0453420000001
@@ -131,7 +131,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 788,
+      "downContribution": 857,
       "squadBarrier": 165387,
       "squadHealing": 2071,
       "stabGeneration": 0
@@ -153,7 +153,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 56066,
+      "downContribution": 65235,
       "squadBarrier": 0,
       "squadHealing": 0,
       "stabGeneration": 0
@@ -175,7 +175,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 2347,
+      "downContribution": 2872,
       "squadBarrier": 41300,
       "squadHealing": 23567,
       "stabGeneration": 707.73093
@@ -373,7 +373,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 5957,
+      "downContribution": 8187,
       "squadBarrier": 11456,
       "squadHealing": 751,
       "stabGeneration": 0
@@ -593,7 +593,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 14844,
+      "downContribution": 25585,
       "squadBarrier": 0,
       "squadHealing": 0,
       "stabGeneration": 1106.561628
@@ -791,7 +791,7 @@
         "missed": 0,
         "blocked": 0
       },
-      "downContribution": 8129,
+      "downContribution": 11597,
       "squadBarrier": 0,
       "squadHealing": 897,
       "stabGeneration": 0

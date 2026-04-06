@@ -97,25 +97,32 @@ export function applySquadStabilityGeneration(
 }
 
 export function computeDownContribution(player: Player): number {
-    // Try statsTargets first (works when EI creates per-player targets)
-    let total = 0;
-    if (player.statsTargets) {
-        for (const targetStats of player.statsTargets) {
-            if (targetStats && targetStats.length > 0) {
-                total += (targetStats[0] as any).downContribution || 0;
-            }
-        }
+    // Prefer statsAll[0].downContribution — it's the authoritative total from EI.
+    // statsTargets only covers individually-tracked targets and can under-report
+    // when damage goes to aggregate/unnamed targets.
+    if (player.statsAll && player.statsAll.length > 0) {
+        const val = (player.statsAll[0] as any).downContribution;
+        if (typeof val === 'number' && val > 0) return val;
     }
-    if (total > 0) return total;
 
-    // Fallback to totalDamageDist (required when EI uses aggregate "Enemy Players" target,
-    // which zeroes out statsTargets.downContribution)
+    // Fallback to totalDamageDist (covers all targets including aggregate "Enemy Players")
+    let total = 0;
     if (player.totalDamageDist) {
         for (const targetList of player.totalDamageDist) {
             if (targetList) {
                 for (const entry of targetList) {
                     total += entry.downContribution || 0;
                 }
+            }
+        }
+    }
+    if (total > 0) return total;
+
+    // Last resort: statsTargets (may under-report for aggregate targets)
+    if (player.statsTargets) {
+        for (const targetStats of player.statsTargets) {
+            if (targetStats && targetStats.length > 0) {
+                total += (targetStats[0] as any).downContribution || 0;
             }
         }
     }

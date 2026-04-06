@@ -2,11 +2,11 @@
   "specVersion": "unknown",
   "method": "count",
   "source": "test-fixtures/boon/20260117-175120.json",
-  "generatedAt": "2026-03-15T03:07:46.596Z",
+  "generatedAt": "2026-04-06T02:02:44.296Z",
   "metrics": [
     {
       "name": "Haro Forge",
-      "account": "PrimeMeadow.3275",
+      "account": "GildedBloom.1887",
       "profession": "Amalgam",
       "group": 5,
       "notInSquad": false,
@@ -28,7 +28,7 @@
     },
     {
       "name": "Eve Clearwater",
-      "account": "ScarletSong.8904",
+      "account": "WovenThorn.5639",
       "profession": "Evoker",
       "group": 7,
       "notInSquad": false,
@@ -50,7 +50,7 @@
     },
     {
       "name": "Mesmer Hatt",
-      "account": "NimbleHarbor.9206",
+      "account": "HiddenThorn.9126",
       "profession": "Troubadour",
       "group": 8,
       "notInSquad": false,
