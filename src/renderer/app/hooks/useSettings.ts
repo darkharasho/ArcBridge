@@ -19,6 +19,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
     const [mvpWeights, setMvpWeights] = useState<IMvpWeights>(DEFAULT_MVP_WEIGHTS);
     const [statsViewSettings, setStatsViewSettings] = useState<IStatsViewSettings>(DEFAULT_STATS_VIEW_SETTINGS);
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
+    const [allowLocalJson, setAllowLocalJson] = useState(false);
     const [colorPalette, setColorPalette] = useState<ColorPalette>('electric-blue');
     const [glassSurfaces, setGlassSurfaces] = useState(DEFAULT_GLASS_SURFACES);
     const [particlesEnabled, setParticlesEnabled] = useState(DEFAULT_PARTICLES_ENABLED);
@@ -82,6 +83,9 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
             if (settings.disruptionMethod) {
                 setDisruptionMethod(settings.disruptionMethod);
             }
+            if (typeof settings.allowLocalJson === 'boolean') {
+                setAllowLocalJson(settings.allowLocalJson);
+            }
             if (typeof settings.autoUpdateSupported === 'boolean') {
                 onAutoUpdateSettingsRef.current?.(settings.autoUpdateSupported, settings.autoUpdateDisabledReason || null);
             }
@@ -125,6 +129,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         mvpWeights, setMvpWeights,
         statsViewSettings, setStatsViewSettings,
         disruptionMethod, setDisruptionMethod,
+        allowLocalJson, setAllowLocalJson,
         colorPalette, setColorPalette,
         glassSurfaces, setGlassSurfaces,
         particlesEnabled, setParticlesEnabled,
@@ -139,7 +144,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         shouldOpenWhatsNew,
     }), [
         logDirectory, notificationType, embedStatSettings, mvpWeights,
-        statsViewSettings, disruptionMethod, colorPalette, glassSurfaces, particlesEnabled,
+        statsViewSettings, disruptionMethod, allowLocalJson, colorPalette, glassSurfaces, particlesEnabled,
         webhooks, selectedWebhookId, handleUpdateSettings, handleSelectDirectory,
         settingsLoaded, whatsNewVersion, whatsNewNotes, walkthroughSeen,
         shouldOpenWhatsNew,

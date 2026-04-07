@@ -58,6 +58,7 @@ function App() {
         mvpWeights, setMvpWeights,
         statsViewSettings, setStatsViewSettings,
         disruptionMethod, setDisruptionMethod,
+        allowLocalJson,
         colorPalette, setColorPalette,
         glassSurfaces, setGlassSurfaces,
         particlesEnabled, setParticlesEnabled,
@@ -156,7 +157,8 @@ function App() {
         setLogs,
         setBulkUploadMode,
         bulkUploadExpectedRef,
-        bulkUploadCompletedRef
+        bulkUploadCompletedRef,
+        allowLocalJson,
     });
 
     // Persistence removed
@@ -724,7 +726,7 @@ function App() {
                 e.preventDefault();
                 e.stopPropagation();
                 setIsDragging(false);
-                const droppedLogs = extractDroppedLogFiles(e.dataTransfer);
+                const droppedLogs = extractDroppedLogFiles(e.dataTransfer, { allowJson: allowLocalJson });
                 const validFiles = droppedLogs.map((entry) => entry.filePath);
                 const optimisticLogs: ILogData[] = droppedLogs.map(({ filePath, fileName }) => ({
                     id: fileName,
