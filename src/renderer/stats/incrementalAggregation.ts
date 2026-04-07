@@ -730,7 +730,12 @@ export class IncrementalAggregator {
             key: string,
         ): typeof rawLeaderboard => {
             return rawLeaderboard.map((entry) => {
-                const stat = playerStats.get(entry.account);
+                // When splitPlayersByClass is enabled, playerStats keys are "account::profession"
+                // but entry.account is the plain account name. Try the split key first.
+                let stat = playerStats.get(entry.account);
+                if (!stat && this.splitPlayersByClass && entry.profession) {
+                    stat = playerStats.get(`${entry.account}::${entry.profession}`);
+                }
                 const value = stat ? getVariantVal(stat, key) : 0;
                 return { ...entry, value };
             });
