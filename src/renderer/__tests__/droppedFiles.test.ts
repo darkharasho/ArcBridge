@@ -53,3 +53,42 @@ describe('extractDroppedLogFiles', () => {
         }
     });
 });
+
+describe('extractDroppedLogFiles with allowJson', () => {
+    it('accepts .json files when allowJson is true', () => {
+        const transfer = {
+            files: [
+                { name: 'fight.json', path: '/logs/fight.json' },
+                { name: 'FightA.zevtc', path: '/logs/FightA.zevtc' }
+            ]
+        };
+
+        expect(extractDroppedLogFiles(transfer, { allowJson: true })).toEqual([
+            { filePath: '/logs/fight.json', fileName: 'fight.json' },
+            { filePath: '/logs/FightA.zevtc', fileName: 'FightA.zevtc' }
+        ]);
+    });
+
+    it('rejects .json files when allowJson is false', () => {
+        const transfer = {
+            files: [
+                { name: 'fight.json', path: '/logs/fight.json' },
+                { name: 'FightA.zevtc', path: '/logs/FightA.zevtc' }
+            ]
+        };
+
+        expect(extractDroppedLogFiles(transfer, { allowJson: false })).toEqual([
+            { filePath: '/logs/FightA.zevtc', fileName: 'FightA.zevtc' }
+        ]);
+    });
+
+    it('rejects .json files by default (no options)', () => {
+        const transfer = {
+            files: [
+                { name: 'fight.json', path: '/logs/fight.json' }
+            ]
+        };
+
+        expect(extractDroppedLogFiles(transfer)).toEqual([]);
+    });
+});

@@ -13,10 +13,16 @@ type TransferLike = {
     items?: ArrayLike<DroppedItemLike> | null;
 };
 
-const isSupportedLogFile = (candidate: DroppedFileLike | null | undefined) => {
+interface DropOptions {
+    allowJson?: boolean;
+}
+
+const isSupportedLogFile = (candidate: DroppedFileLike | null | undefined, options?: DropOptions) => {
     if (!candidate) return false;
     const name = String(candidate.name || candidate.path || '').toLowerCase();
-    return name.endsWith('.evtc') || name.endsWith('.zevtc');
+    if (name.endsWith('.evtc') || name.endsWith('.zevtc')) return true;
+    if (options?.allowJson && name.endsWith('.json')) return true;
+    return false;
 };
 
 const resolveDroppedFilePath = (candidate: DroppedFileLike | null | undefined) => {
@@ -33,9 +39,10 @@ const resolveDroppedFilePath = (candidate: DroppedFileLike | null | undefined) =
 const pushIfValid = (
     bucket: Array<{ filePath: string; fileName: string }>,
     seenPaths: Set<string>,
-    candidate: DroppedFileLike | null | undefined
+    candidate: DroppedFileLike | null | undefined,
+    options?: DropOptions
 ) => {
-    if (!candidate || !isSupportedLogFile(candidate)) return;
+    if (!candidate || !isSupportedLogFile(candidate, options)) return;
     const filePath = resolveDroppedFilePath(candidate);
     if (!filePath || seenPaths.has(filePath)) return;
     seenPaths.add(filePath);
@@ -43,7 +50,7 @@ const pushIfValid = (
     bucket.push({ filePath, fileName });
 };
 
-export const extractDroppedLogFiles = (transfer: TransferLike | null | undefined) => {
+export const extractDroppedLogFiles = (transfer: TransferLike | null | undefined, options?: DropOptions) => {
     const resolved: Array<{ filePath: string; fileName: string }> = [];
     const seenPaths = new Set<string>();
 
@@ -51,14 +58,14 @@ export const extractDroppedLogFiles = (transfer: TransferLike | null | undefined
     if (items) {
         for (const item of Array.from(items)) {
             if (!item || item.kind !== 'file' || typeof item.getAsFile !== 'function') continue;
-            pushIfValid(resolved, seenPaths, item.getAsFile());
+            pushIfValid(resolved, seenPaths, item.getAsFile(), options);
         }
     }
 
     const files = transfer?.files;
     if (files) {
         for (const file of Array.from(files)) {
-            pushIfValid(resolved, seenPaths, file);
+            pushIfValid(resolved, seenPaths, file, options);
         }
     }
 
