@@ -17,15 +17,16 @@ export function registerFileHandlers(opts: FileHandlerOptions) {
         return null;
     });
 
-    ipcMain.handle('select-files', async (_event, payload?: { defaultPath?: string }) => {
+    ipcMain.handle('select-files', async (_event, payload?: { defaultPath?: string; allowJson?: boolean }) => {
         const win = getWindow();
         if (!win) return null;
+        const filters = payload?.allowJson
+            ? [{ name: 'Arc Logs & EI JSON', extensions: ['evtc', 'zevtc', 'json'] }]
+            : [{ name: 'Arc Logs', extensions: ['evtc', 'zevtc'] }];
         const result = await dialog.showOpenDialog(win, {
             properties: ['openFile', 'multiSelections'],
             defaultPath: payload?.defaultPath,
-            filters: [
-                { name: 'Arc Logs', extensions: ['evtc', 'zevtc'] }
-            ]
+            filters
         });
         if (!result.canceled && result.filePaths.length > 0) return result.filePaths;
         return null;
@@ -44,14 +45,20 @@ export function registerFileHandlers(opts: FileHandlerOptions) {
         return null;
     });
 
-    ipcMain.handle('list-log-files', async (_event, payload?: { dir?: string }) => {
+    ipcMain.handle('list-log-files', async (_event, payload?: { dir?: string; allowJson?: boolean }) => {
         try {
             const dir = payload?.dir;
             if (!dir) return { success: false, error: 'Missing directory.' };
             if (!fs.existsSync(dir)) return { success: false, error: 'Directory not found.' };
             const entries = await fs.promises.readdir(dir, { withFileTypes: true });
             const files = await Promise.all(entries
-                .filter((entry) => entry.isFile() && (entry.name.endsWith('.evtc') || entry.name.endsWith('.zevtc')))
+                .filter((entry) => {
+                    if (!entry.isFile()) return false;
+                    const name = entry.name.toLowerCase();
+                    if (name.endsWith('.evtc') || name.endsWith('.zevtc')) return true;
+                    if (payload?.allowJson && name.endsWith('.json')) return true;
+                    return false;
+                })
                 .map(async (entry) => {
                     const fullPath = path.join(dir, entry.name);
                     const stat = await fs.promises.stat(fullPath);

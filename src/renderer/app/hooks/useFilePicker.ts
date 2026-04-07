@@ -13,6 +13,7 @@ interface UseFilePickerOptions {
     setBulkUploadMode: Dispatch<SetStateAction<boolean>>;
     bulkUploadExpectedRef: MutableRefObject<number | null>;
     bulkUploadCompletedRef: MutableRefObject<number>;
+    allowLocalJson?: boolean;
 }
 
 export function useFilePicker({
@@ -20,7 +21,8 @@ export function useFilePicker({
     setLogs,
     setBulkUploadMode,
     bulkUploadExpectedRef,
-    bulkUploadCompletedRef
+    bulkUploadCompletedRef,
+    allowLocalJson
 }: UseFilePickerOptions) {
     const [filePickerOpen, setFilePickerOpen] = useState(false);
     const [filePickerAvailable, setFilePickerAvailable] = useState<IFilePickerEntry[]>([]);
@@ -69,7 +71,7 @@ export function useFilePicker({
         setFilePickerLoading(true);
         setFilePickerError(null);
         try {
-            const result = await window.electronAPI.listLogFiles({ dir });
+            const result = await window.electronAPI.listLogFiles({ dir, allowJson: allowLocalJson });
             if (result?.success) {
                 const files = (result.files || []).slice().sort((a, b) => {
                     const aTime = Number.isFinite(a.mtimeMs) ? a.mtimeMs : 0;
