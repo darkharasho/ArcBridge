@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type ReactNode, createElement } from 'react';
+import { useState, useCallback, useEffect, useId, type ReactNode, createElement } from 'react';
 import { ParticleEmitter } from './ParticleEmitter';
 import type { ParticlePreset } from './particlePresets';
 
@@ -6,6 +6,7 @@ let activeEmitterCount = 0;
 const MAX_ACTIVE_EMITTERS = 5;
 
 export function useParticleEffect() {
+    const prefix = useId();
     const [emitterKey, setEmitterKey] = useState(0);
     const [activePreset, setActivePreset] = useState<ParticlePreset | null>(null);
 
@@ -31,7 +32,7 @@ export function useParticleEffect() {
 
     const emitterNode: ReactNode = activePreset
         ? createElement(ParticleEmitter, {
-            key: emitterKey,
+            key: `${prefix}-${emitterKey}`,
             ...activePreset,
             onComplete: handleComplete,
         })
