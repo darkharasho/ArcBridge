@@ -165,7 +165,8 @@ export function registerSettingsHandlers(opts: SettingsHandlerOptions) {
             githubToken: store.get('githubToken', null),
             githubLogoPath: store.get('githubLogoPath', null),
             githubFavoriteRepos: store.get('githubFavoriteRepos', []),
-            walkthroughSeen: store.get('walkthroughSeen', false)
+            walkthroughSeen: store.get('walkthroughSeen', false),
+            allowLocalJson: store.get('allowLocalJson', false)
         };
     });
 
@@ -217,7 +218,8 @@ export function registerSettingsHandlers(opts: SettingsHandlerOptions) {
             githubToken: store.get('githubToken', null),
             githubLogoPath: store.get('githubLogoPath', null),
             githubFavoriteRepos: store.get('githubFavoriteRepos', []),
-            walkthroughSeen: store.get('walkthroughSeen', false)
+            walkthroughSeen: store.get('walkthroughSeen', false),
+            allowLocalJson: store.get('allowLocalJson', false)
         };
 
         try {

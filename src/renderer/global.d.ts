@@ -272,6 +272,7 @@ export interface IElectronAPI {
         githubLogoPath?: string | null;
         githubFavoriteRepos?: string[] | null;
         walkthroughSeen?: boolean;
+        allowLocalJson?: boolean;
     }>;
     clearDpsReportCache: () => Promise<{ success: boolean; clearedEntries?: number; error?: string }>;
     onClearDpsReportCacheProgress: (callback: (data: { stage?: string; message?: string; progress?: number; current?: number; total?: number }) => void) => () => void;
@@ -306,6 +307,7 @@ export interface IElectronAPI {
         githubLogoPath?: string | null;
         githubFavoriteRepos?: string[] | null;
         walkthroughSeen?: boolean;
+        allowLocalJson?: boolean;
     }) => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     openMobilePreview: (url: string) => Promise<{ success: boolean, error?: string }>;
