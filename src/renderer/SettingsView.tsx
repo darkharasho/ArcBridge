@@ -194,6 +194,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [colorPalette, setColorPalette] = useState<ColorPalette>(colorPaletteProp ?? DEFAULT_PALETTE_ID);
     const [glassSurfaces, setGlassSurfaces] = useState(glassSurfacesProp ?? false);
     const [particlesEnabled, setParticlesEnabled] = useState(particlesEnabledProp ?? true);
+    const [allowLocalJson, setAllowLocalJson] = useState(false);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -483,6 +484,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         }
         if (typeof settings.particlesEnabled === 'boolean') {
             setParticlesEnabled(settings.particlesEnabled);
+        }
+        if (typeof settings.allowLocalJson === 'boolean') {
+            setAllowLocalJson(settings.allowLocalJson);
         }
         if (settings.disruptionMethod) {
             setDisruptionMethod(settings.disruptionMethod);
@@ -794,7 +798,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
             githubRepoOwner: githubRepoOwner || null,
             githubToken: githubToken || null,
             githubLogoPath: githubLogoPath || null,
-            githubFavoriteRepos
+            githubFavoriteRepos,
+            allowLocalJson
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
@@ -2652,6 +2657,16 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         <p className="text-sm text-gray-400">
                                             Troubleshooting and one-off maintenance actions.
                                         </p>
+                                        <Toggle
+                                            enabled={allowLocalJson}
+                                            onChange={(value) => {
+                                                setAllowLocalJson(value);
+                                                window.electronAPI?.saveSettings?.({ allowLocalJson: value });
+                                            }}
+                                            label="Allow local EI JSON import"
+                                            description="Accept .json files via drag-and-drop and Add Logs, bypassing dps.report upload."
+                                        />
+                                        <div className="border-b border-white/5" />
                                         <button
                                             type="button"
                                             onClick={handleEnsureGithubTemplate}
