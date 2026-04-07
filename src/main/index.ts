@@ -411,6 +411,65 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
     }
     activeUploads.add(filePath);
     console.log(`[Main] processLogFile start: ${filePath}`);
+
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.json') {
+        // Local EI JSON import — skip dps.report entirely
+        win?.webContents.send('upload-status', { id: fileId, filePath, status: 'calculating' });
+        try {
+            const raw = await fs.promises.readFile(filePath, 'utf-8');
+            let jsonDetails = JSON.parse(raw);
+
+            if (jsonDetails && !jsonDetails.error) {
+                jsonDetails = attachConditionMetrics(jsonDetails);
+            }
+
+            const hasUsableDetails = Boolean(jsonDetails && !jsonDetails.error && hasUsableFightDetails(jsonDetails));
+            const prunedDetails = hasUsableDetails ? pruneDetailsForStats(jsonDetails) : null;
+            jsonDetails = null; // Release full JSON for GC
+
+            const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
+            const dashboardSummary = prunedDetails ? buildDashboardSummaryFromDetails(prunedDetails) : undefined;
+
+            if (prunedDetails) {
+                setBulkLogDetails(filePath, prunedDetails);
+                void updateGlobalManifest(prunedDetails, filePath);
+            }
+            if (prunedDetails && win?.webContents && !bulkUploadMode) {
+                win.webContents.send('details-prewarm', {
+                    logId: fileId,
+                    filePath,
+                    details: prunedDetails,
+                });
+            }
+
+            win?.webContents.send('upload-complete', {
+                id: fileId,
+                permalink: '',
+                filePath,
+                fightName: prunedDetails?.fightName || fileId,
+                encounterDuration: prunedDetails?.encounterDuration,
+                uploadTime: prunedDetails?.uploadTime || Date.now() / 1000,
+                status: hasUsableDetails ? 'calculating' : 'success',
+                detailsStatus: hasUsableDetails ? 'available' as const : 'idle' as const,
+                playerCount,
+                dashboardSummary
+            });
+            console.log(`[Main] Local JSON import complete: ${filePath} players=${playerCount ?? 'n/a'}`);
+        } catch (jsonError: any) {
+            console.error('[Main] Local JSON import failed:', jsonError?.message || jsonError);
+            win?.webContents.send('upload-complete', {
+                id: fileId,
+                filePath,
+                status: 'error',
+                error: jsonError?.message || 'Failed to read local JSON file'
+            });
+        } finally {
+            activeUploads.delete(filePath);
+        }
+        return;
+    }
+
     if (options?.retry) {
         markUploadRetrying(filePath);
         // Keep the visible chip flow consistent with first-time uploads.
