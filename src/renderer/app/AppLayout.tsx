@@ -87,7 +87,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
         walkthroughOpen,
         handleWalkthroughClose,
         handleWalkthroughLearnMore,
-        isBulkUploadActive
+        isBulkUploadActive,
+        setAllowLocalJson,
     } = ctx;
 
     const [activeNavView, setActiveNavView] = useState(view);
@@ -371,6 +372,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                             onColorPaletteSaved={setColorPalette}
                             onGlassSurfacesSaved={setGlassSurfaces}
                             onParticlesEnabledSaved={setParticlesEnabled}
+                            onAllowLocalJsonSaved={setAllowLocalJson}
                             particlesEnabled={particlesEnabled}
                             developerSettingsTrigger={developerSettingsTrigger}
                             helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}

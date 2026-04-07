@@ -58,7 +58,7 @@ function App() {
         mvpWeights, setMvpWeights,
         statsViewSettings, setStatsViewSettings,
         disruptionMethod, setDisruptionMethod,
-        allowLocalJson,
+        allowLocalJson, setAllowLocalJson,
         colorPalette, setColorPalette,
         glassSurfaces, setGlassSurfaces,
         particlesEnabled, setParticlesEnabled,
@@ -421,7 +421,7 @@ function App() {
             return (status === 'success' || status === 'calculating' || status === 'discord') && Boolean(log.permalink);
         });
         if (!hasPendingDetailsHydration) return;
-        scheduleDetailsHydration();
+        scheduleDetailsHydration(true);
     }, [bulkUploadMode, logs]);
 
     useEffect(() => {
@@ -924,7 +924,7 @@ function App() {
         ...filePickerState, logDirectory
     }), [filePickerState, logDirectory]);
     const appLayoutCtx = useMemo(() => ({
-        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, particlesEnabled, setParticlesEnabled, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
+        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, particlesEnabled, setParticlesEnabled, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setAllowLocalJson, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
     }), [
         shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded,
         updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason,
