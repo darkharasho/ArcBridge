@@ -100,6 +100,7 @@ interface SettingsViewProps {
     onColorPaletteSaved?: (palette: ColorPalette) => void;
     onGlassSurfacesSaved?: (glass: boolean) => void;
     onParticlesEnabledSaved?: (enabled: boolean) => void;
+    onAllowLocalJsonSaved?: (enabled: boolean) => void;
     colorPalette?: ColorPalette;
     glassSurfaces?: boolean;
     particlesEnabled?: boolean;
@@ -182,7 +183,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action, secti
     );
 }
 
-export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
+export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, onAllowLocalJsonSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
 
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
@@ -808,6 +809,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         onColorPaletteSaved?.(colorPalette);
         onGlassSurfacesSaved?.(glassSurfaces);
         onParticlesEnabledSaved?.(particlesEnabled);
+        onAllowLocalJsonSaved?.(allowLocalJson);
 
         setTimeout(() => {
             setIsSaving(false);
@@ -2661,6 +2663,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                             enabled={allowLocalJson}
                                             onChange={(value) => {
                                                 setAllowLocalJson(value);
+                                                onAllowLocalJsonSaved?.(value);
                                                 window.electronAPI?.saveSettings?.({ allowLocalJson: value });
                                             }}
                                             label="Allow local EI JSON import"
