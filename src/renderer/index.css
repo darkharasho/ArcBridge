@@ -821,7 +821,13 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
     position: sticky;
     top: 0;
     z-index: 3;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+    transition: box-shadow var(--duration-normal) ease-out;
+}
+
+/* Enhanced shadow when content is scrolled beneath the sticky header */
+.dense-table__scroll--scrolled .dense-table__head {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .dense-table__head:not(:last-child)::after {
@@ -1185,9 +1191,29 @@ body.web-report #top-players .mvp-gold-icon-badge {
   animation: tooltip-in var(--duration-fast) var(--ease-out-expo) both;
 }
 
+/* ── Glass mode transition smoothing ── */
+
+body.glass-surfaces .stats-view,
+body.glass-surfaces .app-shell,
+body.glass-surfaces .stats-group-container,
+body.glass-surfaces .app-modal-card,
+body.glass-surfaces .app-dropdown,
+body.glass-surfaces .stats-dashboard-nav-panel {
+  transition: background-color var(--duration-slow) var(--ease-out-expo),
+              border-color var(--duration-slow) var(--ease-out-expo);
+}
+
 /* ── Reduced motion / bulk upload ── */
 
 @media (prefers-reduced-motion: reduce) {
+  /* Kill all animations and transitions globally */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .stats-particle-spinner__ring,
   .stats-particle-spinner__orbit,
   .stats-particle-spinner__particle {
