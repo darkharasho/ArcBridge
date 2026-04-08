@@ -16,6 +16,7 @@ import { FilePickerModal } from './FilePickerModal';
 import { WebUploadOverlay } from './WebUploadOverlay';
 import { FightReportHistoryView } from '../FightReportHistoryView';
 import { useParticleEffect, PRESETS } from '../particles';
+import { TRANSITION } from '../motion';
 
 
 export function AppLayout({ ctx }: { ctx: any }) {
@@ -195,7 +196,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                         key={id}
                         title={label}
                         onClick={() => handleNavViewChange(id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[4px] transition-colors ${
+                        className={`relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[4px] transition-colors ${
                             activeNavView === id
                                 ? 'text-[color:var(--brand-primary)]'
                                 : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
@@ -204,6 +205,14 @@ export function AppLayout({ ctx }: { ctx: any }) {
                     >
                         <Icon className="w-3.5 h-3.5" />
                         {label}
+                        {activeNavView === id && (
+                            <motion.div
+                                layoutId="activeNavIndicator"
+                                className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full"
+                                style={{ background: 'var(--brand-primary)' }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            />
+                        )}
                     </button>
                 ))}
                 <div className="ml-auto flex items-center gap-2">
@@ -321,68 +330,98 @@ export function AppLayout({ ctx }: { ctx: any }) {
                     {tabEmitter}
                 </div>
 
-                {view === 'dashboard' && (
-                    <div className="flex flex-1 min-h-0 relative flex-col">
-                        <div className="dashboard-view dashboard-modern flex flex-1 min-h-0 overflow-hidden matte-dashboard-shell">
-                            <div className="dashboard-rail flex flex-col gap-3 overflow-y-auto p-3 matte-panel-shell matte-rail-shell" style={{ width: '300px', flexShrink: 0, background: 'var(--bg-elevated)', borderRight: '1px solid var(--border-subtle)' }}>
-                                {configurationPanel}
+                <AnimatePresence mode="wait">
+                    {view === 'dashboard' && (
+                        <motion.div
+                            key="dashboard"
+                            className="flex flex-1 min-h-0 relative flex-col"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={TRANSITION.page}
+                        >
+                            <div className="dashboard-view dashboard-modern flex flex-1 min-h-0 overflow-hidden matte-dashboard-shell">
+                                <div className="dashboard-rail flex flex-col gap-3 overflow-y-auto p-3 matte-panel-shell matte-rail-shell" style={{ width: '300px', flexShrink: 0, background: 'var(--bg-elevated)', borderRight: '1px solid var(--border-subtle)' }}>
+                                    {configurationPanel}
+                                </div>
+                                <div className="flex-1 min-h-0 overflow-y-auto p-3 matte-activity-shell">
+                                    {activityPanel}
+                                </div>
                             </div>
-                            <div className="flex-1 min-h-0 overflow-y-auto p-3 matte-activity-shell">
-                                {activityPanel}
+                        </motion.div>
+                    )}
+                    {view === 'stats' && (
+                        <motion.div
+                            key="stats"
+                            className="flex flex-1 min-h-0 relative"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={TRANSITION.page}
+                        >
+                            <div className="flex-1 min-h-0 flex gap-3">
+                                <StatsNavSidebar />
+                                <div className="flex-1 min-h-0 flex flex-col">
+                                    <StatsErrorBoundary>
+                                        <StatsView
+                                            logs={logsForStats}
+                                            onBack={stableOnBack}
+                                            mvpWeights={mvpWeights}
+                                            disruptionMethod={disruptionMethod}
+                                            statsViewSettings={statsViewSettings}
+                                            aggregationResult={stableAggregationResult}
+                                            statsDataProgress={statsDataProgress}
+                                            onStatsViewSettingsChange={stableOnStatsViewSettingsChange}
+                                            webUploadState={webUploadState}
+                                            onWebUpload={handleWebUpload}
+                                        />
+                                    </StatsErrorBoundary>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                )}
-                {view === 'stats' && (
-                    <div className="flex flex-1 min-h-0 relative">
-                        <div className="flex-1 min-h-0 flex gap-3">
-                            <StatsNavSidebar />
-                            <div className="flex-1 min-h-0 flex flex-col">
-                                <StatsErrorBoundary>
-                                    <StatsView
-                                        logs={logsForStats}
-                                        onBack={stableOnBack}
-                                        mvpWeights={mvpWeights}
-                                        disruptionMethod={disruptionMethod}
-                                        statsViewSettings={statsViewSettings}
-                                        aggregationResult={stableAggregationResult}
-                                        statsDataProgress={statsDataProgress}
-                                        onStatsViewSettingsChange={stableOnStatsViewSettingsChange}
-                                        webUploadState={webUploadState}
-                                        onWebUpload={handleWebUpload}
-                                    />
-                                </StatsErrorBoundary>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {view === 'history' && (
-                    <div className="flex flex-1 min-h-0 relative flex-col">
-                        <FightReportHistoryView />
-                    </div>
-                )}
-                {view === 'settings' && (
-                    <div className="flex flex-1 min-h-0 relative flex-col">
-                        <SettingsView
-                            onBack={() => setView('dashboard')}
-                            onEmbedStatSettingsSaved={setEmbedStatSettings}
-                            onMvpWeightsSaved={stableSetMvpWeights}
-                            onStatsViewSettingsSaved={stableSetStatsViewSettings}
-                            onDisruptionMethodSaved={stableSetDisruptionMethod}
-                            onColorPaletteSaved={setColorPalette}
-                            onGlassSurfacesSaved={setGlassSurfaces}
-                            onParticlesEnabledSaved={setParticlesEnabled}
-                            onAllowLocalJsonSaved={setAllowLocalJson}
-                            particlesEnabled={particlesEnabled}
-                            developerSettingsTrigger={developerSettingsTrigger}
-                            helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
-                            onHelpUpdatesFocusConsumed={handleHelpUpdatesFocusConsumed}
-                            onOpenWalkthrough={() => setWalkthroughOpen(true)}
-                            onOpenWhatsNew={() => setWhatsNewOpen(true)}
-                            isBulkUploadActive={isBulkUploadActive}
-                        />
-                    </div>
-                )}
+                        </motion.div>
+                    )}
+                    {view === 'history' && (
+                        <motion.div
+                            key="history"
+                            className="flex flex-1 min-h-0 relative flex-col"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={TRANSITION.page}
+                        >
+                            <FightReportHistoryView />
+                        </motion.div>
+                    )}
+                    {view === 'settings' && (
+                        <motion.div
+                            key="settings"
+                            className="flex flex-1 min-h-0 relative flex-col"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={TRANSITION.page}
+                        >
+                            <SettingsView
+                                onBack={() => setView('dashboard')}
+                                onEmbedStatSettingsSaved={setEmbedStatSettings}
+                                onMvpWeightsSaved={stableSetMvpWeights}
+                                onStatsViewSettingsSaved={stableSetStatsViewSettings}
+                                onDisruptionMethodSaved={stableSetDisruptionMethod}
+                                onColorPaletteSaved={setColorPalette}
+                                onGlassSurfacesSaved={setGlassSurfaces}
+                                onParticlesEnabledSaved={setParticlesEnabled}
+                                onAllowLocalJsonSaved={setAllowLocalJson}
+                                particlesEnabled={particlesEnabled}
+                                developerSettingsTrigger={developerSettingsTrigger}
+                                helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
+                                onHelpUpdatesFocusConsumed={handleHelpUpdatesFocusConsumed}
+                                onOpenWalkthrough={() => setWalkthroughOpen(true)}
+                                onOpenWhatsNew={() => setWhatsNewOpen(true)}
+                                isBulkUploadActive={isBulkUploadActive}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             <FilePickerModal ctx={filePickerCtx} isBulkUploadActive={isBulkUploadActive} />
