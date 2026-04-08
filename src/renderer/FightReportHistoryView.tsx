@@ -1,6 +1,7 @@
 import { ChevronDown, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ParticleHover } from './particles';
 import type { ReportIndexEntry, ReportPayload } from '../shared/reportTypes';
 import { normalizeReportPayload } from '../shared/reportNormalization';
 import { StatsView } from './StatsView';
@@ -634,10 +635,12 @@ export function FightReportHistoryView() {
                                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                                     {selectedForDelete.size} report{selectedForDelete.size === 1 ? '' : 's'} selected
                                 </span>
-                                <button type="button" onClick={handleDeleteSelected} disabled={deleteLoading}
-                                    className="px-4 py-2 rounded-[4px] text-sm font-medium bg-red-600 hover:bg-red-700 text-white disabled:opacity-50">
-                                    {deleteLoading ? 'Deleting...' : 'Delete Selected'}
-                                </button>
+                                <ParticleHover className="rounded-[4px]" color="#ef4444">
+                                    <button type="button" onClick={handleDeleteSelected} disabled={deleteLoading}
+                                        className="px-4 py-2 rounded-[4px] text-sm font-medium bg-red-600 hover:bg-red-700 text-white disabled:opacity-50">
+                                        {deleteLoading ? 'Deleting...' : 'Delete Selected'}
+                                    </button>
+                                </ParticleHover>
                             </div>
                         </motion.div>
                     )}

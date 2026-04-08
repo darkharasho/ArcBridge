@@ -18,7 +18,8 @@ let nextId = 0;
  * Wraps children and emits slow ambient particles outward while hovered.
  * Particles spawn continuously at a low rate and drift outward, fading.
  */
-export function ParticleHover({ children, className, style, disabled, ...rest }: React.HTMLAttributes<HTMLDivElement> & { disabled?: boolean }) {
+export function ParticleHover({ children, className, style, disabled, color, ...rest }: React.HTMLAttributes<HTMLDivElement> & { disabled?: boolean; color?: string }) {
+    const particleColor = color || 'var(--brand-primary)';
     const [hovering, setHovering] = useState(false);
     const [dots, setDots] = useState<Dot[]>([]);
     const intervalRef = useRef<number | null>(null);
@@ -113,9 +114,9 @@ export function ParticleHover({ children, className, style, disabled, ...rest }:
                                 width: `${dot.size}px`,
                                 height: `${dot.size}px`,
                                 borderRadius: '20%',
-                                background: 'var(--brand-primary)',
+                                background: particleColor,
                                 opacity: 0.7,
-                                boxShadow: `0 0 ${Math.round(dot.size * 1.5)}px color-mix(in srgb, var(--brand-primary) 40%, transparent)`,
+                                boxShadow: `0 0 ${Math.round(dot.size * 1.5)}px color-mix(in srgb, ${particleColor} 40%, transparent)`,
                                 animation: `particle-fly ${dot.duration}ms ease-out forwards`,
                                 '--particle-end-transform': `translate(${tx}px, ${ty}px) scale(0.3)`,
                             } as React.CSSProperties}
