@@ -11,6 +11,7 @@ import { HowToModal } from './HowToModal';
 import { useStatsStore } from './stats/statsStore';
 import { getProfessionColor } from '../shared/professionUtils';
 import { ProofOfWorkModal } from './ui/ProofOfWorkModal';
+import { ParticleHover } from './particles';
 
 // Pure helpers — defined outside the component so they are never recreated on re-render.
 // Exported so they can be unit-tested independently.
@@ -2884,13 +2885,15 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     >
                                         Refresh
                                     </button>
-                                    <button
-                                        onClick={handleDeleteSelectedReports}
-                                        disabled={githubReportsSelected.size === 0 || githubReportsDeleting}
-                                        className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-red-500/20 text-red-200 border-red-500/40 disabled:opacity-50"
-                                    >
-                                        {githubReportsDeleting ? 'Deleting...' : `Delete (${githubReportsSelected.size})`}
-                                    </button>
+                                    <ParticleHover className="rounded-full" disabled={!particlesEnabled} color="#ef4444">
+                                        <button
+                                            onClick={handleDeleteSelectedReports}
+                                            disabled={githubReportsSelected.size === 0 || githubReportsDeleting}
+                                            className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-red-500/20 text-red-200 border-red-500/40 disabled:opacity-50"
+                                        >
+                                            {githubReportsDeleting ? 'Deleting...' : `Delete (${githubReportsSelected.size})`}
+                                        </button>
+                                    </ParticleHover>
                                 </div>
                             </div>
 

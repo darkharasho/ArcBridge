@@ -775,15 +775,17 @@ function App() {
                             Add Logs
                         </button>
                     </ParticleHover>
-                    <button
-                        onClick={clearLogsFromActivity}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] font-medium border transition-colors"
-                        style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171' }}
-                        title="Clear all logs"
-                    >
-                        <Trash2 className="w-3 h-3" />
-                        Clear Logs
-                    </button>
+                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#f87171">
+                        <button
+                            onClick={clearLogsFromActivity}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] font-medium border transition-colors"
+                            style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171' }}
+                            title="Clear all logs"
+                        >
+                            <Trash2 className="w-3 h-3" />
+                            Clear Logs
+                        </button>
+                    </ParticleHover>
                 </div>
             </div>
             {bulkCalculatingActive && calculatingCount > 0 && (
