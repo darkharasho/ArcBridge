@@ -16,8 +16,8 @@ type StatsGroupContainerProps = {
 };
 
 const groupVariants = {
-    hidden: { opacity: 0, y: 12 },
-    visible: (i: number) => ({
+    groupHidden: { opacity: 0, y: 12 },
+    groupVisible: (i: number) => ({
         opacity: 1,
         y: 0,
         transition: {
@@ -104,8 +104,8 @@ export function StatsGroupContainer({
             style={baseStyle}
             custom={groupIndex}
             variants={groupVariants}
-            initial="hidden"
-            animate={visible ? 'visible' : 'hidden'}
+            initial="groupHidden"
+            animate={visible ? 'groupVisible' : 'groupHidden'}
         >
             {header}
             {children}

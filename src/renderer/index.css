@@ -1033,6 +1033,17 @@ body.web-report #top-players .mvp-gold-icon-badge {
 
 /* Restore semantic colors for recent-activity LOG/CAL/DC/ERR status squares. */
 
+/* ── Log card CSS entrance (fallback when framer-motion is disabled during bulk uploads) ── */
+
+@keyframes log-card-arrive {
+  from { opacity: 0; transform: translateX(12px) scale(0.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.matte-log-card {
+  animation: log-card-arrive var(--duration-slower) var(--ease-out-expo) both;
+}
+
 /* ── Particle spinner keyframes ── */
 
 @keyframes section-arrive {
