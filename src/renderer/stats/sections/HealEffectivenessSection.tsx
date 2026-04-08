@@ -222,7 +222,7 @@ export const HealEffectivenessSection = ({ fights }: HealEffectivenessSectionPro
                             </div>
                             <div>
                                 <div className="text-[10px] uppercase tracking-[0.35em] text-[color:var(--text-secondary)]">Healing</div>
-                                <div className="mt-1 text-lg font-black font-mono" style={{ color: '#86efac' }}>
+                                <div className="mt-1 text-lg font-black font-mono" style={{ color: 'var(--status-success-muted)' }}>
                                     {selectedFight ? formatWithCommas(selectedFight.healing, 0) : '—'}
                                 </div>
                             </div>

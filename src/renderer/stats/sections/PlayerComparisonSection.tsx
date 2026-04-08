@@ -309,7 +309,7 @@ const HeadToHeadView = ({
                                         <td className="px-4 py-2.5 text-right text-sm font-semibold" style={{ background: colorB.bg || undefined, color: colorB.text || 'var(--text-primary)' }}>
                                             {formatValue(valB, metric)}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right text-xs" style={{ color: diff !== null && diff >= 0 ? '#22c55e' : diff !== null ? '#ef4444' : 'var(--text-muted)' }}>
+                                        <td className="px-4 py-2.5 text-right text-xs" style={{ color: diff !== null && diff >= 0 ? 'var(--status-success)' : diff !== null ? 'var(--status-error)' : 'var(--text-muted)' }}>
                                             {diff !== null ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : '—'}
                                         </td>
                                     </tr>

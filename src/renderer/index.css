@@ -60,6 +60,31 @@
   --scrollbar-thumb: rgba(146, 163, 184, 0.35);
   --scrollbar-thumb-hover: rgba(148, 163, 184, 0.56);
 
+  /* Status / semantic colors */
+  --status-success: #4ade80;
+  --status-success-muted: #86efac;
+  --status-success-bg: rgba(74, 222, 128, 0.08);
+  --status-success-border: rgba(74, 222, 128, 0.30);
+  --status-error: #f87171;
+  --status-error-muted: #fca5a5;
+  --status-error-bg: rgba(248, 113, 113, 0.08);
+  --status-error-border: rgba(248, 113, 113, 0.30);
+  --status-warning: #fbbf24;
+  --status-warning-muted: #fde68a;
+  --status-warning-bg: rgba(251, 191, 36, 0.08);
+  --status-warning-border: rgba(251, 191, 36, 0.30);
+  --status-info: #60a5fa;
+  --status-info-bg: rgba(96, 165, 250, 0.08);
+  --status-info-border: rgba(96, 165, 250, 0.30);
+
+  /* Typography scale */
+  --font-size-2xs: 0.5625rem;  /* 9px  – dense table headers */
+  --font-size-xs: 0.625rem;    /* 10px – dense table cells, badges */
+  --font-size-sm: 0.75rem;     /* 12px – body small, terminal */
+  --font-size-base: 0.875rem;  /* 14px – body default */
+  --font-size-lg: 1rem;        /* 16px – section titles */
+  --font-size-xl: 1.25rem;     /* 20px – headings */
+
   /* Section semantic accent colors */
   --section-offense: #f47272;
   --section-offense-bg: rgba(244, 114, 114, 0.08);
@@ -286,7 +311,7 @@ body.glass-surfaces .stats-view .fight-diff-select {
 }
 
 body.glass-surfaces .stats-view .fight-diff-select option {
-    background: #0f1219;
+    background: var(--bg-elevated);
     color: var(--text-primary);
 }
 
@@ -617,7 +642,7 @@ body:not(.web-report) .modal-pane button[aria-label^="Close "] {
 .glass-datetime::-webkit-datetime-edit-hour-field,
 .glass-datetime::-webkit-datetime-edit-minute-field,
 .glass-datetime::-webkit-datetime-edit-ampm-field {
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 .glass-dropdown {
@@ -677,16 +702,16 @@ body:not(.web-report) .modal-pane button[aria-label^="Close "] {
 }
 
 .dense-table__title {
-    font-size: 0.95rem;
+    font-size: var(--font-size-lg);
     font-weight: 600;
-    color: #e5e7eb;
+    color: var(--text-primary);
 }
 
 .dense-table__subtitle {
-    font-size: 0.65rem;
+    font-size: var(--font-size-xs);
     text-transform: uppercase;
     letter-spacing: 0.3em;
-    color: #6b7280;
+    color: var(--text-secondary);
 }
 
 .dense-table__controls {
@@ -770,7 +795,7 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
     display: grid;
     align-items: stretch;
     min-width: max-content;
-    font-size: 0.625rem;
+    font-size: var(--font-size-xs);
 }
 
 .dense-table__row {
@@ -781,7 +806,7 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
 .dense-table__cell {
     padding: 0.45rem 0.6rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    color: #94a3b8;
+    color: var(--text-secondary);
     background: rgba(255, 255, 255, 0.015);
 }
 
@@ -812,11 +837,11 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
 }
 
 .dense-table__head {
-    font-size: 0.56rem;
+    font-size: var(--font-size-2xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #94a3b8;
-    background: #161b22;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
     border-bottom: 2px solid rgba(255, 255, 255, 0.12);
     position: sticky;
     top: 0;
@@ -871,8 +896,8 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.625rem;
-    color: #f3f4f6;
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
     background: var(--bg-elevated, #0d1117);
 }
 
@@ -886,23 +911,23 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
 /* Group container entrance animation on nav switch */
 
 .dense-table__head.dense-table__head--active {
-    background: #0c1a2e;
+    background: var(--accent-bg-strong);
     color: var(--brand-primary);
-    border-bottom-color: rgba(56, 189, 248, 0.5);
+    border-bottom-color: color-mix(in srgb, var(--brand-primary) 50%, transparent);
 }
 
 .dense-table__cell.dense-table__cell--active {
-    background: rgba(56, 189, 248, 0.07);
-    color: #f1f5f9;
+    background: var(--accent-bg);
+    color: var(--text-primary);
     font-weight: 500;
 }
 
 .dense-table__row:nth-of-type(odd)>.dense-table__cell.dense-table__cell--active {
-    background: rgba(56, 189, 248, 0.09);
+    background: color-mix(in srgb, var(--brand-primary) 9%, transparent);
 }
 
 .dense-table__row:hover>.dense-table__cell.dense-table__cell--active {
-    background: rgba(56, 189, 248, 0.14);
+    background: color-mix(in srgb, var(--brand-primary) 14%, transparent);
 }
 
 .stats-table-sidebar> :last-child {
@@ -974,17 +999,17 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
 /* Shared TOC structure for in-app + web Proof of Work sidebars. */
 .proof-of-work-sidebar .proof-of-work-toc-item--l1 {
     padding-left: 0.55rem;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .proof-of-work-sidebar .proof-of-work-toc-item--l2 {
     padding-left: 1.25rem;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .proof-of-work-sidebar .proof-of-work-toc-item--l3 {
     padding-left: 1.85rem;
-    color: #9ca3af;
+    color: var(--text-secondary);
 }
 
 .squad-comp-fight-nav-item {
@@ -1008,21 +1033,21 @@ body.web-report .stats-view .fight-comp-class-icon--squad {
 }
 
 .stats-view .fight-comp-result-badge--win {
-    border-color: rgba(74, 222, 128, 0.6);
-    background-color: rgba(34, 197, 94, 0.2);
-    color: #bbf7d0;
+    border-color: var(--status-success-border);
+    background-color: var(--status-success-bg);
+    color: var(--status-success-muted);
 }
 
 .stats-view .fight-comp-result-badge--loss {
-    border-color: rgba(248, 113, 113, 0.6);
-    background-color: rgba(239, 68, 68, 0.2);
-    color: #fecaca;
+    border-color: var(--status-error-border);
+    background-color: var(--status-error-bg);
+    color: var(--status-error-muted);
 }
 
 .stats-view .fight-comp-result-badge--unknown {
-    border-color: rgba(255, 255, 255, 0.16);
-    background-color: rgba(255, 255, 255, 0.06);
-    color: #9ca3af;
+    border-color: var(--border-hover);
+    background-color: var(--bg-hover);
+    color: var(--text-secondary);
 }
 
 /* Keep MVP crown icon wrappers circular in web report across theme overrides. */
@@ -1455,12 +1480,12 @@ body {
 }
 
 .term-error {
-  color: #f87171;
+  color: var(--status-error);
 }
 
 .term-error-badge {
   font-weight: 700;
-  color: #ef4444;
+  color: var(--status-error);
   margin-right: 6px;
 }
 

@@ -236,7 +236,7 @@ export const AllBoonsSection = ({
                             <ChevronDown className="w-3 h-3 text-slate-500" />
                         </button>
                         {boonDropdownOpen && (
-                            <div className="absolute top-full left-0 mt-2 z-50 w-80 rounded-lg border border-white/10 bg-[#0f1219] shadow-xl">
+                            <div className="absolute top-full left-0 mt-2 z-50 w-80 rounded-lg border border-white/10 bg-[var(--bg-elevated)] shadow-xl">
                                 <div className="p-2 border-b border-white/5">
                                     <input
                                         type="text"

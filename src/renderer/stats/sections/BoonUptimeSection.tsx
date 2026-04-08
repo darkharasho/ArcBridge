@@ -115,7 +115,7 @@ const SubgroupMembersTooltip = ({
                 <div
                     ref={tooltipRef}
                     style={tooltipStyle}
-                    className={`z-[9999] w-max max-w-xs rounded-md border border-[color:var(--border-default)] bg-[#0d1117]/95 px-3 py-2 text-[11px] text-[color:var(--text-primary)] backdrop-blur-sm ${open ? 'block' : 'hidden'}`}
+                    className={`z-[9999] w-max max-w-xs rounded-md border border-[color:var(--border-default)] bg-[var(--bg-elevated)]/95 px-3 py-2 text-[11px] text-[color:var(--text-primary)] backdrop-blur-sm ${open ? 'block' : 'hidden'}`}
                     onMouseEnter={() => { cancelClose(); setOpen(true); }}
                     onMouseLeave={scheduleClose}
                 >
@@ -303,7 +303,7 @@ export const BoonUptimeSection = ({
                         <ChevronDown className={`w-3 h-3 transition-transform ${boonDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {boonDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-2 z-50 w-96 rounded-lg border border-white/10 bg-[#0f1219] shadow-xl p-3 space-y-2">
+                        <div className="absolute top-full left-0 mt-2 z-50 w-96 rounded-lg border border-white/10 bg-[var(--bg-elevated)] shadow-xl p-3 space-y-2">
                             <div className="flex items-center gap-2">
                                 <input
                                     type="text"

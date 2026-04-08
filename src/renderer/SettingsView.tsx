@@ -2590,7 +2590,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     <div className="text-sm text-gray-500 italic py-6 text-center">No settings found in file.</div>
                                 )}
                             </div>
-                            <div className="sticky bottom-0 px-6 py-4 border-t border-white/10 bg-[#161c24] flex justify-end gap-3">
+                            <div className="sticky bottom-0 px-6 py-4 border-t border-white/10 bg-[var(--bg-card)] flex justify-end gap-3">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -2790,7 +2790,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                                                 {c.factors && c.factors.length > 0 && (
                                                                     <td className="p-0" style={{ position: 'absolute', left: 0, right: 0, pointerEvents: 'none' }}>
                                                                         <div className="hidden group-hover:block absolute left-4 z-50 pointer-events-none" style={tooltipPosition}>
-                                                                            <div className="rounded-[4px] border border-white/15 px-3 py-2.5 text-[11px] shadow-2xl" style={{ background: '#1a1d23', minWidth: 340 }}>
+                                                                            <div className="rounded-[4px] border border-white/15 px-3 py-2.5 text-[11px] shadow-2xl" style={{ background: 'var(--bg-card)', minWidth: 340 }}>
                                                                                 <div className="text-gray-300 font-medium mb-1.5">
                                                                                     {c.account} — <span className={c.role === 'support' ? 'text-emerald-300' : 'text-orange-300'}>{c.role}</span>
                                                                                     <span className="text-gray-500 font-normal ml-2">score {c.supportScore.toFixed(2)} / threshold {c.threshold.toFixed(2)}</span>

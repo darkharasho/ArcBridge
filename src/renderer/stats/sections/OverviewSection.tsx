@@ -10,10 +10,10 @@ export const OverviewSection = () => {
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="overview-card" style={{ borderTop: '1px solid var(--border-default)', borderRight: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)', borderLeft: '2px solid #4ade80', borderRadius: 'var(--radius-md)', padding: '16px 20px' }}>
+                <div className="overview-card" style={{ borderTop: '1px solid var(--border-default)', borderRight: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)', borderLeft: '2px solid var(--status-success)', borderRadius: 'var(--radius-md)', padding: '16px 20px' }}>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                         <div className="text-left">
-                            <div className="text-lg font-semibold" style={{ color: '#a7f3d0' }}>{stats.avgSquadSize}</div>
+                            <div className="text-lg font-semibold" style={{ color: 'var(--status-success-muted)' }}>{stats.avgSquadSize}</div>
                             <div className="text-[10px] uppercase tracking-[0.3em]" style={{ color: 'rgba(167,243,208,0.6)' }}>Avg Squad</div>
                         </div>
                         <div className="text-center">
@@ -21,12 +21,12 @@ export const OverviewSection = () => {
                             <div className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: 'rgba(167,243,208,0.5)' }}>Victories</div>
                         </div>
                         <div className="text-right">
-                            <div className="text-lg font-semibold" style={{ color: '#a7f3d0' }}>{stats.squadKDR}</div>
+                            <div className="text-lg font-semibold" style={{ color: 'var(--status-success-muted)' }}>{stats.squadKDR}</div>
                             <div className="text-[10px] uppercase tracking-[0.3em]" style={{ color: 'rgba(167,243,208,0.6)' }}>Squad KDR</div>
                         </div>
                     </div>
                 </div>
-                <div className="overview-card" style={{ borderTop: '1px solid var(--border-default)', borderRight: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)', borderLeft: '2px solid #f87171', borderRadius: 'var(--radius-md)', padding: '16px 20px' }}>
+                <div className="overview-card" style={{ borderTop: '1px solid var(--border-default)', borderRight: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)', borderLeft: '2px solid var(--status-error)', borderRadius: 'var(--radius-md)', padding: '16px 20px' }}>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                         <div className="text-left">
                             <div className="text-lg font-semibold text-red-100">{stats.avgEnemies}</div>

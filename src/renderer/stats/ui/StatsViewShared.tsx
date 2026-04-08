@@ -243,10 +243,10 @@ const ProfessionIcon = ({
                 <>
                     <span
                         aria-hidden="true"
-                        className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-1 ring-[#10141b] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+                        className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-1 ring-[var(--bg-base)] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
                         style={{ background: multiBadgeBackground }}
                     >
-                        <span className="absolute inset-[0.7px] rounded-full bg-[#0f141c]/55" />
+                        <span className="absolute inset-[0.7px] rounded-full bg-[var(--bg-elevated)]/55" />
                     </span>
                     <div
                         ref={tooltipRef}

@@ -100,18 +100,18 @@ export const SquadDamageComparisonSection = () => {
                                         const point = payload?.[0]?.payload;
                                         if (!point) return null;
                                         return (
-                                            <div style={{ backgroundColor: '#161c24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '10px 12px', fontSize: '12px' }}>
-                                                <p style={{ margin: 0, color: '#94a3b8' }}>
+                                            <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '10px 12px', fontSize: '12px' }}>
+                                                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
                                                     {point.fullLabel}{' '}
-                                                    {point.isWin === true && <span style={{ color: '#22c55e', fontWeight: 700 }}>W</span>}
-                                                    {point.isWin === false && <span style={{ color: '#ef4444', fontWeight: 700 }}>L</span>}
+                                                    {point.isWin === true && <span style={{ color: 'var(--status-success)', fontWeight: 700 }}>W</span>}
+                                                    {point.isWin === false && <span style={{ color: 'var(--status-error)', fontWeight: 700 }}>L</span>}
                                                 </p>
-                                                <p style={{ margin: '4px 0 0', color: '#e2e8f0' }}>
-                                                    <span style={{ display: 'inline-block', width: 8, height: 8, backgroundColor: '#22c55e', borderRadius: 2, marginRight: 6 }} />
+                                                <p style={{ margin: '4px 0 0', color: 'var(--text-primary)' }}>
+                                                    <span style={{ display: 'inline-block', width: 8, height: 8, backgroundColor: 'var(--status-success)', borderRadius: 2, marginRight: 6 }} />
                                                     Outgoing Damage : {formatWithCommas(Math.abs(point.outgoing), 0)}
                                                 </p>
-                                                <p style={{ margin: '2px 0 0', color: '#e2e8f0' }}>
-                                                    <span style={{ display: 'inline-block', width: 8, height: 8, backgroundColor: '#ef4444', borderRadius: 2, marginRight: 6 }} />
+                                                <p style={{ margin: '2px 0 0', color: 'var(--text-primary)' }}>
+                                                    <span style={{ display: 'inline-block', width: 8, height: 8, backgroundColor: 'var(--status-error)', borderRadius: 2, marginRight: 6 }} />
                                                     Incoming Damage : {formatWithCommas(Math.abs(point.incoming), 0)}
                                                 </p>
                                             </div>
