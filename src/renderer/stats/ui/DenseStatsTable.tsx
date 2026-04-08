@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { HorizontalScrollScrubber } from './HorizontalScrollScrubber';
 
@@ -45,6 +45,13 @@ export const DenseStatsTable = ({
         ...columns.map((column) => `minmax(${column.minWidth ?? 60}px, max-content)`)
     ].join(' ');
 
+    // Track whether the scroll container has been scrolled to show a shadow on the sticky header
+    const [isScrolled, setIsScrolled] = useState(false);
+    const handleScroll = useCallback(() => {
+        const el = scrollRef.current;
+        if (el) setIsScrolled(el.scrollTop > 2);
+    }, []);
+
     // Workaround: Electron/Chromium compositing breaks native wheel→scroll binding
     // when the element is inside a position:fixed portal with backdrop-filter ancestors.
     // Manually apply deltaY to scrollTop so wheel scrolling works.
@@ -69,7 +76,7 @@ export const DenseStatsTable = ({
             )}
             {controls && <div className="dense-table__controls">{controls}</div>}
             <div className="dense-table__container">
-                <div ref={scrollRef} className="dense-table__scroll">
+                <div ref={scrollRef} onScroll={handleScroll} className={`dense-table__scroll${isScrolled ? ' dense-table__scroll--scrolled' : ''}`}>
                     <div className="dense-table__grid" style={{ gridTemplateColumns: templateColumns }}>
                         <div className="dense-table__head dense-table__head--sticky dense-table__head--pinned">
                             <div className="dense-table__head-inner">Player</div>
