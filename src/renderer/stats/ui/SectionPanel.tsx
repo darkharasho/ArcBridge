@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import { useStatsSharedContext } from '../StatsViewContext';
 import { useParticleEffect, PRESETS } from '../../particles';
+import { EASE, DURATION } from '../../motion';
 
 type SectionPanelProps = {
     sectionId: string;
@@ -11,10 +13,24 @@ type SectionPanelProps = {
     index?: number;
 };
 
+const sectionVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: {
+            delay: i * 0.06,
+            duration: DURATION.slow,
+            ease: EASE.outExpo,
+        },
+    }),
+};
+
 export function SectionPanel({
     sectionId,
     children,
     isLast = false,
+    index = 0,
 }: SectionPanelProps) {
     const { expandedSection, expandedPortalRef } = useStatsSharedContext();
     const isExpanded = expandedSection === sectionId;
@@ -44,7 +60,7 @@ export function SectionPanel({
     }
 
     return (
-        <div
+        <motion.div
             id={sectionId}
             className="scroll-mt-24 page-break-avoid"
             style={{
@@ -52,11 +68,15 @@ export function SectionPanel({
                 borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
                 position: 'relative',
             }}
+            custom={index}
+            variants={sectionVariants}
+            initial="hidden"
+            animate="visible"
         >
             <div style={{ position: 'absolute', top: 0, left: '50%', pointerEvents: 'none', zIndex: 5 }}>
                 {emitterNode}
             </div>
             {children}
-        </div>
+        </motion.div>
     );
 }

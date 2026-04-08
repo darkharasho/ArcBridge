@@ -1,6 +1,7 @@
 import { forwardRef, memo, useEffect, useRef, useState } from 'react';
 import { useParticleEffect, PRESETS } from './particles';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EASE, DURATION } from './motion';
 import { ChevronDown, ChevronUp, ExternalLink, Trash2 } from 'lucide-react';
 import { getPlayerDamage, getPlayerDps, getPlayerDownsTaken, getPlayerDeaths, getPlayerDamageTaken, getPlayerDodges, getPlayerMissed, getPlayerBlocked, getPlayerEvaded, getPlayerResurrects, getTargetStatTotal } from '../shared/dashboardMetrics';
 import { applySquadStabilityGeneration as applyStabilityGeneration, computeIncomingDisruptions as getIncomingDisruptions, computeDownContribution as getPlayerDownContribution, computeOutgoingCrowdControl as getPlayerOutgoingCrowdControl, computeSquadBarrier as getPlayerSquadBarrier, computeSquadHealing as getPlayerSquadHealing } from '../shared/combatMetrics';
@@ -874,11 +875,12 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
     const Container: any = motionEnabled ? motion.div : 'div';
     const motionProps = motionEnabled
         ? {
-            initial: { opacity: 0, x: 20, scale: 0.95 },
+            initial: { opacity: 0, x: 16, scale: 0.97 },
             animate: dissolving
                 ? { opacity: 0, height: 0, marginBottom: 0, transition: { duration: 0.8, ease: 'easeIn' } }
                 : { opacity: 1, x: 0, scale: 1 },
-            exit: { opacity: 0, x: 40, scale: 0.96 },
+            exit: { opacity: 0, x: 30, scale: 0.97, transition: { duration: DURATION.fast, ease: EASE.inExpo } },
+            transition: { duration: DURATION.slow, ease: EASE.outExpo },
             layout: layoutEnabled && !dissolving
         }
         : {};
@@ -993,7 +995,8 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="shadow-inner" style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-card-inner)' }}
+                        transition={{ duration: DURATION.slow, ease: EASE.outExpo }}
+                        className="shadow-inner" style={{ borderTop: '1px solid var(--border-default)', background: 'var(--bg-card-inner)', overflow: 'hidden' }}
                     >
                         <div className="p-4 space-y-4">
                             {(settings.showSquadSummary || settings.showEnemySummary) && (

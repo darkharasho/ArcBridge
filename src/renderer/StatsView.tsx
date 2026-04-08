@@ -400,7 +400,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
                         sectionCount={sections.length}
                     >
                         {sections.map((s, i) => (
-                            <SectionPanel key={s.id} sectionId={s.id} isLast={i === sections.length - 1}>
+                            <SectionPanel key={s.id} sectionId={s.id} isLast={i === sections.length - 1} index={i}>
                                 {renderSectionWrap(s.element)}
                             </SectionPanel>
                         ))}
@@ -433,7 +433,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
                     sectionCount={sections.length}
                 >
                     {sections.map((s, i) => (
-                        <SectionPanel key={s.id} sectionId={s.id} isLast={i === sections.length - 1}>
+                        <SectionPanel key={s.id} sectionId={s.id} isLast={i === sections.length - 1} index={i}>
                             {renderSectionWrap(s.element)}
                         </SectionPanel>
                     ))}

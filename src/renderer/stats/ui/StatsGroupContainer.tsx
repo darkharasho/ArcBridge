@@ -1,4 +1,6 @@
 import { type ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { EASE, DURATION } from '../../motion';
 
 type StatsGroupContainerProps = {
     groupId: string;
@@ -9,6 +11,21 @@ type StatsGroupContainerProps = {
     children: ReactNode;
     visible?: boolean;
     embedded?: boolean;
+    /** Zero-based index of this group within the stats view, used for stagger delay */
+    groupIndex?: number;
+};
+
+const groupVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: {
+            delay: i * 0.07,
+            duration: DURATION.slow,
+            ease: EASE.outExpo,
+        },
+    }),
 };
 
 export function StatsGroupContainer({
@@ -20,6 +37,7 @@ export function StatsGroupContainer({
     children,
     visible = true,
     embedded = false,
+    groupIndex = 0,
 }: StatsGroupContainerProps) {
     const hiddenStyle = !visible ? {
         visibility: 'hidden' as const,
@@ -80,13 +98,17 @@ export function StatsGroupContainer({
     }
 
     return (
-        <div
+        <motion.div
             id={`group-${groupId}`}
             className="stats-group-container scroll-mt-24"
             style={baseStyle}
+            custom={groupIndex}
+            variants={groupVariants}
+            initial="hidden"
+            animate={visible ? 'visible' : 'hidden'}
         >
             {header}
             {children}
-        </div>
+        </motion.div>
     );
 }
