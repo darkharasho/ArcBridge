@@ -330,16 +330,16 @@ export function AppLayout({ ctx }: { ctx: any }) {
                     {tabEmitter}
                 </div>
 
-                <AnimatePresence mode="wait">
-                    {view === 'dashboard' && (
-                        <motion.div
-                            key="dashboard"
-                            className="flex flex-1 min-h-0 relative flex-col"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={TRANSITION.page}
-                        >
+                <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                        key={view}
+                        className={`flex flex-1 min-h-0 relative ${view !== 'stats' ? 'flex-col' : ''}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={TRANSITION.page}
+                    >
+                        {view === 'dashboard' && (
                             <div className="dashboard-view dashboard-modern flex flex-1 min-h-0 overflow-hidden matte-dashboard-shell">
                                 <div className="dashboard-rail flex flex-col gap-3 overflow-y-auto p-3 matte-panel-shell matte-rail-shell" style={{ width: '300px', flexShrink: 0, background: 'var(--bg-elevated)', borderRight: '1px solid var(--border-subtle)' }}>
                                     {configurationPanel}
@@ -348,17 +348,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                     {activityPanel}
                                 </div>
                             </div>
-                        </motion.div>
-                    )}
-                    {view === 'stats' && (
-                        <motion.div
-                            key="stats"
-                            className="flex flex-1 min-h-0 relative"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={TRANSITION.page}
-                        >
+                        )}
+                        {view === 'stats' && (
                             <div className="flex-1 min-h-0 flex gap-3">
                                 <StatsNavSidebar />
                                 <div className="flex-1 min-h-0 flex flex-col">
@@ -378,29 +369,11 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                     </StatsErrorBoundary>
                                 </div>
                             </div>
-                        </motion.div>
-                    )}
-                    {view === 'history' && (
-                        <motion.div
-                            key="history"
-                            className="flex flex-1 min-h-0 relative flex-col"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={TRANSITION.page}
-                        >
+                        )}
+                        {view === 'history' && (
                             <FightReportHistoryView />
-                        </motion.div>
-                    )}
-                    {view === 'settings' && (
-                        <motion.div
-                            key="settings"
-                            className="flex flex-1 min-h-0 relative flex-col"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={TRANSITION.page}
-                        >
+                        )}
+                        {view === 'settings' && (
                             <SettingsView
                                 onBack={() => setView('dashboard')}
                                 onEmbedStatSettingsSaved={setEmbedStatSettings}
@@ -419,8 +392,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                 onOpenWhatsNew={() => setWhatsNewOpen(true)}
                                 isBulkUploadActive={isBulkUploadActive}
                             />
-                        </motion.div>
-                    )}
+                        )}
+                    </motion.div>
                 </AnimatePresence>
             </div>
 
