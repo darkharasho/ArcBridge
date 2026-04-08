@@ -59,7 +59,7 @@ export function ProofOfWorkModal<TToc extends ProofOfWorkTocItem, TResult extend
             className="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-lg"
             onClick={(event) => event.target === event.currentTarget && onClose()}
         >
-            <div className="app-modal-card proof-of-work-modal relative isolate w-full max-w-4xl bg-[#10151b]/95 border border-white/10 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] p-6 overflow-hidden">
+            <div className="app-modal-card proof-of-work-modal relative isolate w-full max-w-4xl bg-[var(--bg-elevated)]/95 border border-white/10 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.55)] p-6 overflow-hidden">
                 <div className="pointer-events-none absolute inset-0 z-0 opacity-60" aria-hidden="true">
                     <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-cyan-500/8 blur-3xl" />
                     <div className="absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-slate-500/10 blur-3xl" />
@@ -87,7 +87,7 @@ export function ProofOfWorkModal<TToc extends ProofOfWorkTocItem, TResult extend
                                     className="proof-of-work-search w-56 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                                 />
                                 {searchFocused && searchResults.length > 0 && searchValue.trim().length >= 2 && (
-                                    <div className="proof-of-work-search-results absolute right-0 mt-2 w-80 max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-[#0d1218]/95 shadow-2xl z-10">
+                                    <div className="proof-of-work-search-results absolute right-0 mt-2 w-80 max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-[var(--bg-base)]/95 shadow-2xl z-10">
                                         {searchResults.map((result, idx) => (
                                             <button
                                                 key={`${result.hitId}-${idx}-${result.text}`}

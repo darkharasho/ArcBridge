@@ -229,7 +229,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                     <button
                                         onClick={() => window.electronAPI.restartApp()}
                                         className="flex items-center gap-2 text-[10px] font-medium px-2 py-0.5 rounded-[4px] border transition-colors"
-                                        style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', borderColor: 'rgba(34,197,94,0.3)' }}
+                                        style={{ background: 'var(--status-success-bg)', color: 'var(--status-success)', borderColor: 'var(--status-success-border)' }}
                                     >
                                         <RefreshCw className="w-3 h-3" />
                                         <span>Restart to Update</span>
@@ -253,7 +253,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                     exit={{ opacity: 0, x: 20 }}
                                     className="flex items-center gap-2 text-[10px] font-medium px-2 py-0.5 rounded-[4px] border"
                                     style={updateStatus.includes('Error')
-                                        ? { background: 'rgba(239,68,68,0.15)', color: '#f87171', borderColor: 'rgba(239,68,68,0.3)' }
+                                        ? { background: 'var(--status-error-bg)', color: 'var(--status-error)', borderColor: 'var(--status-error-border)' }
                                         : { background: 'var(--bg-card)', color: 'var(--text-secondary)', borderColor: 'var(--border-default)' }
                                     }
                                 >
@@ -266,7 +266,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                     {!autoUpdateSupported && (
                         <div
                             className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-[4px] border"
-                            style={{ background: 'rgba(245,158,11,0.1)', color: '#fbbf24', borderColor: 'rgba(245,158,11,0.3)' }}
+                            style={{ background: 'var(--status-warning-bg)', color: 'var(--status-warning)', borderColor: 'var(--status-warning-border)' }}
                             title={autoUpdateDisabledReason === 'portable'
                                 ? 'Portable build detected'
                                 : autoUpdateDisabledReason === 'missing-config'

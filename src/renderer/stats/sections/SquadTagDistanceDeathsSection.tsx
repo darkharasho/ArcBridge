@@ -142,13 +142,13 @@ export const SquadTagDistanceDeathsSection = ({ fights }: SquadTagDistanceDeaths
                                             if (!point) return null;
                                             const extra = !point.hasReplayData ? ' (no data)' : point.eventCount === 0 ? ' (0 deaths)' : ` (${point.eventCount} deaths)`;
                                             return (
-                                                <div style={{ backgroundColor: '#161c24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '10px 12px', fontSize: '12px' }}>
-                                                    <p style={{ margin: 0, color: '#94a3b8' }}>
+                                                <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '10px 12px', fontSize: '12px' }}>
+                                                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
                                                         {point.fullLabel}{' '}
-                                                        {point.isWin === true && <span style={{ color: '#22c55e', fontWeight: 700 }}>W</span>}
-                                                        {point.isWin === false && <span style={{ color: '#ef4444', fontWeight: 700 }}>L</span>}
+                                                        {point.isWin === true && <span style={{ color: 'var(--status-success)', fontWeight: 700 }}>W</span>}
+                                                        {point.isWin === false && <span style={{ color: 'var(--status-error)', fontWeight: 700 }}>L</span>}
                                                     </p>
-                                                    <p style={{ margin: '4px 0 0', color: '#e2e8f0' }}>
+                                                    <p style={{ margin: '4px 0 0', color: 'var(--text-primary)' }}>
                                                         Avg Distance : {formatWithCommas(point.avgDistance, 0)}{extra}
                                                     </p>
                                                 </div>
@@ -258,9 +258,9 @@ export const SquadTagDistanceDeathsSection = ({ fights }: SquadTagDistanceDeaths
                                                 const point = payload?.[0]?.payload;
                                                 if (!point) return null;
                                                 return (
-                                                    <div style={{ backgroundColor: '#161c24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '10px 12px', fontSize: '12px' }}>
-                                                        <p style={{ margin: 0, color: point.isCommander ? '#fbbf24' : '#94a3b8' }}>{point.playerAccount}{point.isCommander ? ' ★' : ''}</p>
-                                                        <p style={{ margin: '4px 0 0', color: '#e2e8f0' }}>{point.x}s — {formatWithCommas(point.rawDistance, 0)} from tag</p>
+                                                    <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '10px 12px', fontSize: '12px' }}>
+                                                        <p style={{ margin: 0, color: point.isCommander ? 'var(--status-warning)' : 'var(--text-secondary)' }}>{point.playerAccount}{point.isCommander ? ' ★' : ''}</p>
+                                                        <p style={{ margin: '4px 0 0', color: 'var(--text-primary)' }}>{point.x}s — {formatWithCommas(point.rawDistance, 0)} from tag</p>
                                                     </div>
                                                 );
                                             }}

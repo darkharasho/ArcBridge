@@ -629,7 +629,7 @@ function App() {
                 <div className="space-y-0">
                     <div className="flex items-center justify-between py-1.5">
                         <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Watcher</span>
-                        <span className="text-[11px] font-medium" style={{ color: logDirectory ? '#22c55e' : 'var(--text-muted)' }}>
+                        <span className="text-[11px] font-medium" style={{ color: logDirectory ? 'var(--status-success)' : 'var(--text-muted)' }}>
                             {logDirectory ? 'Active' : 'Inactive'}
                         </span>
                     </div>
@@ -642,9 +642,9 @@ function App() {
                     <div className="flex items-center justify-between py-1.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Success / Errors</span>
                         <span className="text-[11px] font-medium">
-                            <span style={{ color: '#22c55e' }}>{successCount}</span>
+                            <span style={{ color: 'var(--status-success)' }}>{successCount}</span>
                             <span style={{ color: 'var(--text-muted)' }}> / </span>
-                            <span style={{ color: errorCount > 0 ? '#ef4444' : 'var(--text-muted)' }}>{errorCount}</span>
+                            <span style={{ color: errorCount > 0 ? 'var(--status-error)' : 'var(--text-muted)' }}>{errorCount}</span>
                         </span>
                     </div>
                 </div>
@@ -694,9 +694,9 @@ function App() {
                     <div className="flex items-center justify-between py-1.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Win / Loss</span>
                         <span className="text-[11px] font-medium">
-                            <span style={{ color: '#86efac' }}>{winLoss.wins}</span>
+                            <span style={{ color: 'var(--status-success-muted)' }}>{winLoss.wins}</span>
                             <span style={{ color: 'var(--text-muted)' }}> / </span>
-                            <span style={{ color: '#fca5a5' }}>{winLoss.losses}</span>
+                            <span style={{ color: 'var(--status-error-muted)' }}>{winLoss.losses}</span>
                         </span>
                     </div>
                     <div className="flex items-center justify-between py-1.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
@@ -779,7 +779,7 @@ function App() {
                         <button
                             onClick={clearLogsFromActivity}
                             className="flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[11px] font-medium border transition-colors"
-                            style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171' }}
+                            style={{ borderColor: 'var(--status-error-border)', background: 'var(--status-error-bg)', color: 'var(--status-error)' }}
                             title="Clear all logs"
                         >
                             <Trash2 className="w-3 h-3" />
