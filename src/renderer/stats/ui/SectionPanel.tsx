@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useStatsSharedContext } from '../StatsViewContext';
-import { EASE, DURATION } from '../../motion';
+import { EASE } from '../../motion';
 
 type SectionPanelProps = {
     sectionId: string;
