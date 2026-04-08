@@ -789,8 +789,17 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
     background: rgba(255, 255, 255, 0.015);
 }
 
+.dense-table__cell {
+    transition: background-color var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease-out;
+}
+
 .dense-table__row:hover>.dense-table__cell {
     background: rgba(255, 255, 255, 0.06);
+}
+
+.dense-table__row:hover>.dense-table__cell--pinned {
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 2px 0 0 var(--brand-primary);
 }
 
 .dense-table__row:nth-of-type(odd)>.dense-table__cell--pinned {
@@ -799,6 +808,7 @@ body:not(.web-report) .modal-pane .dense-table.fight-breakdown-dense .dense-tabl
 
 .dense-table__row:hover>.dense-table__cell--pinned {
     background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 2px 0 0 var(--brand-primary);
 }
 
 .dense-table__head {
@@ -1131,6 +1141,50 @@ body.web-report #top-players .mvp-gold-icon-badge {
   min-width: 0;
 }
 
+/* ── Skeleton shimmer (loading placeholder) ── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--bg-hover) 50%,
+    var(--bg-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+.skeleton-text {
+  height: 0.65rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-text:last-child {
+  width: 60%;
+}
+
+.skeleton-block {
+  height: 3rem;
+}
+
+/* ── Tooltip / popover entrance ── */
+
+@keyframes tooltip-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.skill-breakdown-tooltip,
+.app-dropdown {
+  animation: tooltip-in var(--duration-fast) var(--ease-out-expo) both;
+}
+
 /* ── Reduced motion / bulk upload ── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1352,10 +1406,11 @@ body {
 /* ── Log rows ── */
 
 .term-row {
-  transition: background 0.1s ease;
+  transition: background-color var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease-out;
 }
 .term-row:hover {
   background: var(--bg-hover);
+  box-shadow: inset 2px 0 0 var(--brand-primary);
 }
 .term-row-error {
   background: rgba(239, 68, 68, 0.05);
