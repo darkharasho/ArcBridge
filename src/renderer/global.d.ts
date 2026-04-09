@@ -274,6 +274,7 @@ export interface IElectronAPI {
         githubFavoriteRepos?: string[] | null;
         walkthroughSeen?: boolean;
         allowLocalJson?: boolean;
+        eiAnnouncementDismissed?: boolean;
     }>;
     clearDpsReportCache: () => Promise<{ success: boolean; clearedEntries?: number; error?: string }>;
     onClearDpsReportCacheProgress: (callback: (data: { stage?: string; message?: string; progress?: number; current?: number; total?: number }) => void) => () => void;
@@ -310,6 +311,7 @@ export interface IElectronAPI {
         walkthroughSeen?: boolean;
         allowLocalJson?: boolean;
         forceDpsReportOnly?: boolean;
+        eiAnnouncementDismissed?: boolean;
     }) => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     openMobilePreview: (url: string) => Promise<{ success: boolean, error?: string }>;

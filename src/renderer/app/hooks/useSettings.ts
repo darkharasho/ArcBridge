@@ -29,6 +29,7 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
     // Init-time values consumed by useAppNavigation
     const [settingsLoaded, setSettingsLoaded] = useState(false);
     const [walkthroughSeen, setWalkthroughSeen] = useState<boolean | null>(null);
+    const [eiAnnouncementDismissed, setEiAnnouncementDismissed] = useState(false);
     const [shouldOpenWhatsNew, setShouldOpenWhatsNew] = useState(false);
     const [whatsNewVersion, setWhatsNewVersion] = useState('');
     const [whatsNewNotes, setWhatsNewNotes] = useState<string | null>(null);
@@ -90,6 +91,10 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
                 onAutoUpdateSettingsRef.current?.(settings.autoUpdateSupported, settings.autoUpdateDisabledReason || null);
             }
 
+            if (settings.eiAnnouncementDismissed === true) {
+                setEiAnnouncementDismissed(true);
+            }
+
             const whatsNew = await window.electronAPI.getWhatsNew();
             setWhatsNewVersion(whatsNew.version);
             setWhatsNewNotes(whatsNew.releaseNotes);
@@ -141,12 +146,14 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         whatsNewVersion,
         whatsNewNotes,
         walkthroughSeen,
+        eiAnnouncementDismissed, setEiAnnouncementDismissed,
         shouldOpenWhatsNew,
     }), [
         logDirectory, notificationType, embedStatSettings, mvpWeights,
         statsViewSettings, disruptionMethod, allowLocalJson, colorPalette, glassSurfaces, particlesEnabled,
         webhooks, selectedWebhookId, handleUpdateSettings, handleSelectDirectory,
         settingsLoaded, whatsNewVersion, whatsNewNotes, walkthroughSeen,
+        eiAnnouncementDismissed, setEiAnnouncementDismissed,
         shouldOpenWhatsNew,
     ]);
 }

@@ -76,7 +76,7 @@ describe('App first-time walkthrough', () => {
         await user.click(screen.getByRole('button', { name: 'Get Started' }));
 
         await waitFor(() => {
-            expect(electronApi.saveSettings).toHaveBeenCalledWith({ walkthroughSeen: true });
+            expect(electronApi.saveSettings).toHaveBeenCalledWith({ walkthroughSeen: true, eiAnnouncementDismissed: true });
         });
         await waitFor(() => {
             expect(screen.queryByText('Welcome to AxiBridge')).not.toBeInTheDocument();
@@ -102,29 +102,7 @@ describe('App first-time walkthrough', () => {
         expect(await screen.findByText('What’s New')).toBeInTheDocument();
     });
 
-    it('learn more routes to Help & Updates and can open the How To guide', async () => {
-        const user = userEvent.setup();
-        const electronApi = makeElectronApiMock({
-            settings: { walkthroughSeen: false }
-        });
-        window.electronAPI = electronApi as any;
-
-        render(<App />);
-
-        expect(await screen.findByText('Welcome to AxiBridge')).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Learn More' }));
-
-        await waitFor(() => {
-            expect(screen.queryByText('Welcome to AxiBridge')).not.toBeInTheDocument();
-        });
-        expect(await screen.findByRole('heading', { name: 'Help & Updates' })).toBeInTheDocument();
-
-        await user.click(screen.getByRole('button', { name: 'How To' }));
-        expect(await screen.findByText('Feature and workflow reference')).toBeInTheDocument();
-        expect(screen.getAllByRole('button', { name: 'AxiBridge How-To' }).length).toBeGreaterThan(0);
-    });
-
-    it('does not re-scroll to Help & Updates after leaving and returning to Settings', async () => {
+    it('learn more routes to Settings and scrolls to Parser Settings', async () => {
         const user = userEvent.setup();
         const electronApi = makeElectronApiMock({
             settings: { walkthroughSeen: false }
@@ -142,16 +120,147 @@ describe('App first-time walkthrough', () => {
 
         expect(await screen.findByText('Welcome to AxiBridge')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Learn More' }));
-        expect(await screen.findByRole('heading', { name: 'Help & Updates' })).toBeInTheDocument();
+
+        await waitFor(() => {
+            expect(screen.queryByText('Welcome to AxiBridge')).not.toBeInTheDocument();
+        });
+        // Should navigate to Settings and scroll to Parser Settings section
+        expect(await screen.findByRole('heading', { name: 'Parser Settings' })).toBeInTheDocument();
+        expect(scrollToSpy).toHaveBeenCalledTimes(1);
+        // Should also dismiss the EI announcement
+        await waitFor(() => {
+            expect(electronApi.saveSettings).toHaveBeenCalledWith({ walkthroughSeen: true, eiAnnouncementDismissed: true });
+        });
+    });
+
+    it('walkthrough includes step 4 for Elite Insights', async () => {
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: false }
+        });
+        window.electronAPI = electronApi as any;
+
+        render(<App />);
+
+        expect(await screen.findByText('Welcome to AxiBridge')).toBeInTheDocument();
+        expect(screen.getByText('Maximize accuracy')).toBeInTheDocument();
+        expect(screen.getByText(/Install Elite Insights locally/)).toBeInTheDocument();
+        expect(screen.getByText('Step 4')).toBeInTheDocument();
+    });
+
+    it('does not re-scroll to Parser Settings after leaving and returning to Settings', async () => {
+        const user = userEvent.setup();
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: false }
+        });
+        window.electronAPI = electronApi as any;
+
+        const scrollToSpy = vi.fn();
+        Object.defineProperty(HTMLDivElement.prototype, 'scrollTo', {
+            configurable: true,
+            writable: true,
+            value: scrollToSpy
+        });
+
+        render(<App />);
+
+        expect(await screen.findByText('Welcome to AxiBridge')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Learn More' }));
+        expect(await screen.findByRole('heading', { name: 'Parser Settings' })).toBeInTheDocument();
         expect(scrollToSpy).toHaveBeenCalledTimes(1);
 
         await user.click(screen.getByTitle('Dashboard'));
         // Wait for Dashboard to mount after AnimatePresence exit/enter transition
         await waitFor(() => {
-            expect(screen.queryByRole('heading', { name: 'Help & Updates' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('heading', { name: 'Parser Settings' })).not.toBeInTheDocument();
         });
         await user.click(screen.getByTitle('Settings'));
-        expect(await screen.findByRole('heading', { name: 'Help & Updates' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Parser Settings' })).toBeInTheDocument();
         expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('EI announcement banner', () => {
+    it('shows banner for existing users who have not dismissed it', async () => {
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: true }
+        });
+        window.electronAPI = electronApi as any;
+
+        render(<App />);
+
+        expect(await screen.findByText(/Local Elite Insights parsing/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Set up' })).toBeInTheDocument();
+    });
+
+    it('does not show banner when eiAnnouncementDismissed is true', async () => {
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: true, eiAnnouncementDismissed: true }
+        });
+        window.electronAPI = electronApi as any;
+
+        render(<App />);
+
+        // Wait for settings to load
+        await waitFor(() => {
+            expect(electronApi.getSettings).toHaveBeenCalled();
+        });
+        expect(screen.queryByText(/Local Elite Insights parsing/)).not.toBeInTheDocument();
+    });
+
+    it('does not show banner for first-time users (they get the walkthrough instead)', async () => {
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: false }
+        });
+        window.electronAPI = electronApi as any;
+
+        render(<App />);
+
+        expect(await screen.findByText('Welcome to AxiBridge')).toBeInTheDocument();
+        expect(screen.queryByText(/Local Elite Insights parsing/)).not.toBeInTheDocument();
+    });
+
+    it('dismiss button hides banner and persists eiAnnouncementDismissed', async () => {
+        const user = userEvent.setup();
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: true }
+        });
+        window.electronAPI = electronApi as any;
+
+        render(<App />);
+
+        expect(await screen.findByText(/Local Elite Insights parsing/)).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: '✕' }));
+
+        await waitFor(() => {
+            expect(electronApi.saveSettings).toHaveBeenCalledWith({ eiAnnouncementDismissed: true });
+        });
+    });
+
+    it('Set up button navigates to Settings and scrolls to Parser Settings', async () => {
+        const user = userEvent.setup();
+        const electronApi = makeElectronApiMock({
+            settings: { walkthroughSeen: true }
+        });
+        window.electronAPI = electronApi as any;
+
+        const scrollToSpy = vi.fn();
+        Object.defineProperty(HTMLDivElement.prototype, 'scrollTo', {
+            configurable: true,
+            writable: true,
+            value: scrollToSpy
+        });
+
+        render(<App />);
+
+        expect(await screen.findByText(/Local Elite Insights parsing/)).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Set up' }));
+
+        // Should navigate to Settings with Parser Settings visible
+        expect(await screen.findByRole('heading', { name: 'Parser Settings' })).toBeInTheDocument();
+        expect(scrollToSpy).toHaveBeenCalledTimes(1);
+        // Should persist dismissal
+        await waitFor(() => {
+            expect(electronApi.saveSettings).toHaveBeenCalledWith({ eiAnnouncementDismissed: true });
+        });
     });
 });

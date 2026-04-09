@@ -96,6 +96,8 @@ interface SettingsViewProps {
     onOpenWalkthrough?: () => void;
     helpUpdatesFocusTrigger?: number;
     onHelpUpdatesFocusConsumed?: (trigger: number) => void;
+    parserSettingsFocusTrigger?: number;
+    onParserSettingsFocusConsumed?: (trigger: number) => void;
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
     onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
@@ -185,7 +187,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action, secti
     );
 }
 
-export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, onAllowLocalJsonSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
+export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, parserSettingsFocusTrigger, onParserSettingsFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, onAllowLocalJsonSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
 
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
@@ -268,7 +270,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const lastDevSettingsTriggerRef = useRef<number>(developerSettingsTrigger || 0);
     const settingsScrollRef = useRef<HTMLDivElement | null>(null);
     const helpUpdatesRef = useRef<HTMLDivElement | null>(null);
+    const parserSettingsRef = useRef<HTMLDivElement | null>(null);
     const lastHelpUpdatesFocusTriggerRef = useRef<number>(0);
+    const lastParserSettingsFocusTriggerRef = useRef<number>(0);
     const inferredPagesUrl = githubRepoOwner && githubRepoName
         ? `https://${githubRepoOwner}.github.io/${githubRepoName}`
         : '';
@@ -590,6 +594,28 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         container.scrollTop = top;
         onHelpUpdatesFocusConsumed?.(trigger);
     }, [helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed]);
+
+    useEffect(() => {
+        const trigger = parserSettingsFocusTrigger || 0;
+        if (trigger <= lastParserSettingsFocusTriggerRef.current) {
+            return;
+        }
+        lastParserSettingsFocusTriggerRef.current = trigger;
+        const container = settingsScrollRef.current;
+        const section = parserSettingsRef.current;
+        if (!container || !section) {
+            return;
+        }
+        const targetTop = section.offsetTop - 8;
+        const top = Math.max(0, targetTop);
+        if (typeof container.scrollTo === 'function') {
+            container.scrollTo({ top, behavior: 'smooth' });
+            onParserSettingsFocusConsumed?.(trigger);
+            return;
+        }
+        container.scrollTop = top;
+        onParserSettingsFocusConsumed?.(trigger);
+    }, [parserSettingsFocusTrigger, onParserSettingsFocusConsumed]);
 
     useEffect(() => {
         const container = settingsScrollRef.current;
@@ -2377,6 +2403,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                     </SettingsSection>
 
                     {/* Parser Settings Section */}
+                    <div ref={parserSettingsRef}>
                     <SettingsSection title="Parser Settings" icon={Zap} delay={0.2} sectionId="parser-settings" hidden={settingsSearchHidden.has('parser-settings')}>
                         <p className="text-sm text-gray-400 mb-4">
                             Manage the Elite Insights local parser used to generate detailed combat statistics.
@@ -2410,7 +2437,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             )}
                             {eiDownloadProgress && (
                                 <div className="text-xs text-blue-300 mb-2">
-                                    {eiDownloadProgress.message} ({Math.round(eiDownloadProgress.percent)}%)
+                                    {eiDownloadProgress.message}{!isNaN(eiDownloadProgress.percent) && ` (${Math.round(eiDownloadProgress.percent)}%)`}
                                 </div>
                             )}
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -2619,6 +2646,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             </div>
                         )}
                     </SettingsSection>
+                    </div>
 
                     {/* Close Behavior Section */}
                     <SettingsSection title="Window Close Behavior" icon={Minimize} delay={0.2} sectionId="close-behavior" hidden={settingsSearchHidden.has('close-behavior')}>
