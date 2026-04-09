@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type UIEv
 
 interface UseAppNavigationOptions {
     walkthroughSeen: boolean | null;
+    eiAnnouncementDismissed: boolean;
+    setEiAnnouncementDismissed: (v: boolean) => void;
     shouldOpenWhatsNew: boolean;
     whatsNewVersion: string;
     logsCount: number;
@@ -9,6 +11,8 @@ interface UseAppNavigationOptions {
 
 export function useAppNavigation({
     walkthroughSeen,
+    eiAnnouncementDismissed,
+    setEiAnnouncementDismissed,
     shouldOpenWhatsNew,
     whatsNewVersion,
     logsCount,
@@ -19,6 +23,7 @@ export function useAppNavigation({
     const [whatsNewOpen, setWhatsNewOpen] = useState(false);
     const [walkthroughOpen, setWalkthroughOpen] = useState(false);
     const [helpUpdatesFocusTrigger, setHelpUpdatesFocusTrigger] = useState(0);
+    const [parserSettingsFocusTrigger, setParserSettingsFocusTrigger] = useState(0);
 
     const [webhookModalOpen, setWebhookModalOpen] = useState(false);
     const [webhookDropdownOpen, setWebhookDropdownOpen] = useState(false);
@@ -143,19 +148,39 @@ export function useAppNavigation({
 
     const handleWalkthroughClose = useCallback(() => {
         setWalkthroughOpen(false);
-        window.electronAPI?.saveSettings?.({ walkthroughSeen: true });
-    }, []);
+        window.electronAPI?.saveSettings?.({ walkthroughSeen: true, eiAnnouncementDismissed: true });
+        setEiAnnouncementDismissed(true);
+    }, [setEiAnnouncementDismissed]);
 
     const handleWalkthroughLearnMore = useCallback(() => {
         setWalkthroughOpen(false);
-        window.electronAPI?.saveSettings?.({ walkthroughSeen: true });
+        window.electronAPI?.saveSettings?.({ walkthroughSeen: true, eiAnnouncementDismissed: true });
+        setEiAnnouncementDismissed(true);
         setView('settings');
-        setHelpUpdatesFocusTrigger((current) => current + 1);
-    }, []);
+        setParserSettingsFocusTrigger((current) => current + 1);
+    }, [setEiAnnouncementDismissed]);
 
     const handleHelpUpdatesFocusConsumed = useCallback((trigger: number) => {
         setHelpUpdatesFocusTrigger((current) => (current === trigger ? 0 : current));
     }, []);
+
+    const handleParserSettingsFocusConsumed = useCallback((trigger: number) => {
+        setParserSettingsFocusTrigger((current) => (current === trigger ? 0 : current));
+    }, []);
+
+    const showEiBanner = walkthroughSeen === true && !eiAnnouncementDismissed;
+
+    const handleEiBannerDismiss = useCallback(() => {
+        setEiAnnouncementDismissed(true);
+        window.electronAPI?.saveSettings?.({ eiAnnouncementDismissed: true });
+    }, [setEiAnnouncementDismissed]);
+
+    const handleEiBannerSetup = useCallback(() => {
+        setEiAnnouncementDismissed(true);
+        window.electronAPI?.saveSettings?.({ eiAnnouncementDismissed: true });
+        setView('settings');
+        setParserSettingsFocusTrigger((current) => current + 1);
+    }, [setEiAnnouncementDismissed]);
 
     return {
         view, setView,
@@ -177,5 +202,10 @@ export function useAppNavigation({
         handleWalkthroughClose,
         handleWalkthroughLearnMore,
         handleHelpUpdatesFocusConsumed,
+        parserSettingsFocusTrigger,
+        handleParserSettingsFocusConsumed,
+        showEiBanner,
+        handleEiBannerDismiss,
+        handleEiBannerSetup,
     };
 }

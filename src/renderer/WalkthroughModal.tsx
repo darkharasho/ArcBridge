@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { FileText, LineChart, Rocket, X } from 'lucide-react';
+import { FileText, LineChart, Rocket, X, Zap } from 'lucide-react';
 
 interface WalkthroughModalProps {
     isOpen: boolean;
@@ -22,6 +22,11 @@ const STEPS = [
         icon: Rocket,
         title: 'Share your results',
         description: 'Post polished summaries to Discord or publish a web report, depending on how you want your squad to consume data.'
+    },
+    {
+        icon: Zap,
+        title: 'Maximize accuracy',
+        description: 'Install Elite Insights locally for precise WvW metrics. Local parsing has no file size limits and works offline.'
     }
 ] as const;
 

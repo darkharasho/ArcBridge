@@ -241,6 +241,7 @@ export interface IElectronAPI {
     startWatching: (path: string) => void;
     onLogDetected: (callback: (path: string) => void) => () => void;
     onUploadComplete: (callback: (data: any) => void) => () => void;
+    onUploadPermalink: (callback: (data: { id: string; filePath: string; permalink: string }) => void) => () => void;
     onUploadStatus: (callback: (data: any) => void) => () => void;
     resolveDroppedFilePath: (file: File) => string;
     setDiscordWebhook: (url: string) => void;
@@ -273,6 +274,7 @@ export interface IElectronAPI {
         githubFavoriteRepos?: string[] | null;
         walkthroughSeen?: boolean;
         allowLocalJson?: boolean;
+        eiAnnouncementDismissed?: boolean;
     }>;
     clearDpsReportCache: () => Promise<{ success: boolean; clearedEntries?: number; error?: string }>;
     onClearDpsReportCacheProgress: (callback: (data: { stage?: string; message?: string; progress?: number; current?: number; total?: number }) => void) => () => void;
@@ -308,6 +310,8 @@ export interface IElectronAPI {
         githubFavoriteRepos?: string[] | null;
         walkthroughSeen?: boolean;
         allowLocalJson?: boolean;
+        forceDpsReportOnly?: boolean;
+        eiAnnouncementDismissed?: boolean;
     }) => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     openMobilePreview: (url: string) => Promise<{ success: boolean, error?: string }>;
@@ -359,6 +363,42 @@ export interface IElectronAPI {
     reportRendererError: (payload: { source: string; message: string; stack?: string }) => void;
     onRequestRendererDiagnostics: (callback: () => void) => () => void;
     sendRendererDiagnostics: (payload: { heapUsed: number; heapTotal: number; heapLimit: number; logCount: number }) => void;
+
+    // Elite Insights parser
+    getEiStatus: () => Promise<IEiStatus>;
+    installEi: () => Promise<void>;
+    updateEi: () => Promise<void>;
+    reinstallEi: () => Promise<void>;
+    uninstallEi: () => Promise<IEiStatus>;
+    checkEiUpdate: () => Promise<{ updateAvailable: string | null }>;
+    getEiSettings: () => Promise<IEiParserSettings>;
+    saveEiSettings: (settings: Partial<IEiParserSettings>) => void;
+    onEiDownloadProgress: (callback: (data: { percent: number; message: string }) => void) => () => void;
+    onEiParseProgress: (callback: (data: { logId: string; message: string }) => void) => () => void;
+    onEiStatusChanged: (callback: (status: IEiStatus) => void) => () => void;
+}
+
+export interface IEiParserSettings {
+    detailledWvW: boolean;
+    computeDamageModifiers: boolean;
+    parsePhases: boolean;
+    skipFailedTries: boolean;
+    anonymous: boolean;
+    customTooShort: number;
+    saveOutHTML: boolean;
+    parseCombatReplay: boolean;
+    lightTheme: boolean;
+    rawTimelineArrays: boolean;
+    singleThreaded: boolean;
+    memoryLimit: number;
+}
+
+export interface IEiStatus {
+    installed: boolean;
+    version: string | null;
+    updateAvailable: string | null;
+    installing: boolean;
+    error: string | null;
 }
 
 type DetailsStatus = 'idle' | 'loading' | 'available' | 'loaded' | 'exhausted' | 'unavailable';
@@ -372,7 +412,7 @@ declare global {
         id: string;
         permalink: string;
         filePath: string;
-        status?: 'queued' | 'pending' | 'uploading' | 'retrying' | 'discord' | 'calculating' | 'success' | 'error';
+        status?: 'queued' | 'pending' | 'uploading' | 'retrying' | 'discord' | 'calculating' | 'parsing' | 'success' | 'error';
         error?: string;
         uploadTime?: number;
         encounterDuration?: string;
