@@ -240,6 +240,22 @@ export class EiManager {
         await this.install();
     }
 
+    uninstall(): void {
+        this.killActiveProcess();
+        if (fs.existsSync(this.cliDir)) {
+            fs.rmSync(this.cliDir, { recursive: true, force: true });
+        }
+        if (fs.existsSync(this.dotnetDir)) {
+            fs.rmSync(this.dotnetDir, { recursive: true, force: true });
+        }
+        if (fs.existsSync(this.versionsPath)) {
+            fs.unlinkSync(this.versionsPath);
+        }
+        if (fs.existsSync(this.settingsConfPath)) {
+            fs.unlinkSync(this.settingsConfPath);
+        }
+    }
+
     async checkForUpdate(): Promise<string | null> {
         try {
             const releaseInfo = await this.fetchLatestRelease();

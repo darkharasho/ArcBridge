@@ -130,6 +130,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     installEi: () => ipcRenderer.invoke('ei:install'),
     updateEi: () => ipcRenderer.invoke('ei:update'),
     reinstallEi: () => ipcRenderer.invoke('ei:reinstall'),
+    uninstallEi: () => ipcRenderer.invoke('ei:uninstall'),
     checkEiUpdate: () => ipcRenderer.invoke('ei:check-update'),
     getEiSettings: () => ipcRenderer.invoke('ei:get-settings'),
     saveEiSettings: (settings: any) => ipcRenderer.send('ei:save-settings', settings),
