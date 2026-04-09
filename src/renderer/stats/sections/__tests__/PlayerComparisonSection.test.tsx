@@ -67,4 +67,139 @@ describe('PlayerComparison data logic', () => {
         const diff = getDiffPercent(100000, 60000);
         expect(diff).toBeCloseTo(66.67, 0);
     });
+
+    // --- Per-minute metrics ---
+    it('extracts per-minute metric value', () => {
+        const metric = { id: 'dpm', label: 'Avg DPM', totalsKey: 'offenseTotals' as const, field: 'damage', perMinute: true };
+        const value = getMetricValue(mockOffensePlayer, metric);
+        // 100000 / (120000/60000) = 100000 / 2 = 50000
+        expect(value).toBeCloseTo(50000, 0);
+    });
+
+    // --- Per-fight metrics ---
+    it('extracts per-fight metric value', () => {
+        const player = { ...mockDefensePlayer, logsJoined: 5 };
+        const metric = { id: 'deathsPerFight', label: 'Deaths/Fight', totalsKey: 'defenseTotals' as const, field: 'deadCount', perFight: true, lowerIsBetter: true };
+        const value = getMetricValue(player, metric);
+        // 1 death / 5 logs = 0.2
+        expect(value).toBeCloseTo(0.2, 2);
+    });
+
+    it('per-fight defaults logsJoined to 1 when missing', () => {
+        const metric = { id: 'deathsPerFight', label: 'Deaths/Fight', totalsKey: 'defenseTotals' as const, field: 'deadCount', perFight: true };
+        const value = getMetricValue(mockDefensePlayer, metric);
+        expect(value).toBe(1); // 1 death / 1 default log
+    });
+
+    // --- General / direct field metrics ---
+    const mockGeneralPlayer = {
+        account: 'Test.1234',
+        profession: 'Warrior',
+        professionList: ['Berserker'],
+        totalFightMs: 600000,
+        squadActiveMs: 540000,
+        totalDist: 1500,
+        distCount: 5,
+        logsJoined: 10,
+        stackedLogCount: 7,
+    };
+
+    it('computes Active %', () => {
+        const metric = { id: 'activePercent', label: 'Active %', directField: 'activePercent', isPercent: true };
+        const value = getMetricValue(mockGeneralPlayer, metric);
+        // 540000 / 600000 * 100 = 90%
+        expect(value).toBeCloseTo(90, 0);
+    });
+
+    it('computes Stack %', () => {
+        const metric = { id: 'stackPercent', label: 'Stack %', directField: 'stackPercent', isPercent: true };
+        const value = getMetricValue(mockGeneralPlayer, metric);
+        // 7 / 10 * 100 = 70%
+        expect(value).toBeCloseTo(70, 0);
+    });
+
+    it('computes Avg Dist Cmd', () => {
+        const metric = { id: 'avgDistCmd', label: 'Avg Dist Cmd', directField: 'avgDistCmd', lowerIsBetter: true };
+        const value = getMetricValue(mockGeneralPlayer, metric);
+        // 1500 / 5 = 300
+        expect(value).toBe(300);
+    });
+
+    it('returns 0 for direct field when data is missing', () => {
+        const emptyPlayer = { account: 'Empty.0000', profession: 'Unknown', professionList: [] };
+        const metric = { id: 'activePercent', label: 'Active %', directField: 'activePercent', isPercent: true };
+        expect(getMetricValue(emptyPlayer, metric)).toBe(0);
+    });
+
+    // --- Boon metrics ---
+    const mockBoonTables = [
+        {
+            id: 'b740',
+            name: 'Might',
+            stacking: true,
+            rows: [
+                {
+                    account: 'Test.1234',
+                    profession: 'Warrior',
+                    activeTimeMs: 120000, // 2 minutes
+                    numFights: 2,
+                    groupSupported: 10,
+                    squadSupported: 50,
+                    categories: {
+                        selfBuffs: { generationMs: 5000, wastedMs: 0 },
+                        groupBuffs: { generationMs: 30000, wastedMs: 0 },
+                        squadBuffs: { generationMs: 60000, wastedMs: 0 },
+                    },
+                },
+            ],
+        },
+    ];
+
+    it('extracts boon generation in seconds/min', () => {
+        const metric = { id: 'might', label: 'Might', boonId: 'b740', boonCategory: 'squadBuffs' as const };
+        const context = { boonTables: mockBoonTables };
+        const value = getMetricValue({ account: 'Test.1234' }, metric, context);
+        // generationMs=60000, activeTimeMs=120000 → 60s generation / 2 min active = 30 sec/min
+        expect(value).toBeCloseTo(30, 0);
+    });
+
+    it('returns 0 for boon when player not in table', () => {
+        const metric = { id: 'might', label: 'Might', boonId: 'b740', boonCategory: 'squadBuffs' as const };
+        const context = { boonTables: mockBoonTables };
+        expect(getMetricValue({ account: 'Nobody.0000' }, metric, context)).toBe(0);
+    });
+
+    it('returns 0 for boon when table not found', () => {
+        const metric = { id: 'fury', label: 'Fury', boonId: 'b725', boonCategory: 'squadBuffs' as const };
+        const context = { boonTables: mockBoonTables };
+        expect(getMetricValue({ account: 'Test.1234' }, metric, context)).toBe(0);
+    });
+
+    it('returns 0 for boon when no context provided', () => {
+        const metric = { id: 'might', label: 'Might', boonId: 'b740', boonCategory: 'squadBuffs' as const };
+        expect(getMetricValue({ account: 'Test.1234' }, metric)).toBe(0);
+    });
+
+    // --- Burst metrics ---
+    const mockSpikePlayers = [
+        { account: 'Test.1234', peak1s: 45000, peak5s: 120000, peak30s: 500000 },
+    ];
+
+    it('extracts burst peak1s value', () => {
+        const metric = { id: 'burst1s', label: 'Burst 1s', burstField: 'peak1s' };
+        const context = { spikePlayers: mockSpikePlayers };
+        const value = getMetricValue({ account: 'Test.1234' }, metric, context);
+        expect(value).toBe(45000);
+    });
+
+    it('returns 0 for burst when player not in spike data', () => {
+        const metric = { id: 'burst1s', label: 'Burst 1s', burstField: 'peak1s' };
+        const context = { spikePlayers: mockSpikePlayers };
+        expect(getMetricValue({ account: 'Nobody.0000' }, metric, context)).toBe(0);
+    });
+
+    it('returns 0 for burst when no context provided', () => {
+        const metric = { id: 'burst1s', label: 'Burst 1s', burstField: 'peak1s' };
+        expect(getMetricValue({ account: 'Test.1234' }, metric)).toBe(0);
+    });
 });
