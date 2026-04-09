@@ -602,29 +602,9 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                 });
             }
 
-            // Send upload-complete with EI data (permalink may be empty until dps.report resolves)
-            win?.webContents.send('upload-complete', {
-                ...syntheticResult,
-                ...detailsSummary,
-                filePath,
-                status: hasUsableDetails ? 'calculating' : 'success',
-                detailsStatus: hasUsableDetails ? 'available' as const : 'idle' as const,
-                playerCount,
-                dashboardSummary
-            });
-            console.log(`[Main] upload-complete (EI): ${filePath} players=${playerCount ?? 'n/a'}`);
-
-            // Discord notifications (mirrors existing dps.report path)
-            win?.webContents.send('upload-status', {
-                id: fileId,
-                filePath,
-                status: 'discord',
-                permalink: syntheticResult.permalink,
-                uploadTime: syntheticResult.uploadTime,
-                encounterDuration: syntheticResult.encounterDuration,
-                fightName: syntheticResult.fightName
-            });
-
+            // Discord notifications — must happen before upload-complete to match
+            // the dps.report ordering (discord → upload-complete), otherwise the
+            // card flips from "done" back to "discord" status.
             const enemySplitSettings = {
                 image: false,
                 embed: false,
@@ -638,6 +618,15 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
             const shouldSendDiscord = Boolean(selectedWebhookId) && typeof webhookUrl === 'string' && webhookUrl.length > 0;
 
             if (shouldSendDiscord) {
+                win?.webContents.send('upload-status', {
+                    id: fileId,
+                    filePath,
+                    status: 'discord',
+                    permalink: syntheticResult.permalink,
+                    uploadTime: syntheticResult.uploadTime,
+                    encounterDuration: syntheticResult.encounterDuration,
+                    fightName: syntheticResult.fightName
+                });
                 try {
                     const dedupeKey = cacheKey || syntheticResult.id || filePath;
                     const now = Date.now();
@@ -665,6 +654,18 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
                     discordNoWebhookLogAt = now;
                 }
             }
+
+            // Send upload-complete with EI data (permalink may be empty until dps.report resolves)
+            win?.webContents.send('upload-complete', {
+                ...syntheticResult,
+                ...detailsSummary,
+                filePath,
+                status: hasUsableDetails ? 'calculating' : 'success',
+                detailsStatus: hasUsableDetails ? 'available' as const : 'idle' as const,
+                playerCount,
+                dashboardSummary
+            });
+            console.log(`[Main] upload-complete (EI): ${filePath} players=${playerCount ?? 'n/a'}`);
 
             // Await the dps.report permalink and attach it asynchronously
             permalinkPromise.then(async (uploadResult) => {
