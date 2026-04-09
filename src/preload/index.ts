@@ -119,6 +119,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
     importSettings: () => ipcRenderer.invoke('import-settings'),
     selectSettingsFile: () => ipcRenderer.invoke('select-settings-file'),
 
+    // EI (Elite Insights) local parser
+    getEiStatus: () => ipcRenderer.invoke('ei:get-status'),
+    installEi: () => ipcRenderer.invoke('ei:install'),
+    updateEi: () => ipcRenderer.invoke('ei:update'),
+    reinstallEi: () => ipcRenderer.invoke('ei:reinstall'),
+    checkEiUpdate: () => ipcRenderer.invoke('ei:check-update'),
+    getEiSettings: () => ipcRenderer.invoke('ei:get-settings'),
+    saveEiSettings: (settings: any) => ipcRenderer.send('ei:save-settings', settings),
+    onEiDownloadProgress: (callback: (data: any) => void) => {
+        ipcRenderer.on('ei:download-progress', (_event, value) => callback(value));
+        return () => { ipcRenderer.removeAllListeners('ei:download-progress'); };
+    },
+    onEiParseProgress: (callback: (data: any) => void) => {
+        ipcRenderer.on('ei:parse-progress', (_event, value) => callback(value));
+        return () => { ipcRenderer.removeAllListeners('ei:parse-progress'); };
+    },
+    onEiStatusChanged: (callback: (data: any) => void) => {
+        ipcRenderer.on('ei:status-changed', (_event, value) => callback(value));
+        return () => { ipcRenderer.removeAllListeners('ei:status-changed'); };
+    },
+
     // Diagnostics — renderer error reporting and memory monitoring
     reportRendererError: (payload: { source: string; message: string; stack?: string }) =>
         ipcRenderer.send('renderer-error', payload),
