@@ -70,6 +70,7 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
 
     const isQueued = log.status === 'queued';
     const isPending = log.status === 'pending';
+    const isParsing = log.status === 'parsing';
     const isUploading = log.status === 'uploading';
     const isRetrying = log.status === 'retrying';
     const isCalculating = log.status === 'calculating';
@@ -78,22 +79,24 @@ const ExpandableLogCardBase = forwardRef<HTMLDivElement, ExpandableLogCardProps>
     const playerCount = allPlayers.length > 0 ? allPlayers.length : (log.playerCount ?? 0);
     const statusLabel = isQueued ? 'Queued'
         : isPending ? 'Pending'
-            : isUploading ? 'Parsing with dps.report'
-                : isRetrying ? 'Retrying upload'
-                : isCalculating ? 'Calculating statistics'
-                    : isDiscord ? 'Preparing Discord preview'
-                        : null;
+            : isParsing ? 'Parsing log locally'
+                : isUploading ? 'Parsing with dps.report'
+                    : isRetrying ? 'Retrying upload'
+                    : isCalculating ? 'Calculating statistics'
+                        : isDiscord ? 'Preparing Discord preview'
+                            : null;
     const statusKey = isQueued ? 'queued'
         : isPending ? 'pending'
-            : isUploading ? 'uploading'
-                : isRetrying ? 'retrying'
-                    : isCalculating ? 'calculating'
-                        : isDiscord ? 'discord'
-                            : hasError ? 'error'
-                                : 'success';
+            : isParsing ? 'parsing'
+                : isUploading ? 'uploading'
+                    : isRetrying ? 'retrying'
+                        : isCalculating ? 'calculating'
+                            : isDiscord ? 'discord'
+                                : hasError ? 'error'
+                                    : 'success';
     const ds = log.detailsStatus || 'idle';
     const detailsNotReady = ds !== 'available' && ds !== 'loaded';
-    const isCancellable = Boolean(detailsNotReady && !isExpanded && onCancel && (isQueued || isPending || isUploading || isRetrying));
+    const isCancellable = Boolean(detailsNotReady && !isExpanded && onCancel && (isQueued || isPending || isParsing || isUploading || isRetrying));
     const canRemove = Boolean(onRemove && !isCancellable);
     const squadDisplayCount = shouldComputeDetails ? squadPlayers.length : squadPlayerCount;
     const nonSquadDisplayCount = shouldComputeDetails ? nonSquadPlayers.length : nonSquadPlayerCount;

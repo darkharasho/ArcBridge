@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Key, X as CloseIcon, Minimize, BarChart3, Users, Sparkles, Compass, BookOpen, Cloud, Link as LinkIcon, RefreshCw, Plus, Trash2, ExternalLink, Zap, Star, Download, Upload, ChevronDown, Search } from 'lucide-react';
-import { IEmbedStatSettings, DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, normalizeMvpWeights } from './global.d';
+import { IEmbedStatSettings, DEFAULT_DISCORD_ENEMY_SPLIT_SETTINGS, DEFAULT_EMBED_STATS, DEFAULT_MVP_WEIGHTS, DEFAULT_STATS_VIEW_SETTINGS, IMvpWeights, DisruptionMethod, DEFAULT_DISRUPTION_METHOD, IStatsViewSettings, normalizeMvpWeights, IEiParserSettings, IEiStatus } from './global.d';
 import { METRICS_SPEC } from '../shared/metricsSettings';
 import { PALETTES, type ColorPalette, DEFAULT_PALETTE_ID } from '../shared/webThemes';
 import ReactMarkdown from 'react-markdown';
@@ -58,6 +58,7 @@ const SETTINGS_SECTIONS = [
     { id: 'dashboard-stats', label: 'Dashboard Stats' },
     { id: 'boon-uptime-resolution', label: 'Boon Uptime' },
     { id: 'mvp-weighting', label: 'MVP Weighting' },
+    { id: 'parser-settings', label: 'Parser Settings' },
     { id: 'close-behavior', label: 'Close Behavior' },
     { id: 'export-import', label: 'Export / Import' },
     { id: 'legal', label: 'Legal' }
@@ -95,6 +96,8 @@ interface SettingsViewProps {
     onOpenWalkthrough?: () => void;
     helpUpdatesFocusTrigger?: number;
     onHelpUpdatesFocusConsumed?: (trigger: number) => void;
+    parserSettingsFocusTrigger?: number;
+    onParserSettingsFocusConsumed?: (trigger: number) => void;
     onMvpWeightsSaved?: (weights: IMvpWeights) => void;
     onStatsViewSettingsSaved?: (settings: IStatsViewSettings) => void;
     onDisruptionMethodSaved?: (method: DisruptionMethod) => void;
@@ -184,7 +187,7 @@ function SettingsSection({ title, icon: Icon, children, delay = 0, action, secti
     );
 }
 
-export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, onAllowLocalJsonSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
+export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpenWhatsNew, onOpenWalkthrough, helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed, parserSettingsFocusTrigger, onParserSettingsFocusConsumed, onMvpWeightsSaved, onStatsViewSettingsSaved, onDisruptionMethodSaved, onColorPaletteSaved, onGlassSurfacesSaved, onParticlesEnabledSaved, onAllowLocalJsonSaved, colorPalette: colorPaletteProp, glassSurfaces: glassSurfacesProp, particlesEnabled: particlesEnabledProp, developerSettingsTrigger, isBulkUploadActive }: SettingsViewProps) {
 
     const [dpsReportToken, setDpsReportToken] = useState<string>('');
     const [closeBehavior, setCloseBehavior] = useState<'minimize' | 'quit'>('minimize');
@@ -197,6 +200,14 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [glassSurfaces, setGlassSurfaces] = useState(glassSurfacesProp ?? false);
     const [particlesEnabled, setParticlesEnabled] = useState(particlesEnabledProp ?? true);
     const [allowLocalJson, setAllowLocalJson] = useState(false);
+    const [eiStatus, setEiStatus] = useState<IEiStatus>({ installed: false, version: null, updateAvailable: null, installing: false, error: null });
+    const [eiSettings, setEiSettings] = useState<IEiParserSettings | null>(null);
+    const [eiDownloadProgress, setEiDownloadProgress] = useState<{ percent: number; message: string } | null>(null);
+    const [eiCheckingUpdate, setEiCheckingUpdate] = useState(false);
+    const [eiUpdateCheckResult, setEiUpdateCheckResult] = useState<'none' | null>(null);
+    const [eiReinstalling, setEiReinstalling] = useState(false);
+    const [eiUninstalling, setEiUninstalling] = useState(false);
+    const [forceDpsReportOnly, setForceDpsReportOnly] = useState(false);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -259,7 +270,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const lastDevSettingsTriggerRef = useRef<number>(developerSettingsTrigger || 0);
     const settingsScrollRef = useRef<HTMLDivElement | null>(null);
     const helpUpdatesRef = useRef<HTMLDivElement | null>(null);
+    const parserSettingsRef = useRef<HTMLDivElement | null>(null);
     const lastHelpUpdatesFocusTriggerRef = useRef<number>(0);
+    const lastParserSettingsFocusTriggerRef = useRef<number>(0);
     const inferredPagesUrl = githubRepoOwner && githubRepoName
         ? `https://${githubRepoOwner}.github.io/${githubRepoName}`
         : '';
@@ -493,6 +506,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         if (settings.disruptionMethod) {
             setDisruptionMethod(settings.disruptionMethod);
         }
+        if (typeof settings.forceDpsReportOnly === 'boolean') {
+            setForceDpsReportOnly(settings.forceDpsReportOnly);
+        }
         setGithubRepoOwner(settings.githubRepoOwner || '');
         setGithubCreateOwner('');
         setGithubRepoName(settings.githubRepoName || '');
@@ -515,6 +531,24 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
             setHasLoaded(true);
         };
         loadSettings();
+
+        if (window.electronAPI?.getEiStatus) {
+            window.electronAPI.getEiStatus().then(setEiStatus);
+        }
+        if (window.electronAPI?.getEiSettings) {
+            window.electronAPI.getEiSettings().then(setEiSettings);
+        }
+
+        const unsubProgress = window.electronAPI?.onEiDownloadProgress?.(setEiDownloadProgress);
+        const unsubStatus = window.electronAPI?.onEiStatusChanged?.((status) => {
+            setEiStatus(status);
+            setEiDownloadProgress(null);
+        });
+
+        return () => {
+            unsubProgress?.();
+            unsubStatus?.();
+        };
     }, []);
 
     useEffect(() => {
@@ -560,6 +594,28 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         container.scrollTop = top;
         onHelpUpdatesFocusConsumed?.(trigger);
     }, [helpUpdatesFocusTrigger, onHelpUpdatesFocusConsumed]);
+
+    useEffect(() => {
+        const trigger = parserSettingsFocusTrigger || 0;
+        if (trigger <= lastParserSettingsFocusTriggerRef.current) {
+            return;
+        }
+        lastParserSettingsFocusTriggerRef.current = trigger;
+        const container = settingsScrollRef.current;
+        const section = parserSettingsRef.current;
+        if (!container || !section) {
+            return;
+        }
+        const targetTop = section.offsetTop - 8;
+        const top = Math.max(0, targetTop);
+        if (typeof container.scrollTo === 'function') {
+            container.scrollTo({ top, behavior: 'smooth' });
+            onParserSettingsFocusConsumed?.(trigger);
+            return;
+        }
+        container.scrollTop = top;
+        onParserSettingsFocusConsumed?.(trigger);
+    }, [parserSettingsFocusTrigger, onParserSettingsFocusConsumed]);
 
     useEffect(() => {
         const container = settingsScrollRef.current;
@@ -609,6 +665,13 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
 
     // Optimized: Removed manual wheel listener that was causing severe scroll lag and conflicts with overlay elements (Terminal)
     // The container uses standard CSS overflow-y-auto which handles scrolling natively and efficiently.
+
+    const saveEiSetting = (key: keyof IEiParserSettings, value: any) => {
+        if (!eiSettings) return;
+        const updated = { ...eiSettings, [key]: value };
+        setEiSettings(updated);
+        window.electronAPI.saveEiSettings({ [key]: value });
+    };
 
     const handleExportSettings = async () => {
         setSettingsTransferStatus(null);
@@ -801,7 +864,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
             githubToken: githubToken || null,
             githubLogoPath: githubLogoPath || null,
             githubFavoriteRepos,
-            allowLocalJson
+            allowLocalJson,
+            forceDpsReportOnly
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
@@ -841,6 +905,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         githubToken,
         githubLogoPath,
         githubFavoriteRepos,
+        forceDpsReportOnly,
         hasLoaded
     ]);
 
@@ -2336,6 +2401,252 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             </div>
                         </div>
                     </SettingsSection>
+
+                    {/* Parser Settings Section */}
+                    <div ref={parserSettingsRef}>
+                    <SettingsSection title="Parser Settings" icon={Zap} delay={0.2} sectionId="parser-settings" hidden={settingsSearchHidden.has('parser-settings')}>
+                        <p className="text-sm text-gray-400 mb-4">
+                            Manage the Elite Insights local parser used to generate detailed combat statistics.
+                        </p>
+
+                        {/* Force dps.report only toggle */}
+                        <div className="bg-black/30 border border-white/10 rounded-[4px] p-4 mb-4">
+                            <Toggle
+                                label="Force dps.report Only"
+                                description="Bypass local EI parsing and use dps.report for all log processing"
+                                enabled={forceDpsReportOnly}
+                                onChange={(v) => setForceDpsReportOnly(v)}
+                            />
+                        </div>
+
+                        {/* EI Management */}
+                        <div className="bg-black/30 border border-white/10 rounded-[4px] p-4 mb-4">
+                            <div className="text-xs uppercase tracking-widest text-gray-500 mb-3">Elite Insights Installation</div>
+                            <div className="text-sm text-gray-200 mb-2">
+                                {eiStatus.installed && eiStatus.version
+                                    ? `Elite Insights v${eiStatus.version} installed`
+                                    : 'Not installed'}
+                            </div>
+                            {eiStatus.updateAvailable && (
+                                <div className="text-xs text-yellow-300 mb-2">
+                                    Update available: v{eiStatus.updateAvailable}
+                                </div>
+                            )}
+                            {eiStatus.error && (
+                                <div className="text-xs text-red-400 mb-2">{eiStatus.error}</div>
+                            )}
+                            {eiDownloadProgress && (
+                                <div className="text-xs text-blue-300 mb-2">
+                                    {eiDownloadProgress.message}{!isNaN(eiDownloadProgress.percent) && ` (${Math.round(eiDownloadProgress.percent)}%)`}
+                                </div>
+                            )}
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {!eiStatus.installed && (
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#3b82f6">
+                                        <button
+                                            type="button"
+                                            disabled={eiStatus.installing}
+                                            onClick={() => window.electronAPI.installEi()}
+                                            className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-blue-500/10 text-blue-200 border-blue-500/30 hover:bg-blue-500/20 disabled:opacity-50 transition-colors"
+                                        >
+                                            {eiStatus.installing ? 'Installing...' : 'Install'}
+                                        </button>
+                                    </ParticleHover>
+                                )}
+                                {eiStatus.installed && eiStatus.updateAvailable && (
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#10b981">
+                                        <button
+                                            type="button"
+                                            disabled={eiStatus.installing}
+                                            onClick={() => window.electronAPI.updateEi()}
+                                            className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-emerald-500/10 text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+                                        >
+                                            {eiStatus.installing ? 'Updating...' : 'Update'}
+                                        </button>
+                                    </ParticleHover>
+                                )}
+                                {eiStatus.installed && (
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
+                                        <button
+                                            type="button"
+                                            disabled={eiStatus.installing || eiCheckingUpdate}
+                                            onClick={async () => {
+                                                setEiCheckingUpdate(true);
+                                                setEiUpdateCheckResult(null);
+                                                try {
+                                                    const result = await window.electronAPI.checkEiUpdate();
+                                                    if (result.updateAvailable) {
+                                                        setEiStatus((s) => ({ ...s, updateAvailable: result.updateAvailable }));
+                                                    } else {
+                                                        setEiUpdateCheckResult('none');
+                                                        setTimeout(() => setEiUpdateCheckResult(null), 4000);
+                                                    }
+                                                } finally {
+                                                    setEiCheckingUpdate(false);
+                                                }
+                                            }}
+                                            className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                                        >
+                                            <RefreshCw className={`w-3 h-3 ${eiCheckingUpdate ? 'animate-spin' : ''}`} style={eiCheckingUpdate ? { animationDuration: '2s' } : undefined} />
+                                            {eiCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                                        </button>
+                                    </ParticleHover>
+                                )}
+                                {eiStatus.installed && (
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
+                                        <button
+                                            type="button"
+                                            disabled={eiStatus.installing || eiReinstalling}
+                                            onClick={async () => {
+                                                setEiReinstalling(true);
+                                                try {
+                                                    await window.electronAPI.reinstallEi();
+                                                } finally {
+                                                    setEiReinstalling(false);
+                                                }
+                                            }}
+                                            className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                                        >
+                                            <RefreshCw className={`w-3 h-3 ${eiReinstalling ? 'animate-spin' : ''}`} style={eiReinstalling ? { animationDuration: '2s' } : undefined} />
+                                            {eiReinstalling ? 'Reinstalling...' : 'Reinstall'}
+                                        </button>
+                                    </ParticleHover>
+                                )}
+                                {eiStatus.installed && (
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#ef4444">
+                                        <button
+                                            type="button"
+                                            disabled={eiStatus.installing || eiUninstalling}
+                                            onClick={async () => {
+                                                setEiUninstalling(true);
+                                                try {
+                                                    const status = await window.electronAPI.uninstallEi();
+                                                    if (status) setEiStatus(status);
+                                                } finally {
+                                                    setEiUninstalling(false);
+                                                }
+                                            }}
+                                            className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                                        >
+                                            <Trash2 className={`w-3 h-3 ${eiUninstalling ? 'animate-pulse' : ''}`} style={eiUninstalling ? { animationDuration: '2s' } : undefined} />
+                                            {eiUninstalling ? 'Uninstalling...' : 'Uninstall'}
+                                        </button>
+                                    </ParticleHover>
+                                )}
+                            </div>
+                            {eiUpdateCheckResult === 'none' && (
+                                <div className="text-xs text-gray-400 mt-2">No update available — you're on the latest version.</div>
+                            )}
+                        </div>
+
+                        {/* Parser Options */}
+                        {eiSettings && (
+                            <div className="space-y-4">
+                                <div className="bg-black/30 border border-white/10 rounded-[4px] p-4">
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Analysis</div>
+                                    <div className="divide-y divide-white/5">
+                                        <Toggle
+                                            label="Detailed WvW Parse"
+                                            enabled={eiSettings.detailledWvW}
+                                            onChange={(v) => saveEiSetting('detailledWvW', v)}
+                                        />
+                                        <Toggle
+                                            label="Compute Damage Modifiers"
+                                            enabled={eiSettings.computeDamageModifiers}
+                                            onChange={(v) => saveEiSetting('computeDamageModifiers', v)}
+                                        />
+                                        <Toggle
+                                            label="Parse Phases"
+                                            enabled={eiSettings.parsePhases}
+                                            onChange={(v) => saveEiSetting('parsePhases', v)}
+                                        />
+                                        <Toggle
+                                            label="Skip Failed Tries"
+                                            enabled={eiSettings.skipFailedTries}
+                                            onChange={(v) => saveEiSetting('skipFailedTries', v)}
+                                        />
+                                        <Toggle
+                                            label="Anonymize Players"
+                                            enabled={eiSettings.anonymous}
+                                            onChange={(v) => saveEiSetting('anonymous', v)}
+                                        />
+                                        <div className="flex items-center justify-between py-3">
+                                            <div className="flex-1">
+                                                <div className="text-sm font-medium text-gray-200">Min Combat Duration</div>
+                                                <div className="text-xs text-gray-500 mt-0.5">Minimum seconds to count a fight (0 = default)</div>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                value={eiSettings.customTooShort}
+                                                onChange={(e) => {
+                                                    const n = parseInt(e.target.value, 10);
+                                                    if (!isNaN(n) && n >= 0) saveEiSetting('customTooShort', n);
+                                                }}
+                                                className="w-20 bg-black/40 border border-white/10 rounded-[4px] px-2 py-1 text-xs text-gray-200 text-right focus:outline-none focus:border-cyan-400/50"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-black/30 border border-white/10 rounded-[4px] p-4">
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Output</div>
+                                    <div className="divide-y divide-white/5">
+                                        <Toggle
+                                            label="Generate HTML Report"
+                                            enabled={eiSettings.saveOutHTML}
+                                            onChange={(v) => saveEiSetting('saveOutHTML', v)}
+                                        />
+                                        <Toggle
+                                            label="Combat Replay in HTML"
+                                            enabled={eiSettings.parseCombatReplay}
+                                            onChange={(v) => saveEiSetting('parseCombatReplay', v)}
+                                        />
+                                        <Toggle
+                                            label="Light Theme for HTML"
+                                            enabled={eiSettings.lightTheme}
+                                            onChange={(v) => saveEiSetting('lightTheme', v)}
+                                        />
+                                        <Toggle
+                                            label="Include Timeline Arrays"
+                                            enabled={eiSettings.rawTimelineArrays}
+                                            onChange={(v) => saveEiSetting('rawTimelineArrays', v)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="bg-black/30 border border-white/10 rounded-[4px] p-4">
+                                    <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Performance</div>
+                                    <div className="divide-y divide-white/5">
+                                        <Toggle
+                                            label="Single Threaded"
+                                            enabled={eiSettings.singleThreaded}
+                                            onChange={(v) => saveEiSetting('singleThreaded', v)}
+                                        />
+                                        <div className="flex items-center justify-between py-3">
+                                            <div className="flex-1">
+                                                <div className="text-sm font-medium text-gray-200">Memory Limit MB</div>
+                                                <div className="text-xs text-gray-500 mt-0.5">0 = auto</div>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                value={eiSettings.memoryLimit}
+                                                onChange={(e) => {
+                                                    const n = parseInt(e.target.value, 10);
+                                                    if (!isNaN(n) && n >= 0) saveEiSetting('memoryLimit', n);
+                                                }}
+                                                className="w-20 bg-black/40 border border-white/10 rounded-[4px] px-2 py-1 text-xs text-gray-200 text-right focus:outline-none focus:border-cyan-400/50"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </SettingsSection>
+                    </div>
 
                     {/* Close Behavior Section */}
                     <SettingsSection title="Window Close Behavior" icon={Minimize} delay={0.2} sectionId="close-behavior" hidden={settingsSearchHidden.has('close-behavior')}>
