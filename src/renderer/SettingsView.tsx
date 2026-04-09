@@ -2438,31 +2438,33 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         </button>
                                     </ParticleHover>
                                 )}
-                                <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
-                                    <button
-                                        type="button"
-                                        disabled={eiStatus.installing || eiCheckingUpdate}
-                                        onClick={async () => {
-                                            setEiCheckingUpdate(true);
-                                            setEiUpdateCheckResult(null);
-                                            try {
-                                                const result = await window.electronAPI.checkEiUpdate();
-                                                if (result.updateAvailable) {
-                                                    setEiStatus((s) => ({ ...s, updateAvailable: result.updateAvailable }));
-                                                } else {
-                                                    setEiUpdateCheckResult('none');
-                                                    setTimeout(() => setEiUpdateCheckResult(null), 4000);
+                                {eiStatus.installed && (
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
+                                        <button
+                                            type="button"
+                                            disabled={eiStatus.installing || eiCheckingUpdate}
+                                            onClick={async () => {
+                                                setEiCheckingUpdate(true);
+                                                setEiUpdateCheckResult(null);
+                                                try {
+                                                    const result = await window.electronAPI.checkEiUpdate();
+                                                    if (result.updateAvailable) {
+                                                        setEiStatus((s) => ({ ...s, updateAvailable: result.updateAvailable }));
+                                                    } else {
+                                                        setEiUpdateCheckResult('none');
+                                                        setTimeout(() => setEiUpdateCheckResult(null), 4000);
+                                                    }
+                                                } finally {
+                                                    setEiCheckingUpdate(false);
                                                 }
-                                            } finally {
-                                                setEiCheckingUpdate(false);
-                                            }
-                                        }}
-                                        className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
-                                    >
-                                        <RefreshCw className={`w-3 h-3 ${eiCheckingUpdate ? 'animate-spin' : ''}`} style={eiCheckingUpdate ? { animationDuration: '2s' } : undefined} />
-                                        {eiCheckingUpdate ? 'Checking...' : 'Check for Updates'}
-                                    </button>
-                                </ParticleHover>
+                                            }}
+                                            className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                                        >
+                                            <RefreshCw className={`w-3 h-3 ${eiCheckingUpdate ? 'animate-spin' : ''}`} style={eiCheckingUpdate ? { animationDuration: '2s' } : undefined} />
+                                            {eiCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                                        </button>
+                                    </ParticleHover>
+                                )}
                                 {eiStatus.installed && (
                                     <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
                                         <button
