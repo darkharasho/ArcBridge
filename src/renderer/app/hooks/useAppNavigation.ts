@@ -168,7 +168,17 @@ export function useAppNavigation({
         setParserSettingsFocusTrigger((current) => (current === trigger ? 0 : current));
     }, []);
 
-    const showEiBanner = walkthroughSeen === true && !eiAnnouncementDismissed;
+    const [eiInstalled, setEiInstalled] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        window.electronAPI?.getEiStatus?.().then((status) => {
+            setEiInstalled(status.installed);
+        }).catch(() => {
+            setEiInstalled(false);
+        });
+    }, []);
+
+    const showEiBanner = walkthroughSeen === true && !eiAnnouncementDismissed && eiInstalled === false;
 
     const handleEiBannerDismiss = useCallback(() => {
         setEiAnnouncementDismissed(true);
