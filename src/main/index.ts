@@ -75,6 +75,8 @@ import {
 } from './handlers/settingsHandlers';
 import { registerUploadHandlers } from './handlers/uploadHandlers';
 import { registerGithubHandlers } from './handlers/githubHandlers';
+import { registerEiHandlers } from './handlers/eiHandlers';
+import { EiManager, DEFAULT_EI_SETTINGS, EiParserSettings } from './eiParser';
 
 // Increase V8 heap for packaged and dev builds to avoid OOM on large datasets.
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=6144');
@@ -212,6 +214,7 @@ let isQuitting = false
 let watcher: LogWatcher | null = null
 let uploader: Uploader | null = null
 let discord: DiscordNotifier | null = null
+let eiManager: EiManager | null = null
 let autoUpdateRetryAttempts = 0;
 let autoUpdateRetryTimer: NodeJS.Timeout | null = null;
 let resolvedRetryCount = 0;
@@ -920,6 +923,12 @@ function createWindow() {
     uploader = new Uploader();
     discord = new DiscordNotifier();
 
+    eiManager = new EiManager(app.getPath('userData'));
+    const savedEiSettings = store.get('eiParserSettings') as EiParserSettings | undefined;
+    if (savedEiSettings) {
+        eiManager.setSettings({ ...DEFAULT_EI_SETTINGS, ...savedEiSettings });
+    }
+
     // Initialize Discord config
     const webhookUrl = store.get('discordWebhookUrl');
     if (webhookUrl && typeof webhookUrl === 'string') {
@@ -1064,6 +1073,7 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
     isQuitting = true;
+    eiManager?.killActiveProcess();
 });
 
 app.on('open-url', (event) => {
@@ -1367,6 +1377,11 @@ if (!gotTheLock) {
         registerGithubHandlers({
             store,
             getWindow: () => win,
+        });
+        registerEiHandlers({
+            store,
+            getWindow: () => win,
+            getEiManager: () => eiManager!,
         });
     })
 }
