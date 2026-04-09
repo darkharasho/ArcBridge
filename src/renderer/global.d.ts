@@ -359,6 +359,40 @@ export interface IElectronAPI {
     reportRendererError: (payload: { source: string; message: string; stack?: string }) => void;
     onRequestRendererDiagnostics: (callback: () => void) => () => void;
     sendRendererDiagnostics: (payload: { heapUsed: number; heapTotal: number; heapLimit: number; logCount: number }) => void;
+
+    // Elite Insights parser
+    getEiStatus: () => Promise<IEiStatus>;
+    installEi: () => Promise<void>;
+    updateEi: () => Promise<void>;
+    reinstallEi: () => Promise<void>;
+    checkEiUpdate: () => Promise<{ updateAvailable: string | null }>;
+    getEiSettings: () => Promise<IEiParserSettings>;
+    saveEiSettings: (settings: Partial<IEiParserSettings>) => void;
+    onEiDownloadProgress: (callback: (data: { percent: number; message: string }) => void) => () => void;
+    onEiParseProgress: (callback: (data: { logId: string; message: string }) => void) => () => void;
+}
+
+interface IEiParserSettings {
+    detailledWvW: boolean;
+    computeDamageModifiers: boolean;
+    parsePhases: boolean;
+    skipFailedTries: boolean;
+    anonymous: boolean;
+    customTooShort: number;
+    saveOutHTML: boolean;
+    parseCombatReplay: boolean;
+    lightTheme: boolean;
+    rawTimelineArrays: boolean;
+    singleThreaded: boolean;
+    memoryLimit: number;
+}
+
+interface IEiStatus {
+    installed: boolean;
+    version: string | null;
+    updateAvailable: string | null;
+    installing: boolean;
+    error: string | null;
 }
 
 type DetailsStatus = 'idle' | 'loading' | 'available' | 'loaded' | 'exhausted' | 'unavailable';
@@ -372,7 +406,7 @@ declare global {
         id: string;
         permalink: string;
         filePath: string;
-        status?: 'queued' | 'pending' | 'uploading' | 'retrying' | 'discord' | 'calculating' | 'success' | 'error';
+        status?: 'queued' | 'pending' | 'uploading' | 'retrying' | 'discord' | 'calculating' | 'parsing' | 'success' | 'error';
         error?: string;
         uploadTime?: number;
         encounterDuration?: string;
