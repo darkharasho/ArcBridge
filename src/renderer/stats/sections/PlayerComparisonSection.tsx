@@ -11,6 +11,7 @@ import {
     getPlayersArrayKey,
     type ComparisonCategory,
     type ComparisonMetric,
+    type ComparisonContext,
 } from '../utils/comparisonMetrics';
 
 type ComparisonMode = 'head-to-head' | 'vs-average';
@@ -54,6 +55,11 @@ export const PlayerComparisonSection = ({
     const playersArrayKey = getPlayersArrayKey(comparisonCategory);
     const players: any[] = stats?.[playersArrayKey] || [];
     const metrics = COMPARISON_METRICS[comparisonCategory];
+
+    const comparisonContext: ComparisonContext = useMemo(() => ({
+        boonTables: stats?.boonTables,
+        spikePlayers: stats?.spikeDamage?.players,
+    }), [stats?.boonTables, stats?.spikeDamage?.players]);
 
     const playerA = useMemo(() => players.find((p: any) => p.account === playerAKey), [players, playerAKey]);
     const playerB = useMemo(() => players.find((p: any) => p.account === playerBKey), [players, playerBKey]);
@@ -141,6 +147,7 @@ export const PlayerComparisonSection = ({
                             metrics={metrics}
                             formatValue={formatValue}
                             renderProfessionIcon={renderProfessionIcon}
+                            comparisonContext={comparisonContext}
                         />
                     ) : (
                         <VsAverageView
@@ -158,6 +165,7 @@ export const PlayerComparisonSection = ({
                                     setAvgSortDir('desc');
                                 }
                             }}
+                            comparisonContext={comparisonContext}
                         />
                     )}
                 </>
@@ -242,6 +250,7 @@ const HeadToHeadView = ({
     metrics,
     formatValue,
     renderProfessionIcon,
+    comparisonContext,
 }: {
     players: any[];
     playerA: any;
@@ -253,6 +262,7 @@ const HeadToHeadView = ({
     metrics: ComparisonMetric[];
     formatValue: (value: number, metric: ComparisonMetric) => string;
     renderProfessionIcon: any;
+    comparisonContext: ComparisonContext;
 }) => {
     return (
         <>
@@ -294,8 +304,8 @@ const HeadToHeadView = ({
                         </thead>
                         <tbody>
                             {metrics.map((metric) => {
-                                const valA = getMetricValue(playerA, metric);
-                                const valB = getMetricValue(playerB, metric);
+                                const valA = getMetricValue(playerA, metric, comparisonContext);
+                                const valB = getMetricValue(playerB, metric, comparisonContext);
                                 const colorA = getComparisonColor(valA, valB, metric.lowerIsBetter);
                                 const colorB = getComparisonColor(valB, valA, metric.lowerIsBetter);
                                 const diff = getDiffPercent(valA, valB, metric.lowerIsBetter);
@@ -333,6 +343,7 @@ const VsAverageView = ({
     sortMetric,
     sortDir,
     onSort,
+    comparisonContext,
 }: {
     players: any[];
     metrics: ComparisonMetric[];
@@ -341,26 +352,27 @@ const VsAverageView = ({
     sortMetric: string | null;
     sortDir: 'asc' | 'desc';
     onSort: (metricId: string) => void;
+    comparisonContext: ComparisonContext;
 }) => {
     const averages = useMemo(() => {
         const avgs: Record<string, number> = {};
         for (const metric of metrics) {
-            const values = players.map((p) => getMetricValue(p, metric));
+            const values = players.map((p) => getMetricValue(p, metric, comparisonContext));
             avgs[metric.id] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
         }
         return avgs;
-    }, [players, metrics]);
+    }, [players, metrics, comparisonContext]);
 
     const sortedPlayers = useMemo(() => {
         if (!sortMetric) return players;
         const metric = metrics.find((m) => m.id === sortMetric);
         if (!metric) return players;
         return [...players].sort((a, b) => {
-            const va = getMetricValue(a, metric);
-            const vb = getMetricValue(b, metric);
+            const va = getMetricValue(a, metric, comparisonContext);
+            const vb = getMetricValue(b, metric, comparisonContext);
             return sortDir === 'desc' ? vb - va : va - vb;
         });
-    }, [players, metrics, sortMetric, sortDir]);
+    }, [players, metrics, sortMetric, sortDir, comparisonContext]);
 
     if (players.length === 0) {
         return (
@@ -411,7 +423,7 @@ const VsAverageView = ({
                                 </span>
                             </td>
                             {metrics.map((metric) => {
-                                const value = getMetricValue(player, metric);
+                                const value = getMetricValue(player, metric, comparisonContext);
                                 const color = getComparisonColor(value, averages[metric.id], metric.lowerIsBetter);
                                 return (
                                     <td
