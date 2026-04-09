@@ -1,34 +1,15 @@
 # Release Notes
 
-Version v2.4.0 — April 8, 2026
+Version v2.4.1 — April 8, 2026
 
-## Local Elite Insights Parsing
+## Player Comparison: More Metrics
 
-You can now install Elite Insights directly inside AxiBridge and parse logs locally instead of relying on dps.report. This gives you more accurate WvW metrics — especially down contribution — plus no file size limits and offline support. When EI is installed, logs are parsed locally first, with a dps.report permalink fetched in the background so your Discord links still work.
+The player comparison tool now has a **General** tab (selected by default) with metrics like Logs Joined, Stack %, Attendance %, and Average Distance. Rate-based metrics across all tabs now show `/s` or `/m` suffixes so you can tell at a glance what the number represents. Boon output and burst damage metrics are also wired into comparison views.
 
-Head to Settings → Parser Settings to install. AxiBridge handles the download, extraction, and .NET runtime setup automatically.
+## Smarter EI Banner
 
-## EI Onboarding
-
-New users see a 4th walkthrough step pointing them to local parsing. Existing users get a one-time banner at the top of the app with a quick "Set up" button that takes you straight to Parser Settings. Both dismiss permanently once acknowledged.
-
-## Parser Settings
-
-New settings section for managing your local EI installation:
-
-- Install, update, reinstall, or uninstall Elite Insights
-- Check for updates with animated feedback
-- "Force dps.report Only" toggle to bypass local parsing when you want to
-- Tune parse settings like memory limits, fight duration thresholds, and WvW detail level
-
-All buttons have particle hover effects that match their action color (blue for install, green for update, red for uninstall).
-
-## Log Card Status
-
-Log cards now show a "Parsing log locally..." status while EI is running, with a progress indicator. You can cancel an in-progress parse the same way you cancel uploads.
+The "Set up Elite Insights" banner no longer shows if you already have EI installed. Previously it would appear for every existing user who hadn't explicitly dismissed it, even if they'd already gone through the setup.
 
 ## Fixes
 
-- Log cards no longer flip from "done" back to "discord" status during the EI upload path. The discord notification now fires before the upload-complete event, matching the dps.report path ordering.
-- Download progress no longer flashes "NaN%" during the initial phase of an EI install.
-- Uninstalling EI now immediately updates the UI state instead of waiting for an IPC event.
+- Min Combat Duration setting now correctly says "milliseconds" instead of "seconds", and shows the actual default (2200).
