@@ -43,7 +43,8 @@ const makeElectronApiMock = (overrides?: {
         restartApp: vi.fn(),
         manualUploadBatch: vi.fn(),
         uploadWebReport: vi.fn().mockResolvedValue({ success: false }),
-        openExternal: vi.fn().mockResolvedValue({ success: true })
+        openExternal: vi.fn().mockResolvedValue({ success: true }),
+        getEiStatus: vi.fn().mockResolvedValue({ installed: false, version: null, updateAvailable: null, installing: false, error: null })
     };
 };
 
