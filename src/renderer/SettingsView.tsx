@@ -2493,7 +2493,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                             onClick={async () => {
                                                 setEiUninstalling(true);
                                                 try {
-                                                    await window.electronAPI.uninstallEi();
+                                                    const status = await window.electronAPI.uninstallEi();
+                                                    if (status) setEiStatus(status);
                                                 } finally {
                                                     setEiUninstalling(false);
                                                 }

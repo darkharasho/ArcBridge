@@ -367,7 +367,7 @@ export interface IElectronAPI {
     installEi: () => Promise<void>;
     updateEi: () => Promise<void>;
     reinstallEi: () => Promise<void>;
-    uninstallEi: () => Promise<void>;
+    uninstallEi: () => Promise<IEiStatus>;
     checkEiUpdate: () => Promise<{ updateAvailable: string | null }>;
     getEiSettings: () => Promise<IEiParserSettings>;
     saveEiSettings: (settings: Partial<IEiParserSettings>) => void;
