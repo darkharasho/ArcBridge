@@ -26,6 +26,7 @@ export interface PlayerStats {
     logsJoined: number;
     totalDist: number;
     distCount: number;
+    stackedLogCount: number;
     dodges: number;
     downs: number;
     deaths: number;
@@ -622,7 +623,7 @@ export const ingestLogPlayerData = (log: any, acc: PlayerAggregationAccumulators
         if (!acc.playerStats.has(key)) {
             acc.playerStats.set(key, {
                 name, account: identity.accountLabel, characterNames: new Set<string>(), downContrib: 0, cleanses: 0, strips: 0, stab: 0, healing: 0, barrier: 0, cc: 0, interrupts: 0, logsJoined: 0,
-                totalDist: 0, distCount: 0, dodges: 0, downs: 0, deaths: 0, totalFightMs: 0,
+                totalDist: 0, distCount: 0, stackedLogCount: 0, dodges: 0, downs: 0, deaths: 0, totalFightMs: 0,
                 offenseTotals: {}, offenseRateWeights: {}, defenseActiveMs: 0, defenseTotals: {}, defenseMinionDamageTaken: {}, supportActiveMs: 0, supportTotals: {},
                 healingActiveMs: 0, healingTotals: {}, profession: identity.profession, professions: new Set(),
                 professionTimeMs: {}, squadActiveMs: 0, firstSeenFightTs: 0, lastSeenFightTs: 0, lastSeenFightDurationMs: 0, isCommander: false, damage: 0, dps: 0, revives: 0, outgoingConditions: {}, incomingConditions: {}, damageModTotals: {}, incomingDamageModTotals: {}
@@ -652,6 +653,9 @@ export const ingestLogPlayerData = (log: any, acc: PlayerAggregationAccumulators
         if (dist <= RUN_BACK_RANGE) {
             s.totalDist += dist;
             s.distCount++;
+        }
+        if (dist <= 600) {
+            s.stackedLogCount++;
         }
         if (p.defenses?.[0]) {
             s.dodges += p.defenses[0].dodgeCount || 0;
