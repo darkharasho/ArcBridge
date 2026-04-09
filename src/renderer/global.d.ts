@@ -370,9 +370,10 @@ export interface IElectronAPI {
     saveEiSettings: (settings: Partial<IEiParserSettings>) => void;
     onEiDownloadProgress: (callback: (data: { percent: number; message: string }) => void) => () => void;
     onEiParseProgress: (callback: (data: { logId: string; message: string }) => void) => () => void;
+    onEiStatusChanged: (callback: (status: IEiStatus) => void) => () => void;
 }
 
-interface IEiParserSettings {
+export interface IEiParserSettings {
     detailledWvW: boolean;
     computeDamageModifiers: boolean;
     parsePhases: boolean;
@@ -387,7 +388,7 @@ interface IEiParserSettings {
     memoryLimit: number;
 }
 
-interface IEiStatus {
+export interface IEiStatus {
     installed: boolean;
     version: string | null;
     updateAvailable: string | null;
