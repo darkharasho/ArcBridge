@@ -30,6 +30,13 @@ export function useUploadListeners({
             queueLogUpdate(data);
         });
 
+        const cleanupPermalink = window.electronAPI.onUploadPermalink((data) => {
+            if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
+                return;
+            }
+            queueLogUpdate({ id: data.id, filePath: data.filePath, permalink: data.permalink } as ILogData);
+        });
+
         const cleanupUpload = window.electronAPI.onUploadComplete((data: ILogData) => {
             if (data.filePath && canceledLogsRef.current.has(data.filePath)) {
                 return;
@@ -59,6 +66,7 @@ export function useUploadListeners({
             }
             pendingLogUpdatesRef.current.clear();
             cleanupStatus();
+            cleanupPermalink();
             cleanupUpload();
         };
     }, []);
