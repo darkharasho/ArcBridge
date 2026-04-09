@@ -247,6 +247,34 @@ const getKnownFileHash = (filePath: string): string | null => {
     if (!normalizedKey) return null;
     return fileHashByPath.get(normalizedKey) || null;
 };
+
+// ─── EI Parse Queue ─────────────────────────────────────────────────────────
+// Serialises local EI parses so only one dotnet process runs at a time.
+let eiParseQueue: { logPath: string; logId: string; resolve: (json: any) => void; reject: (err: any) => void }[] = [];
+let eiParseActive = false;
+
+async function processEiQueue() {
+    if (eiParseActive || eiParseQueue.length === 0) return;
+    eiParseActive = true;
+    const task = eiParseQueue.shift()!;
+    try {
+        const json = await eiManager!.parseLog(task.logPath, task.logId);
+        task.resolve(json);
+    } catch (err) {
+        task.reject(err);
+    } finally {
+        eiParseActive = false;
+        processEiQueue();
+    }
+}
+
+function queueEiParse(logPath: string, logId: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+        eiParseQueue.push({ logPath, logId, resolve, reject });
+        processEiQueue();
+    });
+}
+
 const BULK_LOG_DETAILS_HEAP_BUDGET_BYTES = 400 * 1024 * 1024; // 400 MB
 const setBulkLogDetails = (filePath: string, details: any) => {
     const rawKey = String(filePath || '');
@@ -475,30 +503,204 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
 
     if (options?.retry) {
         markUploadRetrying(filePath);
-        // Keep the visible chip flow consistent with first-time uploads.
-        win?.webContents.send('upload-status', { id: fileId, filePath, status: 'uploading' });
-    } else {
-        win?.webContents.send('upload-status', { id: fileId, filePath, status: 'uploading' });
     }
+
+    // Common: compute hash and check cache before choosing EI vs dps.report path.
+    let cacheKey: string | null = null;
+    try {
+        cacheKey = await computeFileHash(filePath);
+        rememberFileHash(filePath, cacheKey);
+    } catch (hashError: any) {
+        console.warn('[Main] Failed to compute log hash for cache:', hashError?.message || hashError);
+    }
+
+    let cached = null as null | { entry: DpsReportCacheEntry; jsonDetails: any | null };
+    if (cacheKey) {
+        cached = await loadDpsReportCacheEntry(cacheKey);
+        if (!cached) {
+            console.log(`[Cache] Miss for ${filePath}.`);
+        }
+    }
+
+    // If we have a full cache hit (permalink + usable details), use it directly
+    // regardless of EI availability — no need to re-parse or re-upload.
+    const cachedHasUsableDetails = Boolean(
+        cached?.entry?.result && cached?.jsonDetails && !cached.jsonDetails.error && hasUsableFightDetails(cached.jsonDetails)
+    );
+
+    // ─── EI-first path ──────────────────────────────────────────────────────
+    // When EI is installed and we don't have a full cache hit, parse locally
+    // with EI and upload to dps.report in parallel for the permalink.
+    if (!cachedHasUsableDetails && eiManager?.isInstalled()) {
+        win?.webContents.send('upload-status', { id: fileId, filePath, status: 'parsing' });
+
+        // Set up EI parse progress callback
+        eiManager.setParseProgressCallback((data: string) => {
+            win?.webContents.send('ei:parse-progress', { logId: fileId, filePath, data });
+        });
+
+        // Start dps.report upload in parallel (for permalink only) — don't await yet
+        const permalinkPromise = uploader
+            ? uploader.upload(filePath).catch((err: any) => {
+                console.warn(`[Main] dps.report parallel upload failed for ${filePath}:`, err?.message || err);
+                return null as UploadResult | null;
+            })
+            : Promise.resolve(null as UploadResult | null);
+
+        try {
+            let eiJson = await queueEiParse(filePath, fileId);
+            console.log(`[Main] EI parse succeeded for ${filePath}`);
+
+            // Enrich and prune
+            if (eiJson && !eiJson.error) {
+                eiJson = attachConditionMetrics(eiJson);
+            }
+            const hasUsableDetails = Boolean(eiJson && !eiJson.error && hasUsableFightDetails(eiJson));
+            const prunedDetails = hasUsableDetails ? pruneDetailsForStats(eiJson) : null;
+            eiJson = null; // Release full JSON for GC
+
+            const playerCount = Array.isArray(prunedDetails?.players) ? prunedDetails.players.length : undefined;
+            const dashboardSummary = prunedDetails ? buildDashboardSummaryFromDetails(prunedDetails) : undefined;
+            const detailsSummary = {
+                fightName: prunedDetails?.fightName,
+                encounterDuration: prunedDetails?.encounterDuration,
+                uploadTime: prunedDetails?.uploadTime,
+                success: prunedDetails?.success
+            };
+
+            // Cache the EI-parsed result.  Use a synthetic UploadResult from cache
+            // if available, otherwise build a minimal one until the permalink arrives.
+            const cachedResult = cached?.entry?.result;
+            const syntheticResult: UploadResult = cachedResult || {
+                id: fileId,
+                permalink: '',
+                userToken: '',
+                fightName: prunedDetails?.fightName || fileId,
+                encounterDuration: prunedDetails?.encounterDuration,
+                uploadTime: prunedDetails?.uploadTime || Date.now() / 1000,
+            };
+
+            if (cacheKey && !cachedResult) {
+                await saveDpsReportCacheEntry(cacheKey, syntheticResult, prunedDetails);
+            } else if (cacheKey && cachedResult && prunedDetails) {
+                await updateDpsReportCacheDetails(cacheKey, prunedDetails);
+            }
+
+            markUploadRetryResolved(filePath);
+
+            if (prunedDetails) {
+                setBulkLogDetails(filePath, prunedDetails);
+                void updateGlobalManifest(prunedDetails, filePath);
+            }
+
+            // Pre-warm renderer memory cache
+            if (prunedDetails && win?.webContents && !bulkUploadMode) {
+                win.webContents.send('details-prewarm', {
+                    logId: syntheticResult.id || filePath,
+                    filePath,
+                    details: prunedDetails,
+                });
+            }
+
+            // Send upload-complete with EI data (permalink may be empty until dps.report resolves)
+            win?.webContents.send('upload-complete', {
+                ...syntheticResult,
+                ...detailsSummary,
+                filePath,
+                status: hasUsableDetails ? 'calculating' : 'success',
+                detailsStatus: hasUsableDetails ? 'available' as const : 'idle' as const,
+                playerCount,
+                dashboardSummary
+            });
+            console.log(`[Main] upload-complete (EI): ${filePath} players=${playerCount ?? 'n/a'}`);
+
+            // Discord notifications (mirrors existing dps.report path)
+            win?.webContents.send('upload-status', {
+                id: fileId,
+                filePath,
+                status: 'discord',
+                permalink: syntheticResult.permalink,
+                uploadTime: syntheticResult.uploadTime,
+                encounterDuration: syntheticResult.encounterDuration,
+                fightName: syntheticResult.fightName
+            });
+
+            const enemySplitSettings = {
+                image: false,
+                embed: false,
+                tiled: false,
+                ...(store.get('discordEnemySplitSettings') as any || {})
+            };
+            const globalSplitEnemiesByTeam = Boolean(store.get('discordSplitEnemiesByTeam', false));
+            const splitEnemiesByTeam = globalSplitEnemiesByTeam || Boolean(enemySplitSettings.embed);
+            const selectedWebhookId = store.get('selectedWebhookId', null);
+            const webhookUrl = store.get('discordWebhookUrl', null);
+            const shouldSendDiscord = Boolean(selectedWebhookId) && typeof webhookUrl === 'string' && webhookUrl.length > 0;
+
+            if (shouldSendDiscord) {
+                try {
+                    const dedupeKey = cacheKey || syntheticResult.id || filePath;
+                    const now = Date.now();
+                    const lastSentAt = recentDiscordSends.get(dedupeKey);
+                    if (lastSentAt && now - lastSentAt < DISCORD_DEDUPE_TTL_MS) {
+                        console.warn(`[Main] Skipping duplicate Discord post for ${filePath} (dedupe key: ${dedupeKey}).`);
+                    } else {
+                        recentDiscordSends.set(dedupeKey, now);
+                        if (recentDiscordSends.size > 500) {
+                            for (const [key, timestamp] of recentDiscordSends) {
+                                if (now - timestamp > DISCORD_DEDUPE_TTL_MS) {
+                                    recentDiscordSends.delete(key);
+                                }
+                            }
+                        }
+                        await discord?.sendLog({ ...syntheticResult, filePath, mode: 'embed', splitEnemiesByTeam }, prunedDetails);
+                    }
+                } catch (discordError: any) {
+                    console.error('[Main] Discord notification failed:', discordError?.message || discordError);
+                }
+            } else {
+                const now = Date.now();
+                if (now - discordNoWebhookLogAt > 15000) {
+                    console.log('[Main] Discord notifications disabled: no webhook selected.');
+                    discordNoWebhookLogAt = now;
+                }
+            }
+
+            // Await the dps.report permalink and attach it asynchronously
+            permalinkPromise.then(async (uploadResult) => {
+                if (uploadResult && !uploadResult.error && uploadResult.permalink) {
+                    console.log(`[Main] dps.report permalink resolved for ${filePath}: ${uploadResult.permalink}`);
+                    // Update cache with the real permalink
+                    if (cacheKey) {
+                        await saveDpsReportCacheEntry(cacheKey, uploadResult, prunedDetails);
+                    }
+                    // Notify renderer of the permalink
+                    win?.webContents.send('upload-permalink', {
+                        id: fileId,
+                        filePath,
+                        permalink: uploadResult.permalink,
+                    });
+                } else if (uploadResult?.error) {
+                    console.warn(`[Main] dps.report upload returned error for ${filePath}: ${uploadResult.error}`);
+                }
+            }).catch((err: any) => {
+                console.warn(`[Main] dps.report permalink resolution failed for ${filePath}:`, err?.message || err);
+            });
+
+            activeUploads.delete(filePath);
+            return;
+        } catch (eiError: any) {
+            console.error(`[Main] EI parse failed for ${filePath}, falling back to dps.report:`, eiError?.message || eiError);
+            // Fall through to the existing dps.report flow below
+        }
+    }
+
+    // ─── dps.report path (fallback or primary when EI is not installed) ──────
+    win?.webContents.send('upload-status', { id: fileId, filePath, status: 'uploading' });
 
     try {
         if (!uploader) {
             throw new Error('Uploader not initialized.');
-        }
-        let cacheKey: string | null = null;
-        try {
-            cacheKey = await computeFileHash(filePath);
-            rememberFileHash(filePath, cacheKey);
-        } catch (hashError: any) {
-            console.warn('[Main] Failed to compute log hash for cache:', hashError?.message || hashError);
-        }
-
-        let cached = null as null | { entry: DpsReportCacheEntry; jsonDetails: any | null };
-        if (cacheKey) {
-            cached = await loadDpsReportCacheEntry(cacheKey);
-            if (!cached) {
-                console.log(`[Cache] Miss for ${filePath}.`);
-            }
         }
 
         let result = cached?.entry?.result || await uploader.upload(filePath);
