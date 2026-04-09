@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateEiConf, DEFAULT_EI_SETTINGS } from '../eiParser';
+import { generateEiConf, DEFAULT_EI_SETTINGS, isNewerVersion } from '../eiParser';
 
 describe('generateEiConf', () => {
     it('generates valid conf with default settings', () => {
@@ -26,5 +26,23 @@ describe('generateEiConf', () => {
         const conf = generateEiConf(DEFAULT_EI_SETTINGS, '/my/output/dir');
         expect(conf).toContain('SaveAtOut=False');
         expect(conf).toContain('OutLocation=/my/output/dir');
+    });
+});
+
+describe('isNewerVersion', () => {
+    it('detects newer version', () => {
+        expect(isNewerVersion('v3.20.0.0', 'v3.21.0.0')).toBe(true);
+    });
+
+    it('returns false for same version', () => {
+        expect(isNewerVersion('v3.20.0.0', 'v3.20.0.0')).toBe(false);
+    });
+
+    it('returns false for older version', () => {
+        expect(isNewerVersion('v3.21.0.0', 'v3.20.0.0')).toBe(false);
+    });
+
+    it('handles missing v prefix', () => {
+        expect(isNewerVersion('3.20.0.0', '3.21.0.0')).toBe(true);
     });
 });
