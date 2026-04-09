@@ -2438,7 +2438,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         </button>
                                     </ParticleHover>
                                 )}
-                                <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled}>
+                                <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
                                     <button
                                         type="button"
                                         disabled={eiStatus.installing || eiCheckingUpdate}
@@ -2464,7 +2464,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                     </button>
                                 </ParticleHover>
                                 {eiStatus.installed && (
-                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled}>
+                                    <ParticleHover className="rounded-[4px]" disabled={!particlesEnabled} color="#9ca3af">
                                         <button
                                             type="button"
                                             disabled={eiStatus.installing || eiReinstalling}
