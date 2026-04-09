@@ -1188,17 +1188,25 @@ export class IncrementalAggregator {
             })),
             defensePlayers: Array.from(playerStats.values()).map(s => ({
                 account: s.account, profession: s.profession, professionList: s.professionList,
-                defenseTotals: s.defenseTotals, activeMs: s.defenseActiveMs, minionDamageTakenByMinion: s.defenseMinionDamageTaken
+                defenseTotals: s.defenseTotals, activeMs: s.defenseActiveMs, minionDamageTakenByMinion: s.defenseMinionDamageTaken,
+                logsJoined: s.logsJoined
             })),
             damageMitigationPlayers,
             damageMitigationMinions,
             supportPlayers: Array.from(playerStats.values()).map(s => ({
                 account: s.account, profession: s.profession, professionList: s.professionList,
-                supportTotals: s.supportTotals, activeMs: s.supportActiveMs
+                supportTotals: s.supportTotals, activeMs: s.supportActiveMs,
+                logsJoined: s.logsJoined
             })),
             healingPlayers: Array.from(playerStats.values()).map(s => ({
                 account: s.account, profession: s.profession, professionList: s.professionList,
                 healingTotals: s.healingTotals, activeMs: s.healingActiveMs
+            })),
+            generalPlayers: Array.from(playerStats.values()).map(s => ({
+                account: s.account, profession: s.profession, professionList: s.professionList,
+                totalFightMs: s.totalFightMs, squadActiveMs: s.squadActiveMs,
+                totalDist: s.totalDist, distCount: s.distCount,
+                logsJoined: s.logsJoined, stackedLogCount: s.stackedLogCount
             })),
             damageModMap: this.mergedDamageModMap,
             personalDamageModKeys: Array.from(this.personalDamageModKeys),
