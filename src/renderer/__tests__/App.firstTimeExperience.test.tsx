@@ -29,6 +29,7 @@ const makeElectronApiMock = (overrides?: {
         startWatching: vi.fn(),
         onUploadStatus: vi.fn(() => () => {}),
         onUploadComplete: vi.fn(() => () => {}),
+        onUploadPermalink: vi.fn(() => () => {}),
         onWebUploadStatus: vi.fn(() => () => {}),
         onUpdateMessage: vi.fn(() => () => {}),
         onUpdateAvailable: vi.fn(() => () => {}),

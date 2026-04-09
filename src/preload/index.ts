@@ -16,6 +16,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.removeAllListeners('upload-complete')
         }
     },
+    onUploadPermalink: (callback: (data: { id: string; filePath: string; permalink: string }) => void) => {
+        ipcRenderer.on('upload-permalink', (_event, value) => callback(value))
+        return () => {
+            ipcRenderer.removeAllListeners('upload-permalink')
+        }
+    },
     onUploadStatus: (callback: (data: any) => void) => {
         ipcRenderer.on('upload-status', (_event, value) => callback(value))
         return () => {

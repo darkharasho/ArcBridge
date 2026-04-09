@@ -241,6 +241,7 @@ export interface IElectronAPI {
     startWatching: (path: string) => void;
     onLogDetected: (callback: (path: string) => void) => () => void;
     onUploadComplete: (callback: (data: any) => void) => () => void;
+    onUploadPermalink: (callback: (data: { id: string; filePath: string; permalink: string }) => void) => () => void;
     onUploadStatus: (callback: (data: any) => void) => () => void;
     resolveDroppedFilePath: (file: File) => string;
     setDiscordWebhook: (url: string) => void;
