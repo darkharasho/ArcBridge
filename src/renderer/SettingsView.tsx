@@ -2573,7 +2573,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                         <div className="flex items-center justify-between py-3">
                                             <div className="flex-1">
                                                 <div className="text-sm font-medium text-gray-200">Min Combat Duration</div>
-                                                <div className="text-xs text-gray-500 mt-0.5">Minimum seconds to count a fight (0 = default)</div>
+                                                <div className="text-xs text-gray-500 mt-0.5">Minimum milliseconds to count a fight (default: 2200)</div>
                                             </div>
                                             <input
                                                 type="text"
