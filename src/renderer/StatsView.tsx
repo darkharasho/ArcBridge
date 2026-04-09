@@ -754,7 +754,7 @@ export const StatsView = memo(function StatsView({ logs, onBack: _onBack, mvpWei
     const [activeIncomingDamageMod, setActiveIncomingDamageMod] = useState('');
 
     const [comparisonMode, setComparisonMode] = useState<'head-to-head' | 'vs-average'>('head-to-head');
-    const [comparisonCategory, setComparisonCategory] = useState<'offense' | 'defense' | 'support' | 'healing'>('offense');
+    const [comparisonCategory, setComparisonCategory] = useState<'offense' | 'defense' | 'support' | 'healing' | 'general'>('offense');
     const [comparisonPlayerAKey, setComparisonPlayerAKey] = useState<string | null>(null);
     const [comparisonPlayerBKey, setComparisonPlayerBKey] = useState<string | null>(null);
 
