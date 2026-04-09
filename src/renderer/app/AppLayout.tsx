@@ -9,6 +9,7 @@ import { StatsErrorBoundary } from '../stats/StatsErrorBoundary';
 import { StatsNavSidebar } from '../stats/StatsNavSidebar';
 import { Terminal } from '../Terminal';
 import { UpdateErrorModal } from '../UpdateErrorModal';
+import { EiAnnouncementBanner } from '../EiAnnouncementBanner';
 import { WalkthroughModal } from '../WalkthroughModal';
 import { WebhookModal } from '../WebhookModal';
 import { WhatsNewModal } from '../WhatsNewModal';
@@ -63,6 +64,11 @@ export function AppLayout({ ctx }: { ctx: any }) {
         developerSettingsTrigger,
         helpUpdatesFocusTrigger,
         handleHelpUpdatesFocusConsumed,
+        parserSettingsFocusTrigger,
+        handleParserSettingsFocusConsumed,
+        showEiBanner,
+        handleEiBannerDismiss,
+        handleEiBannerSetup,
         setWalkthroughOpen,
         setWhatsNewOpen,
         activityPanel,
@@ -318,6 +324,12 @@ export function AppLayout({ ctx }: { ctx: any }) {
                 </div>
             </div>
 
+            <EiAnnouncementBanner
+                visible={showEiBanner}
+                onSetup={handleEiBannerSetup}
+                onDismiss={handleEiBannerDismiss}
+            />
+
             <div className={`app-content relative z-10 max-w-none flex-1 w-full min-w-0 flex flex-col min-h-0 ${(view === 'stats' || view === 'history') ? 'pt-4 px-4 pb-2 overflow-hidden' : 'p-4 overflow-hidden'}`} style={{ background: 'var(--bg-elevated)' }}>
 
                 <WebUploadOverlay
@@ -388,6 +400,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                 developerSettingsTrigger={developerSettingsTrigger}
                                 helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
                                 onHelpUpdatesFocusConsumed={handleHelpUpdatesFocusConsumed}
+                                parserSettingsFocusTrigger={parserSettingsFocusTrigger}
+                                onParserSettingsFocusConsumed={handleParserSettingsFocusConsumed}
                                 onOpenWalkthrough={() => setWalkthroughOpen(true)}
                                 onOpenWhatsNew={() => setWhatsNewOpen(true)}
                                 isBulkUploadActive={isBulkUploadActive}

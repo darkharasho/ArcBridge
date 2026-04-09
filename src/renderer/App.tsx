@@ -69,6 +69,7 @@ function App() {
         whatsNewVersion,
         whatsNewNotes,
         walkthroughSeen,
+        eiAnnouncementDismissed, setEiAnnouncementDismissed,
         shouldOpenWhatsNew,
     } = useSettings({
         onAutoUpdateSettings: (supported, reason) => {
@@ -117,8 +118,15 @@ function App() {
         handleWalkthroughClose,
         handleWalkthroughLearnMore,
         handleHelpUpdatesFocusConsumed,
+        parserSettingsFocusTrigger,
+        handleParserSettingsFocusConsumed,
+        showEiBanner,
+        handleEiBannerDismiss,
+        handleEiBannerSetup,
     } = useAppNavigation({
         walkthroughSeen,
+        eiAnnouncementDismissed,
+        setEiAnnouncementDismissed,
         shouldOpenWhatsNew,
         whatsNewVersion,
         logsCount: logs.length,
@@ -926,7 +934,7 @@ function App() {
         ...filePickerState, logDirectory
     }), [filePickerState, logDirectory]);
     const appLayoutCtx = useMemo(() => ({
-        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, particlesEnabled, setParticlesEnabled, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setAllowLocalJson, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
+        shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded, updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason, view, settingsUpdateCheckRef, versionClickTimesRef, versionClickTimeoutRef, setDeveloperSettingsTrigger, appVersion, setView, showTerminal, setShowTerminal, webUploadState, setWebUploadState, logsForStats, mvpWeights, disruptionMethod, statsViewSettings, computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics, statsDataProgress, setStatsViewSettings, colorPalette, setColorPalette, glassSurfaces, setGlassSurfaces, particlesEnabled, setParticlesEnabled, handleWebUpload, selectedWebhookId, setEmbedStatSettings, setMvpWeights, setDisruptionMethod, setAllowLocalJson, developerSettingsTrigger, helpUpdatesFocusTrigger, handleHelpUpdatesFocusConsumed, parserSettingsFocusTrigger, handleParserSettingsFocusConsumed, showEiBanner, handleEiBannerDismiss, handleEiBannerSetup, setWalkthroughOpen, setWhatsNewOpen, activityPanel, configurationPanel, filePickerCtx, webhookDropdownOpen, webhookDropdownStyle, webhookDropdownPortalRef, webhooks, handleUpdateSettings, setSelectedWebhookId, setWebhookDropdownOpen, webhookModalOpen, setWebhookModalOpen, setWebhooks, showUpdateErrorModal, setShowUpdateErrorModal, updateError, whatsNewOpen, handleWhatsNewClose, whatsNewVersion, whatsNewNotes, walkthroughOpen, handleWalkthroughClose, handleWalkthroughLearnMore, isBulkUploadActive
     }), [
         shellClassName, isDev, axibridgeLogoStyle, updateAvailable, updateDownloaded,
         updateProgress, updateStatus, autoUpdateSupported, autoUpdateDisabledReason,
@@ -934,13 +942,15 @@ function App() {
         logsForStats, mvpWeights, disruptionMethod, statsViewSettings,
         computedStats, computedSkillUsageData, aggregationProgress,
         aggregationDiagnostics, statsDataProgress, colorPalette, glassSurfaces, particlesEnabled,
-        selectedWebhookId, developerSettingsTrigger, helpUpdatesFocusTrigger,
+        selectedWebhookId, developerSettingsTrigger, helpUpdatesFocusTrigger, parserSettingsFocusTrigger,
+        showEiBanner,
         activityPanel, configurationPanel, filePickerCtx,
         webhookDropdownOpen, webhookDropdownStyle, webhooks, handleUpdateSettings,
         webhookModalOpen, showUpdateErrorModal, updateError, whatsNewOpen,
         whatsNewVersion, whatsNewNotes, walkthroughOpen, isBulkUploadActive,
         handleWebUpload, handleWhatsNewClose, handleWalkthroughClose,
-        handleWalkthroughLearnMore, handleHelpUpdatesFocusConsumed,
+        handleWalkthroughLearnMore, handleHelpUpdatesFocusConsumed, handleParserSettingsFocusConsumed,
+        handleEiBannerDismiss, handleEiBannerSetup,
     ]);
 
     return (
