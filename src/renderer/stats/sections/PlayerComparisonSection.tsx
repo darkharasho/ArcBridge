@@ -66,8 +66,11 @@ export const PlayerComparisonSection = ({
 
     const formatValue = (value: number, metric: ComparisonMetric) => {
         const decimals = metric.decimals ?? (metric.isPercent ? 1 : 0);
-        if (metric.isPercent) return `${value.toFixed(decimals)}%`;
-        return formatWithCommas(value, decimals);
+        const formatted = metric.isPercent ? `${value.toFixed(decimals)}%` : formatWithCommas(value, decimals);
+        if (metric.perSecond) return `${formatted}/s`;
+        if (metric.perMinute) return `${formatted}/m`;
+        if (metric.boonId) return `${formatted}/m`;
+        return formatted;
     };
 
     const hasData = players.length > 0;
