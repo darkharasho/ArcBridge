@@ -531,7 +531,8 @@ const processLogFile = async (filePath: string, options?: { retry?: boolean }) =
     // ─── EI-first path ──────────────────────────────────────────────────────
     // When EI is installed and we don't have a full cache hit, parse locally
     // with EI and upload to dps.report in parallel for the permalink.
-    if (!cachedHasUsableDetails && eiManager?.isInstalled()) {
+    const forceDpsReportOnly = Boolean(store.get('forceDpsReportOnly', false));
+    if (!cachedHasUsableDetails && eiManager?.isInstalled() && !forceDpsReportOnly) {
         win?.webContents.send('upload-status', { id: fileId, filePath, status: 'parsing' });
 
         // Set up EI parse progress callback

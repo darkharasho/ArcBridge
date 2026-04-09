@@ -309,6 +309,7 @@ export interface IElectronAPI {
         githubFavoriteRepos?: string[] | null;
         walkthroughSeen?: boolean;
         allowLocalJson?: boolean;
+        forceDpsReportOnly?: boolean;
     }) => void;
     openExternal: (url: string) => Promise<{ success: boolean, error?: string }>;
     openMobilePreview: (url: string) => Promise<{ success: boolean, error?: string }>;
@@ -366,6 +367,7 @@ export interface IElectronAPI {
     installEi: () => Promise<void>;
     updateEi: () => Promise<void>;
     reinstallEi: () => Promise<void>;
+    uninstallEi: () => Promise<void>;
     checkEiUpdate: () => Promise<{ updateAvailable: string | null }>;
     getEiSettings: () => Promise<IEiParserSettings>;
     saveEiSettings: (settings: Partial<IEiParserSettings>) => void;

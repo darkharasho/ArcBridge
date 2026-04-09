@@ -201,6 +201,10 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [eiStatus, setEiStatus] = useState<IEiStatus>({ installed: false, version: null, updateAvailable: null, installing: false, error: null });
     const [eiSettings, setEiSettings] = useState<IEiParserSettings | null>(null);
     const [eiDownloadProgress, setEiDownloadProgress] = useState<{ percent: number; message: string } | null>(null);
+    const [eiCheckingUpdate, setEiCheckingUpdate] = useState(false);
+    const [eiReinstalling, setEiReinstalling] = useState(false);
+    const [eiUninstalling, setEiUninstalling] = useState(false);
+    const [forceDpsReportOnly, setForceDpsReportOnly] = useState(false);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -496,6 +500,9 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         }
         if (settings.disruptionMethod) {
             setDisruptionMethod(settings.disruptionMethod);
+        }
+        if (typeof settings.forceDpsReportOnly === 'boolean') {
+            setForceDpsReportOnly(settings.forceDpsReportOnly);
         }
         setGithubRepoOwner(settings.githubRepoOwner || '');
         setGithubCreateOwner('');
@@ -830,7 +837,8 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
             githubToken: githubToken || null,
             githubLogoPath: githubLogoPath || null,
             githubFavoriteRepos,
-            allowLocalJson
+            allowLocalJson,
+            forceDpsReportOnly
         });
         onEmbedStatSettingsSaved?.(embedStats);
         onMvpWeightsSaved?.(mvpWeights);
@@ -870,6 +878,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         githubToken,
         githubLogoPath,
         githubFavoriteRepos,
+        forceDpsReportOnly,
         hasLoaded
     ]);
 
@@ -2372,6 +2381,16 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                             Manage the Elite Insights local parser used to generate detailed combat statistics.
                         </p>
 
+                        {/* Force dps.report only toggle */}
+                        <div className="bg-black/30 border border-white/10 rounded-[4px] p-4 mb-4">
+                            <Toggle
+                                label="Force dps.report Only"
+                                description="Bypass local EI parsing and use dps.report for all log processing"
+                                enabled={forceDpsReportOnly}
+                                onChange={(v) => setForceDpsReportOnly(v)}
+                            />
+                        </div>
+
                         {/* EI Management */}
                         <div className="bg-black/30 border border-white/10 rounded-[4px] p-4 mb-4">
                             <div className="text-xs uppercase tracking-widest text-gray-500 mb-3">Elite Insights Installation</div>
@@ -2416,20 +2435,57 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                                 )}
                                 <button
                                     type="button"
-                                    disabled={eiStatus.installing}
-                                    onClick={() => window.electronAPI.checkEiUpdate()}
-                                    className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors"
+                                    disabled={eiStatus.installing || eiCheckingUpdate}
+                                    onClick={async () => {
+                                        setEiCheckingUpdate(true);
+                                        try {
+                                            const result = await window.electronAPI.checkEiUpdate();
+                                            if (result.updateAvailable) {
+                                                setEiStatus((s) => ({ ...s, updateAvailable: result.updateAvailable }));
+                                            }
+                                        } finally {
+                                            setEiCheckingUpdate(false);
+                                        }
+                                    }}
+                                    className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
                                 >
-                                    Check for Updates
+                                    <RefreshCw className={`w-3 h-3 ${eiCheckingUpdate ? 'animate-spin' : ''}`} />
+                                    {eiCheckingUpdate ? 'Checking...' : 'Check for Updates'}
                                 </button>
                                 {eiStatus.installed && (
                                     <button
                                         type="button"
-                                        disabled={eiStatus.installing}
-                                        onClick={() => window.electronAPI.reinstallEi()}
-                                        className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors"
+                                        disabled={eiStatus.installing || eiReinstalling}
+                                        onClick={async () => {
+                                            setEiReinstalling(true);
+                                            try {
+                                                await window.electronAPI.reinstallEi();
+                                            } finally {
+                                                setEiReinstalling(false);
+                                            }
+                                        }}
+                                        className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-white/5 text-gray-300 border-white/10 hover:text-white disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
                                     >
-                                        {eiStatus.installing ? 'Reinstalling...' : 'Reinstall'}
+                                        <RefreshCw className={`w-3 h-3 ${eiReinstalling ? 'animate-spin' : ''}`} />
+                                        {eiReinstalling ? 'Reinstalling...' : 'Reinstall'}
+                                    </button>
+                                )}
+                                {eiStatus.installed && (
+                                    <button
+                                        type="button"
+                                        disabled={eiStatus.installing || eiUninstalling}
+                                        onClick={async () => {
+                                            setEiUninstalling(true);
+                                            try {
+                                                await window.electronAPI.uninstallEi();
+                                            } finally {
+                                                setEiUninstalling(false);
+                                            }
+                                        }}
+                                        className="px-3 py-2 rounded-[4px] text-xs font-semibold border bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                                    >
+                                        <Trash2 className={`w-3 h-3 ${eiUninstalling ? 'animate-pulse' : ''}`} />
+                                        {eiUninstalling ? 'Uninstalling...' : 'Uninstall'}
                                     </button>
                                 )}
                             </div>

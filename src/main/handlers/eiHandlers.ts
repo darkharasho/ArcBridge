@@ -69,6 +69,15 @@ export function registerEiHandlers(opts: EiHandlerOptions) {
         }
     });
 
+    ipcMain.handle('ei:uninstall', () => {
+        const mgr = getEiManager();
+        const win = getWindow();
+        mgr.uninstall();
+        const status = { ...mgr.getStatus(), installing: false, error: null };
+        win?.webContents.send('ei:status-changed', status);
+        return status;
+    });
+
     ipcMain.handle('ei:check-update', async () => {
         const mgr = getEiManager();
         const updateAvailable = await mgr.checkForUpdate();
