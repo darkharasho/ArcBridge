@@ -69,6 +69,8 @@ export function AppLayout({ ctx }: { ctx: any }) {
         showEiBanner,
         handleEiBannerDismiss,
         handleEiBannerSetup,
+        eiAutoManageStatus,
+        eiAutoManageProgress,
         setWalkthroughOpen,
         setWhatsNewOpen,
         activityPanel,
@@ -269,6 +271,25 @@ export function AppLayout({ ctx }: { ctx: any }) {
                             )
                         )}
                     </AnimatePresence>
+                    {eiAutoManageStatus && !updateAvailable && !updateDownloaded && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            className="flex items-center gap-2 text-[10px] font-medium px-2 py-0.5 rounded-[4px] border"
+                            style={eiAutoManageStatus.includes('EI:')
+                                ? { background: 'var(--status-error-bg)', color: 'var(--status-error)', borderColor: 'var(--status-error-border)' }
+                                : { background: 'var(--accent-bg)', color: 'var(--brand-primary)', borderColor: 'var(--accent-border)' }
+                            }
+                        >
+                            <RefreshCw className={`w-3 h-3 ${!eiAutoManageStatus.includes('EI:') ? 'animate-spin' : ''}`} />
+                            <span>
+                                {eiAutoManageProgress && !isNaN(eiAutoManageProgress.percent)
+                                    ? `${eiAutoManageStatus} ${Math.round(eiAutoManageProgress.percent)}%`
+                                    : eiAutoManageStatus}
+                            </span>
+                        </motion.div>
+                    )}
                     {!autoUpdateSupported && (
                         <div
                             className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-[4px] border"
