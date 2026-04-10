@@ -160,6 +160,7 @@ function App() {
                 }
             },
         });
+        detailsCacheRef.current.sweep(7 * 24 * 60 * 60 * 1000);
     }
     // Write-through effect removed — hydration now writes directly to the DetailsCache
     const filePickerState = useFilePicker({
