@@ -373,6 +373,8 @@ export interface IElectronAPI {
     checkEiUpdate: () => Promise<{ updateAvailable: string | null }>;
     getEiSettings: () => Promise<IEiParserSettings>;
     saveEiSettings: (settings: Partial<IEiParserSettings>) => void;
+    getEiAutoManage: () => Promise<boolean>;
+    setEiAutoManage: (enabled: boolean) => void;
     onEiDownloadProgress: (callback: (data: { percent: number; message: string }) => void) => () => void;
     onEiParseProgress: (callback: (data: { logId: string; message: string }) => void) => () => void;
     onEiStatusChanged: (callback: (status: IEiStatus) => void) => () => void;
