@@ -1133,6 +1133,40 @@ function createWindow() {
         eiManager.setSettings({ ...DEFAULT_EI_SETTINGS, ...savedEiSettings });
     }
 
+    // Auto-manage EI: install if missing, update if outdated
+    const autoManageEi = store.get('autoManageEi', true);
+    if (autoManageEi) {
+        // Run after window loads so IPC events reach the renderer
+        const runAutoManage = async () => {
+            try {
+                eiManager!.setProgressCallback((progress) => {
+                    win?.webContents.send('ei:download-progress', progress);
+                });
+                if (!eiManager!.isInstalled()) {
+                    win?.webContents.send('ei:status-changed', { installed: false, version: null, updateAvailable: null, installing: true, error: null });
+                    await eiManager!.install();
+                    const status = { ...eiManager!.getStatus(), installing: false, error: null };
+                    win?.webContents.send('ei:status-changed', status);
+                } else {
+                    const updateVersion = await eiManager!.checkForUpdate();
+                    if (updateVersion) {
+                        win?.webContents.send('ei:status-changed', { ...eiManager!.getStatus(), updateAvailable: updateVersion, installing: true, error: null });
+                        await eiManager!.installCli();
+                        const status = { ...eiManager!.getStatus(), installing: false, error: null };
+                        win?.webContents.send('ei:status-changed', status);
+                    }
+                }
+            } catch (err: any) {
+                const status = { ...eiManager!.getStatus(), installing: false, error: err?.message || 'Auto-manage failed' };
+                win?.webContents.send('ei:status-changed', status);
+            }
+        };
+        // Delay slightly to ensure renderer has mounted and listeners are attached
+        win.webContents.on('did-finish-load', () => {
+            setTimeout(runAutoManage, 2000);
+        });
+    }
+
     // Initialize Discord config
     const webhookUrl = store.get('discordWebhookUrl');
     if (webhookUrl && typeof webhookUrl === 'string') {
