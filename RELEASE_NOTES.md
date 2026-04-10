@@ -1,15 +1,11 @@
 # Release Notes
 
-Version v2.4.1 — April 8, 2026
+Version v2.4.2 — April 10, 2026
 
-## Player Comparison: More Metrics
+## Auto-Manage Elite Insights
 
-The player comparison tool now has a **General** tab (selected by default) with metrics like Logs Joined, Stack %, Attendance %, and Average Distance. Rate-based metrics across all tabs now show `/s` or `/m` suffixes so you can tell at a glance what the number represents. Boon output and burst damage metrics are also wired into comparison views.
+AxiBridge now installs and updates Elite Insights automatically on startup. If EI isn't installed, it'll grab it for you. If there's a newer version, it'll update silently. You can see download progress in the nav bar. There's a toggle in Parser Settings if you'd rather manage it yourself.
 
-## Smarter EI Banner
+## Cache Cleanup
 
-The "Set up Elite Insights" banner no longer shows if you already have EI installed. Previously it would appear for every existing user who hadn't explicitly dismissed it, even if they'd already gone through the setup.
-
-## Fixes
-
-- Min Combat Duration setting now correctly says "milliseconds" instead of "seconds", and shows the actual default (2200).
+The details cache in IndexedDB was never evicting old entries, so it could grow to 10+ GB over time. Now there's a 7-day TTL — stale entries are swept on startup. If you've been running AxiBridge for a while, the first launch after this update will clean up all the accumulated data.
