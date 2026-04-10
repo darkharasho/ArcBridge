@@ -96,4 +96,12 @@ export function registerEiHandlers(opts: EiHandlerOptions) {
         mgr.setSettings(merged);
         store.set('eiParserSettings', merged);
     });
+
+    ipcMain.handle('ei:get-auto-manage', () => {
+        return store.get('autoManageEi', true);
+    });
+
+    ipcMain.on('ei:set-auto-manage', (_event, enabled: boolean) => {
+        store.set('autoManageEi', enabled);
+    });
 }

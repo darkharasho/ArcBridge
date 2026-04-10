@@ -134,6 +134,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     checkEiUpdate: () => ipcRenderer.invoke('ei:check-update'),
     getEiSettings: () => ipcRenderer.invoke('ei:get-settings'),
     saveEiSettings: (settings: any) => ipcRenderer.send('ei:save-settings', settings),
+    getEiAutoManage: () => ipcRenderer.invoke('ei:get-auto-manage'),
+    setEiAutoManage: (enabled: boolean) => ipcRenderer.send('ei:set-auto-manage', enabled),
     onEiDownloadProgress: (callback: (data: any) => void) => {
         ipcRenderer.on('ei:download-progress', (_event, value) => callback(value));
         return () => { ipcRenderer.removeAllListeners('ei:download-progress'); };
