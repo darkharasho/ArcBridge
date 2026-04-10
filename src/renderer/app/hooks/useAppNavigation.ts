@@ -169,6 +169,8 @@ export function useAppNavigation({
     }, []);
 
     const [eiInstalled, setEiInstalled] = useState<boolean | null>(null);
+    const [eiAutoManageStatus, setEiAutoManageStatus] = useState<string | null>(null);
+    const [eiAutoManageProgress, setEiAutoManageProgress] = useState<{ percent: number; message: string } | null>(null);
 
     useEffect(() => {
         window.electronAPI?.getEiStatus?.().then((status) => {
@@ -176,6 +178,26 @@ export function useAppNavigation({
         }).catch(() => {
             setEiInstalled(false);
         });
+    }, []);
+
+    useEffect(() => {
+        const cleanupStatus = window.electronAPI.onEiStatusChanged((status) => {
+            setEiInstalled(status.installed);
+            if (status.installing) {
+                setEiAutoManageStatus(status.installed ? 'Updating Elite Insights...' : 'Installing Elite Insights...');
+            } else if (status.error) {
+                setEiAutoManageStatus(`EI: ${status.error}`);
+                setTimeout(() => setEiAutoManageStatus(null), 8000);
+                setEiAutoManageProgress(null);
+            } else {
+                setEiAutoManageStatus(null);
+                setEiAutoManageProgress(null);
+            }
+        });
+        const cleanupProgress = window.electronAPI.onEiDownloadProgress((data) => {
+            setEiAutoManageProgress(data);
+        });
+        return () => { cleanupStatus(); cleanupProgress(); };
     }, []);
 
     const showEiBanner = walkthroughSeen === true && !eiAnnouncementDismissed && eiInstalled === false;
@@ -217,5 +239,7 @@ export function useAppNavigation({
         showEiBanner,
         handleEiBannerDismiss,
         handleEiBannerSetup,
+        eiAutoManageStatus,
+        eiAutoManageProgress,
     };
 }
