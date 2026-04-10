@@ -2,8 +2,11 @@ import { get as idbGet, set as idbSet, del as idbDel, keys as idbKeys } from 'id
 
 const SCHEMA_VERSION = 2;
 const IDB_PREFIX = 'details:';
+const MANIFEST_KEY = '_details_manifest';
 
 type IdbEntry = { schemaVersion: number; details: any; storedAt: number };
+type ManifestEntry = { storedAt: number; schemaVersion: number };
+type Manifest = Record<string, ManifestEntry>;
 
 export type DetailsFetcher = (logId: string) => Promise<any | null>;
 export type DetailsResolver = (logId: string) => any | null;
@@ -130,42 +133,64 @@ export class DetailsCache {
         this.lru.delete(logId);
         try {
             await idbDel(IDB_PREFIX + logId);
+            const manifest = await idbGet<Manifest>(MANIFEST_KEY);
+            if (manifest && logId in manifest) {
+                delete manifest[logId];
+                await idbSet(MANIFEST_KEY, manifest);
+            }
         } catch {
             // IndexedDB unavailable — memory eviction still succeeded
         }
     }
 
     /** Delete all IndexedDB entries older than `ttlMs` or with a stale schema version.
+     *  Uses a lightweight manifest to avoid deserializing full detail blobs.
      *  Also evicts matching keys from the in-memory LRU. Fire-and-forget safe. */
-    async sweep(ttlMs: number): Promise<void> {
+    async sweep(ttlMs: number): Promise<number> {
+        let deleted = 0;
         try {
-            const allKeys = await idbKeys();
-            const detailKeys = allKeys.filter(
-                (k): k is string => typeof k === 'string' && k.startsWith(IDB_PREFIX)
-            );
+            const manifest = await idbGet<Manifest>(MANIFEST_KEY) ?? {};
             const now = Date.now();
+            const expiredKeys: string[] = [];
+            for (const [key, meta] of Object.entries(manifest)) {
+                if (
+                    !meta ||
+                    typeof meta.storedAt !== 'number' ||
+                    now - meta.storedAt > ttlMs ||
+                    meta.schemaVersion !== SCHEMA_VERSION
+                ) {
+                    expiredKeys.push(key);
+                }
+            }
+            // Also find detail keys not in the manifest (legacy entries written before manifest existed)
+            const allKeys = await idbKeys();
+            const orphanKeys = allKeys.filter(
+                (k): k is string =>
+                    typeof k === 'string' &&
+                    k.startsWith(IDB_PREFIX) &&
+                    !(k.slice(IDB_PREFIX.length) in manifest)
+            );
+            const allExpired = [...expiredKeys.map((k) => IDB_PREFIX + k), ...orphanKeys];
             await Promise.all(
-                detailKeys.map(async (key) => {
+                allExpired.map(async (idbKey) => {
                     try {
-                        const entry = await idbGet<IdbEntry>(key);
-                        if (
-                            !entry ||
-                            typeof entry.storedAt !== 'number' ||
-                            now - entry.storedAt > ttlMs ||
-                            entry.schemaVersion !== SCHEMA_VERSION
-                        ) {
-                            await idbDel(key);
-                            const logId = key.slice(IDB_PREFIX.length);
-                            this.lru.delete(logId);
-                        }
+                        await idbDel(idbKey);
+                        const logId = idbKey.slice(IDB_PREFIX.length);
+                        this.lru.delete(logId);
+                        delete manifest[logId];
+                        deleted++;
                     } catch {
-                        // Individual entry read/delete failed — skip it
+                        // Individual delete failed — skip it
                     }
                 })
             );
+            if (deleted > 0) {
+                await idbSet(MANIFEST_KEY, manifest).catch(() => {});
+            }
         } catch {
             // IndexedDB unavailable — nothing to sweep
         }
+        return deleted;
     }
 
     /** Current memory LRU size. */
@@ -183,12 +208,20 @@ export class DetailsCache {
     }
 
     private idbPut(logId: string, details: any): Promise<void> {
+        const now = Date.now();
         const entry: IdbEntry = {
             schemaVersion: SCHEMA_VERSION,
             details,
-            storedAt: Date.now(),
+            storedAt: now,
         };
-        return idbSet(IDB_PREFIX + logId, entry).catch(() => {
+        return idbSet(IDB_PREFIX + logId, entry).then(() => {
+            // Update lightweight manifest for TTL sweep
+            return idbGet<Manifest>(MANIFEST_KEY).then((manifest) => {
+                const m = manifest ?? {};
+                m[logId] = { storedAt: now, schemaVersion: SCHEMA_VERSION };
+                return idbSet(MANIFEST_KEY, m);
+            });
+        }).catch(() => {
             // IndexedDB write failed — memory LRU still has it
         });
     }

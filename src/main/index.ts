@@ -1196,6 +1196,11 @@ function createWindow() {
         sendUploadRetryQueueUpdate();
     })
 
+    // Pipe renderer console output to the main process terminal
+    win.webContents.on('console-message', (event) => {
+        log.info(`[Renderer] ${event.message}`);
+    });
+
     if (!app.isPackaged) {
         win.loadURL(VITE_DEV_SERVER_URL)
     } else {
