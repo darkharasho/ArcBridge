@@ -169,6 +169,7 @@ export function useAppNavigation({
     }, []);
 
     const [eiInstalled, setEiInstalled] = useState<boolean | null>(null);
+    const [autoManageEiEnabled, setAutoManageEiEnabled] = useState<boolean | null>(null);
     const [eiAutoManageStatus, setEiAutoManageStatus] = useState<string | null>(null);
     const [eiAutoManageProgress, setEiAutoManageProgress] = useState<{ percent: number; message: string } | null>(null);
 
@@ -178,6 +179,7 @@ export function useAppNavigation({
         }).catch(() => {
             setEiInstalled(false);
         });
+        window.electronAPI?.getEiAutoManage?.().then(setAutoManageEiEnabled).catch(() => setAutoManageEiEnabled(true));
     }, []);
 
     useEffect(() => {
@@ -200,7 +202,7 @@ export function useAppNavigation({
         return () => { cleanupStatus(); cleanupProgress(); };
     }, []);
 
-    const showEiBanner = walkthroughSeen === true && !eiAnnouncementDismissed && eiInstalled === false;
+    const showEiBanner = walkthroughSeen === true && !eiAnnouncementDismissed && eiInstalled === false && autoManageEiEnabled === false;
 
     const handleEiBannerDismiss = useCallback(() => {
         setEiAnnouncementDismissed(true);

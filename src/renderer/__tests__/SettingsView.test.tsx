@@ -27,6 +27,7 @@ function makeElectronApiMock(settingsOverrides: Record<string, unknown> = {}) {
         getGithubOrgs: vi.fn().mockResolvedValue({ success: true, orgs: [] }),
         clearDpsReportCache: vi.fn().mockResolvedValue({ success: true, clearedEntries: 0 }),
         ensureGithubTemplate: vi.fn().mockResolvedValue({ success: true }),
+        getEiAutoManage: vi.fn().mockResolvedValue(false),
     };
 }
 
