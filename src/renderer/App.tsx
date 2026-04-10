@@ -160,7 +160,10 @@ function App() {
                 }
             },
         });
-        detailsCacheRef.current.sweep(7 * 24 * 60 * 60 * 1000);
+        console.log('[DetailsCache] Sweeping expired IndexedDB entries (7-day TTL)...');
+        detailsCacheRef.current.sweep(7 * 24 * 60 * 60 * 1000).then((n) => {
+            console.log(`[DetailsCache] Sweep complete: ${n} expired entries removed`);
+        });
     }
     // Write-through effect removed — hydration now writes directly to the DetailsCache
     const filePickerState = useFilePicker({
