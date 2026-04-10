@@ -6,6 +6,7 @@ vi.mock('idb-keyval', () => ({
     get: vi.fn().mockResolvedValue(undefined),
     set: vi.fn().mockResolvedValue(undefined),
     del: vi.fn().mockResolvedValue(undefined),
+    keys: vi.fn().mockResolvedValue([]),
 }));
 
 const mockFetcher = vi.fn().mockResolvedValue(null);
@@ -149,6 +150,83 @@ describe('DetailsCache', () => {
         it('stores in memory immediately without awaiting IndexedDB', () => {
             cache.putSync('log-1', { id: 'sync' });
             expect(cache.peek('log-1')).toEqual({ id: 'sync' });
+        });
+    });
+
+    describe('sweep', () => {
+        it('deletes entries older than TTL', async () => {
+            const { keys: idbKeysMock, get: idbGetMock, del: idbDelMock } = await import('idb-keyval');
+            (idbKeysMock as any).mockResolvedValueOnce(['details:old-log']);
+            (idbGetMock as any).mockResolvedValueOnce({
+                schemaVersion: 2,
+                details: { id: 'old' },
+                storedAt: Date.now() - 8 * 24 * 60 * 60 * 1000, // 8 days ago
+            });
+            await cache.sweep(7 * 24 * 60 * 60 * 1000);
+            expect(idbDelMock).toHaveBeenCalledWith('details:old-log');
+        });
+
+        it('keeps entries within TTL', async () => {
+            const { keys: idbKeysMock, get: idbGetMock, del: idbDelMock } = await import('idb-keyval');
+            (idbKeysMock as any).mockResolvedValueOnce(['details:fresh-log']);
+            (idbGetMock as any).mockResolvedValueOnce({
+                schemaVersion: 2,
+                details: { id: 'fresh' },
+                storedAt: Date.now() - 1 * 24 * 60 * 60 * 1000, // 1 day ago
+            });
+            await cache.sweep(7 * 24 * 60 * 60 * 1000);
+            expect(idbDelMock).not.toHaveBeenCalled();
+        });
+
+        it('deletes entries with missing storedAt', async () => {
+            const { keys: idbKeysMock, get: idbGetMock, del: idbDelMock } = await import('idb-keyval');
+            (idbKeysMock as any).mockResolvedValueOnce(['details:no-timestamp']);
+            (idbGetMock as any).mockResolvedValueOnce({
+                schemaVersion: 2,
+                details: { id: 'no-ts' },
+            });
+            await cache.sweep(7 * 24 * 60 * 60 * 1000);
+            expect(idbDelMock).toHaveBeenCalledWith('details:no-timestamp');
+        });
+
+        it('deletes entries with wrong schemaVersion', async () => {
+            const { keys: idbKeysMock, get: idbGetMock, del: idbDelMock } = await import('idb-keyval');
+            (idbKeysMock as any).mockResolvedValueOnce(['details:stale-schema']);
+            (idbGetMock as any).mockResolvedValueOnce({
+                schemaVersion: 1,
+                details: { id: 'stale' },
+                storedAt: Date.now(), // fresh, but wrong schema
+            });
+            await cache.sweep(7 * 24 * 60 * 60 * 1000);
+            expect(idbDelMock).toHaveBeenCalledWith('details:stale-schema');
+        });
+
+        it('evicts swept entries from memory LRU', async () => {
+            const { keys: idbKeysMock, get: idbGetMock } = await import('idb-keyval');
+            cache.putSync('old-log', { id: 'in-memory' });
+            expect(cache.peek('old-log')).toEqual({ id: 'in-memory' });
+            (idbKeysMock as any).mockResolvedValueOnce(['details:old-log']);
+            (idbGetMock as any).mockResolvedValueOnce({
+                schemaVersion: 2,
+                details: { id: 'old' },
+                storedAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
+            });
+            await cache.sweep(7 * 24 * 60 * 60 * 1000);
+            expect(cache.peek('old-log')).toBeUndefined();
+        });
+
+        it('ignores non-details keys', async () => {
+            const { keys: idbKeysMock, get: idbGetMock, del: idbDelMock } = await import('idb-keyval');
+            (idbKeysMock as any).mockResolvedValueOnce(['other:key', 'settings:foo']);
+            await cache.sweep(7 * 24 * 60 * 60 * 1000);
+            expect(idbGetMock).not.toHaveBeenCalled();
+            expect(idbDelMock).not.toHaveBeenCalled();
+        });
+
+        it('handles IndexedDB errors gracefully', async () => {
+            const { keys: idbKeysMock } = await import('idb-keyval');
+            (idbKeysMock as any).mockRejectedValueOnce(new Error('IDB unavailable'));
+            await expect(cache.sweep(7 * 24 * 60 * 60 * 1000)).resolves.toBeUndefined();
         });
     });
 });
