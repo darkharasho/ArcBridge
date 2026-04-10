@@ -208,6 +208,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
     const [eiReinstalling, setEiReinstalling] = useState(false);
     const [eiUninstalling, setEiUninstalling] = useState(false);
     const [forceDpsReportOnly, setForceDpsReportOnly] = useState(false);
+    const [autoManageEi, setAutoManageEi] = useState(true);
     const [githubRepoName, setGithubRepoName] = useState('');
     const [githubRepoOwner, setGithubRepoOwner] = useState('');
     const [githubToken, setGithubToken] = useState('');
@@ -509,6 +510,7 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
         if (typeof settings.forceDpsReportOnly === 'boolean') {
             setForceDpsReportOnly(settings.forceDpsReportOnly);
         }
+        window.electronAPI.getEiAutoManage().then(setAutoManageEi);
         setGithubRepoOwner(settings.githubRepoOwner || '');
         setGithubCreateOwner('');
         setGithubRepoName(settings.githubRepoName || '');
@@ -2408,6 +2410,16 @@ export function SettingsView({ onBack: _onBack, onEmbedStatSettingsSaved, onOpen
                         <p className="text-sm text-gray-400 mb-4">
                             Manage the Elite Insights local parser used to generate detailed combat statistics.
                         </p>
+
+                        {/* Auto-manage toggle */}
+                        <div className="bg-black/30 border border-white/10 rounded-[4px] p-4 mb-4">
+                            <Toggle
+                                label="Automatically install and update"
+                                description="Checks for updates on startup and installs automatically"
+                                enabled={autoManageEi}
+                                onChange={(v) => { setAutoManageEi(v); window.electronAPI.setEiAutoManage(v); }}
+                            />
+                        </div>
 
                         {/* Force dps.report only toggle */}
                         <div className="bg-black/30 border border-white/10 rounded-[4px] p-4 mb-4">
