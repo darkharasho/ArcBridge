@@ -1,4 +1,4 @@
-import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
+import { get as idbGet, set as idbSet, del as idbDel, keys as idbKeys } from 'idb-keyval';
 
 const SCHEMA_VERSION = 2;
 const IDB_PREFIX = 'details:';
@@ -132,6 +132,39 @@ export class DetailsCache {
             await idbDel(IDB_PREFIX + logId);
         } catch {
             // IndexedDB unavailable — memory eviction still succeeded
+        }
+    }
+
+    /** Delete all IndexedDB entries older than `ttlMs` or with a stale schema version.
+     *  Also evicts matching keys from the in-memory LRU. Fire-and-forget safe. */
+    async sweep(ttlMs: number): Promise<void> {
+        try {
+            const allKeys = await idbKeys();
+            const detailKeys = allKeys.filter(
+                (k): k is string => typeof k === 'string' && k.startsWith(IDB_PREFIX)
+            );
+            const now = Date.now();
+            await Promise.all(
+                detailKeys.map(async (key) => {
+                    try {
+                        const entry = await idbGet<IdbEntry>(key);
+                        if (
+                            !entry ||
+                            typeof entry.storedAt !== 'number' ||
+                            now - entry.storedAt > ttlMs ||
+                            entry.schemaVersion !== SCHEMA_VERSION
+                        ) {
+                            await idbDel(key);
+                            const logId = key.slice(IDB_PREFIX.length);
+                            this.lru.delete(logId);
+                        }
+                    } catch {
+                        // Individual entry read/delete failed — skip it
+                    }
+                })
+            );
+        } catch {
+            // IndexedDB unavailable — nothing to sweep
         }
     }
 
