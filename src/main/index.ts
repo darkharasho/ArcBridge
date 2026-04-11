@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, crashReporter } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, nativeTheme, crashReporter } from 'electron'
 import fs from 'fs'
 import path from 'node:path'
 import https from 'node:https'
@@ -1036,9 +1036,13 @@ const migrateArcBridgeInstallName = () => {
 };
 
 
+function getIconPath(): string {
+    const variant = process.platform === 'linux' || nativeTheme.shouldUseDarkColors ? 'white' : 'black';
+    return path.join(process.env.VITE_PUBLIC || '', `img/AxiBridge-${variant}.png`);
+}
+
 function createTray() {
-    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/AxiBridge-white.png');
-    const icon = nativeImage.createFromPath(iconPath);
+    const icon = nativeImage.createFromPath(getIconPath());
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
 
     const contextMenu = Menu.buildFromTemplate([
@@ -1084,9 +1088,7 @@ function createTray() {
 function createWindow() {
     const bounds = store.get('windowBounds') as { width: number, height: number } | undefined;
 
-    const iconPath = path.join(process.env.VITE_PUBLIC || '', 'img/AxiBridge-white.png');
-    console.log(`[Main] Loading icon from: ${iconPath}`);
-    const appIcon = nativeImage.createFromPath(iconPath);
+    const appIcon = nativeImage.createFromPath(getIconPath());
 
     win = new BrowserWindow({
         icon: appIcon,
@@ -1351,6 +1353,12 @@ if (!gotTheLock) {
         migrateArcBridgeInstallName();
         createWindow();
         createTray();
+
+        nativeTheme.on('updated', () => {
+            const icon = nativeImage.createFromPath(getIconPath());
+            tray?.setImage(icon.resize({ width: 16, height: 16 }));
+            win?.setIcon(icon);
+        });
 
         // Desktop Integration for Linux AppImage
         if (process.platform === 'linux') {
