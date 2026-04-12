@@ -216,7 +216,7 @@ export const AllDamageSection = ({
                                     const data = payload[0]?.payload;
                                     if (!data) return null;
                                     return (
-                                        <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+                                        <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
                                             <div className="text-slate-200 font-medium mb-1">{sanitizeLabel(data.fullLabel)}</div>
                                             <div className="text-indigo-300">
                                                 {mode === 'damage' ? 'Total Damage' : 'Down Contribution'}: <strong>{formatWithCommas(data.value, 0)}</strong>
@@ -317,7 +317,7 @@ export const AllDamageSection = ({
                                             if (!active || !payload?.length) return null;
                                             const sorted = [...payload].sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
                                             return (
-                                                <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl max-h-64 overflow-y-auto">
+                                                <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl max-h-64 overflow-y-auto">
                                                     <div className="text-slate-200 font-medium mb-1">{(payload[0]?.payload as any)?.label}</div>
                                                     {sorted.slice(0, 10).map((entry) => (
                                                         <div key={entry.dataKey as string} className="flex items-center gap-1.5">

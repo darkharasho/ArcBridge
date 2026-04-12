@@ -275,7 +275,7 @@ export const SpikeDamageSection = ({
                                             const d = payload[0]?.payload;
                                             if (!d) return null;
                                             return (
-                                                <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+                                                <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
                                                     <div className="text-slate-200 font-medium mb-1">{d.label}</div>
                                                     <div className="text-indigo-300">Damage: <strong>{formatWithCommas(Number(d.value || 0), 0)}</strong></div>
                                                 </div>
@@ -302,7 +302,7 @@ export const SpikeDamageSection = ({
                                 </LineChart>
                             </ChartContainer>
                             {hoveredMarkerInfo && (
-                                <div className="pointer-events-none absolute z-20 rounded-md border border-white/10 bg-slate-900/95 px-2 py-1 text-xs shadow-xl"
+                                <div className="pointer-events-none absolute z-20 rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-xs shadow-xl"
                                     style={{ left: `${Math.max(8, hoveredMarkerInfo.x)}px`, top: `${Math.max(8, hoveredMarkerInfo.y - 38)}px`, transform: 'translate(-50%, -100%)' }}>
                                     <div className={`${hoveredMarkerInfo.kind === 'down' ? 'text-yellow-300' : 'text-red-300'} font-semibold`}>
                                         {hoveredMarkerInfo.kind === 'down' ? 'Down' : 'Death'}

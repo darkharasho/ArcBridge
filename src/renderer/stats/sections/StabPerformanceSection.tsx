@@ -233,7 +233,7 @@ export const StabPerformanceSection = ({
                                             const gen = Number(point?.value || 0);
                                             const damage = Number(point?.incomingDamage || 0);
                                             return (
-                                                <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+                                                <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
                                                     <div className="text-slate-200 font-medium mb-1">
                                                         {String(label || '')}
                                                         {gen > 0 && <span className="text-violet-300">{` · Gen: ${formatWithCommas(gen / 1000, 0)}`}</span>}

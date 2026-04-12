@@ -316,7 +316,7 @@ export const FightMetricSection = ({
                                                 const data = payload[0]?.payload as FightMetricPoint | undefined;
                                                 if (!data) return null;
                                                 return (
-                                                    <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+                                                    <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
                                                         <div className="text-slate-200 font-medium mb-1">{sanitizeWvwLabel(data.fullLabel)}</div>
                                                         <div className="text-indigo-300">{selectedPlayer?.displayName}: <strong>{formatValue(data.value)}</strong>{valueSuffix ? ` ${valueSuffix}` : ''}</div>
                                                         <div className="text-slate-500">Fight Max: {formatValue(data.maxValue)}</div>

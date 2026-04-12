@@ -299,7 +299,7 @@ export const BoonTimelineSection = ({
                                         const d = payload[0]?.payload;
                                         if (!d) return null;
                                         return (
-                                            <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+                                            <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
                                                 <div className="text-slate-200 font-medium mb-1">{d.label}</div>
                                                 <div className="text-indigo-300">Generation: <strong>{formatWithCommas(Number(d.value || 0) / 1000, 0)}</strong></div>
                                                 {showIncomingHeatmap && hasIncomingHeatData && Number(d.incomingDamage || 0) > 0 && (
