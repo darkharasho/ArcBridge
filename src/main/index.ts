@@ -1041,8 +1041,25 @@ function getIconPath(): string {
     return path.join(process.env.VITE_PUBLIC || '', `img/AxiBridge-${variant}.png`);
 }
 
+/** Build a multi-size nativeImage suitable for both tray and window icons. */
+function getAppIcon(): Electron.NativeImage {
+    const raw = nativeImage.createFromPath(getIconPath());
+    // Windows needs explicit standard sizes for the taskbar / title-bar icon.
+    if (process.platform === 'win32') {
+        const sizes = [16, 32, 48, 64, 128, 256];
+        const buffers = sizes.map(s => raw.resize({ width: s, height: s }).toPNG());
+        // Create a fresh image and add each size
+        const multi = nativeImage.createEmpty();
+        for (let i = 0; i < sizes.length; i++) {
+            multi.addRepresentation({ width: sizes[i], height: sizes[i], buffer: buffers[i], scaleFactor: 1.0 });
+        }
+        return multi;
+    }
+    return raw;
+}
+
 function createTray() {
-    const icon = nativeImage.createFromPath(getIconPath());
+    const icon = getAppIcon();
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
 
     const contextMenu = Menu.buildFromTemplate([
@@ -1088,7 +1105,7 @@ function createTray() {
 function createWindow() {
     const bounds = store.get('windowBounds') as { width: number, height: number } | undefined;
 
-    const appIcon = nativeImage.createFromPath(getIconPath());
+    const appIcon = getAppIcon();
 
     win = new BrowserWindow({
         icon: appIcon,
@@ -1103,6 +1120,11 @@ function createWindow() {
         backgroundColor: '#000000',
         show: true
     })
+
+    // Explicitly set icon after creation so Windows updates the taskbar
+    // icon for frameless windows (the constructor `icon` alone is not
+    // always enough).
+    win.setIcon(appIcon);
 
     win.on('resize', () => {
         if (!win) return;
@@ -1355,7 +1377,7 @@ if (!gotTheLock) {
         createTray();
 
         nativeTheme.on('updated', () => {
-            const icon = nativeImage.createFromPath(getIconPath());
+            const icon = getAppIcon();
             tray?.setImage(icon.resize({ width: 16, height: 16 }));
             win?.setIcon(icon);
         });
