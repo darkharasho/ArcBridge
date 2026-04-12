@@ -115,7 +115,7 @@ const SubgroupMembersTooltip = ({
                 <div
                     ref={tooltipRef}
                     style={tooltipStyle}
-                    className={`z-[9999] w-max max-w-xs rounded-md border border-[color:var(--border-default)] bg-[var(--bg-elevated)]/95 px-3 py-2 text-[11px] text-[color:var(--text-primary)] backdrop-blur-sm ${open ? 'block' : 'hidden'}`}
+                    className={`z-[9999] w-max max-w-xs rounded-md border border-[color:var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[11px] text-[color:var(--text-primary)] ${open ? 'block' : 'hidden'}`}
                     onMouseEnter={() => { cancelClose(); setOpen(true); }}
                     onMouseLeave={scheduleClose}
                 >
@@ -418,7 +418,7 @@ export const BoonUptimeSection = ({
                                         const d = payload[0]?.payload;
                                         if (!d) return null;
                                         return (
-                                            <div className="bg-slate-900/95 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+                                            <div className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
                                                 <div className="text-slate-200 font-medium mb-1">{d.label}</div>
                                                 <div className="text-indigo-300">
                                                     {showStackCapLine ? 'Stacks' : 'Uptime'}: <strong>
