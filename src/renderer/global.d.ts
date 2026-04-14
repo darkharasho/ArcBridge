@@ -359,6 +359,8 @@ export interface IElectronAPI {
     importSettings: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
     selectSettingsFile: () => Promise<{ success: boolean; canceled?: boolean; error?: string; settings?: any; filePath?: string }>;
 
+    onMaximizedChange: (callback: (maximized: boolean) => void) => () => void;
+
     // Diagnostics
     reportRendererError: (payload: { source: string; message: string; stack?: string }) => void;
     onRequestRendererDiagnostics: (callback: () => void) => () => void;

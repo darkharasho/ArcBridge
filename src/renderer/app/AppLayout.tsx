@@ -103,6 +103,11 @@ export function AppLayout({ ctx }: { ctx: any }) {
     const [activeNavView, setActiveNavView] = useState(view);
     const navSwitchRafRef = useRef<number | null>(null);
 
+    const [maximized, setMaximized] = useState(false);
+    useEffect(() => {
+        return window.electronAPI?.onMaximizedChange?.((m: boolean) => setMaximized(m));
+    }, []);
+
     useEffect(() => {
         setActiveNavView(view);
     }, [view]);
@@ -165,7 +170,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
 
 
     return (
-        <div className={shellClassName}>
+        <div className={shellClassName} style={{ borderRadius: maximized ? 0 : 'var(--window-radius)', overflow: 'hidden' }}>
             {/* Custom Title Bar */}
             <div className="app-titlebar h-12 shrink-0 w-full flex justify-between items-center px-4 border-b drag-region select-none z-50" style={{ background: 'var(--bg-base)', borderColor: 'var(--border-subtle)' }}>
                 <div className="flex items-center gap-2.5">
