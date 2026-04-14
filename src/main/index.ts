@@ -80,6 +80,9 @@ import { EiManager, DEFAULT_EI_SETTINGS, EiParserSettings } from './eiParser';
 
 // Increase V8 heap for packaged and dev builds to avoid OOM on large datasets.
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=6144');
+if (process.platform === 'linux') {
+    app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+}
 
 // Handle EPIPE errors gracefully - these occur when stdout/stderr pipes close
 // (e.g., when running as AppImage without a terminal)
@@ -1107,6 +1110,8 @@ function createWindow() {
 
     const appIcon = getAppIcon();
 
+    const isMac = process.platform === 'darwin';
+
     win = new BrowserWindow({
         icon: appIcon,
         webPreferences: {
@@ -1115,9 +1120,10 @@ function createWindow() {
         },
         width: bounds ? bounds.width : 1200,
         height: bounds ? bounds.height : 860,
-        frame: false,
-        titleBarStyle: 'hidden',
-        backgroundColor: '#000000',
+        ...(isMac
+            ? { frame: false, titleBarStyle: 'hidden', transparent: false, backgroundColor: '#000000' }
+            : { frame: false, transparent: true, backgroundColor: '#00000000' }
+        ),
         show: true
     })
 
@@ -1125,6 +1131,14 @@ function createWindow() {
     // icon for frameless windows (the constructor `icon` alone is not
     // always enough).
     win.setIcon(appIcon);
+
+    win.on('maximize', () => {
+        win?.webContents.send('window:maximized-change', true);
+    });
+
+    win.on('unmaximize', () => {
+        win?.webContents.send('window:maximized-change', false);
+    });
 
     win.on('resize', () => {
         if (!win) return;

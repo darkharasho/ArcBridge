@@ -149,6 +149,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return () => { ipcRenderer.removeAllListeners('ei:status-changed'); };
     },
 
+    onMaximizedChange: (callback: (maximized: boolean) => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, maximized: boolean) => callback(maximized);
+        ipcRenderer.on('window:maximized-change', listener);
+        return () => ipcRenderer.removeListener('window:maximized-change', listener);
+    },
+
     // Diagnostics — renderer error reporting and memory monitoring
     reportRendererError: (payload: { source: string; message: string; stack?: string }) =>
         ipcRenderer.send('renderer-error', payload),
