@@ -162,12 +162,11 @@ jobs:
               'url': release_url,
               'description': notes or 'A new version of AxiBridge is available!',
               'color': 0xF59E0B,
+              'thumbnail': {'url': 'https://raw.githubusercontent.com/darkharasho/axibridge/main/public/img/AxiBridge-white.png'},
               'footer': {'text': 'AxiBridge Release'},
           }
 
           print(json.dumps({
-              'username': 'AxiBridge',
-              'avatar_url': 'https://raw.githubusercontent.com/darkharasho/axibridge/main/public/img/AxiBridge-white.png',
               'embeds': [embed],
           }))
           ")
