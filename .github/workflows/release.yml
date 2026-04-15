@@ -132,3 +132,44 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           gh release edit "$tag" --draft=false
+
+      - name: Post to Discord
+        if: ${{ vars.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          release_url="https://github.com/darkharasho/axibridge/releases/tag/${tag}"
+          notes=$(gh release view "$tag" --json body --jq '.body' 2>/dev/null || echo "")
+
+          export TAG="$tag"
+          export RELEASE_URL="$release_url"
+          export NOTES="$notes"
+
+          payload=$(python3 -c "
+          import json, os
+
+          tag = os.environ['TAG']
+          release_url = os.environ['RELEASE_URL']
+          notes = os.environ.get('NOTES', '')
+
+          if len(notes) > 3800:
+              notes = notes[:3800] + '\n\n*... see full notes on GitHub*'
+
+          embed = {
+              'title': f'AxiBridge {tag}',
+              'url': release_url,
+              'description': notes or 'A new version of AxiBridge is available!',
+              'color': 0xF59E0B,
+              'footer': {'text': 'AxiBridge Release'},
+          }
+
+          print(json.dumps({
+              'username': 'AxiBridge',
+              'avatar_url': 'https://raw.githubusercontent.com/darkharasho/axibridge/main/public/img/AxiBridge-white.png',
+              'embeds': [embed],
+          }))
+          ")
+
+          curl -s -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
