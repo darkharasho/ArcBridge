@@ -161,7 +161,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
         : (followMember ? `Follow: ${followMember.name} (commander)` : '');
 
     const body = (
-        <div className="replay-view" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', ...style }}>
+        <div className="replay-view" style={{ display: 'flex', flexDirection: 'column', height: '100%', ...style }}>
             <FightPickerBar fights={fights} collapsed={pickerCollapsed} onToggle={() => setPickerCollapsed(v => !v)} />
 
             {!selectedFight ? (
