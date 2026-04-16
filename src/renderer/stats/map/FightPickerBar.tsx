@@ -33,24 +33,24 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
     if (collapsed) {
         return (
             <div style={{
-                background: '#0f1a2e',
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
+                background: 'var(--bg-elevated)',
+                borderBottom: '1px solid var(--border-subtle)',
                 height: 34, display: 'flex', alignItems: 'center', padding: '0 10px', gap: 8,
             }}>
                 <button
                     type="button"
                     onClick={onToggle}
-                    style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', cursor: 'pointer' }}
+                    style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px', borderRadius: 4, border: '1px solid var(--border-subtle)', background: 'var(--bg-hover)', cursor: 'pointer' }}
                 >
                     ▼ Show all fights
                 </button>
                 {activeLabel && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', padding: '2px 8px', borderRadius: 4, background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--status-info)', padding: '2px 8px', borderRadius: 4, background: 'var(--status-info-bg)', border: '1px solid var(--status-info-border)' }}>
                         {activeLabel}
                     </span>
                 )}
                 {fights.length > 0 && (
-                    <span style={{ fontSize: 10, color: '#475569' }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
                         {currentIdx >= 0 ? currentIdx + 1 : '—'} of {fights.length}
                     </span>
                 )}
@@ -61,7 +61,7 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
                         aria-label="Previous fight"
                         onClick={stepBack}
                         disabled={atFirst}
-                        style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 10, color: atFirst ? '#1e293b' : '#64748b', cursor: atFirst ? 'default' : 'pointer' }}
+                        style={{ width: 22, height: 22, borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', fontSize: 10, color: atFirst ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: atFirst ? 'default' : 'pointer' }}
                     >◀</button>
                     <button
                         type="button"
@@ -69,7 +69,7 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
                         aria-label="Next fight"
                         onClick={stepForward}
                         disabled={atLast}
-                        style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 10, color: atLast ? '#1e293b' : '#64748b', cursor: atLast ? 'default' : 'pointer' }}
+                        style={{ width: 22, height: 22, borderRadius: 4, background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', fontSize: 10, color: atLast ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: atLast ? 'default' : 'pointer' }}
                     >▶</button>
                 </div>
             </div>
@@ -77,12 +77,12 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
     }
 
     return (
-        <div style={{ background: '#0f1a2e', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'stretch' }}>
+        <div style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'stretch' }}>
             <button
                 type="button"
                 title="Collapse fight picker"
                 onClick={onToggle}
-                style={{ width: 36, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#475569', background: 'rgba(255,255,255,0.02)', border: 'none', cursor: 'pointer' }}
+                style={{ width: 36, flexShrink: 0, borderRight: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
                 ▲
             </button>

@@ -7,14 +7,9 @@ export const ReplaySection: React.FC = () => {
     const fights = (result?.stats?.replayFights ?? []) as any[];
 
     return (
-        <section id="replay" className="stats-section">
-            <div className="stats-section-header">
-                <h2>Replay</h2>
-            </div>
-            <div style={{ height: 720, display: 'flex' }}>
-                <ReplayView fights={fights} />
-            </div>
-        </section>
+        <div id="replay" style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
+            <ReplayView fights={fights} />
+        </div>
     );
 };
 

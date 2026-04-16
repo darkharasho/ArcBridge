@@ -38,7 +38,7 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
         ? String(member.eliteSpec)
         : member.profession;
     const statusSuffix = status === 'down' ? ' · DOWN' : status === 'dead' ? ' · DEAD' : '';
-    const statusColor = status === 'down' ? '#f97316' : status === 'dead' ? '#ef4444' : '#475569';
+    const statusColor = status === 'down' ? 'var(--status-warning)' : status === 'dead' ? 'var(--status-error)' : 'var(--text-secondary)';
 
     return (
         <button
@@ -47,7 +47,7 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
             style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '5px 8px', borderRadius: 4, margin: '1px 4px',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'var(--bg-hover)',
                 border: '1px solid transparent',
                 cursor: 'pointer',
             }}
@@ -75,7 +75,7 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
                     )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {member.name}
                     </div>
                     <div style={{ fontSize: 9, color: statusColor }}>
@@ -88,7 +88,7 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
             </div>
 
             {/* HP bar */}
-            <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 2, marginBottom: 4, overflow: 'hidden' }}>
+            <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 2, marginBottom: 4, overflow: 'hidden' }}>
                 <div style={{ width: `${status === 'dead' ? 0 : hp}%`, height: '100%', background: barColor(status), borderRadius: 2 }} />
             </div>
 
@@ -100,7 +100,7 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
                         if (!icon?.icon) return null;
                         return (
                             <img key={id} src={icon.icon} alt={icon.name} title={icon.name} width={22} height={22}
-                                 style={{ borderRadius: 3, border: '1px solid rgba(255,255,255,0.15)' }} />
+                                 style={{ borderRadius: 3, border: '1px solid var(--border-hover)' }} />
                         );
                     })}
                 </div>
@@ -114,7 +114,7 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
                         if (!icon?.icon) return null;
                         return (
                             <img key={id} src={icon.icon} alt={icon.name} title={icon.name} width={22} height={22}
-                                 style={{ borderRadius: 3, border: '1px solid rgba(96,165,250,0.3)', background: 'rgba(96,165,250,0.1)' }} />
+                                 style={{ borderRadius: 3, border: '1px solid var(--status-info-border)', background: 'var(--status-info-bg)' }} />
                         );
                     })}
                 </div>

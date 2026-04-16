@@ -36,14 +36,14 @@ function sampleAt(member: SquadMemberMovement, pollIndex: number): [number, numb
 
 const ctrlBtnStyle: React.CSSProperties = {
     width: 26, height: 26, borderRadius: 5,
-    background: 'rgba(8,17,31,0.85)', border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#94a3b8', cursor: 'pointer', backdropFilter: 'blur(4px)',
+    color: 'var(--text-secondary)', cursor: 'pointer', backdropFilter: 'blur(4px)',
 };
 
 const chipStyle: React.CSSProperties = {
-    background: 'rgba(8,17,31,0.8)', backdropFilter: 'blur(4px)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20,
+    background: 'var(--bg-elevated)', backdropFilter: 'blur(4px)',
+    border: '1px solid var(--border-default)', borderRadius: 20,
     padding: '3px 10px', fontSize: 10, display: 'flex', alignItems: 'center',
     cursor: 'pointer',
 };
@@ -162,7 +162,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                 <button
                                     type="button"
                                     onClick={() => setReplayFollowTarget(null)}
-                                    style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 10, ...chipStyle, borderColor: 'rgba(96,165,250,0.3)', color: '#93c5fd' }}
+                                    style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 10, ...chipStyle, borderColor: 'var(--status-info-border)', color: 'var(--status-info)' }}
                                 >
                                     {followLabel} <X size={10} style={{ marginLeft: 4 }} />
                                 </button>
@@ -171,7 +171,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                 <button
                                     type="button"
                                     onClick={() => setReplaySpotlightParty(null)}
-                                    style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 10, ...chipStyle, borderColor: 'rgba(251,191,36,0.3)', color: '#fbbf24' }}
+                                    style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 10, ...chipStyle, borderColor: 'var(--status-warning)', color: 'var(--status-warning)' }}
                                 >
                                     Spotlight: Party {spotlightParty} <X size={10} style={{ marginLeft: 4 }} />
                                 </button>
@@ -250,7 +250,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                     <SyncedTimeline fight={selectedFight} />
 
                     {/* Controls bar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(8,17,31,0.98)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)' }}>
                         <button
                             type="button"
                             aria-label={playhead.playing ? 'Pause' : 'Play'}
@@ -268,7 +268,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                             {formatDuration(playhead.timeMs)} / {formatDuration(durationMs)}
                         </span>
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 10, color: '#475569' }}>{normalizeMapNameShort(selectedFight.label)}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{normalizeMapNameShort(selectedFight.label)}</span>
                     </div>
                 </>
             )}

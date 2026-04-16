@@ -4259,7 +4259,14 @@ type SpikeFight = {
                 </div>
             )}
 
-            {!sectionsDeferred && (<div
+            {/* Replay: full-page experience — skip all section chrome */}
+            {!embedded && !sectionsDeferred && activeNavGroup === 'map' && (
+                <div className="flex-1 min-h-0 flex" style={{ minHeight: 0 }}>
+                    <ReplaySection />
+                </div>
+            )}
+
+            {!sectionsDeferred && activeNavGroup !== 'map' && (<div
                 className={`${embedded ? '' : 'flex-1 min-h-0 flex'} relative`}
             >
                 <div
