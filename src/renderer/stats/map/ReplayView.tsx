@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Maximize2, Minimize2, Plus, Minus, RotateCcw, X } from 'lucide-react';
 import { useStatsStore } from '../statsStore';
 import { getMapTiles, hasTileData } from '../../../shared/wvwTiles';
@@ -10,8 +10,8 @@ import { SquadOverlay } from './SquadOverlay';
 import { SquadHealthStrip } from './SquadHealthStrip';
 import { LayersPopover } from './LayersPopover';
 import { useHeatmapData } from './hooks/useHeatmapData';
-import { FightPicker } from './FightPicker';
-import { PartyPanel } from './PartyPanel';
+import { FightPickerBar } from './FightPickerBar';
+import { ReplaySquadPanel } from './ReplaySquadPanel';
 import { SyncedTimeline } from './SyncedTimeline';
 import { EventOverlay } from './EventOverlay';
 import { FullscreenPortal } from './FullscreenPortal';
@@ -34,6 +34,20 @@ function sampleAt(member: SquadMemberMovement, pollIndex: number): [number, numb
     return member.positions[idx];
 }
 
+const ctrlBtnStyle: React.CSSProperties = {
+    width: 26, height: 26, borderRadius: 5,
+    background: 'rgba(8,17,31,0.85)', border: '1px solid rgba(255,255,255,0.1)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#94a3b8', cursor: 'pointer', backdropFilter: 'blur(4px)',
+};
+
+const chipStyle: React.CSSProperties = {
+    background: 'rgba(8,17,31,0.8)', backdropFilter: 'blur(4px)',
+    border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20,
+    padding: '3px 10px', fontSize: 10, display: 'flex', alignItems: 'center',
+    cursor: 'pointer',
+};
+
 export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const selectedId = useStatsStore(state => state.selectedReplayFightId);
     const setSelectedReplayFight = useStatsStore(state => state.setSelectedReplayFight);
@@ -45,7 +59,11 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const spotlightParty = useStatsStore(state => state.replaySpotlightParty);
     const setReplaySpotlightParty = useStatsStore(state => state.setReplaySpotlightParty);
 
-    const [fullscreen, setFullscreen] = React.useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
+    const [pickerCollapsed, setPickerCollapsed] = useState(false);
+    const [panelCollapsed, setPanelCollapsed] = useState(false);
+
+    const mapContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!selectedId && fights.length) {
@@ -55,15 +73,19 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     }, [selectedId, fights, setSelectedReplayFight]);
 
     const selectedFight = useMovementData(fights, selectedId);
-
     const heatmap = useHeatmapData(selectedFight, layers.heatmap);
-
     const durationMs = selectedFight?.durationMs ?? 0;
     useReplayPlayback({ durationMs });
 
     const mapSize = selectedFight?.mapSize ?? [600, 600];
     const [mapWidth, mapHeight] = mapSize;
     const viewport = useReplayViewport({ mapWidth, mapHeight, containerWidth: mapWidth, containerHeight: mapHeight });
+
+    useEffect(() => {
+        const el = mapContainerRef.current;
+        if (!el) return;
+        return viewport.attachWheelZoom(el);
+    }, [viewport.attachWheelZoom]);
 
     const pollIndex = selectedFight
         ? Math.floor(playhead.timeMs / selectedFight.movementData.pollingRate)
@@ -108,128 +130,146 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         return () => window.removeEventListener('keydown', onKey);
     }, [selectedFight, playhead.playing, setReplayPlayhead]);
 
-    const shortMap = selectedFight ? normalizeMapNameShort(selectedFight.label) : '';
     const followLabel = viewportState.followTarget
         ? `Follow: ${viewportState.followTarget}`
         : (followMember ? `Follow: ${followMember.name} (commander)` : '');
 
     const body = (
-        <div className="replay-view" style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
-            <FightPicker fights={fights} />
+        <div className="replay-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <FightPickerBar fights={fights} collapsed={pickerCollapsed} onToggle={() => setPickerCollapsed(v => !v)} />
+
             {!selectedFight ? (
                 <div style={{ padding: 16, opacity: 0.7 }}>Pick a fight above to start replay.</div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 8, flex: 1, minHeight: 0 }}>
-                    <PartyPanel fight={selectedFight} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-                            <div style={{ fontWeight: 600 }}>{shortMap}</div>
-                            <div style={{ opacity: 0.7, fontSize: 12 }}>{formatDuration(playhead.timeMs)}</div>
-                            <button type="button" onClick={() => setSelectedReplayFight(null)} style={{ marginLeft: 8 }}>
-                                {selectedFight.label} <X size={12} />
-                            </button>
+                <>
+                    <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+                        {/* Map area */}
+                        <div ref={mapContainerRef} style={{ flex: 1, position: 'relative', minWidth: 0, overflow: 'hidden' }}>
+                            {/* Floating zoom + layer controls */}
+                            <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <button type="button" onClick={() => viewport.zoomIn()} title="Zoom in" style={ctrlBtnStyle}><Plus size={12} /></button>
+                                <button type="button" onClick={() => viewport.zoomOut()} title="Zoom out" style={ctrlBtnStyle}><Minus size={12} /></button>
+                                <button type="button" onClick={() => viewport.resetViewport()} title="Reset zoom" style={ctrlBtnStyle}><RotateCcw size={12} /></button>
+                                <button type="button" onClick={() => setFullscreen(v => !v)} title="Fullscreen" style={ctrlBtnStyle}>
+                                    {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                                </button>
+                                <LayersPopover />
+                            </div>
+
+                            {/* Status chips floating on the map */}
                             {followLabel && (
-                                <button type="button" onClick={() => setReplayFollowTarget(null)}>
-                                    {followLabel} <X size={12} />
+                                <button
+                                    type="button"
+                                    onClick={() => setReplayFollowTarget(null)}
+                                    style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 10, ...chipStyle, borderColor: 'rgba(96,165,250,0.3)', color: '#93c5fd' }}
+                                >
+                                    {followLabel} <X size={10} style={{ marginLeft: 4 }} />
                                 </button>
                             )}
                             {spotlightParty !== null && (
-                                <button type="button" onClick={() => setReplaySpotlightParty(null)}>
-                                    Spotlight: Party {spotlightParty} <X size={12} />
+                                <button
+                                    type="button"
+                                    onClick={() => setReplaySpotlightParty(null)}
+                                    style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 10, ...chipStyle, borderColor: 'rgba(251,191,36,0.3)', color: '#fbbf24' }}
+                                >
+                                    Spotlight: Party {spotlightParty} <X size={10} style={{ marginLeft: 4 }} />
                                 </button>
                             )}
-                            <div style={{ flex: 1 }} />
-                            <LayersPopover />
-                            <button type="button" onClick={() => viewport.zoomIn()} title="Zoom in"><Plus size={14} /></button>
-                            <button type="button" onClick={() => viewport.zoomOut()} title="Zoom out"><Minus size={14} /></button>
-                            <button type="button" onClick={() => viewport.resetViewport()} title="Reset"><RotateCcw size={14} /></button>
-                            <button type="button" onClick={() => setFullscreen(v => !v)} title="Fullscreen">
-                                {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                            </button>
-                        </div>
-                        {layers.squadHealthStrip && (
-                            <SquadHealthStrip fight={selectedFight} timeMs={playhead.timeMs} />
-                        )}
-                        <svg
-                            className="replay-canvas"
-                            viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-                            onClick={onCanvasClick}
-                            style={{ flex: 1, minHeight: 0, width: '100%', background: '#0c1224', borderRadius: 8, cursor: 'crosshair' }}
-                        >
-                            <g transform={`translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`}>
-                                {selectedFight.mapKey && hasTileData(selectedFight.mapKey)
-                                    ? getMapTiles(selectedFight.mapKey, 5).map((t, i) => (
-                                        <image key={i} href={t.url} x={t.x} y={t.y} width={t.width} height={t.height} />
-                                    ))
-                                    : selectedFight.mapImageUrl && (
-                                        <image href={selectedFight.mapImageUrl} x={0} y={0} width={mapWidth} height={mapHeight} />
-                                    )
-                                }
-                                <HeatmapLayer
-                                    raster={heatmap}
-                                    mapWidth={mapWidth}
-                                    mapHeight={mapHeight}
-                                    mode={layers.heatmap}
-                                />
-                                {selectedFight.mapKey && (WVW_LANDMARKS[selectedFight.mapKey] ?? []).map(lm => (
-                                    <g key={lm.name}>
-                                        <circle cx={lm.x} cy={lm.y} r={6} fill="rgba(15,23,42,0.8)" stroke="rgba(250,204,21,0.8)" strokeWidth={1.5} />
-                                        <text x={lm.x + 8} y={lm.y + 3} fontSize={9} fill="rgba(250,204,21,0.9)">{lm.name}</text>
-                                    </g>
-                                ))}
-                                {selectedFight.movementData.members.map(member => {
-                                    const pos = sampleAt(member, pollIndex);
-                                    if (!pos) return null;
-                                    const dim = spotlightParty !== null && !member.isEnemy && member.group !== spotlightParty;
-                                    const trail = member.positions.slice(Math.max(0, pollIndex - 20), pollIndex + 1);
-                                    const recent = member.positions.slice(Math.max(0, pollIndex - 5), pollIndex + 1);
-                                    const trailStr = trail.map(p => `${p[0]},${p[1]}`).join(' ');
-                                    const recentStr = recent.map(p => `${p[0]},${p[1]}`).join(' ');
-                                    const color = member.isEnemy ? '#ef4444' : member.isCommander ? '#fbbf24' : '#60a5fa';
-                                    const isFollow = followMember && (followMember.account || followMember.name) === (member.account || member.name);
-                                    return (
-                                        <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
-                                            <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={1} strokeDasharray="2 2" />
-                                            <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={1.5} />
-                                            {isFollow && <circle cx={pos[0]} cy={pos[1]} r={16} fill="none" stroke="#fbbf24" strokeWidth={1.5} strokeOpacity={0.8} />}
-                                            {member.isEnemy
-                                                ? <circle cx={pos[0]} cy={pos[1]} r={6} fill="#7f1d1d" stroke="#ef4444" strokeWidth={1.5} />
-                                                : <image
-                                                    href={getProfessionIconPath(member.profession) ?? undefined}
-                                                    x={pos[0] - 10} y={pos[1] - 10} width={20} height={20}
-                                                />
-                                            }
-                                            {member.isCommander && (
-                                                <circle cx={pos[0]} cy={pos[1] - 14} r={3} fill="#fbbf24" />
-                                            )}
+
+                            {layers.squadHealthStrip && (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 }}>
+                                    <SquadHealthStrip fight={selectedFight} timeMs={playhead.timeMs} />
+                                </div>
+                            )}
+
+                            <svg
+                                className="replay-canvas"
+                                viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+                                onClick={onCanvasClick}
+                                style={{ width: '100%', height: '100%', background: '#0c1224', cursor: 'crosshair', display: 'block' }}
+                            >
+                                <g transform={`translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`}>
+                                    {selectedFight.mapKey && hasTileData(selectedFight.mapKey)
+                                        ? getMapTiles(selectedFight.mapKey, 5).map((t, i) => (
+                                            <image key={i} href={t.url} x={t.x} y={t.y} width={t.width} height={t.height} />
+                                        ))
+                                        : selectedFight.mapImageUrl && (
+                                            <image href={selectedFight.mapImageUrl} x={0} y={0} width={mapWidth} height={mapHeight} />
+                                        )
+                                    }
+                                    <HeatmapLayer raster={heatmap} mapWidth={mapWidth} mapHeight={mapHeight} mode={layers.heatmap} />
+                                    {selectedFight.mapKey && (WVW_LANDMARKS[selectedFight.mapKey] ?? []).map(lm => (
+                                        <g key={lm.name}>
+                                            <circle cx={lm.x} cy={lm.y} r={6} fill="rgba(15,23,42,0.8)" stroke="rgba(250,204,21,0.8)" strokeWidth={1.5} />
+                                            <text x={lm.x + 8} y={lm.y + 3} fontSize={9} fill="rgba(250,204,21,0.9)">{lm.name}</text>
                                         </g>
-                                    );
-                                })}
-                                <SquadOverlay fight={selectedFight} timeMs={playhead.timeMs} />
-                                <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
-                            </g>
-                        </svg>
-                        <SyncedTimeline fight={selectedFight} />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-                            <button
-                                type="button"
-                                aria-label={playhead.playing ? 'Pause' : 'Play'}
-                                onClick={() => setReplayPlayhead({ playing: !playhead.playing })}
-                            >
-                                {playhead.playing ? <Pause size={16} /> : <Play size={16} />}
-                            </button>
-                            <select
-                                value={playhead.speed}
-                                onChange={(e) => setReplayPlayhead({ speed: Number(e.target.value) })}
-                            >
-                                {SPEEDS.map(s => <option key={s} value={s}>{s}×</option>)}
-                            </select>
-                            <span style={{ fontSize: 12, opacity: 0.8 }}>
-                                {formatDuration(playhead.timeMs)} / {formatDuration(durationMs)}
-                            </span>
+                                    ))}
+                                    {selectedFight.movementData.members.map(member => {
+                                        const pos = sampleAt(member, pollIndex);
+                                        if (!pos) return null;
+                                        const dim = spotlightParty !== null && !member.isEnemy && member.group !== spotlightParty;
+                                        const trail = member.positions.slice(Math.max(0, pollIndex - 20), pollIndex + 1);
+                                        const recent = member.positions.slice(Math.max(0, pollIndex - 5), pollIndex + 1);
+                                        const trailStr = trail.map(p => `${p[0]},${p[1]}`).join(' ');
+                                        const recentStr = recent.map(p => `${p[0]},${p[1]}`).join(' ');
+                                        const color = member.isEnemy ? '#ef4444' : member.isCommander ? '#fbbf24' : '#60a5fa';
+                                        const isFollow = followMember && (followMember.account || followMember.name) === (member.account || member.name);
+                                        return (
+                                            <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
+                                                <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={1} strokeDasharray="2 2" />
+                                                <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={1.5} />
+                                                {isFollow && <circle cx={pos[0]} cy={pos[1]} r={16} fill="none" stroke="#fbbf24" strokeWidth={1.5} strokeOpacity={0.8} />}
+                                                {member.isEnemy
+                                                    ? <circle cx={pos[0]} cy={pos[1]} r={6} fill="#7f1d1d" stroke="#ef4444" strokeWidth={1.5} />
+                                                    : <image href={getProfessionIconPath(member.profession) ?? undefined} x={pos[0] - 10} y={pos[1] - 10} width={20} height={20} />
+                                                }
+                                                {member.isCommander && (
+                                                    <polygon
+                                                        points={`${pos[0]},${pos[1] - 19} ${pos[0] + 5},${pos[1] - 14} ${pos[0]},${pos[1] - 9} ${pos[0] - 5},${pos[1] - 14}`}
+                                                        fill="#fbbf24"
+                                                    />
+                                                )}
+                                            </g>
+                                        );
+                                    })}
+                                    <SquadOverlay fight={selectedFight} timeMs={playhead.timeMs} />
+                                    <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
+                                </g>
+                            </svg>
                         </div>
+
+                        {/* Collapsible right squad panel */}
+                        <ReplaySquadPanel
+                            fight={selectedFight}
+                            collapsed={panelCollapsed}
+                            onToggle={() => setPanelCollapsed(v => !v)}
+                        />
                     </div>
-                </div>
+
+                    <SyncedTimeline fight={selectedFight} />
+
+                    {/* Controls bar */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(8,17,31,0.98)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <button
+                            type="button"
+                            aria-label={playhead.playing ? 'Pause' : 'Play'}
+                            onClick={() => setReplayPlayhead({ playing: !playhead.playing })}
+                        >
+                            {playhead.playing ? <Pause size={16} /> : <Play size={16} />}
+                        </button>
+                        <select
+                            value={playhead.speed}
+                            onChange={(e) => setReplayPlayhead({ speed: Number(e.target.value) })}
+                        >
+                            {SPEEDS.map(s => <option key={s} value={s}>{s}×</option>)}
+                        </select>
+                        <span style={{ fontSize: 12, opacity: 0.8 }}>
+                            {formatDuration(playhead.timeMs)} / {formatDuration(durationMs)}
+                        </span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 10, color: '#475569' }}>{normalizeMapNameShort(selectedFight.label)}</span>
+                    </div>
+                </>
             )}
         </div>
     );
