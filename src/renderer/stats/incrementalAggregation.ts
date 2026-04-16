@@ -41,7 +41,103 @@ import { buildMovementData } from '../../shared/movementData';
 import { resolveMapFromZone, computeFightAvgPosition, buildFightLabelV2 } from '../../shared/mapUtils';
 import { findNearestLandmark } from '../../shared/wvwLandmarks';
 import { TRACKED_REPLAY_BUFF_IDS } from '../../shared/replayBuffs';
-import type { ReplayFightPayload, ReplayDpsSample, ReplayKillEvent } from './map/replayTypes';
+import type { ReplayFightPayload, ReplayDpsSample, ReplayKillEvent, DamageSpikeEvent, RallyEvent, TargetFocusSample } from './map/replayTypes';
+
+function memberKey(p: any): string {
+    return String(p?.account || p?.name || '');
+}
+
+function computeRallyEvents(details: any): RallyEvent[] {
+    const events: RallyEvent[] = [];
+    for (const p of details?.players ?? []) {
+        if (p?.isFake || p?.notInSquad) continue;
+        const downs: [number, number][] = p?.combatReplayData?.down ?? [];
+        const deaths: [number, number][] = p?.combatReplayData?.dead ?? [];
+        for (const [downStart, downEnd] of downs) {
+            if (downEnd <= 0) continue;
+            const diedFromThisDown = deaths.some(([dStart]) => Math.abs(dStart - downStart) <= 250 || (dStart >= downStart && dStart <= downEnd));
+            if (!diedFromThisDown) {
+                events.push({ timeMs: downEnd, memberKey: memberKey(p) });
+            }
+        }
+    }
+    events.sort((a, b) => a.timeMs - b.timeMs);
+    return events;
+}
+
+function rollingMedian(arr: number[], windowEnd: number, windowSize: number): number {
+    const start = Math.max(0, windowEnd - windowSize);
+    const slice = arr.slice(start, windowEnd);
+    if (!slice.length) return 0;
+    const sorted = [...slice].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function computeDamageSpikeEvents(details: any): DamageSpikeEvent[] {
+    const events: DamageSpikeEvent[] = [];
+    for (const p of details?.players ?? []) {
+        if (p?.isFake || p?.notInSquad) continue;
+        const cumulative: number[] = p?.damage1S?.[0] ?? [];
+        if (cumulative.length < 2) continue;
+        const perSecond: number[] = [];
+        for (let i = 1; i < cumulative.length; i++) {
+            perSecond.push(Math.max(0, cumulative[i] - cumulative[i - 1]));
+        }
+        const key = memberKey(p);
+        for (let i = 0; i < perSecond.length; i++) {
+            const magnitude = perSecond[i];
+            if (magnitude < 20_000) continue;
+            const median = rollingMedian(perSecond, i, 10);
+            if (median > 0 && magnitude >= median * 2) {
+                events.push({ timeMs: (i + 1) * 1000, memberKey: key, magnitude });
+            }
+        }
+    }
+    events.sort((a, b) => a.timeMs - b.timeMs);
+    return events;
+}
+
+function computeTargetFocusSamples(details: any): TargetFocusSample[] {
+    const samples: TargetFocusSample[] = [];
+    const players = details?.players ?? [];
+    const numSeconds = Math.max(
+        0,
+        ...players.map((p: any) => {
+            const series: number[][] | undefined = p?.targetDamage1S?.[0];
+            if (!series?.length) return 0;
+            return Math.max(...series.map((s: number[]) => s?.length ?? 0));
+        }),
+    );
+    if (numSeconds === 0) return samples;
+
+    const WINDOW_S = 2;
+    for (const p of players) {
+        if (p?.isFake || p?.notInSquad) continue;
+        const series: number[][] | undefined = p?.targetDamage1S?.[0];
+        if (!series?.length) continue;
+        const key = memberKey(p);
+        for (let t = WINDOW_S; t < numSeconds; t++) {
+            let bestTarget = -1;
+            let bestDamage = 0;
+            for (let ti = 0; ti < series.length; ti++) {
+                const arr = series[ti];
+                if (!arr || arr.length <= t) continue;
+                const start = Math.max(0, t - WINDOW_S);
+                const delta = Math.max(0, arr[t] - (arr[start] ?? 0));
+                if (delta > bestDamage) {
+                    bestDamage = delta;
+                    bestTarget = ti;
+                }
+            }
+            if (bestTarget >= 0 && bestDamage > 0) {
+                samples.push({ timeMs: t * 1000, memberKey: key, targetIndex: bestTarget });
+            }
+        }
+    }
+    samples.sort((a, b) => a.timeMs - b.timeMs || a.memberKey.localeCompare(b.memberKey));
+    return samples;
+}
 
 export function buildReplayFightPayload(log: any, fightIndex: number): ReplayFightPayload | null {
     const details = log?.details;
@@ -74,6 +170,9 @@ export function buildReplayFightPayload(log: any, fightIndex: number): ReplayFig
 
     const dpsSamples: ReplayDpsSample[] = computeSquadDpsSamples(details);
     const killEvents: ReplayKillEvent[] = collectKillEvents(movement);
+    const rallyEvents = computeRallyEvents(details);
+    const damageSpikeEvents = computeDamageSpikeEvents(details);
+    const targetFocusSamples = computeTargetFocusSamples(details);
 
     return {
         fightId,
@@ -92,6 +191,9 @@ export function buildReplayFightPayload(log: any, fightIndex: number): ReplayFig
         movementData: movement,
         dpsSamples,
         killEvents,
+        damageSpikeEvents,
+        rallyEvents,
+        targetFocusSamples,
     };
 }
 

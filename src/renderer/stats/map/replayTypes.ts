@@ -12,6 +12,23 @@ export interface ReplayKillEvent {
     isAlly: boolean;
 }
 
+export interface DamageSpikeEvent {
+    timeMs: number;
+    memberKey: string;
+    magnitude: number;
+}
+
+export interface RallyEvent {
+    timeMs: number;
+    memberKey: string;
+}
+
+export interface TargetFocusSample {
+    timeMs: number;
+    memberKey: string;
+    targetIndex: number;
+}
+
 export interface ReplayFightPayload {
     fightId: string;
     fightIndex: number;
@@ -29,4 +46,7 @@ export interface ReplayFightPayload {
     movementData: MovementData;
     dpsSamples: ReplayDpsSample[];
     killEvents: ReplayKillEvent[];
+    damageSpikeEvents: DamageSpikeEvent[];
+    rallyEvents: RallyEvent[];
+    targetFocusSamples: TargetFocusSample[];
 }

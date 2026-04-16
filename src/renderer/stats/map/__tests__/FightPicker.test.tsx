@@ -9,7 +9,7 @@ const makeFight = (o: Partial<ReplayFightPayload>): ReplayFightPayload => ({
     mapKey: null, mapImageUrl: null, mapSize: null, avgPosition: null,
     nearestLandmark: null, squadSize: 20, kills: 5, deaths: 2,
     movementData: { pollingRate: 300, durationMs: 60_000, inchToPixel: 1, members: [], boonIcons: {}, skillIcons: {} },
-    dpsSamples: [], killEvents: [], ...o,
+    dpsSamples: [], killEvents: [], damageSpikeEvents: [], rallyEvents: [], targetFocusSamples: [], ...o,
 });
 
 describe('FightPicker', () => {
