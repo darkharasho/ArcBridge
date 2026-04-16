@@ -13,7 +13,7 @@ function colorForMode(mode: HeatmapLayerProps['mode']): [number, number, number]
         case 'deaths':        return [239, 68, 68];
         case 'time':          return [34, 211, 238];
         case 'damage-taken':  return [249, 115, 22];
-        default:              return [0, 0, 0];
+        default:              return [0, 0, 0]; // 'off' mode — unreachable when component renders (raster is null)
     }
 }
 
@@ -22,7 +22,12 @@ export const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ raster, mapWidth, ma
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas || !raster) return;
+        if (!canvas) return;
+        if (!raster) {
+            const ctx = canvas.getContext('2d');
+            ctx?.clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
         const [gw, gh] = raster.size;
         canvas.width = gw;
         canvas.height = gh;
