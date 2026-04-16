@@ -4,7 +4,7 @@ import { ShieldAlert, Eraser } from 'lucide-react';
 
 
 import { formatTopStatValue, formatWithCommas } from './stats/utils/dashboardUtils';
-import { sanitizeWvwLabel, buildFightLabel } from './stats/utils/labelUtils';
+import { sanitizeWvwLabel, buildFightLabelV2, computeFightAvgPosition } from './stats/utils/labelUtils';
 import { parseTimestamp } from './stats/utils/timestampUtils';
 import { NON_DAMAGING_CONDITIONS } from './stats/statsMetrics';
 import { StatsSharedContext } from './stats/StatsViewContext';
@@ -1276,9 +1276,11 @@ type SpikeFight = {
             const details = getDetails(log);
             if (!details || !details.players) return;
             const fightIndex = fights.length + 1;
-            const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${fightIndex}`);
-            const rawMap = details.zone || details.mapName || details.map || details.location || '';
-            const fullLabel = buildFightLabel(fightName, String(rawMap || ''));
+            const fullLabel = buildFightLabelV2({
+                zone: details.fightName || log.fightName || `Fight ${fightIndex}`,
+                durationMs: details?.durationMS,
+                avgPosition: computeFightAvgPosition(details),
+            });
             const values: Record<string, {
                 hit: number;
                 burst1s: number;

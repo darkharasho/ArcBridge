@@ -1,4 +1,4 @@
-import { sanitizeWvwLabel, buildFightLabel, resolveMapName } from './utils/labelUtils';
+import { buildFightLabelV2, computeFightAvgPosition } from './utils/labelUtils';
 import { resolveFightTimestamp } from './utils/timestampUtils';
 
 export type StripFightValue = {
@@ -65,9 +65,11 @@ export function ingestLogStripSpikes(log: any, acc: StripSpikesAccumulator, opti
     if (!details) return;
 
     const index = acc.fightIndex++;
-    const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
-    const mapName = resolveMapName(details, log);
-    const fullLabel = buildFightLabel(fightName, String(mapName || ''));
+    const fullLabel = buildFightLabelV2({
+        zone: details.fightName || log.fightName || `Fight ${index + 1}`,
+        durationMs: details.durationMS,
+        avgPosition: computeFightAvgPosition(details),
+    });
     const fightId = log.filePath || log.id || `fight-${index + 1}`;
     const shortLabel = `F${index + 1}`;
     const timestamp = resolveFightTimestamp(details, log);

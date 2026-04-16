@@ -1,5 +1,5 @@
 import { resolveFightTimestamp } from './utils/timestampUtils';
-import { sanitizeWvwLabel, buildFightLabel, resolveMapName } from './utils/labelUtils';
+import { buildFightLabelV2, computeFightAvgPosition } from './utils/labelUtils';
 
 type UptimePlayer = {
     key: string;
@@ -155,9 +155,11 @@ export function ingestLogBoonUptimeTimeline(log: any, acc: BoonUptimeTimelineAcc
     const buffMap = (details?.buffMap && typeof details.buffMap === 'object')
         ? details.buffMap
         : {};
-    const fightName = sanitizeWvwLabel(details.fightName || log.fightName || `Fight ${index + 1}`);
-    const mapName = resolveMapName(details, log);
-    const fullLabel = buildFightLabel(fightName, String(mapName || ''));
+    const fullLabel = buildFightLabelV2({
+        zone: details.fightName || log.fightName || `Fight ${index + 1}`,
+        durationMs: details.durationMS,
+        avgPosition: computeFightAvgPosition(details),
+    });
     const fightValuesByBoon = new Map<string, Map<string, UptimeFightValue>>();
     const fightPlayerSeenByBoon = new Map<string, Set<string>>();
 
