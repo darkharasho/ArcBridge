@@ -36,6 +36,26 @@ describe('useReplayViewport', () => {
         expect(result.current.ty).toBe(0);
     });
 
+    it('panBy accumulates correctly across rapid calls', () => {
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+        act(() => {
+            result.current.panBy(30, 40);
+            result.current.panBy(10, 5);
+        });
+        expect(useStatsStore.getState().replayViewport.tx).toBe(40);
+        expect(useStatsStore.getState().replayViewport.ty).toBe(45);
+    });
+
+    it('centerOn positions the given world point at the container center', () => {
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+        act(() => result.current.centerOn(200, 150));
+        // tx = containerWidth/2 - x*scale = 300 - 200*1 = 100
+        // ty = containerHeight/2 - y*scale = 300 - 150*1 = 150
+        const vp = useStatsStore.getState().replayViewport;
+        expect(vp.tx).toBe(100);
+        expect(vp.ty).toBe(150);
+    });
+
     it('zoomOut decreases scale but not below MIN_SCALE (1)', () => {
         const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
         act(() => {

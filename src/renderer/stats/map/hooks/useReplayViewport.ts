@@ -28,17 +28,19 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
     }, [setReplayViewport]);
 
     const panBy = useCallback((dx: number, dy: number) => {
-        setReplayViewport({ tx: replayViewport.tx + dx, ty: replayViewport.ty + dy });
-    }, [replayViewport.tx, replayViewport.ty, setReplayViewport]);
+        const { replayViewport: prev } = useStatsStore.getState();
+        setReplayViewport({ tx: prev.tx + dx, ty: prev.ty + dy });
+    }, [setReplayViewport]);
 
     const resetViewport = useCallback(() => { resetReplayViewport(); }, [resetReplayViewport]);
 
     const centerOn = useCallback((x: number, y: number) => {
+        const { replayViewport: prev } = useStatsStore.getState();
         setReplayViewport({
-            tx: containerWidth / 2 - x * replayViewport.scale,
-            ty: containerHeight / 2 - y * replayViewport.scale,
+            tx: containerWidth / 2 - x * prev.scale,
+            ty: containerHeight / 2 - y * prev.scale,
         });
-    }, [containerWidth, containerHeight, replayViewport.scale, setReplayViewport]);
+    }, [containerWidth, containerHeight, setReplayViewport]);
 
     const attachWheelZoom = useCallback((el: Element): (() => void) => {
         const handler = (e: Event) => {
