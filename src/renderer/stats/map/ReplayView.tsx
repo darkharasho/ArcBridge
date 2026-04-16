@@ -81,11 +81,12 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const [mapWidth, mapHeight] = mapSize;
     const viewport = useReplayViewport({ mapWidth, mapHeight, containerWidth: mapWidth, containerHeight: mapHeight });
 
+    const { centerOn, attachWheelZoom } = viewport;
     useEffect(() => {
         const el = mapContainerRef.current;
         if (!el) return;
-        return viewport.attachWheelZoom(el);
-    }, [viewport.attachWheelZoom]);
+        return attachWheelZoom(el);
+    }, [attachWheelZoom]);
 
     const pollIndex = selectedFight
         ? Math.floor(playhead.timeMs / selectedFight.movementData.pollingRate)
@@ -100,7 +101,6 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         return selectedFight.movementData.members.find(m => (m.account || m.name) === key) ?? null;
     }, [selectedFight, viewportState.followTarget]);
 
-    const { centerOn } = viewport;
     useEffect(() => {
         if (!followMember) return;
         const pos = sampleAt(followMember, pollIndex);
@@ -123,12 +123,13 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === ' ' && selectedFight) {
                 e.preventDefault();
-                setReplayPlayhead({ playing: !playhead.playing });
+                const { replayPlayhead } = useStatsStore.getState();
+                setReplayPlayhead({ playing: !replayPlayhead.playing });
             }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [selectedFight, playhead.playing, setReplayPlayhead]);
+    }, [selectedFight, setReplayPlayhead]);
 
     const followLabel = viewportState.followTarget
         ? `Follow: ${viewportState.followTarget}`
