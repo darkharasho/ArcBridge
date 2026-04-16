@@ -190,7 +190,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                 value={playhead.speed}
                                 onChange={(e) => setReplayPlayhead({ speed: Number(e.target.value) })}
                             >
-                                {SPEEDS.map(s => <option key={s} value={s}>{s}x</option>)}
+                                {SPEEDS.map(s => <option key={s} value={s}>{s}×</option>)}
                             </select>
                             <span style={{ fontSize: 12, opacity: 0.8 }}>
                                 {formatDuration(playhead.timeMs)} / {formatDuration(durationMs)}
