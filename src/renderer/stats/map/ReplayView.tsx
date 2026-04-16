@@ -5,6 +5,11 @@ import { getMapTiles, hasTileData } from '../../../shared/wvwTiles';
 import { WVW_LANDMARKS } from '../../../shared/wvwLandmarks';
 import { normalizeMapNameShort, formatDuration } from '../../../shared/mapUtils';
 import { getProfessionIconPath } from '../../classIconUtils';
+import { HeatmapLayer } from './HeatmapLayer';
+import { SquadOverlay } from './SquadOverlay';
+import { SquadHealthStrip } from './SquadHealthStrip';
+import { LayersPopover } from './LayersPopover';
+import { useHeatmapData } from './hooks/useHeatmapData';
 import { FightPicker } from './FightPicker';
 import { PartyPanel } from './PartyPanel';
 import { SyncedTimeline } from './SyncedTimeline';
@@ -36,6 +41,9 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const setReplayPlayhead = useStatsStore(state => state.setReplayPlayhead);
     const viewportState = useStatsStore(state => state.replayViewport);
     const setReplayFollowTarget = useStatsStore(state => state.setReplayFollowTarget);
+    const layers = useStatsStore(state => state.replayLayers);
+    const spotlightParty = useStatsStore(state => state.replaySpotlightParty);
+    const setReplaySpotlightParty = useStatsStore(state => state.setReplaySpotlightParty);
 
     const [fullscreen, setFullscreen] = React.useState(false);
 
@@ -47,6 +55,8 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     }, [selectedId, fights, setSelectedReplayFight]);
 
     const selectedFight = useMovementData(fights, selectedId);
+
+    const heatmap = useHeatmapData(selectedFight, layers.heatmap);
 
     const durationMs = selectedFight?.durationMs ?? 0;
     useReplayPlayback({ durationMs });
@@ -122,7 +132,13 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                     {followLabel} <X size={12} />
                                 </button>
                             )}
+                            {spotlightParty !== null && (
+                                <button type="button" onClick={() => setReplaySpotlightParty(null)}>
+                                    Spotlight: Party {spotlightParty} <X size={12} />
+                                </button>
+                            )}
                             <div style={{ flex: 1 }} />
+                            <LayersPopover />
                             <button type="button" onClick={() => viewport.zoomIn()} title="Zoom in"><Plus size={14} /></button>
                             <button type="button" onClick={() => viewport.zoomOut()} title="Zoom out"><Minus size={14} /></button>
                             <button type="button" onClick={() => viewport.resetViewport()} title="Reset"><RotateCcw size={14} /></button>
@@ -130,6 +146,9 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                 {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                             </button>
                         </div>
+                        {layers.squadHealthStrip && (
+                            <SquadHealthStrip fight={selectedFight} timeMs={playhead.timeMs} />
+                        )}
                         <svg
                             className="replay-canvas"
                             viewBox={`0 0 ${mapWidth} ${mapHeight}`}
@@ -145,6 +164,12 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                         <image href={selectedFight.mapImageUrl} x={0} y={0} width={mapWidth} height={mapHeight} />
                                     )
                                 }
+                                <HeatmapLayer
+                                    raster={heatmap}
+                                    mapWidth={mapWidth}
+                                    mapHeight={mapHeight}
+                                    mode={layers.heatmap}
+                                />
                                 {selectedFight.mapKey && (WVW_LANDMARKS[selectedFight.mapKey] ?? []).map(lm => (
                                     <g key={lm.name}>
                                         <circle cx={lm.x} cy={lm.y} r={6} fill="rgba(15,23,42,0.8)" stroke="rgba(250,204,21,0.8)" strokeWidth={1.5} />
@@ -154,6 +179,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                 {selectedFight.movementData.members.map(member => {
                                     const pos = sampleAt(member, pollIndex);
                                     if (!pos) return null;
+                                    const dim = spotlightParty !== null && !member.isEnemy && member.group !== spotlightParty;
                                     const trail = member.positions.slice(Math.max(0, pollIndex - 20), pollIndex + 1);
                                     const recent = member.positions.slice(Math.max(0, pollIndex - 5), pollIndex + 1);
                                     const trailStr = trail.map(p => `${p[0]},${p[1]}`).join(' ');
@@ -161,7 +187,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                     const color = member.isEnemy ? '#ef4444' : member.isCommander ? '#fbbf24' : '#60a5fa';
                                     const isFollow = followMember && (followMember.account || followMember.name) === (member.account || member.name);
                                     return (
-                                        <g key={member.account || member.name}>
+                                        <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
                                             <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={1} strokeDasharray="2 2" />
                                             <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={1.5} />
                                             {isFollow && <circle cx={pos[0]} cy={pos[1]} r={16} fill="none" stroke="#fbbf24" strokeWidth={1.5} strokeOpacity={0.8} />}
@@ -178,6 +204,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                         </g>
                                     );
                                 })}
+                                <SquadOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                                 <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                             </g>
                         </svg>
