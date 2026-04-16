@@ -61,7 +61,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
 
     const [fullscreen, setFullscreen] = useState(false);
     const [pickerCollapsed, setPickerCollapsed] = useState(false);
-    const [panelCollapsed, setPanelCollapsed] = useState(false);
+    const [panelCollapsed, setPanelCollapsed] = useState(true);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const draggedRef = useRef(false);
@@ -150,9 +150,8 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                 <div style={{ padding: 16, opacity: 0.7 }}>Pick a fight above to start replay.</div>
             ) : (
                 <>
-                    <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-                        {/* Map area */}
-                        <div ref={mapContainerRef} style={{ flex: 1, position: 'relative', minWidth: 0, overflow: 'hidden' }}>
+                    {/* Map area fills everything; squad panel overlays on the right */}
+                    <div ref={mapContainerRef} style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
                             {/* Floating zoom + layer controls */}
                             <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <button type="button" onClick={() => viewport.zoomIn()} title="Zoom in" style={ctrlBtnStyle}><Plus size={12} /></button>
@@ -244,34 +243,52 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                     <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                                 </g>
                             </svg>
+                        {/* Squad panel — overlays on the right of the map */}
+                        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
+                            <ReplaySquadPanel
+                                fight={selectedFight}
+                                collapsed={panelCollapsed}
+                                onToggle={() => setPanelCollapsed(v => !v)}
+                            />
                         </div>
-
-                        {/* Collapsible right squad panel */}
-                        <ReplaySquadPanel
-                            fight={selectedFight}
-                            collapsed={panelCollapsed}
-                            onToggle={() => setPanelCollapsed(v => !v)}
-                        />
                     </div>
 
                     <SyncedTimeline fight={selectedFight} />
 
                     {/* Controls bar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
                         <button
                             type="button"
                             aria-label={playhead.playing ? 'Pause' : 'Play'}
                             onClick={() => setReplayPlayhead({ playing: !playhead.playing })}
+                            style={{
+                                width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                                background: 'var(--bg-hover)', border: '1px solid var(--border-default)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: 'var(--text-secondary)', cursor: 'pointer',
+                            }}
                         >
-                            {playhead.playing ? <Pause size={16} /> : <Play size={16} />}
+                            {playhead.playing ? <Pause size={14} /> : <Play size={14} />}
                         </button>
-                        <select
-                            value={playhead.speed}
-                            onChange={(e) => setReplayPlayhead({ speed: Number(e.target.value) })}
-                        >
-                            {SPEEDS.map(s => <option key={s} value={s}>{s}×</option>)}
-                        </select>
-                        <span style={{ fontSize: 12, opacity: 0.8 }}>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                            {SPEEDS.map(s => (
+                                <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => setReplayPlayhead({ speed: s })}
+                                    style={{
+                                        padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                                        background: playhead.speed === s ? 'var(--status-info-bg)' : 'var(--bg-hover)',
+                                        border: `1px solid ${playhead.speed === s ? 'var(--status-info-border)' : 'var(--border-subtle)'}`,
+                                        color: playhead.speed === s ? 'var(--status-info)' : 'var(--text-muted)',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {s}×
+                                </button>
+                            ))}
+                        </div>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                             {formatDuration(playhead.timeMs)} / {formatDuration(durationMs)}
                         </span>
                         <div style={{ flex: 1 }} />
