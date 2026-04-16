@@ -78,6 +78,7 @@ export const LayersPopover: React.FC = () => {
                     {HEATMAP_OPTIONS.map(opt => (
                         <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
                             <input type="radio" name="heatmap"
+                                   value={opt.value}
                                    checked={layers.heatmap === opt.value}
                                    onChange={() => setReplayHeatmapMode(opt.value)} />
                             <span>{opt.label}</span>
