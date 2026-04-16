@@ -69,6 +69,7 @@ import { SquadDamageComparisonSection } from './stats/sections/SquadDamageCompar
 import { SquadKillPressureSection } from './stats/sections/SquadKillPressureSection';
 import { SquadTagDistanceDeathsSection } from './stats/sections/SquadTagDistanceDeathsSection';
 import { PlayerComparisonSection } from './stats/sections/PlayerComparisonSection';
+import { ReplaySection } from './stats/sections/ReplaySection';
 import type { TagDistanceDeathFightSummary } from './stats/computeTagDistanceDeaths';
 import { StatsHeader } from './stats/ui/StatsHeader';
 import { WebUploadBanner } from './stats/ui/WebUploadBanner';
@@ -5152,6 +5153,9 @@ type SpikeFight = {
                                 playerBKey={comparisonPlayerBKey}
                                 setPlayerBKey={setComparisonPlayerBKey}
                             /> },
+                        ])}
+                        {renderGroup('map', [
+                            { id: 'replay', element: <ReplaySection /> },
                         ])}
                     </>
                 )}
