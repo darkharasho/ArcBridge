@@ -49,7 +49,7 @@ function collectBasePulses(fight: ReplayFightPayload, timeMs: number): Pulse[] {
 function memberByKey(fight: ReplayFightPayload): Map<string, SquadMemberMovement> {
     const map = new Map<string, SquadMemberMovement>();
     for (const m of fight.movementData.members) {
-        map.set(m.account || m.name, m);
+        if (!m.isEnemy) map.set(m.account || m.name, m);
     }
     return map;
 }
