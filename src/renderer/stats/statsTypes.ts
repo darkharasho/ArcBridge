@@ -1,4 +1,6 @@
 
+export type { ReplayFightPayload, ReplayDpsSample, ReplayKillEvent } from './map/replayTypes';
+
 export interface SkillUsagePlayer {
     key: string;
     account: string;
