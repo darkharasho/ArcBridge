@@ -24,6 +24,12 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
         if (next && next.fightId !== selectedId) setSelectedReplayFight(next.fightId);
     }, [fights, currentIdx, selectedId, setSelectedReplayFight]);
 
+    const stepBack = useCallback(() => step(-1), [step]);
+    const stepForward = useCallback(() => step(1), [step]);
+
+    const atFirst = fights.length === 0 || currentIdx <= 0;
+    const atLast = fights.length === 0 || currentIdx >= fights.length - 1;
+
     if (collapsed) {
         return (
             <div style={{
@@ -43,12 +49,28 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
                         {activeLabel}
                     </span>
                 )}
-                {fights.length > 0 && currentIdx >= 0 && (
-                    <span style={{ fontSize: 10, color: '#475569' }}>{currentIdx + 1} of {fights.length}</span>
+                {fights.length > 0 && (
+                    <span style={{ fontSize: 10, color: '#475569' }}>
+                        {currentIdx >= 0 ? currentIdx + 1 : '—'} of {fights.length}
+                    </span>
                 )}
                 <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
-                    <button type="button" title="Previous fight" onClick={() => step(-1)} style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 10, color: '#64748b', cursor: 'pointer' }}>◀</button>
-                    <button type="button" title="Next fight" onClick={() => step(1)} style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 10, color: '#64748b', cursor: 'pointer' }}>▶</button>
+                    <button
+                        type="button"
+                        title="Previous fight"
+                        aria-label="Previous fight"
+                        onClick={stepBack}
+                        disabled={atFirst}
+                        style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 10, color: atFirst ? '#1e293b' : '#64748b', cursor: atFirst ? 'default' : 'pointer' }}
+                    >◀</button>
+                    <button
+                        type="button"
+                        title="Next fight"
+                        aria-label="Next fight"
+                        onClick={stepForward}
+                        disabled={atLast}
+                        style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: 10, color: atLast ? '#1e293b' : '#64748b', cursor: atLast ? 'default' : 'pointer' }}
+                    >▶</button>
                 </div>
             </div>
         );
