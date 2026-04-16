@@ -78,11 +78,12 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         return selectedFight.movementData.members.find(m => (m.account || m.name) === key) ?? null;
     }, [selectedFight, viewportState.followTarget]);
 
+    const { centerOn } = viewport;
     useEffect(() => {
         if (!followMember) return;
         const pos = sampleAt(followMember, pollIndex);
-        if (pos) viewport.centerOn(pos[0], pos[1]);
-    }, [followMember, pollIndex, viewport]);
+        if (pos) centerOn(pos[0], pos[1]);
+    }, [followMember, pollIndex, centerOn]);
 
     const onCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
         if (!selectedFight) return;
