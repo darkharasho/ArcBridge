@@ -33,13 +33,15 @@ export const ReplaySquadPanel: React.FC<ReplaySquadPanelProps> = ({ fight, colla
 
     if (collapsed) {
         return (
-            <div
+            <button
+                type="button"
                 title="Expand squad panel"
                 onClick={onToggle}
                 style={{
                     width: 28, flexShrink: 0,
                     background: 'rgba(8,17,31,0.95)',
                     borderLeft: '1px solid rgba(255,255,255,0.08)',
+                    border: 'none',
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
                     paddingTop: 8, cursor: 'pointer',
                 }}
@@ -48,7 +50,7 @@ export const ReplaySquadPanel: React.FC<ReplaySquadPanelProps> = ({ fight, colla
                 <span style={{ writingMode: 'vertical-rl', fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#334155', marginTop: 7 }}>
                     Squad
                 </span>
-            </div>
+            </button>
         );
     }
 
@@ -83,7 +85,7 @@ export const ReplaySquadPanel: React.FC<ReplaySquadPanelProps> = ({ fight, colla
                                 timeMs={timeMs}
                                 boonIcons={boonIcons}
                                 skillIcons={skillIcons}
-                                onFollow={key => setReplayFollowTarget(key)}
+                                onFollow={setReplayFollowTarget}
                             />
                         ))}
                     </React.Fragment>

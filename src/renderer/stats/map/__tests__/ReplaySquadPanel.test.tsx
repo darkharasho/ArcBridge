@@ -73,4 +73,21 @@ describe('ReplaySquadPanel', () => {
         fireEvent.click(screen.getByTitle('Expand squad panel'));
         expect(onToggle).toHaveBeenCalledOnce();
     });
+
+    it('sets followTarget in store when a member card is clicked', () => {
+        const fight = mkFight([mkMember({ name: 'Alice', account: 'Alice.1' })]);
+        render(<ReplaySquadPanel fight={fight} collapsed={false} onToggle={() => {}} />);
+        fireEvent.click(screen.getByRole('button', { name: /Alice/i }));
+        expect(useStatsStore.getState().replayViewport.followTarget).toBe('Alice.1');
+    });
+
+    it('excludes allied members with inSquad false', () => {
+        const fight = mkFight([
+            mkMember({ name: 'InSquad', inSquad: true }),
+            mkMember({ name: 'NotInSquad', inSquad: false }),
+        ]);
+        render(<ReplaySquadPanel fight={fight} collapsed={false} onToggle={() => {}} />);
+        expect(screen.getByText('InSquad')).toBeTruthy();
+        expect(screen.queryByText('NotInSquad')).toBeNull();
+    });
 });
