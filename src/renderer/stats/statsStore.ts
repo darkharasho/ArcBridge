@@ -23,6 +23,19 @@ interface StatsStoreState {
     replayPlayhead: { timeMs: number; playing: boolean; speed: number };
     replayViewport: { scale: number; tx: number; ty: number; followTarget: string | null };
     replaySelectedParty: number;
+    replayLayers: {
+        centroidSpread: boolean;
+        tagRangeRings: boolean;
+        allPartiesPanel: boolean;
+        squadHealthStrip: boolean;
+        partyHulls: boolean;
+        phases: boolean;
+        rallyRings: boolean;
+        targetFocusLines: boolean;
+        damagePulses: boolean;
+        heatmap: 'off' | 'deaths' | 'time' | 'damage-taken';
+    };
+    replaySpotlightParty: number | null;
 
     setResult: (result: any, inputsHash: string) => void;
     setProgress: (progress: AggregationProgressState) => void;
@@ -36,6 +49,10 @@ interface StatsStoreState {
     setReplayFollowTarget: (target: string | null) => void;
     setReplaySelectedParty: (party: number) => void;
     resetReplayViewport: () => void;
+    setReplayLayer: (key: keyof Omit<StatsStoreState['replayLayers'], 'heatmap'>, value: boolean) => void;
+    setReplayHeatmapMode: (mode: StatsStoreState['replayLayers']['heatmap']) => void;
+    setReplaySpotlightParty: (party: number | null) => void;
+    resetReplayLayers: () => void;
 }
 
 const initialState = {
@@ -56,6 +73,19 @@ const initialState = {
     replayPlayhead: { timeMs: 0, playing: false, speed: 1 },
     replayViewport: { scale: 1, tx: 0, ty: 0, followTarget: null },
     replaySelectedParty: 0,
+    replayLayers: {
+        centroidSpread: false,
+        tagRangeRings: false,
+        allPartiesPanel: false,
+        squadHealthStrip: false,
+        partyHulls: false,
+        phases: false,
+        rallyRings: false,
+        targetFocusLines: false,
+        damagePulses: false,
+        heatmap: 'off' as const,
+    },
+    replaySpotlightParty: null,
 };
 
 export const useStatsStore = create<StatsStoreState>()((set) => ({
@@ -89,6 +119,28 @@ export const useStatsStore = create<StatsStoreState>()((set) => ({
     }),
     resetReplayViewport: () => set((state) => ({
         replayViewport: { ...state.replayViewport, scale: 1, tx: 0, ty: 0 },
+    })),
+    setReplayLayer: (key, value) => set((state) => ({
+        replayLayers: { ...state.replayLayers, [key]: value },
+    })),
+    setReplayHeatmapMode: (mode) => set((state) => ({
+        replayLayers: { ...state.replayLayers, heatmap: mode },
+    })),
+    setReplaySpotlightParty: (party) => set({
+        replaySpotlightParty: party === null || !Number.isFinite(party)
+            ? null
+            : party <= 0
+                ? null
+                : Math.min(5, Math.floor(party)),
+    }),
+    resetReplayLayers: () => set(() => ({
+        replayLayers: {
+            centroidSpread: false, tagRangeRings: false, allPartiesPanel: false,
+            squadHealthStrip: false, partyHulls: false, phases: false,
+            rallyRings: false, targetFocusLines: false, damagePulses: false,
+            heatmap: 'off',
+        },
+        replaySpotlightParty: null,
     })),
     getInitialState: () => initialState,
 }));
