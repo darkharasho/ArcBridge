@@ -216,7 +216,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                 <g transform={`translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`}>
                                     {selectedFight.mapKey && hasTileData(selectedFight.mapKey)
                                         ? getMapTiles(selectedFight.mapKey, Math.min(7, Math.max(3, Math.floor(5 + Math.log2(viewport.scale)))), mapWidth, mapHeight).map((t, i) => (
-                                            <image key={i} href={t.url} x={t.x} y={t.y} width={t.width} height={t.height} />
+                                            <image key={i} href={t.url} x={t.x} y={t.y} width={t.width} height={t.height} preserveAspectRatio="none" />
                                         ))
                                         : selectedFight.mapImageUrl && (
                                             <image href={selectedFight.mapImageUrl} x={0} y={0} width={mapWidth} height={mapHeight} />
