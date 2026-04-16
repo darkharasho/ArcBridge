@@ -183,7 +183,11 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                         </svg>
                         <SyncedTimeline fight={selectedFight} />
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-                            <button type="button" onClick={() => setReplayPlayhead({ playing: !playhead.playing })}>
+                            <button
+                                type="button"
+                                aria-label={playhead.playing ? 'Pause' : 'Play'}
+                                onClick={() => setReplayPlayhead({ playing: !playhead.playing })}
+                            >
                                 {playhead.playing ? <Pause size={16} /> : <Play size={16} />}
                             </button>
                             <select

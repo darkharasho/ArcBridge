@@ -100,7 +100,6 @@ test.describe('Replay smoke test (RPLY-001)', () => {
 
         // Navigate to the Map nav group (contains the Replay section)
         await page.getByRole('button', { name: /^Map$/i }).click();
-        await page.waitForTimeout(300);
 
         // The FightPicker listbox should be visible
         const listbox = page.getByRole('listbox');
@@ -120,11 +119,10 @@ test.describe('Replay smoke test (RPLY-001)', () => {
         const playBtn = page.getByRole('button', { name: /play/i }).first();
         await expect(playBtn).toBeVisible();
 
-        // Click play — after a short wait the Pause button should appear
+        // Click play — the Pause button should appear
         await playBtn.click();
-        await page.waitForTimeout(600);
         const pauseBtn = page.getByRole('button', { name: /pause/i }).first();
-        await expect(pauseBtn).toBeVisible();
+        await expect(pauseBtn).toBeVisible({ timeout: 3_000 });
 
         // Pause playback
         await pauseBtn.click();
