@@ -62,7 +62,7 @@ export const FightPicker: React.FC<FightPickerProps> = ({ fights }) => {
     if (!fights.length) {
         return (
             <div className="replay-picker-empty">
-                No replay data available. New fights parsed with <code>parseCombatReplay</code> enabled will appear here.
+                No replay data available. Make sure <strong>Combat Replay</strong> is enabled in Settings → EI Parser, then re-upload your logs to generate position data.
             </div>
         );
     }

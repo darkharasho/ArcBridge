@@ -51,8 +51,7 @@ export const FightBreakdownSection = ({
                 minute: '2-digit'
             })
             : '--';
-        const rawMap = fight?.mapName || fight?.map || 'Unknown Map';
-        const mapLabel = String(rawMap)
+        const mapLabel = fight?.fullLabel || String(fight?.mapName || fight?.map || 'Unknown Map')
             .replace(/^Detailed\s*WvW\s*-\s*/i, '')
             .replace(/^World\s*vs\s*World\s*-\s*/i, '')
             .replace(/^WvW\s*-\s*/i, '')
@@ -61,7 +60,7 @@ export const FightBreakdownSection = ({
     };
 
     const renderReportCell = (fight: any): ReactNode => {
-        const label = fight?.fullLabel || formatReportLabel(fight);
+        const label = formatReportLabel(fight);
         if (!fight?.permalink) return <span className="text-[color:var(--text-muted)]">Pending</span>;
         return (
             <button

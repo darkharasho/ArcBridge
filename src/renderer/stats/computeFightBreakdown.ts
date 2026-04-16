@@ -100,7 +100,6 @@ export function ingestLogFightBreakdown(log: any, fightIndex: number) {
 
     const fullLabel = buildFightLabelV2({
         zone: details?.fightName || log?.fightName || log?.encounterName || `Fight ${fightIndex + 1}`,
-        durationMs: details?.durationMS,
         avgPosition: computeFightAvgPosition(details),
     });
 
