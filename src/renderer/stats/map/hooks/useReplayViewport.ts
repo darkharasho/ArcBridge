@@ -42,6 +42,59 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
         });
     }, [containerWidth, containerHeight, setReplayViewport]);
 
+    const attachPanDrag = useCallback((el: Element, onDragChange?: (dragging: boolean) => void): (() => void) => {
+        let lastX = 0, lastY = 0;
+        let active = false;
+        let moved = false;
+        const htmlEl = el as HTMLElement;
+
+        const onMouseDown = (e: Event) => {
+            const me = e as MouseEvent;
+            if (me.button !== 0) return;
+            active = true;
+            moved = false;
+            lastX = me.clientX;
+            lastY = me.clientY;
+            htmlEl.style.cursor = 'grabbing';
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+            if (!active) return;
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            // ignore tiny jitter so a click doesn't become a drag
+            if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+            if (!moved) { moved = true; onDragChange?.(true); }
+            const rect = el.getBoundingClientRect();
+            const { replayViewport: prev } = useStatsStore.getState();
+            setReplayViewport({
+                tx: prev.tx + dx * (mapWidth / rect.width),
+                ty: prev.ty + dy * (mapHeight / rect.height),
+            });
+            lastX = e.clientX;
+            lastY = e.clientY;
+        };
+
+        const onMouseUp = () => {
+            if (!active) return;
+            active = false;
+            htmlEl.style.cursor = 'crosshair';
+            // leave moved=true so the click handler can see it, then clear next frame
+            if (moved) {
+                requestAnimationFrame(() => { moved = false; onDragChange?.(false); });
+            }
+        };
+
+        el.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        return () => {
+            el.removeEventListener('mousedown', onMouseDown);
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [mapWidth, mapHeight, setReplayViewport]);
+
     const attachWheelZoom = useCallback((el: Element): (() => void) => {
         const handler = (e: Event) => {
             const we = e as WheelEvent;
@@ -76,6 +129,7 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
         resetViewport,
         centerOn,
         attachWheelZoom,
+        attachPanDrag,
         mapWidth,
         mapHeight,
     };

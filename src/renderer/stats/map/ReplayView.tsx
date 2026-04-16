@@ -64,6 +64,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const [panelCollapsed, setPanelCollapsed] = useState(false);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
+    const draggedRef = useRef(false);
 
     useEffect(() => {
         if (!selectedId && fights.length) {
@@ -81,12 +82,17 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const [mapWidth, mapHeight] = mapSize;
     const viewport = useReplayViewport({ mapWidth, mapHeight, containerWidth: mapWidth, containerHeight: mapHeight });
 
-    const { centerOn, attachWheelZoom } = viewport;
+    const { centerOn, attachWheelZoom, attachPanDrag } = viewport;
     useEffect(() => {
         const el = mapContainerRef.current;
         if (!el) return;
         return attachWheelZoom(el);
     }, [attachWheelZoom]);
+    useEffect(() => {
+        const el = mapContainerRef.current;
+        if (!el) return;
+        return attachPanDrag(el, (d) => { draggedRef.current = d; });
+    }, [attachPanDrag]);
 
     const pollIndex = selectedFight
         ? Math.floor(playhead.timeMs / selectedFight.movementData.pollingRate)
@@ -109,6 +115,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
 
     const onCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
         if (!selectedFight) return;
+        if (draggedRef.current) { draggedRef.current = false; return; }
         const svg = e.currentTarget;
         const rect = svg.getBoundingClientRect();
         const fracX = (e.clientX - rect.left) / rect.width;
@@ -187,7 +194,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                 className="replay-canvas"
                                 viewBox={`0 0 ${mapWidth} ${mapHeight}`}
                                 onClick={onCanvasClick}
-                                style={{ width: '100%', height: '100%', background: '#0c1224', cursor: 'crosshair', display: 'block' }}
+                                style={{ width: '100%', height: '100%', background: '#0c1224', cursor: 'grab', display: 'block' }}
                             >
                                 <g transform={`translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`}>
                                     {selectedFight.mapKey && hasTileData(selectedFight.mapKey)
