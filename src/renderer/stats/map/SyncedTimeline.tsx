@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import { useStatsStore } from '../statsStore';
 import { formatDuration } from '../../../shared/mapUtils';
+import { useSquadDerived } from './hooks/useSquadDerived';
 import type { ReplayFightPayload } from './replayTypes';
 
 interface SyncedTimelineProps {
@@ -10,7 +11,16 @@ interface SyncedTimelineProps {
 export const SyncedTimeline: React.FC<SyncedTimelineProps> = ({ fight }) => {
     const timeMs = useStatsStore(state => state.replayPlayhead.timeMs);
     const setReplayPlayhead = useStatsStore(state => state.setReplayPlayhead);
+    const layersState = useStatsStore(state => state.replayLayers);
+    const derived = useSquadDerived(fight);
     const svgRef = useRef<SVGSVGElement | null>(null);
+
+    const phaseColor: Record<string, string> = {
+        opening: '#60a5fa',
+        push: '#22c55e',
+        retreat: '#ef4444',
+        cleanup: '#a78bfa',
+    };
 
     const { pathData, maxDps } = useMemo(() => {
         if (!fight.dpsSamples.length || fight.durationMs <= 0) {
@@ -61,6 +71,15 @@ export const SyncedTimeline: React.FC<SyncedTimelineProps> = ({ fight }) => {
                 onMouseUp={() => setDragging(false)}
                 onMouseLeave={() => setDragging(false)}
             >
+                {layersState.phases && derived.phases.map((p, i) => {
+                    const x1 = (p.startMs / fight.durationMs) * 1000;
+                    const x2 = (p.endMs / fight.durationMs) * 1000;
+                    return (
+                        <rect key={`ph-${i}`}
+                            x={x1} y={0} width={Math.max(0, x2 - x1)} height={8}
+                            fill={phaseColor[p.kind]} opacity={0.35} />
+                    );
+                })}
                 <path d={pathData} fill="rgba(96, 165, 250, 0.35)" stroke="rgba(96, 165, 250, 0.9)" strokeWidth={1} />
                 {enemyKillMarks.map((m, i) => (
                     <line key={`k-${i}`} x1={(m.timeMs / fight.durationMs) * 1000} x2={(m.timeMs / fight.durationMs) * 1000}
@@ -72,6 +91,30 @@ export const SyncedTimeline: React.FC<SyncedTimelineProps> = ({ fight }) => {
                 ))}
                 <line x1={playheadX} x2={playheadX} y1={0} y2={120} stroke="#fbbf24" strokeWidth={1.5} />
             </svg>
+            {layersState.phases && derived.phases.length > 0 && (
+                <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                    {derived.phases.map((p, i) => (
+                        <button
+                            key={`${p.startMs}-${i}`}
+                            type="button"
+                            data-phase-chip
+                            data-start-ms={p.startMs}
+                            onClick={() => setReplayPlayhead({ timeMs: p.startMs })}
+                            style={{
+                                padding: '2px 6px',
+                                fontSize: 10,
+                                borderRadius: 3,
+                                background: `${phaseColor[p.kind]}22`,
+                                color: phaseColor[p.kind],
+                                border: `1px solid ${phaseColor[p.kind]}55`,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {p.kind} · {(p.startMs / 1000).toFixed(0)}s
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
