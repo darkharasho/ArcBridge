@@ -3,6 +3,7 @@ import { useStatsStore } from '../statsStore';
 import type { SquadMemberMovement } from '../../../shared/movementData';
 import type { ReplayFightPayload } from './replayTypes';
 import { getProfessionIconPath } from '../../classIconUtils';
+import { getProfessionColor } from '../../../shared/professionUtils';
 
 interface PartyPanelProps {
     fight: ReplayFightPayload;
@@ -69,11 +70,20 @@ function latestCast(member: SquadMemberMovement, timeMs: number): { id: number; 
     return last && last.ageMs <= 3_000 ? last : null;
 }
 
+function partyStatusColor(member: SquadMemberMovement, timeMs: number): string {
+    const status = statusAt(member, timeMs);
+    if (status === 'dead') return '#7f1d1d';
+    if (status === 'down') return '#9a3412';
+    return getProfessionColor(member.profession);
+}
+
 export const PartyPanel: React.FC<PartyPanelProps> = ({ fight }) => {
     const timeMs = useStatsStore(state => state.replayPlayhead.timeMs);
     const selectedParty = useStatsStore(state => state.replaySelectedParty);
     const setReplaySelectedParty = useStatsStore(state => state.setReplaySelectedParty);
     const setReplayFollowTarget = useStatsStore(state => state.setReplayFollowTarget);
+    const allPartiesPanel = useStatsStore(state => state.replayLayers.allPartiesPanel);
+    const setReplaySpotlightParty = useStatsStore(state => state.setReplaySpotlightParty);
 
     const allies = useMemo(
         () => fight.movementData.members.filter(m => !m.isEnemy && m.inSquad),
@@ -84,6 +94,52 @@ export const PartyPanel: React.FC<PartyPanelProps> = ({ fight }) => {
     const partyMembers = allies.filter(m => m.group === effectiveParty);
     const skillIcons = fight.movementData.skillIcons;
     const boonIcons = fight.movementData.boonIcons;
+
+    if (allPartiesPanel) {
+        return (
+            <aside className="replay-party-panel all-parties"
+                   style={{ width: 260, padding: 8, background: 'rgba(8,12,26,0.6)', borderRadius: 8,
+                            display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[1, 2, 3, 4, 5].map(party => {
+                    const members = allies.filter(m => m.group === party);
+                    return (
+                        <button
+                            key={party}
+                            type="button"
+                            onClick={() => {
+                                setReplaySpotlightParty(party);
+                                setReplaySelectedParty(party);
+                            }}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                padding: 6, borderRadius: 6,
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                cursor: 'pointer', textAlign: 'left',
+                            }}
+                        >
+                            <span style={{ fontSize: 11, fontWeight: 600, minWidth: 20 }}>P{party}</span>
+                            <div style={{ flex: 1, display: 'flex', gap: 2 }}>
+                                {members.map(m => {
+                                    const hp = healthAt(m, timeMs);
+                                    return (
+                                        <div key={m.account || m.name}
+                                             title={`${m.name} — ${hp}%`}
+                                             style={{ flex: 1, height: 18, background: '#18213d', borderRadius: 2, overflow: 'hidden' }}>
+                                            <div style={{ width: `${hp}%`, height: '100%',
+                                                          background: partyStatusColor(m, timeMs) }} />
+                                        </div>
+                                    );
+                                })}
+                                {members.length === 0 && <span style={{ fontSize: 10, opacity: 0.4 }}>empty</span>}
+                            </div>
+                            <span style={{ fontSize: 10, opacity: 0.6, minWidth: 16, textAlign: 'right' }}>{members.length}</span>
+                        </button>
+                    );
+                })}
+            </aside>
+        );
+    }
 
     return (
         <aside className="replay-party-panel" style={{ width: 260, padding: 8, background: 'rgba(8,12,26,0.6)', borderRadius: 8 }}>
