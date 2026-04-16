@@ -12,12 +12,14 @@ const PARTY_COLORS = ['#f87171', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
 
 function sampleAtTime<T extends { timeMs: number }>(samples: T[], timeMs: number): T | null {
     if (!samples.length) return null;
-    let idx = 0;
-    for (let i = 0; i < samples.length; i++) {
-        if (samples[i].timeMs <= timeMs) idx = i;
-        else break;
+    // samples must be sorted ascending by timeMs
+    let lo = 0, hi = samples.length - 1, result = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >>> 1;
+        if (samples[mid].timeMs <= timeMs) { result = mid; lo = mid + 1; }
+        else hi = mid - 1;
     }
-    return samples[idx];
+    return result === -1 ? null : samples[result];
 }
 
 export const SquadOverlay: React.FC<SquadOverlayProps> = ({ fight, timeMs }) => {
