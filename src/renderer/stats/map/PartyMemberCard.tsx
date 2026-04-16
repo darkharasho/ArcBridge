@@ -10,6 +10,7 @@ interface PartyMemberCardProps {
     boonIcons: Record<number, { name: string; icon: string }>;
     skillIcons: Record<number, { name: string; icon: string }>;
     onFollow?: (key: string) => void;
+    isFollowed?: boolean;
 }
 
 function hpColor(hp: number, status: MemberStatus): string {
@@ -27,11 +28,11 @@ function barColor(status: MemberStatus): string {
 }
 
 export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
-    member, timeMs, boonIcons, skillIcons, onFollow,
+    member, timeMs, boonIcons, skillIcons, onFollow, isFollowed,
 }) => {
     const hp = useMemo(() => hpAt(member, timeMs), [member, timeMs]);
     const status = useMemo(() => statusAt(member, timeMs), [member, timeMs]);
-    const boonIds = useMemo(() => activeBoons(member, timeMs), [member, timeMs]);
+    const boons = useMemo(() => activeBoons(member, timeMs), [member, timeMs]);
     const skillIds = useMemo(() => activeSkillsAt(member, timeMs), [member, timeMs]);
 
     const specLabel = member.eliteSpec
@@ -47,8 +48,8 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
             style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '5px 8px', borderRadius: 4, margin: '1px 4px',
-                background: 'var(--bg-hover)',
-                border: '1px solid transparent',
+                background: isFollowed ? 'var(--status-info-bg)' : 'var(--bg-hover)',
+                border: `1px solid ${isFollowed ? 'var(--status-info)' : 'transparent'}`,
                 cursor: 'pointer',
             }}
         >
@@ -92,29 +93,49 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
                 <div style={{ width: `${status === 'dead' ? 0 : hp}%`, height: '100%', background: barColor(status), borderRadius: 2 }} />
             </div>
 
-            {/* Row 2: active boons */}
-            {status !== 'dead' && (
+            {/* Row 2: active boons with stack count badge */}
+            {status !== 'dead' && boons.length > 0 && (
                 <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginBottom: 3 }}>
-                    {boonIds.map(id => {
+                    {boons.map(({ id, stacks }) => {
                         const icon = boonIcons[id];
                         if (!icon?.icon) return null;
                         return (
-                            <img key={id} src={icon.icon} alt={icon.name} title={icon.name} width={22} height={22}
-                                 style={{ borderRadius: 3, border: '1px solid var(--border-hover)' }} />
+                            <div key={id} style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
+                                <img src={icon.icon} alt={icon.name} title={`${icon.name}${stacks > 1 ? ` ×${stacks}` : ''}`}
+                                     width={22} height={22}
+                                     style={{ display: 'block', borderRadius: 3, border: '1px solid var(--border-hover)' }} />
+                                {stacks > 1 && (
+                                    <span style={{
+                                        position: 'absolute', bottom: 0, right: 0,
+                                        fontSize: 7, fontWeight: 700, lineHeight: '10px',
+                                        background: 'rgba(0,0,0,0.8)', color: '#fff',
+                                        padding: '0 2px', borderRadius: '2px 0 3px 0',
+                                        minWidth: 10, textAlign: 'center', pointerEvents: 'none',
+                                    }}>
+                                        {stacks}
+                                    </span>
+                                )}
+                            </div>
                         );
                     })}
                 </div>
             )}
 
-            {/* Row 3: skills used this second */}
+            {/* Row 3: skills used this second — icon + name */}
             {status !== 'dead' && skillIds.length > 0 && (
-                <div style={{ display: 'flex', gap: 3 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {skillIds.map(id => {
                         const icon = skillIcons[id];
                         if (!icon?.icon) return null;
                         return (
-                            <img key={id} src={icon.icon} alt={icon.name} title={icon.name} width={22} height={22}
-                                 style={{ borderRadius: 3, border: '1px solid var(--status-info-border)', background: 'var(--status-info-bg)' }} />
+                            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <img src={icon.icon} alt={icon.name} title={icon.name}
+                                     width={18} height={18}
+                                     style={{ flexShrink: 0, borderRadius: 3, border: '1px solid var(--status-info-border)', background: 'var(--status-info-bg)' }} />
+                                <span style={{ fontSize: 9, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {icon.name}
+                                </span>
+                            </div>
                         );
                     })}
                 </div>

@@ -23,18 +23,20 @@ export function statusAt(member: SquadMemberMovement, timeMs: number): MemberSta
     return 'alive';
 }
 
-export function activeBoons(member: SquadMemberMovement, timeMs: number): number[] {
+export type ActiveBoon = { id: number; stacks: number };
+
+export function activeBoons(member: SquadMemberMovement, timeMs: number): ActiveBoon[] {
     if (!member.boonStates) return [];
-    const ids: number[] = [];
+    const result: ActiveBoon[] = [];
     for (const [idStr, states] of Object.entries(member.boonStates)) {
         let stacks = 0;
         for (const [t, v] of states) {
             if (t > timeMs) break;
             stacks = v;
         }
-        if (stacks > 0) ids.push(Number(idStr));
+        if (stacks > 0) result.push({ id: Number(idStr), stacks });
     }
-    return ids;
+    return result;
 }
 
 export function activeSkillsAt(member: SquadMemberMovement, timeMs: number): number[] {

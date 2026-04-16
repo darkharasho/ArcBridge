@@ -13,6 +13,7 @@ interface ReplaySquadPanelProps {
 export const ReplaySquadPanel: React.FC<ReplaySquadPanelProps> = ({ fight, collapsed, onToggle }) => {
     const timeMs = useStatsStore(state => state.replayPlayhead.timeMs);
     const setReplayFollowTarget = useStatsStore(state => state.setReplayFollowTarget);
+    const followTarget = useStatsStore(state => state.replayViewport.followTarget);
 
     const allies = useMemo(
         () => fight.movementData.members.filter(m => !m.isEnemy && m.inSquad),
@@ -86,6 +87,7 @@ export const ReplaySquadPanel: React.FC<ReplaySquadPanelProps> = ({ fight, colla
                                 boonIcons={boonIcons}
                                 skillIcons={skillIcons}
                                 onFollow={setReplayFollowTarget}
+                                isFollowed={(m.account || m.name) === followTarget}
                             />
                         ))}
                     </React.Fragment>

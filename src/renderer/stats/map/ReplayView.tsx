@@ -28,10 +28,16 @@ interface ReplayViewProps {
 
 const SPEEDS = [0.5, 1, 1.5, 2, 4] as const;
 
-function sampleAt(member: SquadMemberMovement, pollIndex: number): [number, number] | null {
-    if (!member.positions.length) return null;
-    const idx = Math.max(0, Math.min(pollIndex, member.positions.length - 1));
-    return member.positions[idx];
+/** Linearly interpolate between the two bracketing position samples for smooth movement. */
+function sampleAt(member: SquadMemberMovement, pollFrac: number): [number, number] | null {
+    const { positions } = member;
+    if (!positions.length) return null;
+    const lo = Math.max(0, Math.min(Math.floor(pollFrac), positions.length - 1));
+    const t = pollFrac - Math.floor(pollFrac);
+    if (t === 0 || lo >= positions.length - 1) return positions[lo];
+    const a = positions[lo];
+    const b = positions[lo + 1];
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
 const ctrlBtnStyle: React.CSSProperties = {
@@ -94,9 +100,12 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         return attachPanDrag(el, (d) => { draggedRef.current = d; });
     }, [attachPanDrag]);
 
-    const pollIndex = selectedFight
-        ? Math.floor(playhead.timeMs / selectedFight.movementData.pollingRate)
+    // Fractional poll position — used for smooth lerped rendering.
+    // Integer floor is used for array indexing (trails, hit detection).
+    const pollFrac = selectedFight
+        ? playhead.timeMs / selectedFight.movementData.pollingRate
         : 0;
+    const pollIndex = Math.floor(pollFrac);
 
     const followMember = useMemo(() => {
         if (!selectedFight) return null;
@@ -109,9 +118,9 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
 
     useEffect(() => {
         if (!followMember) return;
-        const pos = sampleAt(followMember, pollIndex);
+        const pos = sampleAt(followMember, pollFrac);
         if (pos) centerOn(pos[0], pos[1]);
-    }, [followMember, pollIndex, centerOn]);
+    }, [followMember, pollFrac, centerOn]);
 
     const onCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
         if (!selectedFight) return;
@@ -212,7 +221,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                         </g>
                                     ))}
                                     {selectedFight.movementData.members.map(member => {
-                                        const pos = sampleAt(member, pollIndex);
+                                        const pos = sampleAt(member, pollFrac);
                                         if (!pos) return null;
                                         const dim = spotlightParty !== null && !member.isEnemy && member.group !== spotlightParty;
                                         const trail = member.positions.slice(Math.max(0, pollIndex - 20), pollIndex + 1);
@@ -221,18 +230,41 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                                         const recentStr = recent.map(p => `${p[0]},${p[1]}`).join(' ');
                                         const color = member.isEnemy ? '#ef4444' : member.isCommander ? '#fbbf24' : '#60a5fa';
                                         const isFollow = followMember && (followMember.account || followMember.name) === (member.account || member.name);
+                                        // All sizes are divided by viewport.scale so they stay a
+                                        // constant pixel size on screen regardless of zoom level.
+                                        const s = viewport.scale;
+                                        const sw = 1 / s;           // 1px stroke
+                                        const sw15 = 1.5 / s;       // 1.5px stroke
+                                        const iconR = 10 / s;        // half of 20px icon
+                                        const circleR = 6 / s;       // enemy dot radius
+                                        const ringR = 16 / s;        // follow ring radius
+                                        const tagOff = 14 / s;       // commander tag offset above icon
+                                        const tagS = 5 / s;          // commander tag half-size
                                         return (
                                             <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
-                                                <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={1} strokeDasharray="2 2" />
-                                                <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={1.5} />
-                                                {isFollow && <circle cx={pos[0]} cy={pos[1]} r={16} fill="none" stroke="#fbbf24" strokeWidth={1.5} strokeOpacity={0.8} />}
-                                                {member.isEnemy
-                                                    ? <circle cx={pos[0]} cy={pos[1]} r={6} fill="#7f1d1d" stroke="#ef4444" strokeWidth={1.5} />
-                                                    : <image href={getProfessionIconPath(member.profession) ?? undefined} x={pos[0] - 10} y={pos[1] - 10} width={20} height={20} />
-                                                }
+                                                {/* Movement trail */}
+                                                <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={sw} strokeDasharray={`${2/s} ${2/s}`} />
+                                                <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />
+                                                {/* Follow ring */}
+                                                {isFollow && <circle cx={pos[0]} cy={pos[1]} r={ringR} fill="none" stroke="#fbbf24" strokeWidth={sw15} strokeOpacity={0.8} />}
+                                                {/* Member icon — enemy = styled circle, ally = profession image */}
+                                                {member.isEnemy ? (
+                                                    <>
+                                                        <circle cx={pos[0]} cy={pos[1]} r={circleR} fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={sw15} />
+                                                        <line x1={pos[0] - circleR * 0.5} y1={pos[1] - circleR * 0.5} x2={pos[0] + circleR * 0.5} y2={pos[1] + circleR * 0.5} stroke="#ef4444" strokeWidth={sw} />
+                                                        <line x1={pos[0] + circleR * 0.5} y1={pos[1] - circleR * 0.5} x2={pos[0] - circleR * 0.5} y2={pos[1] + circleR * 0.5} stroke="#ef4444" strokeWidth={sw} />
+                                                    </>
+                                                ) : (
+                                                    <image
+                                                        href={getProfessionIconPath(member.profession) ?? undefined}
+                                                        x={pos[0] - iconR} y={pos[1] - iconR}
+                                                        width={iconR * 2} height={iconR * 2}
+                                                    />
+                                                )}
+                                                {/* Commander diamond above icon */}
                                                 {member.isCommander && (
                                                     <polygon
-                                                        points={`${pos[0]},${pos[1] - 19} ${pos[0] + 5},${pos[1] - 14} ${pos[0]},${pos[1] - 9} ${pos[0] - 5},${pos[1] - 14}`}
+                                                        points={`${pos[0]},${pos[1] - tagOff - tagS} ${pos[0] + tagS},${pos[1] - tagOff} ${pos[0]},${pos[1] - tagOff + tagS} ${pos[0] - tagS},${pos[1] - tagOff}`}
                                                         fill="#fbbf24"
                                                     />
                                                 )}

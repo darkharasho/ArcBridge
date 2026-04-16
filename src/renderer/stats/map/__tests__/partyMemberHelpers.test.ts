@@ -55,7 +55,7 @@ describe('activeBoons', () => {
     it('returns empty array with no boonStates', () => {
         expect(activeBoons(base, 1000)).toEqual([]);
     });
-    it('returns boon IDs with stacks > 0 at timeMs', () => {
+    it('returns boons with stacks > 0 at timeMs, including stack count', () => {
         const m = {
             ...base,
             boonStates: {
@@ -63,8 +63,11 @@ describe('activeBoons', () => {
                 725: [[0, 1]] as [number, number][],
             },
         };
-        expect(activeBoons(m, 1000)).toEqual(expect.arrayContaining([743, 725]));
-        expect(activeBoons(m, 1000).length).toBe(2);
+        const result = activeBoons(m, 1000);
+        expect(result.map(b => b.id)).toEqual(expect.arrayContaining([743, 725]));
+        expect(result.length).toBe(2);
+        expect(result.find(b => b.id === 743)?.stacks).toBe(25);
+        expect(result.find(b => b.id === 725)?.stacks).toBe(1);
     });
     it('excludes boons with stacks = 0 at timeMs', () => {
         const m = {
