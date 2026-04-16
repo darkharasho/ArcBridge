@@ -8,9 +8,9 @@ interface UseReplayViewportArgs {
     containerHeight: number;
 }
 
-const ZOOM_STEP = 1.25;
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 8;
+const ZOOM_STEP = 0.15;
+const MIN_SCALE = 1;
+const MAX_SCALE = 50;
 
 export function useReplayViewport({ mapWidth, mapHeight, containerWidth, containerHeight }: UseReplayViewportArgs) {
     const replayViewport = useStatsStore(state => state.replayViewport);
@@ -18,12 +18,14 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
     const resetReplayViewport = useStatsStore(state => state.resetReplayViewport);
 
     const zoomIn = useCallback(() => {
-        setReplayViewport({ scale: Math.min(replayViewport.scale * ZOOM_STEP, MAX_SCALE) });
-    }, [replayViewport.scale, setReplayViewport]);
+        const { replayViewport: prev } = useStatsStore.getState();
+        setReplayViewport({ scale: Math.min(prev.scale * (1 + ZOOM_STEP * 2), MAX_SCALE) });
+    }, [setReplayViewport]);
 
     const zoomOut = useCallback(() => {
-        setReplayViewport({ scale: Math.max(replayViewport.scale / ZOOM_STEP, MIN_SCALE) });
-    }, [replayViewport.scale, setReplayViewport]);
+        const { replayViewport: prev } = useStatsStore.getState();
+        setReplayViewport({ scale: Math.max(prev.scale * (1 - ZOOM_STEP * 2), MIN_SCALE) });
+    }, [setReplayViewport]);
 
     const panBy = useCallback((dx: number, dy: number) => {
         setReplayViewport({ tx: replayViewport.tx + dx, ty: replayViewport.ty + dy });
@@ -38,6 +40,30 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
         });
     }, [containerWidth, containerHeight, replayViewport.scale, setReplayViewport]);
 
+    const attachWheelZoom = useCallback((el: Element): (() => void) => {
+        const handler = (e: Event) => {
+            const we = e as WheelEvent;
+            we.preventDefault();
+            const { replayViewport: prev } = useStatsStore.getState();
+            const rect = el.getBoundingClientRect();
+            const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE,
+                prev.scale * (1 - Math.sign(we.deltaY) * ZOOM_STEP)
+            ));
+            if (next === prev.scale) return;
+            const ratio = next / prev.scale;
+            // Convert screen cursor position to SVG viewBox coordinates
+            const svgX = ((we.clientX - rect.left) / rect.width) * mapWidth;
+            const svgY = ((we.clientY - rect.top) / rect.height) * mapHeight;
+            setReplayViewport({
+                scale: next,
+                tx: svgX * (1 - ratio) + ratio * prev.tx,
+                ty: svgY * (1 - ratio) + ratio * prev.ty,
+            });
+        };
+        el.addEventListener('wheel', handler, { passive: false });
+        return () => el.removeEventListener('wheel', handler);
+    }, [mapWidth, mapHeight, setReplayViewport]);
+
     return {
         scale: replayViewport.scale,
         tx: replayViewport.tx,
@@ -47,6 +73,7 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
         panBy,
         resetViewport,
         centerOn,
+        attachWheelZoom,
         mapWidth,
         mapHeight,
     };

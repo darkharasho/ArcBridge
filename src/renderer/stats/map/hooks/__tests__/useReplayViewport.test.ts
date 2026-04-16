@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { fireEvent } from '@testing-library/dom';
 import { useReplayViewport } from '../useReplayViewport';
 import { useStatsStore } from '../../../statsStore';
 
@@ -33,5 +34,79 @@ describe('useReplayViewport', () => {
         expect(result.current.scale).toBe(1);
         expect(result.current.tx).toBe(0);
         expect(result.current.ty).toBe(0);
+    });
+
+    it('zoomOut decreases scale but not below MIN_SCALE (1)', () => {
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+        act(() => {
+            for (let i = 0; i < 50; i++) result.current.zoomOut();
+        });
+        expect(result.current.scale).toBeGreaterThanOrEqual(1);
+    });
+
+    it('zoomIn does not exceed MAX_SCALE (50)', () => {
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+        act(() => {
+            for (let i = 0; i < 50; i++) result.current.zoomIn();
+        });
+        expect(result.current.scale).toBeLessThanOrEqual(50);
+    });
+
+    it('attachWheelZoom zooms in toward cursor on scroll up', () => {
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+
+        const el = document.createElement('div');
+        vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+            left: 0, top: 0, width: 600, height: 600,
+            right: 600, bottom: 600, x: 0, y: 0, toJSON: () => {},
+        });
+
+        let cleanup: (() => void) | undefined;
+        act(() => { cleanup = result.current.attachWheelZoom(el); });
+
+        act(() => {
+            fireEvent.wheel(el, { deltaY: -1, clientX: 300, clientY: 300 });
+        });
+
+        expect(useStatsStore.getState().replayViewport.scale).toBeGreaterThan(1);
+        cleanup?.();
+    });
+
+    it('attachWheelZoom zooms out on scroll down', () => {
+        useStatsStore.setState({ replayViewport: { scale: 5, tx: 0, ty: 0, followTarget: null } });
+
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+
+        const el = document.createElement('div');
+        vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+            left: 0, top: 0, width: 600, height: 600,
+            right: 600, bottom: 600, x: 0, y: 0, toJSON: () => {},
+        });
+
+        let cleanup: (() => void) | undefined;
+        act(() => { cleanup = result.current.attachWheelZoom(el); });
+
+        act(() => {
+            fireEvent.wheel(el, { deltaY: 1, clientX: 300, clientY: 300 });
+        });
+
+        expect(useStatsStore.getState().replayViewport.scale).toBeLessThan(5);
+        cleanup?.();
+    });
+
+    it('attachWheelZoom cleanup removes the listener', () => {
+        const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
+        const el = document.createElement('div');
+        vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+            left: 0, top: 0, width: 600, height: 600,
+            right: 600, bottom: 600, x: 0, y: 0, toJSON: () => {},
+        });
+
+        let cleanup: (() => void) | undefined;
+        act(() => { cleanup = result.current.attachWheelZoom(el); });
+        act(() => { cleanup?.(); });
+
+        act(() => { fireEvent.wheel(el, { deltaY: -1, clientX: 300, clientY: 300 }); });
+        expect(useStatsStore.getState().replayViewport.scale).toBe(1);
     });
 });
