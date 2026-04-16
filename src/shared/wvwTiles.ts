@@ -45,13 +45,25 @@ export interface TileInfo {
     height: number;
 }
 
-export function getMapTiles(map: WvwMap, tileZoom: number): TileInfo[] {
+/**
+ * Returns tile info for a WvW map at the given tile zoom level.
+ * @param renderWidth  Actual render width in EI pixel space (from combatReplayMetaData.sizes[0]).
+ *                     Defaults to the calibrated pixelSize if omitted.
+ * @param renderHeight Actual render height in EI pixel space.
+ */
+export function getMapTiles(map: WvwMap, tileZoom: number, renderWidth?: number, renderHeight?: number): TileInfo[] {
     const data = WVW_TILE_DATA[map];
     if (!data) return [];
 
     const [[cx1, cy1], [cx2, cy2]] = data.continentRect;
-    const [pw, ph] = data.pixelSize;
-    const [ox, oy] = data.pixelOffset;
+    const [refW, refH] = data.pixelSize;
+    // Use caller-supplied dimensions so tiles are in EI pixel space, not
+    // the hardcoded reference size (guards against EI returning a different value).
+    const pw = renderWidth ?? refW;
+    const ph = renderHeight ?? refH;
+    // Scale the manual offset proportionally if render size differs from reference.
+    const ox = pw / refW * data.pixelOffset[0];
+    const oy = ph / refH * data.pixelOffset[1];
     const cw = cx2 - cx1;
     const ch = cy2 - cy1;
 

@@ -88,7 +88,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
     const [mapWidth, mapHeight] = mapSize;
     const viewport = useReplayViewport({ mapWidth, mapHeight, containerWidth: mapWidth, containerHeight: mapHeight });
 
-    const { centerOn, attachWheelZoom, attachPanDrag } = viewport;
+    const { centerOn, attachWheelZoom, attachPanDrag, screenToSvg } = viewport;
     useEffect(() => {
         const el = mapContainerRef.current;
         if (!el) return;
@@ -127,13 +127,11 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         if (draggedRef.current) { draggedRef.current = false; return; }
         const svg = e.currentTarget;
         const rect = svg.getBoundingClientRect();
-        const fracX = (e.clientX - rect.left) / rect.width;
-        const fracY = (e.clientY - rect.top) / rect.height;
-        const worldX = fracX * mapWidth;
-        const worldY = fracY * mapHeight;
+        // Account for preserveAspectRatio="xMidYMid meet" letterboxing
+        const [worldX, worldY] = screenToSvg(e.clientX, e.clientY, rect);
         const hit = findClosestMember(selectedFight.movementData.members, pollIndex, worldX, worldY, 24);
         if (hit && !hit.isEnemy) setReplayFollowTarget(hit.account || hit.name);
-    }, [selectedFight, pollIndex, mapWidth, mapHeight, setReplayFollowTarget]);
+    }, [selectedFight, pollIndex, screenToSvg, setReplayFollowTarget]);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -206,7 +204,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
                             >
                                 <g transform={`translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`}>
                                     {selectedFight.mapKey && hasTileData(selectedFight.mapKey)
-                                        ? getMapTiles(selectedFight.mapKey, 5).map((t, i) => (
+                                        ? getMapTiles(selectedFight.mapKey, Math.min(7, Math.max(3, Math.floor(5 + Math.log2(viewport.scale)))), mapWidth, mapHeight).map((t, i) => (
                                             <image key={i} href={t.url} x={t.x} y={t.y} width={t.width} height={t.height} />
                                         ))
                                         : selectedFight.mapImageUrl && (
