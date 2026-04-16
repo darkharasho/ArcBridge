@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PartyMemberCard } from '../PartyMemberCard';
 import type { SquadMemberMovement } from '../../../../shared/movementData';
 
@@ -72,5 +72,24 @@ describe('PartyMemberCard', () => {
         const m = mkMember({ deadRanges: [[0, 0]] });
         render(<PartyMemberCard member={m} timeMs={500} boonIcons={{}} skillIcons={{}} />);
         expect(screen.getByText(/DEAD/i)).toBeTruthy();
+    });
+
+    it('calls onFollow with the member account key on click', () => {
+        const onFollow = vi.fn();
+        const m = mkMember({ account: 'Test.1234' });
+        render(<PartyMemberCard member={m} timeMs={0} boonIcons={{}} skillIcons={{}} onFollow={onFollow} />);
+        fireEvent.click(screen.getByRole('button'));
+        expect(onFollow).toHaveBeenCalledWith('Test.1234');
+    });
+
+    it('hides boons and skills for dead member', () => {
+        const m = mkMember({
+            deadRanges: [[0, 0]],
+            boonStates: { 743: [[0, 1]] },
+            skillCasts: [{ id: 5536, time: 0, duration: 500 }],
+        });
+        render(<PartyMemberCard member={m} timeMs={500} boonIcons={boonIcons} skillIcons={skillIcons} />);
+        expect(document.querySelectorAll('img[alt="Aegis"]').length).toBe(0);
+        expect(document.querySelectorAll('img[alt="Heal by Light"]').length).toBe(0);
     });
 });

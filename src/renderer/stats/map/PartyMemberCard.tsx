@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { getProfessionIconPath } from '../../classIconUtils';
 import { hpAt, statusAt, activeBoons, activeSkillsAt } from './partyMemberHelpers';
+import type { MemberStatus } from './partyMemberHelpers';
 import type { SquadMemberMovement } from '../../../shared/movementData';
 
 interface PartyMemberCardProps {
@@ -11,7 +12,7 @@ interface PartyMemberCardProps {
     onFollow?: (key: string) => void;
 }
 
-function hpColor(hp: number, status: string): string {
+function hpColor(hp: number, status: MemberStatus): string {
     if (status === 'dead') return '#64748b';
     if (status === 'down') return '#f97316';
     if (hp >= 60) return '#4ade80';
@@ -19,7 +20,7 @@ function hpColor(hp: number, status: string): string {
     return '#f87171';
 }
 
-function barColor(status: string): string {
+function barColor(status: MemberStatus): string {
     if (status === 'dead') return '#7f1d1d';
     if (status === 'down') return '#9a3412';
     return '#22c55e';
@@ -28,8 +29,8 @@ function barColor(status: string): string {
 export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
     member, timeMs, boonIcons, skillIcons, onFollow,
 }) => {
-    const hp = hpAt(member, timeMs);
-    const status = statusAt(member, timeMs);
+    const hp = useMemo(() => hpAt(member, timeMs), [member, timeMs]);
+    const status = useMemo(() => statusAt(member, timeMs), [member, timeMs]);
     const boonIds = useMemo(() => activeBoons(member, timeMs), [member, timeMs]);
     const skillIds = useMemo(() => activeSkillsAt(member, timeMs), [member, timeMs]);
 
