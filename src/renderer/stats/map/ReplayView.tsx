@@ -24,6 +24,7 @@ import type { SquadMemberMovement } from '../../../shared/movementData';
 
 interface ReplayViewProps {
     fights: ReplayFightPayload[];
+    style?: React.CSSProperties;
 }
 
 const SPEEDS = [0.5, 1, 1.5, 2, 4] as const;
@@ -54,7 +55,7 @@ const chipStyle: React.CSSProperties = {
     cursor: 'pointer',
 };
 
-export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
+export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     const selectedId = useStatsStore(state => state.selectedReplayFightId);
     const setSelectedReplayFight = useStatsStore(state => state.setSelectedReplayFight);
     const playhead = useStatsStore(state => state.replayPlayhead);
@@ -160,7 +161,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         : (followMember ? `Follow: ${followMember.name} (commander)` : '');
 
     const body = (
-        <div className="replay-view" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="replay-view" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', ...style }}>
             <FightPickerBar fights={fights} collapsed={pickerCollapsed} onToggle={() => setPickerCollapsed(v => !v)} />
 
             {!selectedFight ? (

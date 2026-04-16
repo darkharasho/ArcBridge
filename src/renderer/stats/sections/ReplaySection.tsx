@@ -8,7 +8,7 @@ export const ReplaySection: React.FC = () => {
 
     return (
         <div id="replay" style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
-            <ReplayView fights={fights} />
+            <ReplayView fights={fights} style={{ flex: 1, minWidth: 0 }} />
         </div>
     );
 };
