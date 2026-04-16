@@ -210,6 +210,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                             <svg
                                 className="replay-canvas"
                                 viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+                                preserveAspectRatio="xMidYMid slice"
                                 onClick={onCanvasClick}
                                 style={{ width: '100%', height: '100%', background: '#0c1224', cursor: 'grab', display: 'block' }}
                             >
@@ -264,11 +265,16 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                         <line x1={pos[0] + circleR * 0.5} y1={pos[1] - circleR * 0.5} x2={pos[0] - circleR * 0.5} y2={pos[1] + circleR * 0.5} stroke="#ef4444" strokeWidth={sw} />
                                                     </>
                                                 ) : (
-                                                    <image
-                                                        href={getProfessionIconPath(member.profession) ?? undefined}
-                                                        x={pos[0] - iconR} y={pos[1] - iconR}
-                                                        width={iconR * 2} height={iconR * 2}
-                                                    />
+                                                    (() => {
+                                                        const iconSrc = getProfessionIconPath(member.profession);
+                                                        return iconSrc ? (
+                                                            <foreignObject x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2}>
+                                                                <img src={iconSrc} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'block' }} />
+                                                            </foreignObject>
+                                                        ) : (
+                                                            <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />
+                                                        );
+                                                    })()
                                                 )}
                                                 {/* Commander diamond above icon */}
                                                 {member.isCommander && (

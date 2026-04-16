@@ -44,17 +44,17 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
 
     /**
      * Compute the rendered SVG coordinate scale factor accounting for
-     * preserveAspectRatio="xMidYMid meet" letterboxing.
-     * With "meet", the SVG scales uniformly to fit inside the container,
-     * so 1 SVG unit = (containerSize / mapSize * min_scale) CSS pixels.
+     * preserveAspectRatio="xMidYMid slice" filling.
+     * With "slice", the SVG scales uniformly to fill the container,
+     * so 1 SVG unit = (containerSize / mapSize * max_scale) CSS pixels.
      */
     const svgRenderScale = useCallback((rect: DOMRect): number => {
-        return Math.min(rect.width / mapWidth, rect.height / mapHeight);
+        return Math.max(rect.width / mapWidth, rect.height / mapHeight);
     }, [mapWidth, mapHeight]);
 
     /** Convert a screen-space cursor position to SVG viewBox coordinates. */
     const screenToSvg = useCallback((clientX: number, clientY: number, rect: DOMRect): [number, number] => {
-        const rs = Math.min(rect.width / mapWidth, rect.height / mapHeight);
+        const rs = Math.max(rect.width / mapWidth, rect.height / mapHeight);
         const renderedW = mapWidth * rs;
         const renderedH = mapHeight * rs;
         const offsetX = (rect.width - renderedW) / 2;
@@ -90,7 +90,7 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
             if (!moved) { moved = true; onDragChange?.(true); }
             const rect = el.getBoundingClientRect();
             // Divide by render scale to convert CSS-pixel delta to SVG-unit delta.
-            const rs = Math.min(rect.width / mapWidth, rect.height / mapHeight);
+            const rs = Math.max(rect.width / mapWidth, rect.height / mapHeight);
             const { replayViewport: prev } = useStatsStore.getState();
             setReplayViewport({
                 tx: prev.tx + dx / rs,
@@ -131,9 +131,9 @@ export function useReplayViewport({ mapWidth, mapHeight, containerWidth, contain
             ));
             if (next === prev.scale) return;
             const ratio = next / prev.scale;
-            // Account for preserveAspectRatio="xMidYMid meet" letterboxing:
-            // the SVG content is uniformly scaled to fit inside the container.
-            const rs = Math.min(rect.width / mapWidth, rect.height / mapHeight);
+            // Account for preserveAspectRatio="xMidYMid slice" filling:
+            // the SVG content is uniformly scaled to fill the container.
+            const rs = Math.max(rect.width / mapWidth, rect.height / mapHeight);
             const renderedW = mapWidth * rs;
             const renderedH = mapHeight * rs;
             const ox = (rect.width - renderedW) / 2;
