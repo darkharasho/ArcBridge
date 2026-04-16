@@ -61,7 +61,7 @@ export const FightBreakdownSection = ({
     };
 
     const renderReportCell = (fight: any): ReactNode => {
-        const label = formatReportLabel(fight);
+        const label = fight?.fullLabel || formatReportLabel(fight);
         if (!fight?.permalink) return <span className="text-[color:var(--text-muted)]">Pending</span>;
         return (
             <button
