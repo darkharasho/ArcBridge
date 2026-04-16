@@ -155,7 +155,7 @@ test.describe('Replay layer toggles (RPLY-002)', () => {
         await page.getByRole('button', { name: /layers/i }).click();
 
         // Select the "Deaths" heatmap radio
-        await page.getByLabel('Deaths').check();
+        await page.getByLabel(/deaths/i).check();
 
         // The heatmap renders inside a foreignObject element
         await expect(page.locator('svg.replay-canvas foreignObject')).toBeVisible({ timeout: 3_000 });
