@@ -116,6 +116,16 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights }) => {
         return selectedFight.movementData.members.find(m => (m.account || m.name) === key) ?? null;
     }, [selectedFight, viewportState.followTarget]);
 
+    // Center on commander whenever the selected fight changes (selectedId is the stable key).
+    useEffect(() => {
+        if (!selectedFight) return;
+        const commander = selectedFight.movementData.members.find(m => m.isCommander && m.inSquad);
+        if (!commander) return;
+        const pos = sampleAt(commander, 0);
+        if (pos) centerOn(pos[0], pos[1]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedId, centerOn]);
+
     useEffect(() => {
         if (!followMember) return;
         const pos = sampleAt(followMember, pollFrac);

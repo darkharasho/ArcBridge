@@ -104,6 +104,7 @@ export const useStatsStore = create<StatsStoreState>()((set) => ({
     setSelectedReplayFight: (fightId) => set((state) => ({
         selectedReplayFightId: fightId,
         replayPlayhead: { ...state.replayPlayhead, timeMs: 0, playing: false },
+        replayViewport: { ...state.replayViewport, followTarget: null },
     })),
     setReplayPlayhead: (patch) => set((state) => ({
         replayPlayhead: { ...state.replayPlayhead, ...patch },
