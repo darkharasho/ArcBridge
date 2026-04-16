@@ -86,7 +86,7 @@ export const FightPickerBar: React.FC<FightPickerBarProps> = ({ fights, collapse
             >
                 ▲
             </button>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflow: 'hidden', overflowX: 'auto' }}>
                 <FightPicker fights={fights} />
             </div>
         </div>
