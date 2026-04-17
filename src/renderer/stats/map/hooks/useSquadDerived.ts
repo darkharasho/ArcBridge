@@ -39,6 +39,10 @@ function convexHull(points: [number, number][]): [number, number][] {
     return lower.concat(upper);
 }
 
+// Speed is centroid displacement per ms in EI pixel-space (map ~600 px wide).
+// 0.005 u/ms ≈ 5 px/sec of centroid movement — enough to detect directed squad movement.
+const MOVE_THRESHOLD = 0.005;
+
 function classifyPhase(
     sample: SquadSample,
     prevSample: SquadSample | null,
@@ -46,11 +50,12 @@ function classifyPhase(
     deathsRecent: number,
     fightStartOffsetMs: number,
 ): PhaseKind {
-    if (sample.timeMs < 10_000 && deathsSoFar === 0) return 'opening';
-    const moving = sample.speed >= 0.05;
-    if (moving && deathsRecent > 0) return 'retreat';
-    if (moving) return 'push';
     void prevSample; void fightStartOffsetMs;
+    if (sample.timeMs < 10_000 && deathsSoFar === 0) return 'opening';
+    // Retreat: squad is taking deaths (stationary or moving — doesn't matter).
+    if (deathsRecent > 0) return 'retreat';
+    // Push: centroid is moving meaningfully with no recent deaths.
+    if (sample.speed >= MOVE_THRESHOLD) return 'push';
     return 'cleanup';
 }
 

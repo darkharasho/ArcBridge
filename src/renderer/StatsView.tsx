@@ -4262,7 +4262,7 @@ type SpikeFight = {
             {/* Replay: full-page experience — skip all section chrome */}
             {!embedded && !sectionsDeferred && activeNavGroup === 'map' && (
                 <div className="flex-1 min-h-0 flex" style={{ minHeight: 0 }}>
-                    <ReplaySection />
+                    <ReplaySection fights={(stats as any)?.replayFights ?? []} />
                 </div>
             )}
 
@@ -5162,7 +5162,7 @@ type SpikeFight = {
                             /> },
                         ])}
                         {renderGroup('map', [
-                            { id: 'replay', element: <ReplaySection /> },
+                            { id: 'replay', element: <div style={{ height: '88vh', minHeight: 500, maxHeight: 1000, display: 'flex', width: '100%' }}><ReplaySection fights={(stats as any)?.replayFights ?? []} /></div> },
                         ])}
                     </>
                 )}

@@ -22,6 +22,13 @@ export const SyncedTimeline: React.FC<SyncedTimelineProps> = ({ fight }) => {
         cleanup: '#a78bfa',
     };
 
+    const phaseDesc: Record<string, string> = {
+        opening: 'First ~10 s of the fight — no deaths yet',
+        push: 'Squad advancing with no recent deaths',
+        retreat: 'Squad taking deaths',
+        cleanup: 'Squad stationary / mopping up',
+    };
+
     const { pathData, maxDps } = useMemo(() => {
         if (!fight.dpsSamples.length || fight.durationMs <= 0) {
             return { pathData: '', maxDps: 0 };
@@ -99,6 +106,7 @@ export const SyncedTimeline: React.FC<SyncedTimelineProps> = ({ fight }) => {
                             type="button"
                             data-phase-chip
                             data-start-ms={p.startMs}
+                            title={phaseDesc[p.kind]}
                             onClick={() => setReplayPlayhead({ timeMs: p.startMs })}
                             style={{
                                 padding: '2px 6px',

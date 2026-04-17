@@ -1,10 +1,11 @@
 import React from 'react';
-import { useStatsStore } from '../statsStore';
 import { ReplayView } from '../map/ReplayView';
 
-export const ReplaySection: React.FC = () => {
-    const result = useStatsStore(state => state.result);
-    const fights = (result?.stats?.replayFights ?? []) as any[];
+interface ReplaySectionProps {
+    fights: any[];
+}
+
+export const ReplaySection: React.FC<ReplaySectionProps> = ({ fights }) => {
 
     return (
         <div id="replay" style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>

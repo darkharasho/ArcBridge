@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import { MapIcon } from 'lucide-react';
 import { useStatsStore } from '../statsStore';
 import type { ReplayFightPayload } from './replayTypes';
 
@@ -61,8 +62,28 @@ export const FightPicker: React.FC<FightPickerProps> = ({ fights }) => {
 
     if (!fights.length) {
         return (
-            <div className="replay-picker-empty">
-                No replay data available. Make sure <strong>Combat Replay</strong> is enabled in Settings → EI Parser, then re-upload your logs to generate position data.
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                padding: 32,
+                color: 'var(--text-secondary, #94a3b8)',
+                textAlign: 'center',
+            }}>
+                <MapIcon size={36} style={{ opacity: 0.3 }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #e2e8f0)' }}>
+                    No replay data available
+                </div>
+                <div style={{ fontSize: 12, maxWidth: 340, lineHeight: 1.6 }}>
+                    Enable <strong style={{ color: 'var(--text-primary, #e2e8f0)' }}>Combat Replay</strong> in{' '}
+                    <code style={{ fontSize: 11, background: 'rgba(255,255,255,0.07)', padding: '1px 5px', borderRadius: 3 }}>Settings</code>
+                    {' › '}
+                    <code style={{ fontSize: 11, background: 'rgba(255,255,255,0.07)', padding: '1px 5px', borderRadius: 3 }}>EI Parser</code>
+                    , then re-upload your logs to generate position data.
+                </div>
             </div>
         );
     }

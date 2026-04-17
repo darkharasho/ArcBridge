@@ -266,10 +266,12 @@ export function finalizeBoonUptimeTimeline(acc: BoonUptimeTimelineAccumulator): 
                 if (totalDiff !== 0) return totalDiff;
                 return String(a.displayName || '').localeCompare(String(b.displayName || ''));
             }),
-            fights: [...bucket.fights].sort((a, b) => {
-                if (a.timestamp > 0 && b.timestamp > 0 && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
-                return a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true });
-            })
+            fights: [...bucket.fights]
+                .sort((a, b) => {
+                    if (a.timestamp > 0 && b.timestamp > 0 && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+                    return a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true });
+                })
+                .map((fight, i) => ({ ...fight, shortLabel: `F${i + 1}` }))
         }))
         .filter((boon) => boon.players.length > 0 && boon.fights.length > 0)
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));

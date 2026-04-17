@@ -1,16 +1,22 @@
 import React from 'react';
 import { useStatsStore } from '../statsStore';
 
-const SQUAD_TOGGLES: { key: 'centroidSpread' | 'tagRangeRings' | 'squadHealthStrip' | 'partyHulls' | 'allPartiesPanel'; label: string; title: string }[] = [
+const SQUAD_TOGGLES: { key: 'centroidSpread' | 'tagRangeRings' | 'squadHealthStrip' | 'partyHulls'; label: string; title: string }[] = [
     { key: 'centroidSpread', label: 'Centroid + spread ring', title: 'Shows the squad\'s center of mass and a ring indicating how spread out the group is' },
     { key: 'tagRangeRings', label: 'Tag range rings (600 / 1200)', title: 'Draws circles at 600 and 1200 unit radius around the commander tag — useful for checking boon range' },
     { key: 'squadHealthStrip', label: 'Squad health strip', title: 'Health bar strip along the top of the map showing each squad member\'s HP in real time' },
     { key: 'partyHulls', label: 'Per-party hulls', title: 'Convex hull outline around each sub-party, helping visualise how spread out individual groups are' },
-    { key: 'allPartiesPanel', label: 'All-parties panel', title: 'Side panel showing boon and health status for every party simultaneously' },
+];
+
+const PHASE_LEGEND: { kind: string; color: string; desc: string }[] = [
+    { kind: 'opening', color: '#60a5fa', desc: 'First ~10 s, no deaths yet' },
+    { kind: 'push',    color: '#22c55e', desc: 'Squad advancing, no recent deaths' },
+    { kind: 'retreat', color: '#ef4444', desc: 'Squad taking deaths (any movement)' },
+    { kind: 'cleanup', color: '#a78bfa', desc: 'Squad stationary / mopping up' },
 ];
 
 const EVENT_TOGGLES: { key: 'phases' | 'rallyRings' | 'targetFocusLines' | 'damagePulses'; label: string; title: string }[] = [
-    { key: 'phases', label: 'Fight phases on timeline', title: 'Marks fight phase boundaries on the scrubber timeline' },
+    { key: 'phases', label: 'Fight phases on timeline', title: 'Marks fight phase boundaries on the scrubber timeline — colours show squad behaviour (opening / push / retreat / cleanup)' },
     { key: 'rallyRings', label: 'Rally rings', title: 'Flashes a ring when a downed player rallies back to full health' },
     { key: 'targetFocusLines', label: 'Target-focus lines', title: 'Lines from each player to the target they are currently damaging most' },
     { key: 'damagePulses', label: 'Damage pulses', title: 'Animated pulses radiating from players when they deal significant burst damage' },
@@ -86,12 +92,25 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({ open, onToggle }) => {
                 ))}
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 12, marginBottom: 6 }}>Events</div>
                 {EVENT_TOGGLES.map(t => (
-                    <label key={t.key} title={t.title} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
-                        <input type="checkbox"
-                               checked={layers[t.key]}
-                               onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
-                        <span>{t.label}</span>
-                    </label>
+                    <React.Fragment key={t.key}>
+                        <label title={t.title} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                            <input type="checkbox"
+                                   checked={layers[t.key]}
+                                   onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
+                            <span>{t.label}</span>
+                        </label>
+                        {t.key === 'phases' && layers.phases && (
+                            <div style={{ marginLeft: 20, marginBottom: 4 }}>
+                                {PHASE_LEGEND.map(p => (
+                                    <div key={p.kind} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
+                                        <span style={{ width: 10, height: 10, borderRadius: 2, background: p.color, flexShrink: 0, display: 'inline-block' }} />
+                                        <span style={{ fontSize: 10, color: p.color, fontWeight: 600, minWidth: 46 }}>{p.kind}</span>
+                                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{p.desc}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </React.Fragment>
                 ))}
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 12, marginBottom: 6 }}>Heatmap</div>
                 {HEATMAP_OPTIONS.map(opt => (

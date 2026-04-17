@@ -13,6 +13,8 @@ export interface SquadMemberMovement {
     deadRanges: [number, number][];
     boonStates?: Record<number, [number, number][]>;
     healthPercents?: [number, number][];
+    /** Per-second damage taken deltas (index i = second i of the fight). */
+    damageTaken1SPerSec?: number[];
     skillCasts?: { id: number; time: number; duration: number }[];
 }
 
@@ -29,6 +31,29 @@ export interface BuildMovementDataOptions {
     trackedBuffIds: Set<number>;
     localAccount?: string;
     localName?: string;
+}
+
+/** Flatten a possibly-nested EI cumulative series to a flat number[]. */
+function normalizeCumulative(val: any): number[] {
+    if (!Array.isArray(val) || val.length === 0) return [];
+    const first = val[0];
+    if (typeof first === 'number') return val.map((v: any) => Number(v || 0));
+    if (Array.isArray(first)) {
+        // [phase][time] — use phase 0
+        const phase0 = first;
+        if (typeof phase0[0] === 'number') return phase0.map((v: any) => Number(v || 0));
+        // [phase][target][time] — sum targets in phase 0
+        if (Array.isArray(phase0[0])) {
+            const maxLen = phase0.reduce((m: number, s: any) => Math.max(m, Array.isArray(s) ? s.length : 0), 0);
+            const out = new Array<number>(maxLen).fill(0);
+            for (const s of phase0) {
+                if (!Array.isArray(s)) continue;
+                for (let i = 0; i < s.length; i++) out[i] += Number(s[i] || 0);
+            }
+            return out;
+        }
+    }
+    return [];
 }
 
 export function buildMovementData(details: any, options: BuildMovementDataOptions): MovementData | null {
@@ -52,6 +77,7 @@ export function buildMovementData(details: any, options: BuildMovementDataOption
     const players = Array.isArray(details?.players) ? details.players : [];
     for (const p of players) {
         if (p?.isFake) continue;
+        if (allyNames.has(p.name)) continue; // skip duplicate player entries (EI can emit the same character twice in WvW)
         const positions = p?.combatReplayData?.positions;
         if (!positions?.length) continue;
         allyNames.add(p.name);
@@ -83,6 +109,18 @@ export function buildMovementData(details: any, options: BuildMovementDataOption
         const isLocal = (!!localAccount && p.account === localAccount)
             || (!!localName && p.name === localName);
 
+        // Extract per-second damage-taken deltas from the cumulative EI series.
+        // EI outputs damageTaken1S / powerDamageTaken1S as cumulative arrays; we
+        // take deltas so each index is the damage taken in that 1-second bucket.
+        let damageTaken1SPerSec: number[] | undefined;
+        const rawDmgTaken = p.damageTaken1S ?? p.powerDamageTaken1S;
+        if (rawDmgTaken != null) {
+            const flat = normalizeCumulative(rawDmgTaken);
+            if (flat.length) {
+                damageTaken1SPerSec = flat.map((v, i) => Math.max(0, v - (i > 0 ? flat[i - 1] : 0)));
+            }
+        }
+
         members.push({
             name: p.name,
             account: p.account ?? '',
@@ -98,6 +136,7 @@ export function buildMovementData(details: any, options: BuildMovementDataOption
             deadRanges: p.combatReplayData?.dead ?? [],
             boonStates,
             healthPercents: p.healthPercents,
+            damageTaken1SPerSec,
             skillCasts,
         });
     }

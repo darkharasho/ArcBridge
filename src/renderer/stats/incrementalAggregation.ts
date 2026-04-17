@@ -457,7 +457,7 @@ const enrichPrecomputedStats = (input: any, logs: any[]) => {
             return {
                 id: String(fight?.id || `fight-${idx + 1}`),
                 shortLabel: `F${idx + 1}`,
-                fullLabel: `${String(fight?.mapName || fight?.label || 'Unknown Map')} • ${String(fight?.duration || '--:--')}`,
+                fullLabel: fight?.fullLabel || `${String(fight?.mapName || fight?.label || 'Unknown Map')} • ${String(fight?.duration || '--:--')}`,
                 mapName: String(fight?.mapName || ''),
                 timestamp: Number(fight?.timestamp || 0),
                 duration: String(fight?.duration || '--:--'),

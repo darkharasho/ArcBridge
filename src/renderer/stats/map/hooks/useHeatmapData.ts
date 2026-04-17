@@ -60,16 +60,33 @@ function buildRaster(fight: ReplayFightPayload, mode: Exclude<Mode, 'off'>): Hea
         }
     } else {
         for (const m of allies) {
-            let prevHp = hpAt(m, 0);
-            for (let i = 0; i < m.positions.length; i++) {
-                const t = i * pollingRate;
-                const hp = hpAt(m, t);
-                const drop = Math.max(0, prevHp - hp);
-                prevHp = hp;
-                if (drop <= 0) continue;
-                const pos = m.positions[i];
-                const b = bucket(pos[0], pos[1], width, height);
-                if (b !== null) buffer[b] += drop;
+            if (m.damageTaken1SPerSec?.length) {
+                // Preferred path: per-second damage deltas from EI.
+                // Each bucket i covers [i*1000, (i+1)*1000) ms — look up the
+                // player position at the midpoint of that second.
+                for (let i = 0; i < m.damageTaken1SPerSec.length; i++) {
+                    const dmg = m.damageTaken1SPerSec[i];
+                    if (dmg <= 0) continue;
+                    const tMs = (i + 0.5) * 1000;
+                    const posIdx = Math.min(m.positions.length - 1, Math.round(tMs / pollingRate));
+                    const pos = m.positions[posIdx];
+                    if (!pos) continue;
+                    const b = bucket(pos[0], pos[1], width, height);
+                    if (b !== null) buffer[b] += dmg;
+                }
+            } else {
+                // Fallback: infer damage from HP percentage drops.
+                let prevHp = hpAt(m, 0);
+                for (let i = 0; i < m.positions.length; i++) {
+                    const t = i * pollingRate;
+                    const hp = hpAt(m, t);
+                    const drop = Math.max(0, prevHp - hp);
+                    prevHp = hp;
+                    if (drop <= 0) continue;
+                    const pos = m.positions[i];
+                    const b = bucket(pos[0], pos[1], width, height);
+                    if (b !== null) buffer[b] += drop;
+                }
             }
         }
     }

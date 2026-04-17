@@ -26,7 +26,6 @@ interface StatsStoreState {
     replayLayers: {
         centroidSpread: boolean;
         tagRangeRings: boolean;
-        allPartiesPanel: boolean;
         squadHealthStrip: boolean;
         partyHulls: boolean;
         phases: boolean;
@@ -71,12 +70,11 @@ const initialState = {
     activeNavGroup: 'overview',
     selectedReplayFightId: null,
     replayPlayhead: { timeMs: 0, playing: false, speed: 1 },
-    replayViewport: { scale: 1, tx: 0, ty: 0, followTarget: null },
+    replayViewport: { scale: 3, tx: 0, ty: 0, followTarget: null },
     replaySelectedParty: 0,
     replayLayers: {
         centroidSpread: false,
         tagRangeRings: false,
-        allPartiesPanel: false,
         squadHealthStrip: false,
         partyHulls: false,
         phases: false,
@@ -119,7 +117,7 @@ export const useStatsStore = create<StatsStoreState>()((set) => ({
         replaySelectedParty: Math.max(0, Math.min(5, Math.floor(Number.isFinite(party) ? party : 0))),
     }),
     resetReplayViewport: () => set((state) => ({
-        replayViewport: { ...state.replayViewport, scale: 1, tx: 0, ty: 0 },
+        replayViewport: { ...state.replayViewport, scale: 3, tx: 0, ty: 0 },
     })),
     setReplayLayer: (key, value) => set((state) => ({
         replayLayers: { ...state.replayLayers, [key]: value },
@@ -136,7 +134,7 @@ export const useStatsStore = create<StatsStoreState>()((set) => ({
     }),
     resetReplayLayers: () => set(() => ({
         replayLayers: {
-            centroidSpread: false, tagRangeRings: false, allPartiesPanel: false,
+            centroidSpread: false, tagRangeRings: false,
             squadHealthStrip: false, partyHulls: false, phases: false,
             rallyRings: false, targetFocusLines: false, damagePulses: false,
             heatmap: 'off',

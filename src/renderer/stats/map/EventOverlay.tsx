@@ -6,6 +6,7 @@ import type { SquadMemberMovement } from '../../../shared/movementData';
 interface EventOverlayProps {
     fight: ReplayFightPayload;
     timeMs: number;
+    scale: number;
 }
 
 const PULSE_DURATION_MS = 1500;
@@ -107,7 +108,7 @@ function collectFocusLines(fight: ReplayFightPayload, timeMs: number, index: Map
     return lines;
 }
 
-export const EventOverlay: React.FC<EventOverlayProps> = ({ fight, timeMs }) => {
+export const EventOverlay: React.FC<EventOverlayProps> = ({ fight, timeMs, scale: s }) => {
     const layers = useStatsStore(state => state.replayLayers);
     const index = useMemo(() => memberByKey(fight), [fight]);
 
@@ -121,40 +122,40 @@ export const EventOverlay: React.FC<EventOverlayProps> = ({ fight, timeMs }) => 
             {focusLines.map(line => (
                 <line key={`f-${line.key}`} data-pulse="target-focus"
                     x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
-                    stroke="#fb923c" strokeOpacity={0.4} strokeWidth={0.8}
-                    strokeDasharray="3 3" pointerEvents="none" />
+                    stroke="#fb923c" strokeOpacity={0.4} strokeWidth={0.8 / s}
+                    strokeDasharray={`${3 / s} ${3 / s}`} pointerEvents="none" />
             ))}
             {basePulses.map((p, i) => {
                 const progress = p.ageMs / PULSE_DURATION_MS;
                 if (p.kind === 'down') {
-                    const r = 18 * (1 - progress);
+                    const r = 18 * (1 - progress) / s;
                     return <circle key={`b-${i}`} data-pulse="down"
                         cx={p.x} cy={p.y} r={r}
-                        fill="none" stroke="#60a5fa" strokeOpacity={1 - progress} strokeWidth={2} />;
+                        fill="none" stroke="#60a5fa" strokeOpacity={(1 - progress) * 0.6} strokeWidth={2 / s} />;
                 }
-                const r = 10 + 24 * progress;
+                const r = (10 + 24 * progress) / s;
                 return (
                     <g key={`b-${i}`} data-pulse="death">
                         <circle cx={p.x} cy={p.y} r={r} fill="none" stroke="#ef4444"
-                                strokeOpacity={(1 - progress) * 0.8} strokeWidth={3} />
-                        <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={14}
-                              fill="#fecaca" opacity={1 - progress}>☠</text>
+                                strokeOpacity={(1 - progress) * 0.5} strokeWidth={3 / s} />
+                        <text x={p.x} y={p.y + 4 / s} textAnchor="middle" fontSize={14 / s}
+                              fill="#fecaca" opacity={(1 - progress) * 0.6}>☠</text>
                     </g>
                 );
             })}
             {damagePulses.map((p, i) => {
                 const progress = p.ageMs / PULSE_DURATION_MS;
-                const r = 8 + 22 * progress;
+                const r = (8 + 22 * progress) / s;
                 return <circle key={`d-${i}`} data-pulse="damage"
                     cx={p.x} cy={p.y} r={r}
-                    fill="none" stroke="#fbbf24" strokeOpacity={1 - progress} strokeWidth={2.5} />;
+                    fill="none" stroke="#fbbf24" strokeOpacity={1 - progress} strokeWidth={2.5 / s} />;
             })}
             {rallyPulses.map((p, i) => {
                 const progress = p.ageMs / PULSE_DURATION_MS;
-                const r = 6 + 18 * progress;
+                const r = (6 + 18 * progress) / s;
                 return <circle key={`r-${i}`} data-pulse="rally"
                     cx={p.x} cy={p.y} r={r}
-                    fill="none" stroke="#22c55e" strokeOpacity={1 - progress} strokeWidth={2} />;
+                    fill="none" stroke="#22c55e" strokeOpacity={1 - progress} strokeWidth={2 / s} />;
             })}
         </g>
     );

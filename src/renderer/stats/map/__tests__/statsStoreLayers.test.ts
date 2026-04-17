@@ -11,7 +11,6 @@ describe('statsStore — replay layers + spotlight', () => {
         const l = useStatsStore.getState().replayLayers;
         expect(l.centroidSpread).toBe(false);
         expect(l.tagRangeRings).toBe(false);
-        expect(l.allPartiesPanel).toBe(false);
         expect(l.squadHealthStrip).toBe(false);
         expect(l.partyHulls).toBe(false);
         expect(l.phases).toBe(false);

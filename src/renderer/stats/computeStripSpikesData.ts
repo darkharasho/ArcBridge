@@ -149,7 +149,17 @@ export function finalizeStripSpikes(acc: StripSpikesAccumulator): StripSpikesDat
     const players = Array.from(acc.playerMap.values())
         .sort((a, b) => b.totalStrips - a.totalStrips || a.displayName.localeCompare(b.displayName));
 
-    return { fights: acc.fights, players };
+    // Sort fights chronologically and reassign shortLabels so F1=oldest.
+    // In the incremental path, fights are pushed in ingestion order which may
+    // not match timestamp order, causing scrambled fight numbers on the chart.
+    const fights = [...acc.fights]
+        .sort((a, b) => {
+            if (a.timestamp > 0 && b.timestamp > 0 && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+            return a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true });
+        })
+        .map((fight, i) => ({ ...fight, shortLabel: `F${i + 1}` }));
+
+    return { fights, players };
 }
 
 export function computeStripSpikesData(validLogs: any[], splitPlayersByClass = false): StripSpikesData {

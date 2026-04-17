@@ -1,5 +1,8 @@
 import React, { useMemo } from 'react';
 import { getProfessionIconPath } from '../../classIconUtils';
+import commanderTagRaw from '../../../../public/svg/commander_tag.svg?raw';
+const COMMANDER_TAG_URI = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(commanderTagRaw)))}`;
+
 import { hpAt, statusAt, activeBoons, activeSkillsAt } from './partyMemberHelpers';
 import type { MemberStatus } from './partyMemberHelpers';
 import type { SquadMemberMovement } from '../../../shared/movementData';
@@ -64,14 +67,13 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
                         style={{ borderRadius: '50%', display: 'block' }}
                     />
                     {member.isCommander && (
-                        <div
+                        <img
                             data-cmd-tag
-                            style={{
-                                position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
-                                width: 10, height: 10,
-                                background: '#fbbf24',
-                                clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
-                            }}
+                            src={COMMANDER_TAG_URI}
+                            alt="Commander"
+                            width={13}
+                            height={13}
+                            style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', display: 'block' }}
                         />
                     )}
                 </div>
@@ -121,25 +123,26 @@ export const PartyMemberCard: React.FC<PartyMemberCardProps> = ({
                 </div>
             )}
 
-            {/* Row 3: skills used this second — icon + name */}
-            {status !== 'dead' && skillIds.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {skillIds.map(id => {
-                        const icon = skillIcons[id];
-                        if (!icon?.icon) return null;
-                        return (
-                            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <img src={icon.icon} alt={icon.name} title={icon.name}
-                                     width={18} height={18}
-                                     style={{ flexShrink: 0, borderRadius: 3, border: '1px solid var(--status-info-border)', background: 'var(--status-info-bg)' }} />
-                                <span style={{ fontSize: 9, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {icon.name}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+            {/* Row 3: skill cast slot — always reserves 20px so the card height stays stable */}
+            <div style={{ height: 20, display: 'flex', alignItems: 'center' }}>
+                {(() => {
+                    if (status === 'dead') return null;
+                    const id = skillIds[0];
+                    if (!id) return null;
+                    const icon = skillIcons[id];
+                    if (!icon?.icon) return null;
+                    return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
+                            <img src={icon.icon} alt={icon.name} title={icon.name}
+                                 width={18} height={18}
+                                 style={{ flexShrink: 0, borderRadius: 3, border: '1px solid var(--status-info-border)', background: 'var(--status-info-bg)' }} />
+                            <span style={{ fontSize: 9, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {icon.name}
+                            </span>
+                        </div>
+                    );
+                })()}
+            </div>
         </button>
     );
 };

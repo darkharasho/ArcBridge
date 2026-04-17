@@ -34,7 +34,7 @@ describe('EventOverlay — extended layers', () => {
             movementData: { ...mkFight({}).movementData, members: [mkMember({ account: 'A.1' })] },
             damageSpikeEvents: [{ timeMs: 5000, memberKey: 'A.1', magnitude: 50_000 }],
         });
-        const { container } = render(<svg><EventOverlay fight={fight} timeMs={5200} /></svg>);
+        const { container } = render(<svg><EventOverlay fight={fight} timeMs={5200} scale={1} /></svg>);
         expect(container.querySelector('[data-pulse="damage"]')).not.toBeNull();
     });
 
@@ -44,7 +44,7 @@ describe('EventOverlay — extended layers', () => {
             movementData: { ...mkFight({}).movementData, members: [mkMember({ account: 'A.1', positions: [[200, 200]] })] },
             rallyEvents: [{ timeMs: 3000, memberKey: 'A.1' }],
         });
-        const { container } = render(<svg><EventOverlay fight={fight} timeMs={3500} /></svg>);
+        const { container } = render(<svg><EventOverlay fight={fight} timeMs={3500} scale={1} /></svg>);
         expect(container.querySelector('[data-pulse="rally"]')).not.toBeNull();
     });
 
@@ -58,7 +58,7 @@ describe('EventOverlay — extended layers', () => {
             },
             targetFocusSamples: [{ timeMs: 1000, memberKey: 'A.1', targetIndex: 0 }],
         });
-        const { container } = render(<svg><EventOverlay fight={fight} timeMs={1200} /></svg>);
+        const { container } = render(<svg><EventOverlay fight={fight} timeMs={1200} scale={1} /></svg>);
         expect(container.querySelector('[data-pulse="target-focus"]')).not.toBeNull();
     });
 
@@ -68,7 +68,7 @@ describe('EventOverlay — extended layers', () => {
             damageSpikeEvents: [{ timeMs: 5000, memberKey: 'A.1', magnitude: 50_000 }],
             rallyEvents: [{ timeMs: 3000, memberKey: 'A.1' }],
         });
-        const { container } = render(<svg><EventOverlay fight={fight} timeMs={3500} /></svg>);
+        const { container } = render(<svg><EventOverlay fight={fight} timeMs={3500} scale={1} /></svg>);
         expect(container.querySelector('[data-pulse="damage"]')).toBeNull();
         expect(container.querySelector('[data-pulse="rally"]')).toBeNull();
         expect(container.querySelector('[data-pulse="target-focus"]')).toBeNull();

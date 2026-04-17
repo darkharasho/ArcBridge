@@ -431,7 +431,6 @@ const buildWebReportPayload = (
     };
 
     const trimSteps: Array<{ label: string; apply: () => boolean }> = [
-        { label: 'replayFights', apply: () => clearArray(stats, 'replayFights') },
         { label: 'skillUsageData.logRecords', apply: () => clearArray(stats.skillUsageData, 'logRecords') },
         { label: 'playerSkillBreakdowns', apply: () => clearArray(stats, 'playerSkillBreakdowns') },
         { label: 'boonTimeline', apply: () => clearArray(stats, 'boonTimeline') },
@@ -448,7 +447,8 @@ const buildWebReportPayload = (
         { label: 'topSkillsByDownContribution', apply: () => clearArray(stats, 'topSkillsByDownContribution') },
         { label: 'fightBreakdown', apply: () => clearArray(stats, 'fightBreakdown') },
         { label: 'timelineData', apply: () => clearArray(stats, 'timelineData') },
-        { label: 'squadCompByFight', apply: () => clearArray(stats, 'squadCompByFight') }
+        { label: 'squadCompByFight', apply: () => clearArray(stats, 'squadCompByFight') },
+        { label: 'replayFights', apply: () => clearArray(stats, 'replayFights') },
     ];
 
     for (const step of trimSteps) {

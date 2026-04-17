@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play, Maximize2, Minimize2, Plus, Minus, RotateCcw, X } from 'lucide-react';
+import { Pause, Play, Maximize2, Minimize2, Plus, Minus, RotateCcw, X, Crosshair } from 'lucide-react';
 import { useStatsStore } from '../statsStore';
 import { getMapTiles, hasTileData } from '../../../shared/wvwTiles';
 import { WVW_LANDMARKS } from '../../../shared/wvwLandmarks';
@@ -69,20 +69,26 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     const playhead = useStatsStore(state => state.replayPlayhead);
     const setReplayPlayhead = useStatsStore(state => state.setReplayPlayhead);
     const viewportState = useStatsStore(state => state.replayViewport);
+    const setReplayViewport = useStatsStore(state => state.setReplayViewport);
     const setReplayFollowTarget = useStatsStore(state => state.setReplayFollowTarget);
     const layers = useStatsStore(state => state.replayLayers);
     const spotlightParty = useStatsStore(state => state.replaySpotlightParty);
     const setReplaySpotlightParty = useStatsStore(state => state.setReplaySpotlightParty);
 
     const [fullscreen, setFullscreen] = useState(false);
-    const [pickerCollapsed, setPickerCollapsed] = useState(false);
+    const [pickerCollapsed, setPickerCollapsed] = useState(true);
     const [panelCollapsed, setPanelCollapsed] = useState(true);
     const [layersOpen, setLayersOpen] = useState(false);
     const [tooltip, setTooltip] = useState<{ name: string; account: string; status: 'down' | 'dead' | null; x: number; y: number } | null>(null);
+    // When true the viewport auto-centers on the follow target each frame.
+    // Set to false when the user manually pans; recenter button restores it.
+    const [centeredOnFollow, setCenteredOnFollow] = useState(true);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const squadPanelRef = useRef<HTMLDivElement>(null);
     const draggedRef = useRef(false);
+    // Stable ref so the drag handler can read followMember without being recreated.
+    const followMemberRef = useRef<SquadMemberMovement | null>(null);
 
     useEffect(() => {
         if (!selectedId && fights.length) {
@@ -109,7 +115,12 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     useEffect(() => {
         const el = mapContainerRef.current;
         if (!el) return;
-        return attachPanDrag(el, (d) => { draggedRef.current = d; });
+        return attachPanDrag(el, (d) => {
+            draggedRef.current = d;
+            // Panning while following: detach auto-center so the map stays where the
+            // user dragged it. A recenter button lets them re-lock.
+            if (d && followMemberRef.current) setCenteredOnFollow(false);
+        });
     }, [attachPanDrag]);
     useEffect(() => {
         const el = squadPanelRef.current;
@@ -135,22 +146,33 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
         return selectedFight.movementData.members.find(m => (m.account || m.name) === key) ?? null;
     }, [selectedFight, viewportState.followTarget]);
 
+    // Keep the ref in sync so the drag handler can read it without a closure dep.
+    followMemberRef.current = followMember;
+
+    // Re-lock auto-center whenever the follow target itself changes.
+    useEffect(() => {
+        setCenteredOnFollow(true);
+    }, [viewportState.followTarget]);
+
     // On fight switch: center on commander and default-follow them.
     useEffect(() => {
         if (!selectedFight) return;
         const commander = selectedFight.movementData.members.find(m => m.isCommander && m.inSquad);
         if (!commander) return;
         const pos = sampleAt(commander, 0);
-        if (pos) centerOn(pos[0], pos[1]);
+        if (pos) {
+            setReplayViewport({ scale: 3 });
+            centerOn(pos[0], pos[1]);
+        }
         setReplayFollowTarget(commander.account || commander.name);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedId, centerOn]);
 
     useEffect(() => {
-        if (!followMember) return;
+        if (!followMember || !centeredOnFollow) return;
         const pos = sampleAt(followMember, pollFrac);
         if (pos) centerOn(pos[0], pos[1]);
-    }, [followMember, pollFrac, centerOn]);
+    }, [followMember, pollFrac, centerOn, centeredOnFollow]);
 
     const onCanvasClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
         if (!selectedFight) return;
@@ -184,7 +206,16 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
             <FightPickerBar fights={fights} collapsed={pickerCollapsed} onToggle={() => setPickerCollapsed(v => !v)} />
 
             {!selectedFight ? (
-                <div style={{ padding: 16, opacity: 0.7 }}>Pick a fight above to start replay.</div>
+                <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 13,
+                    color: 'var(--text-secondary, #94a3b8)',
+                }}>
+                    Pick a fight above to start replay.
+                </div>
             ) : (
                 <>
                     {/* Map area fills everything; squad panel overlays on the right */}
@@ -201,13 +232,25 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
 
                             {/* Status chips floating on the map */}
                             {followLabel && (
-                                <button
-                                    type="button"
-                                    onClick={() => setReplayFollowTarget(null)}
-                                    style={{ position: 'absolute', bottom: 10, left: (layersOpen ? 220 : 28) + 10, zIndex: 10, transition: 'left 0.15s', ...chipStyle, borderColor: 'var(--status-info-border)', color: 'var(--status-info)' }}
-                                >
-                                    {followLabel} <X size={10} style={{ marginLeft: 4 }} />
-                                </button>
+                                <div style={{ position: 'absolute', bottom: 10, left: (layersOpen ? 220 : 28) + 10, zIndex: 10, transition: 'left 0.15s', display: 'flex', gap: 6 }}>
+                                    {!centeredOnFollow && (
+                                        <button
+                                            type="button"
+                                            title="Re-center on followed player"
+                                            onClick={() => setCenteredOnFollow(true)}
+                                            style={{ ...chipStyle, borderColor: 'var(--status-warning)', color: 'var(--status-warning)' }}
+                                        >
+                                            <Crosshair size={11} style={{ marginRight: 4 }} /> Re-center
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setReplayFollowTarget(null)}
+                                        style={{ ...chipStyle, borderColor: 'var(--status-info-border)', color: 'var(--status-info)' }}
+                                    >
+                                        {followLabel} <X size={10} style={{ marginLeft: 4 }} />
+                                    </button>
+                                </div>
                             )}
                             {spotlightParty !== null && (
                                 <button
@@ -254,9 +297,10 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                     }
                                     <HeatmapLayer raster={heatmap} mapWidth={mapWidth} mapHeight={mapHeight} mode={layers.heatmap} />
                                     {selectedFight.mapKey && (WVW_LANDMARKS[selectedFight.mapKey] ?? []).map(lm => (
-                                        <g key={lm.name}>
-                                            <circle cx={lm.x} cy={lm.y} r={6} fill="rgba(15,23,42,0.8)" stroke="rgba(250,204,21,0.8)" strokeWidth={1.5} />
-                                            <text x={lm.x + 8} y={lm.y + 3} fontSize={9} fill="rgba(250,204,21,0.9)">{lm.name}</text>
+                                        <g key={lm.name} opacity={0.55}>
+                                            <circle cx={lm.x} cy={lm.y} r={6} fill="rgba(15,23,42,0.6)" stroke="rgba(0,0,0,0.9)" strokeWidth={2.5} />
+                                            <circle cx={lm.x} cy={lm.y} r={6} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={1} />
+                                            <text x={lm.x + 8} y={lm.y + 3} fontSize={9} fill="white" stroke="black" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round">{lm.name}</text>
                                         </g>
                                     ))}
                                     {selectedFight.movementData.members.filter(m => m.inSquad || m.isEnemy).map(member => {
@@ -277,7 +321,11 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                         const s = viewport.scale;
                                         const sw = 1 / s;           // 1px stroke
                                         const sw15 = 1.5 / s;       // 1.5px stroke
-                                        const iconR = 10 / s;        // half of 20px icon
+                                        // iconR is in screen-pixel units (the scale(1/s) counter-transform
+                                        // on the icon group makes it render at exactly iconR*2 px).
+                                        // We shrink it slightly as zoom increases so icons don't crowd
+                                        // the map when zoomed in — from 20px at s=1 to ~14px at s=50.
+                                        const iconR = Math.max(7, 10 - Math.log2(Math.max(1, s)) * 0.5);
                                         const ringR = 16 / s;        // follow ring radius
 
                                         // Base opacity: dead = very dim, down = half, enemies dim slightly, spotlight dim = faint
@@ -300,12 +348,16 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                 {recent.length > 1 && <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />}
                                                 {/* Follow ring */}
                                                 {isFollow && <circle cx={pos[0]} cy={pos[1]} r={ringR} fill="none" stroke="#fbbf24" strokeWidth={sw15} strokeOpacity={0.8} />}
-                                                {/* Member icon */}
+                                                {/* Member icon — rendered in a counter-scaled group so the
+                                                    <image> element always has fixed 20×20 local dimensions.
+                                                    Without this, sub-pixel dimensions at high zoom cause
+                                                    browsers to silently skip rendering the image. */}
+                                                <g transform={`translate(${pos[0]} ${pos[1]}) scale(${1 / s})`}>
                                                 {member.isCommander ? (
                                                     // Commanders: just the commander tag SVG, no profession icon
                                                     <image
                                                         href={COMMANDER_TAG_URI}
-                                                        x={pos[0] - iconR} y={pos[1] - iconR}
+                                                        x={-iconR} y={-iconR}
                                                         width={iconR * 2} height={iconR * 2}
                                                     />
                                                 ) : member.isEnemy ? (
@@ -313,29 +365,30 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                         const iconSrc = getProfessionIconPath(member.profession);
                                                         const er = iconR * 0.75; // enemies 25% smaller than allies
                                                         return iconSrc
-                                                            ? <image href={iconSrc} x={pos[0] - er} y={pos[1] - er} width={er * 2} height={er * 2} filter="url(#enemy-tint)" />
-                                                            : <circle cx={pos[0]} cy={pos[1]} r={er} fill="#ef4444" opacity={0.8} />;
+                                                            ? <image href={iconSrc} x={-er} y={-er} width={er * 2} height={er * 2} filter="url(#enemy-tint)" />
+                                                            : <circle cx={0} cy={0} r={er} fill="#ef4444" opacity={0.8} />;
                                                     })()
                                                 ) : (
                                                     (() => {
                                                         const iconSrc = getProfessionIconPath(member.profession);
                                                         return iconSrc
-                                                            ? <image href={iconSrc} x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2} />
-                                                            : <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />;
+                                                            ? <image href={iconSrc} x={-iconR} y={-iconR} width={iconR * 2} height={iconR * 2} />
+                                                            : <circle cx={0} cy={0} r={iconR} fill="#60a5fa" opacity={0.9} />;
                                                     })()
                                                 )}
                                                 {/* Downed indicator: orange cross over the icon */}
                                                 {isDown && !member.isEnemy && (
                                                     <>
-                                                        <line x1={pos[0] - iconR * 0.55} y1={pos[1]} x2={pos[0] + iconR * 0.55} y2={pos[1]} stroke="#f97316" strokeWidth={sw15 * 1.5} strokeLinecap="round" />
-                                                        <line x1={pos[0]} y1={pos[1] - iconR * 0.55} x2={pos[0]} y2={pos[1] + iconR * 0.55} stroke="#f97316" strokeWidth={sw15 * 1.5} strokeLinecap="round" />
+                                                        <line x1={-iconR * 0.55} y1={0} x2={iconR * 0.55} y2={0} stroke="#f97316" strokeWidth={sw15 * 1.5 * s} strokeLinecap="round" />
+                                                        <line x1={0} y1={-iconR * 0.55} x2={0} y2={iconR * 0.55} stroke="#f97316" strokeWidth={sw15 * 1.5 * s} strokeLinecap="round" />
                                                     </>
                                                 )}
+                                                </g>
                                             </g>
                                         );
                                     })}
                                     <SquadOverlay fight={selectedFight} timeMs={playhead.timeMs} />
-                                    <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
+                                    <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} scale={viewport.scale} />
                                 </g>
                             </svg>
                         {/* Member hover tooltip */}
