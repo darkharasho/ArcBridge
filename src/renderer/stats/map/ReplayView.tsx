@@ -74,6 +74,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     const [panelCollapsed, setPanelCollapsed] = useState(true);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
+    const squadPanelRef = useRef<HTMLDivElement>(null);
     const draggedRef = useRef(false);
 
     useEffect(() => {
@@ -103,6 +104,13 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
         if (!el) return;
         return attachPanDrag(el, (d) => { draggedRef.current = d; });
     }, [attachPanDrag]);
+    useEffect(() => {
+        const el = squadPanelRef.current;
+        if (!el) return;
+        const stop = (e: WheelEvent) => e.stopPropagation();
+        el.addEventListener('wheel', stop, { passive: true });
+        return () => el.removeEventListener('wheel', stop);
+    }, []);
 
     // Fractional poll position — used for smooth lerped rendering.
     // Integer floor is used for array indexing (trails, hit detection).
@@ -291,9 +299,9 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                     <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                                 </g>
                             </svg>
-                        {/* Squad panel — overlays on the right of the map. Stop wheel propagation so
-                             scrolling inside the panel doesn't trigger map zoom. */}
-                        <div onWheel={e => e.stopPropagation()} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
+                        {/* Squad panel — overlays on the right of the map. Native wheel listener
+                             stops propagation before the map zoom handler can see the event. */}
+                        <div ref={squadPanelRef} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
                             <ReplaySquadPanel
                                 fight={selectedFight}
                                 collapsed={panelCollapsed}
