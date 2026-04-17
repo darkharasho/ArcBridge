@@ -287,8 +287,9 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                     <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                                 </g>
                             </svg>
-                        {/* Squad panel — overlays on the right of the map */}
-                        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
+                        {/* Squad panel — overlays on the right of the map. Stop wheel propagation so
+                             scrolling inside the panel doesn't trigger map zoom. */}
+                        <div onWheel={e => e.stopPropagation()} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
                             <ReplaySquadPanel
                                 fight={selectedFight}
                                 collapsed={panelCollapsed}
