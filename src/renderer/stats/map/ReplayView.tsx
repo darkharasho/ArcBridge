@@ -32,6 +32,11 @@ interface ReplayViewProps {
 
 const SPEEDS = [0.5, 1, 1.5, 2, 4] as const;
 
+/** Return true if timeMs falls within any of the given [startMs, endMs] ranges. */
+function inAnyRange(ranges: [number, number][], timeMs: number): boolean {
+    return ranges.some(([start, end]) => timeMs >= start && timeMs < end);
+}
+
 /** Linearly interpolate between the two bracketing position samples for smooth movement. */
 function sampleAt(member: SquadMemberMovement, pollFrac: number): [number, number] | null {
     const { positions } = member;
@@ -73,7 +78,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     const [pickerCollapsed, setPickerCollapsed] = useState(false);
     const [panelCollapsed, setPanelCollapsed] = useState(true);
     const [layersOpen, setLayersOpen] = useState(false);
-    const [tooltip, setTooltip] = useState<{ name: string; account: string; x: number; y: number } | null>(null);
+    const [tooltip, setTooltip] = useState<{ name: string; account: string; status: 'down' | 'dead' | null; x: number; y: number } | null>(null);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const squadPanelRef = useRef<HTMLDivElement>(null);
@@ -227,6 +232,17 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                 onClick={onCanvasClick}
                                 style={{ width: '100%', height: '100%', background: '#0c1224', cursor: 'grab', display: 'block' }}
                             >
+                                <defs>
+                                    {/* Tints the icon toward red by boosting the red channel and suppressing green/blue */}
+                                    <filter id="enemy-tint" colorInterpolationFilters="sRGB">
+                                        <feColorMatrix type="matrix" values="
+                                            1.2  0.1  0.1  0  0.15
+                                            0    0.1  0    0  0
+                                            0    0    0.1  0  0
+                                            0    0    0    1  0
+                                        " />
+                                    </filter>
+                                </defs>
                                 <g transform={`translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`}>
                                     {selectedFight.mapKey && hasTileData(selectedFight.mapKey)
                                         ? getMapTiles(selectedFight.mapKey, Math.min(7, Math.max(3, Math.floor(5 + Math.log2(viewport.scale)))), mapWidth, mapHeight).map((t, i) => (
@@ -243,12 +259,15 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                             <text x={lm.x + 8} y={lm.y + 3} fontSize={9} fill="rgba(250,204,21,0.9)">{lm.name}</text>
                                         </g>
                                     ))}
-                                    {selectedFight.movementData.members.map(member => {
+                                    {selectedFight.movementData.members.filter(m => m.inSquad || m.isEnemy).map(member => {
                                         const pos = sampleAt(member, pollFrac);
                                         if (!pos) return null;
+                                        const timeMs = playhead.timeMs;
+                                        const isDead  = inAnyRange(member.deadRanges, timeMs);
+                                        const isDown  = !isDead && inAnyRange(member.downRanges, timeMs);
                                         const dim = spotlightParty !== null && !member.isEnemy && member.group !== spotlightParty;
-                                        const trail = member.positions.slice(Math.max(0, pollIndex - 20), pollIndex + 1);
-                                        const recent = member.positions.slice(Math.max(0, pollIndex - 5), pollIndex + 1);
+                                        const trail = isDead ? [] : member.positions.slice(Math.max(0, pollIndex - 20), pollIndex + 1);
+                                        const recent = isDead ? [] : member.positions.slice(Math.max(0, pollIndex - 5), pollIndex + 1);
                                         const trailStr = trail.map(p => `${p[0]},${p[1]}`).join(' ');
                                         const recentStr = recent.map(p => `${p[0]},${p[1]}`).join(' ');
                                         const color = member.isEnemy ? '#ef4444' : member.isCommander ? '#fbbf24' : '#60a5fa';
@@ -261,20 +280,24 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                         const iconR = 10 / s;        // half of 20px icon
                                         const ringR = 16 / s;        // follow ring radius
 
+                                        // Base opacity: dead = very dim, down = half, enemies dim slightly, spotlight dim = faint
+                                        const baseOpacity = isDead ? 0.12 : isDown ? 0.45 : dim ? 0.2 : member.isEnemy ? 0.75 : 1;
+
                                         return (
                                             <g
-                                                key={member.account || member.name}
-                                                opacity={dim ? 0.2 : 1}
+                                                key={`${member.name}_${member.account}`}
+                                                opacity={baseOpacity}
                                                 onMouseEnter={(e) => {
                                                     const rect = mapContainerRef.current?.getBoundingClientRect();
                                                     if (!rect) return;
-                                                    setTooltip({ name: member.name, account: member.account, x: e.clientX - rect.left, y: e.clientY - rect.top });
+                                                    const status = isDead ? 'dead' : isDown ? 'down' : null;
+                                                    setTooltip({ name: member.name, account: member.account, status, x: e.clientX - rect.left, y: e.clientY - rect.top });
                                                 }}
                                                 onMouseLeave={() => setTooltip(null)}
                                             >
-                                                {/* Movement trail */}
-                                                <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={sw} strokeDasharray={`${2/s} ${2/s}`} />
-                                                <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />
+                                                {/* Movement trail — hidden while dead */}
+                                                {trail.length > 1 && <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={sw} strokeDasharray={`${2/s} ${2/s}`} />}
+                                                {recent.length > 1 && <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />}
                                                 {/* Follow ring */}
                                                 {isFollow && <circle cx={pos[0]} cy={pos[1]} r={ringR} fill="none" stroke="#fbbf24" strokeWidth={sw15} strokeOpacity={0.8} />}
                                                 {/* Member icon */}
@@ -286,10 +309,13 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                         width={iconR * 2} height={iconR * 2}
                                                     />
                                                 ) : member.isEnemy ? (
-                                                    <>
-                                                        <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={sw15} />
-                                                        {(() => { const s2 = getProfessionIconPath(member.profession); return s2 && <image href={s2} x={pos[0] - iconR * 0.75} y={pos[1] - iconR * 0.75} width={iconR * 1.5} height={iconR * 1.5} opacity={0.9} />; })()}
-                                                    </>
+                                                    (() => {
+                                                        const iconSrc = getProfessionIconPath(member.profession);
+                                                        const er = iconR * 0.75; // enemies 25% smaller than allies
+                                                        return iconSrc
+                                                            ? <image href={iconSrc} x={pos[0] - er} y={pos[1] - er} width={er * 2} height={er * 2} filter="url(#enemy-tint)" />
+                                                            : <circle cx={pos[0]} cy={pos[1]} r={er} fill="#ef4444" opacity={0.8} />;
+                                                    })()
                                                 ) : (
                                                     (() => {
                                                         const iconSrc = getProfessionIconPath(member.profession);
@@ -297,6 +323,13 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                             ? <image href={iconSrc} x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2} />
                                                             : <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />;
                                                     })()
+                                                )}
+                                                {/* Downed indicator: orange cross over the icon */}
+                                                {isDown && !member.isEnemy && (
+                                                    <>
+                                                        <line x1={pos[0] - iconR * 0.55} y1={pos[1]} x2={pos[0] + iconR * 0.55} y2={pos[1]} stroke="#f97316" strokeWidth={sw15 * 1.5} strokeLinecap="round" />
+                                                        <line x1={pos[0]} y1={pos[1] - iconR * 0.55} x2={pos[0]} y2={pos[1] + iconR * 0.55} stroke="#f97316" strokeWidth={sw15 * 1.5} strokeLinecap="round" />
+                                                    </>
                                                 )}
                                             </g>
                                         );
@@ -324,6 +357,15 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                             }}>
                                 <div style={{ fontWeight: 600 }}>{tooltip.name}</div>
                                 {tooltip.account && <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 1 }}>{tooltip.account}</div>}
+                                {tooltip.status && (
+                                    <div style={{
+                                        marginTop: 4,
+                                        fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase',
+                                        color: tooltip.status === 'dead' ? '#f87171' : '#fb923c',
+                                    }}>
+                                        {tooltip.status === 'dead' ? 'Dead' : 'Downed'}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {/* Layers panel — overlays on the left */}

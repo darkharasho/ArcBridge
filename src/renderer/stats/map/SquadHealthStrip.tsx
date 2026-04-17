@@ -50,7 +50,7 @@ export const SquadHealthStrip: React.FC<SquadHealthStripProps> = ({ fight, timeM
                     : 'transparent';
                 return (
                     <div
-                        key={m.account || m.name}
+                        key={`${m.name}_${m.account}`}
                         data-hpcell
                         data-status={status}
                         title={`${m.name} — ${hp}%`}

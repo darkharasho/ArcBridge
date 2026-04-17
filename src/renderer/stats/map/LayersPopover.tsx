@@ -1,26 +1,26 @@
 import React from 'react';
 import { useStatsStore } from '../statsStore';
 
-const SQUAD_TOGGLES: { key: 'centroidSpread' | 'tagRangeRings' | 'squadHealthStrip' | 'partyHulls' | 'allPartiesPanel'; label: string }[] = [
-    { key: 'centroidSpread', label: 'Centroid + spread ring' },
-    { key: 'tagRangeRings', label: 'Tag range rings (600 / 1200)' },
-    { key: 'squadHealthStrip', label: 'Squad health strip' },
-    { key: 'partyHulls', label: 'Per-party hulls' },
-    { key: 'allPartiesPanel', label: 'All-parties panel' },
+const SQUAD_TOGGLES: { key: 'centroidSpread' | 'tagRangeRings' | 'squadHealthStrip' | 'partyHulls' | 'allPartiesPanel'; label: string; title: string }[] = [
+    { key: 'centroidSpread', label: 'Centroid + spread ring', title: 'Shows the squad\'s center of mass and a ring indicating how spread out the group is' },
+    { key: 'tagRangeRings', label: 'Tag range rings (600 / 1200)', title: 'Draws circles at 600 and 1200 unit radius around the commander tag — useful for checking boon range' },
+    { key: 'squadHealthStrip', label: 'Squad health strip', title: 'Health bar strip along the top of the map showing each squad member\'s HP in real time' },
+    { key: 'partyHulls', label: 'Per-party hulls', title: 'Convex hull outline around each sub-party, helping visualise how spread out individual groups are' },
+    { key: 'allPartiesPanel', label: 'All-parties panel', title: 'Side panel showing boon and health status for every party simultaneously' },
 ];
 
-const EVENT_TOGGLES: { key: 'phases' | 'rallyRings' | 'targetFocusLines' | 'damagePulses'; label: string }[] = [
-    { key: 'phases', label: 'Fight phases on timeline' },
-    { key: 'rallyRings', label: 'Rally rings' },
-    { key: 'targetFocusLines', label: 'Target-focus lines' },
-    { key: 'damagePulses', label: 'Damage pulses' },
+const EVENT_TOGGLES: { key: 'phases' | 'rallyRings' | 'targetFocusLines' | 'damagePulses'; label: string; title: string }[] = [
+    { key: 'phases', label: 'Fight phases on timeline', title: 'Marks fight phase boundaries on the scrubber timeline' },
+    { key: 'rallyRings', label: 'Rally rings', title: 'Flashes a ring when a downed player rallies back to full health' },
+    { key: 'targetFocusLines', label: 'Target-focus lines', title: 'Lines from each player to the target they are currently damaging most' },
+    { key: 'damagePulses', label: 'Damage pulses', title: 'Animated pulses radiating from players when they deal significant burst damage' },
 ];
 
-const HEATMAP_OPTIONS: { value: 'off' | 'deaths' | 'time' | 'damage-taken'; label: string }[] = [
-    { value: 'off', label: 'Off' },
-    { value: 'deaths', label: 'Deaths' },
-    { value: 'time', label: 'Time spent' },
-    { value: 'damage-taken', label: 'Damage taken' },
+const HEATMAP_OPTIONS: { value: 'off' | 'deaths' | 'time' | 'damage-taken'; label: string; title: string }[] = [
+    { value: 'off', label: 'Off', title: 'No heatmap overlay' },
+    { value: 'deaths', label: 'Deaths', title: 'Heatmap showing where players died most frequently during the fight' },
+    { value: 'time', label: 'Time spent', title: 'Heatmap showing which areas of the map were occupied for the longest time' },
+    { value: 'damage-taken', label: 'Damage taken', title: 'Heatmap showing where the squad received the most incoming damage' },
 ];
 
 interface LayersPanelProps {
@@ -77,7 +77,7 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({ open, onToggle }) => {
             <div style={{ overflowY: 'auto', flex: 1, padding: '8px 10px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Squad overlay</div>
                 {SQUAD_TOGGLES.map(t => (
-                    <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                    <label key={t.key} title={t.title} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
                         <input type="checkbox"
                                checked={layers[t.key]}
                                onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
@@ -86,7 +86,7 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({ open, onToggle }) => {
                 ))}
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 12, marginBottom: 6 }}>Events</div>
                 {EVENT_TOGGLES.map(t => (
-                    <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                    <label key={t.key} title={t.title} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
                         <input type="checkbox"
                                checked={layers[t.key]}
                                onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
@@ -95,7 +95,7 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({ open, onToggle }) => {
                 ))}
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 12, marginBottom: 6 }}>Heatmap</div>
                 {HEATMAP_OPTIONS.map(opt => (
-                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                    <label key={opt.value} title={opt.title} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
                         <input type="radio" name="replay-heatmap"
                                value={opt.value}
                                checked={layers.heatmap === opt.value}

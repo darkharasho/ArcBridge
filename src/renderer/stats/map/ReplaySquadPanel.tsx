@@ -81,7 +81,7 @@ export const ReplaySquadPanel: React.FC<ReplaySquadPanelProps> = ({ fight, colla
                         </div>
                         {members.map(m => (
                             <PartyMemberCard
-                                key={m.account || m.name}
+                                key={`${m.name}_${m.account}`}
                                 member={m}
                                 timeMs={timeMs}
                                 boonIcons={boonIcons}
