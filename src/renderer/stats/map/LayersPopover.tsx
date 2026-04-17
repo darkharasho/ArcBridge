@@ -51,7 +51,7 @@ export const LayersPopover: React.FC = () => {
             {open && (
                 <div role="dialog" aria-label="Layers"
                      style={{
-                         position: 'absolute', right: 0, top: '100%', marginTop: 6,
+                         position: 'absolute', right: 0, bottom: '100%', marginBottom: 6,
                          background: 'rgba(12, 18, 36, 0.98)',
                          border: '1px solid rgba(255,255,255,0.1)',
                          borderRadius: 8, padding: 12, minWidth: 240, zIndex: 50,
