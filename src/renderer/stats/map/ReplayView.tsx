@@ -246,7 +246,6 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                         const sw = 1 / s;           // 1px stroke
                                         const sw15 = 1.5 / s;       // 1.5px stroke
                                         const iconR = 10 / s;        // half of 20px icon
-                                        const circleR = 6 / s;       // enemy dot radius
                                         const ringR = 16 / s;        // follow ring radius
                                         const tagOff = 14 / s;       // commander tag offset above icon
                                         const tagS = 5 / s;          // commander tag half-size
@@ -257,27 +256,23 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                 <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />
                                                 {/* Follow ring */}
                                                 {isFollow && <circle cx={pos[0]} cy={pos[1]} r={ringR} fill="none" stroke="#fbbf24" strokeWidth={sw15} strokeOpacity={0.8} />}
-                                                {/* Member icon — enemy = styled circle, ally = profession image */}
-                                                {member.isEnemy ? (
-                                                    <>
-                                                        <circle cx={pos[0]} cy={pos[1]} r={circleR} fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={sw15} />
-                                                        <line x1={pos[0] - circleR * 0.5} y1={pos[1] - circleR * 0.5} x2={pos[0] + circleR * 0.5} y2={pos[1] + circleR * 0.5} stroke="#ef4444" strokeWidth={sw} />
-                                                        <line x1={pos[0] + circleR * 0.5} y1={pos[1] - circleR * 0.5} x2={pos[0] - circleR * 0.5} y2={pos[1] + circleR * 0.5} stroke="#ef4444" strokeWidth={sw} />
-                                                    </>
-                                                ) : (
-                                                    (() => {
-                                                        const iconSrc = getProfessionIconPath(member.profession);
-                                                        return iconSrc ? (
-                                                            <image
-                                                                href={iconSrc}
-                                                                x={pos[0] - iconR} y={pos[1] - iconR}
-                                                                width={iconR * 2} height={iconR * 2}
-                                                            />
-                                                        ) : (
-                                                            <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />
+                                                {/* Member icon — red-backed profession icon for enemies, plain icon for allies */}
+                                                {(() => {
+                                                    const iconSrc = getProfessionIconPath(member.profession);
+                                                    if (member.isEnemy) {
+                                                        return (
+                                                            <>
+                                                                <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={sw15} />
+                                                                {iconSrc && <image href={iconSrc} x={pos[0] - iconR * 0.75} y={pos[1] - iconR * 0.75} width={iconR * 1.5} height={iconR * 1.5} opacity={0.9} />}
+                                                            </>
                                                         );
-                                                    })()
-                                                )}
+                                                    }
+                                                    return iconSrc ? (
+                                                        <image href={iconSrc} x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2} />
+                                                    ) : (
+                                                        <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />
+                                                    );
+                                                })()}
                                                 {/* Commander diamond above icon */}
                                                 {member.isCommander && (
                                                     <polygon
