@@ -73,6 +73,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     const [pickerCollapsed, setPickerCollapsed] = useState(false);
     const [panelCollapsed, setPanelCollapsed] = useState(true);
     const [layersOpen, setLayersOpen] = useState(false);
+    const [tooltip, setTooltip] = useState<{ name: string; account: string; x: number; y: number } | null>(null);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const squadPanelRef = useRef<HTMLDivElement>(null);
@@ -261,7 +262,16 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                         const ringR = 16 / s;        // follow ring radius
 
                                         return (
-                                            <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
+                                            <g
+                                                key={member.account || member.name}
+                                                opacity={dim ? 0.2 : 1}
+                                                onMouseEnter={(e) => {
+                                                    const rect = mapContainerRef.current?.getBoundingClientRect();
+                                                    if (!rect) return;
+                                                    setTooltip({ name: member.name, account: member.account, x: e.clientX - rect.left, y: e.clientY - rect.top });
+                                                }}
+                                                onMouseLeave={() => setTooltip(null)}
+                                            >
                                                 {/* Movement trail */}
                                                 <polyline points={trailStr} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={sw} strokeDasharray={`${2/s} ${2/s}`} />
                                                 <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />
@@ -295,6 +305,27 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                     <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                                 </g>
                             </svg>
+                        {/* Member hover tooltip */}
+                        {tooltip && (
+                            <div style={{
+                                position: 'absolute',
+                                left: tooltip.x + 14,
+                                top: tooltip.y - 10,
+                                zIndex: 40,
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border-default)',
+                                borderRadius: 6,
+                                padding: '5px 9px',
+                                fontSize: 12,
+                                color: 'var(--text-primary)',
+                                pointerEvents: 'none',
+                                whiteSpace: 'nowrap',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                            }}>
+                                <div style={{ fontWeight: 600 }}>{tooltip.name}</div>
+                                {tooltip.account && <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 1 }}>{tooltip.account}</div>}
+                            </div>
+                        )}
                         {/* Layers panel — overlays on the left */}
                         <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
                             <LayersPanel open={layersOpen} onToggle={() => setLayersOpen(v => !v)} />
