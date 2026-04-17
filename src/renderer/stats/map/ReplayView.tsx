@@ -111,7 +111,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
         const stop = (e: WheelEvent) => e.stopPropagation();
         el.addEventListener('wheel', stop, { passive: true });
         return () => el.removeEventListener('wheel', stop);
-    }, []);
+    }, [selectedFight]);
 
     // Fractional poll position — used for smooth lerped rendering.
     // Integer floor is used for array indexing (trails, hit detection).
@@ -129,13 +129,14 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
         return selectedFight.movementData.members.find(m => (m.account || m.name) === key) ?? null;
     }, [selectedFight, viewportState.followTarget]);
 
-    // Center on commander whenever the selected fight changes (selectedId is the stable key).
+    // On fight switch: center on commander and default-follow them.
     useEffect(() => {
         if (!selectedFight) return;
         const commander = selectedFight.movementData.members.find(m => m.isCommander && m.inSquad);
         if (!commander) return;
         const pos = sampleAt(commander, 0);
         if (pos) centerOn(pos[0], pos[1]);
+        setReplayFollowTarget(commander.account || commander.name);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedId, centerOn]);
 
@@ -197,7 +198,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                 <button
                                     type="button"
                                     onClick={() => setReplayFollowTarget(null)}
-                                    style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 10, ...chipStyle, borderColor: 'var(--status-info-border)', color: 'var(--status-info)' }}
+                                    style={{ position: 'absolute', bottom: 10, left: (layersOpen ? 220 : 28) + 10, zIndex: 10, transition: 'left 0.15s', ...chipStyle, borderColor: 'var(--status-info-border)', color: 'var(--status-info)' }}
                                 >
                                     {followLabel} <X size={10} style={{ marginLeft: 4 }} />
                                 </button>
@@ -258,8 +259,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                         const sw15 = 1.5 / s;       // 1.5px stroke
                                         const iconR = 10 / s;        // half of 20px icon
                                         const ringR = 16 / s;        // follow ring radius
-                                        const tagOff = 14 / s;       // commander tag center y-offset above icon
-                                        const tagS = 8 / s;          // commander tag half-size
+
                                         return (
                                             <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
                                                 {/* Movement trail */}
@@ -267,30 +267,26 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                 <polyline points={recentStr} fill="none" stroke={color} strokeOpacity={0.6} strokeWidth={sw15} />
                                                 {/* Follow ring */}
                                                 {isFollow && <circle cx={pos[0]} cy={pos[1]} r={ringR} fill="none" stroke="#fbbf24" strokeWidth={sw15} strokeOpacity={0.8} />}
-                                                {/* Member icon — red-backed profession icon for enemies, plain icon for allies */}
-                                                {(() => {
-                                                    const iconSrc = getProfessionIconPath(member.profession);
-                                                    if (member.isEnemy) {
-                                                        return (
-                                                            <>
-                                                                <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={sw15} />
-                                                                {iconSrc && <image href={iconSrc} x={pos[0] - iconR * 0.75} y={pos[1] - iconR * 0.75} width={iconR * 1.5} height={iconR * 1.5} opacity={0.9} />}
-                                                            </>
-                                                        );
-                                                    }
-                                                    return iconSrc ? (
-                                                        <image href={iconSrc} x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2} />
-                                                    ) : (
-                                                        <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />
-                                                    );
-                                                })()}
-                                                {/* Commander tag icon above icon */}
-                                                {member.isCommander && (
+                                                {/* Member icon */}
+                                                {member.isCommander ? (
+                                                    // Commanders: just the commander tag SVG, no profession icon
                                                     <image
                                                         href={COMMANDER_TAG_URI}
-                                                        x={pos[0] - tagS} y={pos[1] - tagOff - tagS}
-                                                        width={tagS * 2} height={tagS * 2}
+                                                        x={pos[0] - iconR} y={pos[1] - iconR}
+                                                        width={iconR * 2} height={iconR * 2}
                                                     />
+                                                ) : member.isEnemy ? (
+                                                    <>
+                                                        <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={sw15} />
+                                                        {(() => { const s2 = getProfessionIconPath(member.profession); return s2 && <image href={s2} x={pos[0] - iconR * 0.75} y={pos[1] - iconR * 0.75} width={iconR * 1.5} height={iconR * 1.5} opacity={0.9} />; })()}
+                                                    </>
+                                                ) : (
+                                                    (() => {
+                                                        const iconSrc = getProfessionIconPath(member.profession);
+                                                        return iconSrc
+                                                            ? <image href={iconSrc} x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2} />
+                                                            : <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />;
+                                                    })()
                                                 )}
                                             </g>
                                         );
