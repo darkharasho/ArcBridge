@@ -268,9 +268,11 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                     (() => {
                                                         const iconSrc = getProfessionIconPath(member.profession);
                                                         return iconSrc ? (
-                                                            <foreignObject x={pos[0] - iconR} y={pos[1] - iconR} width={iconR * 2} height={iconR * 2}>
-                                                                <img src={iconSrc} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'block' }} />
-                                                            </foreignObject>
+                                                            <image
+                                                                href={iconSrc}
+                                                                x={pos[0] - iconR} y={pos[1] - iconR}
+                                                                width={iconR * 2} height={iconR * 2}
+                                                            />
                                                         ) : (
                                                             <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />
                                                         );
