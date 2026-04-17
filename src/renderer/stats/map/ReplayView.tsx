@@ -11,7 +11,7 @@ const COMMANDER_TAG_URI = `data:image/svg+xml;base64,${btoa(unescape(encodeURICo
 import { HeatmapLayer } from './HeatmapLayer';
 import { SquadOverlay } from './SquadOverlay';
 import { SquadHealthStrip } from './SquadHealthStrip';
-import { LayersPopover } from './LayersPopover';
+import { LayersPanel } from './LayersPopover';
 import { useHeatmapData } from './hooks/useHeatmapData';
 import { FightPickerBar } from './FightPickerBar';
 import { ReplaySquadPanel } from './ReplaySquadPanel';
@@ -72,6 +72,7 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
     const [fullscreen, setFullscreen] = useState(false);
     const [pickerCollapsed, setPickerCollapsed] = useState(false);
     const [panelCollapsed, setPanelCollapsed] = useState(true);
+    const [layersOpen, setLayersOpen] = useState(false);
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const squadPanelRef = useRef<HTMLDivElement>(null);
@@ -189,7 +190,6 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                 <button type="button" onClick={() => setFullscreen(v => !v)} title="Fullscreen" style={ctrlBtnStyle}>
                                     {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
                                 </button>
-                                <LayersPopover />
                             </div>
 
                             {/* Status chips floating on the map */}
@@ -299,6 +299,10 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                     <EventOverlay fight={selectedFight} timeMs={playhead.timeMs} />
                                 </g>
                             </svg>
+                        {/* Layers panel — overlays on the left */}
+                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>
+                            <LayersPanel open={layersOpen} onToggle={() => setLayersOpen(v => !v)} />
+                        </div>
                         {/* Squad panel — overlays on the right of the map. Native wheel listener
                              stops propagation before the map zoom handler can see the event. */}
                         <div ref={squadPanelRef} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 20, display: 'flex', alignItems: 'stretch' }}>

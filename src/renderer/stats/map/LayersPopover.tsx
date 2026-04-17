@@ -1,6 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { Settings } from 'lucide-react';
+import React from 'react';
 import { useStatsStore } from '../statsStore';
 
 const SQUAD_TOGGLES: { key: 'centroidSpread' | 'tagRangeRings' | 'squadHealthStrip' | 'partyHulls' | 'allPartiesPanel'; label: string }[] = [
@@ -25,99 +23,89 @@ const HEATMAP_OPTIONS: { value: 'off' | 'deaths' | 'time' | 'damage-taken'; labe
     { value: 'damage-taken', label: 'Damage taken' },
 ];
 
-export const LayersPopover: React.FC = () => {
+interface LayersPanelProps {
+    open: boolean;
+    onToggle: () => void;
+}
+
+export const LayersPanel: React.FC<LayersPanelProps> = ({ open, onToggle }) => {
     const layers = useStatsStore(state => state.replayLayers);
     const setReplayLayer = useStatsStore(state => state.setReplayLayer);
     const setReplayHeatmapMode = useStatsStore(state => state.setReplayHeatmapMode);
-    const [open, setOpen] = useState(false);
-    const [popoverPos, setPopoverPos] = useState<{ bottom: number; right: number } | null>(null);
-    const btnRef = useRef<HTMLButtonElement | null>(null);
-    const popoverRef = useRef<HTMLDivElement | null>(null);
 
-    const openPopover = useCallback(() => {
-        if (!btnRef.current) return;
-        const rect = btnRef.current.getBoundingClientRect();
-        setPopoverPos({
-            bottom: window.innerHeight - rect.top + 6,
-            right: window.innerWidth - rect.right,
-        });
-        setOpen(true);
-    }, []);
-
-    useEffect(() => {
-        if (!open) return;
-        const onDoc = (e: MouseEvent) => {
-            const target = e.target as Node;
-            if (
-                popoverRef.current && !popoverRef.current.contains(target) &&
-                btnRef.current && !btnRef.current.contains(target)
-            ) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', onDoc);
-        return () => document.removeEventListener('mousedown', onDoc);
-    }, [open]);
+    if (!open) {
+        return (
+            <button
+                type="button"
+                title="Show layers"
+                onClick={onToggle}
+                style={{
+                    width: 28, flexShrink: 0,
+                    background: 'var(--bg-elevated)',
+                    borderRight: '1px solid var(--border-default)',
+                    border: 'none',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    paddingTop: 8, cursor: 'pointer',
+                }}
+            >
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>▶</span>
+                <span style={{ writingMode: 'vertical-rl', fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 7, transform: 'rotate(180deg)' }}>
+                    Layers
+                </span>
+            </button>
+        );
+    }
 
     return (
-        <>
-            <button
-                ref={btnRef}
-                type="button"
-                onClick={() => open ? setOpen(false) : openPopover()}
-                title="Layers"
-                aria-label="Layers"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-                <Settings size={14} /> Layers
-            </button>
-            {open && popoverPos && createPortal(
-                <div
-                    ref={popoverRef}
-                    role="dialog"
-                    aria-label="Layers"
-                    style={{
-                        position: 'fixed',
-                        bottom: popoverPos.bottom,
-                        right: popoverPos.right,
-                        background: 'rgba(12, 18, 36, 0.98)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 8, padding: 12, minWidth: 240, zIndex: 9999,
-                    }}
+        <div style={{
+            width: 220, flexShrink: 0,
+            background: 'var(--bg-elevated)',
+            borderRight: '1px solid var(--border-default)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}>
+            <div style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>Layers</span>
+                <button
+                    type="button"
+                    title="Collapse layers panel"
+                    onClick={onToggle}
+                    style={{ fontSize: 11, color: 'var(--text-muted)', padding: '2px 4px', borderRadius: 3, background: 'none', border: 'none', cursor: 'pointer' }}
                 >
-                    <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>Squad overlay</div>
-                    {SQUAD_TOGGLES.map(t => (
-                        <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
-                            <input type="checkbox"
-                                   checked={layers[t.key]}
-                                   onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
-                            <span>{t.label}</span>
-                        </label>
-                    ))}
-                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 8, marginBottom: 4 }}>Events</div>
-                    {EVENT_TOGGLES.map(t => (
-                        <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
-                            <input type="checkbox"
-                                   checked={layers[t.key]}
-                                   onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
-                            <span>{t.label}</span>
-                        </label>
-                    ))}
-                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 8, marginBottom: 4 }}>Heatmap</div>
-                    {HEATMAP_OPTIONS.map(opt => (
-                        <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
-                            <input type="radio" name="heatmap"
-                                   value={opt.value}
-                                   checked={layers.heatmap === opt.value}
-                                   onChange={() => setReplayHeatmapMode(opt.value)} />
-                            <span>{opt.label}</span>
-                        </label>
-                    ))}
-                </div>,
-                document.body
-            )}
-        </>
+                    ◀
+                </button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 10px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Squad overlay</div>
+                {SQUAD_TOGGLES.map(t => (
+                    <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                        <input type="checkbox"
+                               checked={layers[t.key]}
+                               onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
+                        <span>{t.label}</span>
+                    </label>
+                ))}
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 12, marginBottom: 6 }}>Events</div>
+                {EVENT_TOGGLES.map(t => (
+                    <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                        <input type="checkbox"
+                               checked={layers[t.key]}
+                               onChange={e => setReplayLayer(t.key, e.currentTarget.checked)} />
+                        <span>{t.label}</span>
+                    </label>
+                ))}
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 12, marginBottom: 6 }}>Heatmap</div>
+                {HEATMAP_OPTIONS.map(opt => (
+                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-primary)', padding: '3px 0', cursor: 'pointer' }}>
+                        <input type="radio" name="replay-heatmap"
+                               value={opt.value}
+                               checked={layers.heatmap === opt.value}
+                               onChange={() => setReplayHeatmapMode(opt.value)} />
+                        <span>{opt.label}</span>
+                    </label>
+                ))}
+            </div>
+        </div>
     );
 };
 
-export default LayersPopover;
+export default LayersPanel;
