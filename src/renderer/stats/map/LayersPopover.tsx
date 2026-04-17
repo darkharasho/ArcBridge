@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Settings } from 'lucide-react';
 import { useStatsStore } from '../statsStore';
 
@@ -29,33 +30,61 @@ export const LayersPopover: React.FC = () => {
     const setReplayLayer = useStatsStore(state => state.setReplayLayer);
     const setReplayHeatmapMode = useStatsStore(state => state.setReplayHeatmapMode);
     const [open, setOpen] = useState(false);
-    const panelRef = useRef<HTMLDivElement | null>(null);
+    const [popoverPos, setPopoverPos] = useState<{ bottom: number; right: number } | null>(null);
+    const btnRef = useRef<HTMLButtonElement | null>(null);
+    const popoverRef = useRef<HTMLDivElement | null>(null);
+
+    const openPopover = useCallback(() => {
+        if (!btnRef.current) return;
+        const rect = btnRef.current.getBoundingClientRect();
+        setPopoverPos({
+            bottom: window.innerHeight - rect.top + 6,
+            right: window.innerWidth - rect.right,
+        });
+        setOpen(true);
+    }, []);
 
     useEffect(() => {
         if (!open) return;
         const onDoc = (e: MouseEvent) => {
-            if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
+            const target = e.target as Node;
+            if (
+                popoverRef.current && !popoverRef.current.contains(target) &&
+                btnRef.current && !btnRef.current.contains(target)
+            ) {
+                setOpen(false);
+            }
         };
         document.addEventListener('mousedown', onDoc);
         return () => document.removeEventListener('mousedown', onDoc);
     }, [open]);
 
     return (
-        <div ref={panelRef} style={{ position: 'relative' }}>
-            <button type="button" onClick={() => setOpen(v => !v)}
-                    title="Layers"
-                    aria-label="Layers"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <>
+            <button
+                ref={btnRef}
+                type="button"
+                onClick={() => open ? setOpen(false) : openPopover()}
+                title="Layers"
+                aria-label="Layers"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
                 <Settings size={14} /> Layers
             </button>
-            {open && (
-                <div role="dialog" aria-label="Layers"
-                     style={{
-                         position: 'absolute', right: 0, bottom: '100%', marginBottom: 6,
-                         background: 'rgba(12, 18, 36, 0.98)',
-                         border: '1px solid rgba(255,255,255,0.1)',
-                         borderRadius: 8, padding: 12, minWidth: 240, zIndex: 50,
-                     }}>
+            {open && popoverPos && createPortal(
+                <div
+                    ref={popoverRef}
+                    role="dialog"
+                    aria-label="Layers"
+                    style={{
+                        position: 'fixed',
+                        bottom: popoverPos.bottom,
+                        right: popoverPos.right,
+                        background: 'rgba(12, 18, 36, 0.98)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 8, padding: 12, minWidth: 240, zIndex: 9999,
+                    }}
+                >
                     <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>Squad overlay</div>
                     {SQUAD_TOGGLES.map(t => (
                         <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0' }}>
@@ -84,9 +113,10 @@ export const LayersPopover: React.FC = () => {
                             <span>{opt.label}</span>
                         </label>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </>
     );
 };
 
