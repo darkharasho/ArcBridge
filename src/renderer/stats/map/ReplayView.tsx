@@ -5,6 +5,9 @@ import { getMapTiles, hasTileData } from '../../../shared/wvwTiles';
 import { WVW_LANDMARKS } from '../../../shared/wvwLandmarks';
 import { normalizeMapNameShort, formatDuration } from '../../../shared/mapUtils';
 import { getProfessionIconPath } from '../../classIconUtils';
+import commanderTagRaw from '../../../../public/svg/commander_tag.svg?raw';
+const COMMANDER_TAG_URI = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(commanderTagRaw)))}`;
+
 import { HeatmapLayer } from './HeatmapLayer';
 import { SquadOverlay } from './SquadOverlay';
 import { SquadHealthStrip } from './SquadHealthStrip';
@@ -247,8 +250,8 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                         const sw15 = 1.5 / s;       // 1.5px stroke
                                         const iconR = 10 / s;        // half of 20px icon
                                         const ringR = 16 / s;        // follow ring radius
-                                        const tagOff = 14 / s;       // commander tag offset above icon
-                                        const tagS = 5 / s;          // commander tag half-size
+                                        const tagOff = 14 / s;       // commander tag center y-offset above icon
+                                        const tagS = 8 / s;          // commander tag half-size
                                         return (
                                             <g key={member.account || member.name} opacity={dim ? 0.2 : 1}>
                                                 {/* Movement trail */}
@@ -273,11 +276,12 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                                                         <circle cx={pos[0]} cy={pos[1]} r={iconR} fill="#60a5fa" opacity={0.9} />
                                                     );
                                                 })()}
-                                                {/* Commander diamond above icon */}
+                                                {/* Commander tag icon above icon */}
                                                 {member.isCommander && (
-                                                    <polygon
-                                                        points={`${pos[0]},${pos[1] - tagOff - tagS} ${pos[0] + tagS},${pos[1] - tagOff} ${pos[0]},${pos[1] - tagOff + tagS} ${pos[0] - tagS},${pos[1] - tagOff}`}
-                                                        fill="#fbbf24"
+                                                    <image
+                                                        href={COMMANDER_TAG_URI}
+                                                        x={pos[0] - tagS} y={pos[1] - tagOff - tagS}
+                                                        width={tagS * 2} height={tagS * 2}
                                                     />
                                                 )}
                                             </g>
