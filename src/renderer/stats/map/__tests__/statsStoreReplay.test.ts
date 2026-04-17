@@ -17,9 +17,9 @@ describe('statsStore — replay state', () => {
         expect(p.speed).toBe(1);
     });
 
-    it('has default viewport scale 1 with no follow target', () => {
+    it('has default viewport scale 3 with no follow target', () => {
         const v = useStatsStore.getState().replayViewport;
-        expect(v.scale).toBe(1);
+        expect(v.scale).toBe(3);
         expect(v.tx).toBe(0);
         expect(v.ty).toBe(0);
         expect(v.followTarget).toBeNull();

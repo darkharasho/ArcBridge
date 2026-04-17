@@ -10,9 +10,9 @@ describe('useReplayViewport', () => {
         useStatsStore.setState(initial);
     });
 
-    it('starts at scale 1 with no translation', () => {
+    it('starts at scale 3 with no translation', () => {
         const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
-        expect(result.current.scale).toBe(1);
+        expect(result.current.scale).toBe(3);
         expect(result.current.tx).toBe(0);
         expect(result.current.ty).toBe(0);
     });
@@ -31,7 +31,7 @@ describe('useReplayViewport', () => {
         act(() => result.current.zoomIn());
         act(() => result.current.panBy(30, 40));
         act(() => result.current.resetViewport());
-        expect(result.current.scale).toBe(1);
+        expect(result.current.scale).toBe(3);
         expect(result.current.tx).toBe(0);
         expect(result.current.ty).toBe(0);
     });
@@ -49,11 +49,11 @@ describe('useReplayViewport', () => {
     it('centerOn positions the given world point at the container center', () => {
         const { result } = renderHook(() => useReplayViewport({ mapWidth: 600, mapHeight: 600, containerWidth: 600, containerHeight: 600 }));
         act(() => result.current.centerOn(200, 150));
-        // tx = containerWidth/2 - x*scale = 300 - 200*1 = 100
-        // ty = containerHeight/2 - y*scale = 300 - 150*1 = 150
+        // tx = containerWidth/2 - x*scale = 300 - 200*3 = -300
+        // ty = containerHeight/2 - y*scale = 300 - 150*3 = -150
         const vp = useStatsStore.getState().replayViewport;
-        expect(vp.tx).toBe(100);
-        expect(vp.ty).toBe(150);
+        expect(vp.tx).toBe(-300);
+        expect(vp.ty).toBe(-150);
     });
 
     it('zoomOut decreases scale but not below MIN_SCALE (1)', () => {
@@ -127,6 +127,6 @@ describe('useReplayViewport', () => {
         act(() => { cleanup?.(); });
 
         act(() => { fireEvent.wheel(el, { deltaY: -1, clientX: 300, clientY: 300 }); });
-        expect(useStatsStore.getState().replayViewport.scale).toBe(1);
+        expect(useStatsStore.getState().replayViewport.scale).toBe(3);
     });
 });
