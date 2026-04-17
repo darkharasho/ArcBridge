@@ -182,8 +182,8 @@ export const ReplayView: React.FC<ReplayViewProps> = ({ fights, style }) => {
                 <>
                     {/* Map area fills everything; squad panel overlays on the right */}
                     <div ref={mapContainerRef} style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
-                            {/* Floating zoom + layer controls */}
-                            <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {/* Floating zoom controls — offset past the layers panel (220px open, 28px collapsed) */}
+                            <div style={{ position: 'absolute', top: 8, left: (layersOpen ? 220 : 28) + 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4, transition: 'left 0.15s' }}>
                                 <button type="button" onClick={() => viewport.zoomIn()} title="Zoom in" style={ctrlBtnStyle}><Plus size={12} /></button>
                                 <button type="button" onClick={() => viewport.zoomOut()} title="Zoom out" style={ctrlBtnStyle}><Minus size={12} /></button>
                                 <button type="button" onClick={() => viewport.resetViewport()} title="Reset zoom" style={ctrlBtnStyle}><RotateCcw size={12} /></button>
