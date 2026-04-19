@@ -3,7 +3,7 @@ import {
     DEFAULT_DISRUPTION_METHOD, DEFAULT_EMBED_STATS,
     DEFAULT_GLASS_SURFACES, DEFAULT_PARTICLES_ENABLED, DEFAULT_MVP_WEIGHTS,
     DEFAULT_STATS_VIEW_SETTINGS, DisruptionMethod, IEmbedStatSettings, IMvpWeights, normalizeMvpWeights,
-    IStatsViewSettings,
+    IStatsViewSettings, IAiSettings,
 } from '../../global.d';
 import { Webhook } from '../../WebhookModal';
 import { PALETTES, type ColorPalette } from '../../../shared/webThemes';
@@ -21,6 +21,16 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
     const [disruptionMethod, setDisruptionMethod] = useState<DisruptionMethod>(DEFAULT_DISRUPTION_METHOD);
     const [allowLocalJson, setAllowLocalJson] = useState(false);
     const [r2PreciseReplay, setR2PreciseReplay] = useState(false);
+    const [ollamaEnabled, setOllamaEnabledState] = useState(false);
+    const [ollamaModel, setOllamaModelState] = useState('');
+    const [ollamaAutoManage, setOllamaAutoManageState] = useState(false);
+    const [aiSettings, setAiSettings] = useState<IAiSettings>({
+        provider: 'ollama',
+        anthropicApiKey: '',
+        anthropicModel: 'claude-sonnet-4-6',
+        openaiApiKey: '',
+        openaiModel: 'gpt-4o',
+    });
     const [colorPalette, setColorPalette] = useState<ColorPalette>('electric-blue');
     const [glassSurfaces, setGlassSurfaces] = useState(DEFAULT_GLASS_SURFACES);
     const [particlesEnabled, setParticlesEnabled] = useState(DEFAULT_PARTICLES_ENABLED);
@@ -99,6 +109,12 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
                 setEiAnnouncementDismissed(true);
             }
 
+            const ollamaSettings = await window.electronAPI.getOllamaSettings();
+            setOllamaEnabledState(ollamaSettings.enabled);
+            setOllamaModelState(ollamaSettings.activeModel);
+            setOllamaAutoManageState(ollamaSettings.autoManage);
+            window.electronAPI.getAiSettings().then(setAiSettings).catch(() => {});
+
             const whatsNew = await window.electronAPI.getWhatsNew();
             setWhatsNewVersion(whatsNew.version);
             setWhatsNewNotes(whatsNew.releaseNotes);
@@ -140,6 +156,27 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         disruptionMethod, setDisruptionMethod,
         allowLocalJson, setAllowLocalJson,
         r2PreciseReplay, setR2PreciseReplay,
+        ollamaEnabled,
+        ollamaModel,
+        ollamaAutoManage,
+        setOllamaEnabled: (enabled: boolean) => {
+            setOllamaEnabledState(enabled);
+            window.electronAPI.saveOllamaSettings({ enabled });
+        },
+        setOllamaModel: (model: string) => {
+            setOllamaModelState(model);
+            window.electronAPI.setOllamaActiveModel(model);
+            window.electronAPI.saveOllamaSettings({ activeModel: model });
+        },
+        setOllamaAutoManage: (autoManage: boolean) => {
+            setOllamaAutoManageState(autoManage);
+            window.electronAPI.saveOllamaSettings({ autoManage });
+        },
+        aiSettings,
+        saveAiSettings: (settings: Partial<IAiSettings>) => {
+            setAiSettings(prev => ({ ...prev, ...settings }));
+            window.electronAPI.saveAiSettings(settings);
+        },
         colorPalette, setColorPalette,
         glassSurfaces, setGlassSurfaces,
         particlesEnabled, setParticlesEnabled,
@@ -155,10 +192,10 @@ export function useSettings({ onAutoUpdateSettings }: UseSettingsOptions = {}) {
         shouldOpenWhatsNew,
     }), [
         logDirectory, notificationType, embedStatSettings, mvpWeights,
-        statsViewSettings, disruptionMethod, allowLocalJson, r2PreciseReplay, colorPalette, glassSurfaces, particlesEnabled,
+        statsViewSettings, disruptionMethod, allowLocalJson, r2PreciseReplay, ollamaEnabled, ollamaModel, ollamaAutoManage, colorPalette, glassSurfaces, particlesEnabled,
         webhooks, selectedWebhookId, handleUpdateSettings, handleSelectDirectory,
         settingsLoaded, whatsNewVersion, whatsNewNotes, walkthroughSeen,
         eiAnnouncementDismissed, setEiAnnouncementDismissed,
-        shouldOpenWhatsNew,
+        shouldOpenWhatsNew, aiSettings,
     ]);
 }

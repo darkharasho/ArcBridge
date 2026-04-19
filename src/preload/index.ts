@@ -151,6 +151,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return () => { ipcRenderer.removeAllListeners('ei:status-changed'); };
     },
 
+    // Ollama AI chat
+    getOllamaStatus: () => ipcRenderer.invoke('ollama:get-status'),
+    setOllamaActiveModel: (model: string) => ipcRenderer.send('ollama:set-active-model', model),
+    pullOllamaModel: (model: string) => ipcRenderer.invoke('ollama:pull-model', model),
+    ollamaChat: (messages: any[]) => ipcRenderer.invoke('ollama:chat', messages),
+    getOllamaSettings: () => ipcRenderer.invoke('ollama:get-settings'),
+    saveOllamaSettings: (settings: any) => ipcRenderer.send('ollama:save-settings', settings),
+    onOllamaPullProgress: (callback: (data: any) => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, value: any) => callback(value);
+        ipcRenderer.on('ollama:pull-progress', listener);
+        return () => { ipcRenderer.removeListener('ollama:pull-progress', listener); };
+    },
+    onOllamaChatToken: (callback: (data: any) => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, value: any) => callback(value);
+        ipcRenderer.on('ollama:chat-token', listener);
+        return () => { ipcRenderer.removeListener('ollama:chat-token', listener); };
+    },
+    onOllamaStatusChanged: (callback: (status: any) => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, value: any) => callback(value);
+        ipcRenderer.on('ollama:status-changed', listener);
+        return () => { ipcRenderer.removeListener('ollama:status-changed', listener); };
+    },
+    startOllama: () => ipcRenderer.invoke('ollama:start'),
+    stopOllama: () => ipcRenderer.invoke('ollama:stop'),
+    deleteOllamaModel: (model: string) => ipcRenderer.invoke('ollama:delete-model', model),
+    chatOnce: (messages: any[], tools?: any[]) => ipcRenderer.invoke('ollama:chat-once', messages, tools),
+    getAiSettings: () => ipcRenderer.invoke('ai:get-settings'),
+    saveAiSettings: (settings: any) => ipcRenderer.send('ai:save-settings', settings),
+
     onMaximizedChange: (callback: (maximized: boolean) => void) => {
         const listener = (_event: Electron.IpcRendererEvent, maximized: boolean) => callback(maximized);
         ipcRenderer.on('window:maximized-change', listener);

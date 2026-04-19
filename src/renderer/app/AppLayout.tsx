@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, Clock3, LayoutDashboard, Minus, RefreshCw, Settings as SettingsIcon, Square, X } from 'lucide-react';
+import { BarChart3, Clock3, LayoutDashboard, MessageSquare, Minus, RefreshCw, Settings as SettingsIcon, Square, X } from 'lucide-react';
 import { Terminal as TerminalIcon } from 'lucide-react';
 import { SettingsView } from '../SettingsView';
 import { StatsView } from '../StatsView';
@@ -16,6 +16,8 @@ import { WhatsNewModal } from '../WhatsNewModal';
 import { FilePickerModal } from './FilePickerModal';
 import { WebUploadOverlay } from './WebUploadOverlay';
 import { FightReportHistoryView } from '../FightReportHistoryView';
+import { ChatView } from '../ChatView';
+import { useChat } from '../chat/useChat';
 import { useParticleEffect, PRESETS } from '../particles';
 import { TRANSITION } from '../motion';
 
@@ -100,6 +102,15 @@ export function AppLayout({ ctx }: { ctx: any }) {
         isBulkUploadActive,
         setAllowLocalJson,
         setR2PreciseReplay,
+        ollamaEnabled,
+        setOllamaEnabled,
+        ollamaModel,
+        setOllamaModel,
+        ollamaAutoManage,
+        setOllamaAutoManage,
+        aiSettings,
+        saveAiSettings,
+        logs: logsWithDetails,
     } = ctx;
 
     const [activeNavView, setActiveNavView] = useState(view);
@@ -109,6 +120,23 @@ export function AppLayout({ ctx }: { ctx: any }) {
     useEffect(() => {
         return window.electronAPI?.onMaximizedChange?.((m: boolean) => setMaximized(m));
     }, []);
+
+    const chatState = useChat(logsWithDetails, ollamaEnabled);
+
+    const [chatPanelOpen, setChatPanelOpen] = useState(false);
+
+    const openChatPanel = useCallback(() => {
+        setChatPanelOpen(true);
+    }, []);
+
+    const closeChatPanel = useCallback(() => {
+        setChatPanelOpen(false);
+    }, []);
+
+    const toggleChatPanel = useCallback(() => {
+        if (chatPanelOpen) closeChatPanel();
+        else openChatPanel();
+    }, [chatPanelOpen, openChatPanel, closeChatPanel]);
 
     useEffect(() => {
         setActiveNavView(view);
@@ -157,7 +185,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
         aggregationDiagnostics,
     }), [computedStats, computedSkillUsageData, aggregationProgress, aggregationDiagnostics]);
 
-    const handleNavViewChange = (nextView: 'dashboard' | 'stats' | 'history' | 'settings') => {
+    const handleNavViewChange = (nextView: 'dashboard' | 'stats' | 'history' | 'settings' | 'chat') => {
         setActiveNavView(nextView);
         if (navSwitchRafRef.current !== null) {
             window.cancelAnimationFrame(navSwitchRafRef.current);
@@ -204,6 +232,7 @@ export function AppLayout({ ctx }: { ctx: any }) {
                 {([
                     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
                     { id: 'stats' as const, label: 'Stats', icon: BarChart3 },
+                    ...(ollamaEnabled ? [{ id: 'chat' as const, label: 'Chat', icon: MessageSquare }] : []),
                     { id: 'history' as const, label: 'History', icon: Clock3 },
                     { id: 'settings' as const, label: 'Settings', icon: SettingsIcon },
                 ]).map(({ id, label, icon: Icon }) => (
@@ -427,6 +456,14 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                 onParticlesEnabledSaved={setParticlesEnabled}
                                 onAllowLocalJsonSaved={setAllowLocalJson}
                                 onR2PreciseReplaySaved={setR2PreciseReplay}
+                                ollamaEnabled={ollamaEnabled}
+                                ollamaModel={ollamaModel}
+                                setOllamaEnabled={setOllamaEnabled}
+                                setOllamaModel={setOllamaModel}
+                                ollamaAutoManage={ollamaAutoManage}
+                                setOllamaAutoManage={setOllamaAutoManage}
+                                aiSettings={aiSettings}
+                                onSaveAiSettings={saveAiSettings}
                                 particlesEnabled={particlesEnabled}
                                 developerSettingsTrigger={developerSettingsTrigger}
                                 helpUpdatesFocusTrigger={helpUpdatesFocusTrigger}
@@ -438,7 +475,56 @@ export function AppLayout({ ctx }: { ctx: any }) {
                                 isBulkUploadActive={isBulkUploadActive}
                             />
                         )}
+                        {view === 'chat' && ollamaEnabled && (
+                            <div className="flex-1 min-h-0 flex flex-col">
+                                <ChatView
+                                    logs={logsWithDetails}
+                                    compact={false}
+                                    ollamaEnabled={ollamaEnabled}
+                                    onNavigateToChat={() => {}}
+                                    chatState={chatState}
+                                />
+                            </div>
+                        )}
                     </motion.div>
+                </AnimatePresence>
+
+                {/* Floating chat button — stats view only */}
+                {ollamaEnabled && view === 'stats' && (
+                    <button
+                        onClick={toggleChatPanel}
+                        className="absolute bottom-4 right-4 z-40 w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-500 shadow-lg flex items-center justify-center transition-all duration-200"
+                        title="AI Assistant"
+                    >
+                        <MessageSquare className="w-5 h-5 text-white" />
+                    </button>
+                )}
+
+                {/* Floating chat panel — slides in from the right, overlays content */}
+                <AnimatePresence>
+                    {ollamaEnabled && chatPanelOpen && view === 'stats' && (
+                        <motion.div
+                            key="chat-panel"
+                            initial={{ x: 320 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: 320 }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+                            className="absolute right-0 top-0 bottom-0 z-30 flex flex-col"
+                            style={{ width: 320, background: 'var(--bg-elevated)', borderLeft: '1px solid var(--border-subtle)' }}
+                        >
+                            <ChatView
+                                logs={logsWithDetails}
+                                compact={true}
+                                ollamaEnabled={ollamaEnabled}
+                                onNavigateToChat={() => {
+                                    closeChatPanel();
+                                    setView('chat');
+                                }}
+                                onClose={closeChatPanel}
+                                chatState={chatState}
+                            />
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </div>
 

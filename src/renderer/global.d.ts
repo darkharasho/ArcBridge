@@ -395,6 +395,23 @@ export interface IElectronAPI {
     onEiDownloadProgress: (callback: (data: { percent: number; message: string }) => void) => () => void;
     onEiParseProgress: (callback: (data: { logId: string; message: string }) => void) => () => void;
     onEiStatusChanged: (callback: (status: IEiStatus) => void) => () => void;
+    // Ollama AI chat
+    getOllamaStatus: () => Promise<IOllamaStatus>;
+    setOllamaActiveModel: (model: string) => void;
+    pullOllamaModel: (model: string) => Promise<void>;
+    ollamaChat: (messages: ChatMessage[]) => Promise<void>;
+    getOllamaSettings: () => Promise<IOllamaSettings>;
+    saveOllamaSettings: (settings: Partial<IOllamaSettings>) => void;
+    onOllamaPullProgress: (callback: (data: { percent: number; status: string }) => void) => () => void;
+    onOllamaChatToken: (callback: (data: { token: string; done: boolean }) => void) => () => void;
+    onOllamaStatusChanged: (callback: (status: IOllamaStatus) => void) => () => void;
+    startOllama: () => Promise<IOllamaStatus>;
+    stopOllama: () => Promise<void>;
+    deleteOllamaModel: (model: string) => Promise<void>;
+    chatOnce: (messages: ChatMessage[], tools?: any[]) => Promise<OllamaChatResponse>;
+    // AI provider settings
+    getAiSettings: () => Promise<IAiSettings>;
+    saveAiSettings: (settings: Partial<IAiSettings>) => void;
 }
 
 export interface IEiParserSettings {
@@ -418,6 +435,44 @@ export interface IEiStatus {
     updateAvailable: string | null;
     installing: boolean;
     error: string | null;
+}
+
+export interface IAiSettings {
+    provider: 'ollama' | 'anthropic' | 'openai';
+    anthropicApiKey: string;
+    anthropicModel: string;
+    openaiApiKey: string;
+    openaiModel: string;
+}
+
+export interface IOllamaStatus {
+    connected: boolean;
+    models: string[];
+    activeModel: string | null;
+}
+
+export interface IOllamaSettings {
+    enabled: boolean;
+    activeModel: string;
+    autoManage: boolean;
+}
+
+export interface OllamaToolCall {
+    function: { name: string; arguments: Record<string, any> };
+}
+
+export interface OllamaChatResponse {
+    message: {
+        role: string;
+        content: string;
+        tool_calls?: OllamaToolCall[];
+    };
+}
+
+export interface ChatMessage {
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content: string;
+    tool_calls?: OllamaToolCall[];
 }
 
 type DetailsStatus = 'idle' | 'loading' | 'available' | 'loaded' | 'exhausted' | 'unavailable';
