@@ -20,13 +20,32 @@ export type OutOfPositionDeath = {
   atSec: number
 }
 
+export type SquadCohesion = {
+  avgSpread: number
+  peakSpread: { value: number; atSec: number }
+  cohesionNote: string
+}
+
+export type CommanderOverextension = {
+  account: string
+  peakLeadFromSquad: { value: number; atSec: number }
+  /** v1 definition: mean per-tick distance from commander to squad centroid */
+  squadFollowLag: number
+}
+
+export type DeathCluster = {
+  x: number
+  y: number
+  count: number
+}
+
 export type PositioningSummary = {
   degree: ReplayDegree
   perPlayer: PerPlayerDistance[]
   outOfPositionDeaths: OutOfPositionDeath[]
-  squad: null
-  commander: null
-  deathClusters: []
+  squad: SquadCohesion | null
+  commander: CommanderOverextension | null
+  deathClusters: DeathCluster[]
   figure: undefined
 }
 
@@ -70,7 +89,7 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
       const playerStart = Number(player?.combatReplayData?.start ?? 0)
       const playerOffset = Math.floor(playerStart / pollingRate)
 
-      // Per-tick distance samples
+      // Per-tick distance samples; commander distance is always 0 (skip adding to perPlayerMap)
       const samples: number[] = []
       for (let i = 0; i < playerPositions.length; i++) {
         const tagIdx = clamp(i + playerOffset, 0, tagPositions.length - 1)
@@ -79,14 +98,17 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
         const dist = isCommanderPlayer ? 0 : Math.hypot(px - tx, py - ty) / inchToPixel
         samples.push(dist)
       }
-      const existing = perPlayerMap.get(account)
-      if (existing) {
-        for (const s of samples) existing.push(s)
-      } else {
-        perPlayerMap.set(account, samples)
+      // Omit commander from perPlayer — the tag shouldn't appear in the distance ranking
+      if (!isCommanderPlayer) {
+        const existing = perPlayerMap.get(account)
+        if (existing) {
+          for (const s of samples) existing.push(s)
+        } else {
+          perPlayerMap.set(account, samples)
+        }
       }
 
-      // Out-of-position downs/deaths
+      // Out-of-position downs/deaths (skip commander)
       if (isCommanderPlayer) continue
       const replay = player?.combatReplayData
       if (!replay || !Array.isArray(replay.dead) || !Array.isArray(replay.down)) continue
@@ -129,5 +151,131 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
   }
   perPlayer.sort((a, b) => b.peakDistToTag - a.peakDistToTag)
 
-  return { degree, perPlayer, outOfPositionDeaths, squad: null, commander: null, deathClusters: [], figure: undefined }
+  // Only populate squad/commander/deathClusters for 'full' degree
+  if (degree !== 'full' || !replayUsable) {
+    return { degree, perPlayer, outOfPositionDeaths, squad: null, commander: null, deathClusters: [], figure: undefined }
+  }
+
+  // --- Squad cohesion (spread timeline) ---
+  // squad members = non-commander players with positions
+  const squadNonCmdr = squad.filter((p) => !p?.hasCommanderTag && Array.isArray(p?.combatReplayData?.positions) && (p.combatReplayData!.positions!.length ?? 0) > 0)
+  const numTicks = tagPositions.length
+  let spreadSum = 0
+  let peakSpreadValue = 0
+  let peakSpreadAtSec = 0
+
+  // For commander overextension: track distance from tag to centroid per tick
+  let tagToCentroidSum = 0
+  let peakLeadValue = 0
+  let peakLeadAtSec = 0
+
+  // Collect dead/down coords for death clusters (raw map coords, no inchToPixel)
+  const deathCoords: Array<[number, number]> = []
+
+  for (const player of squad) {
+    const replay = player?.combatReplayData
+    if (!replay) continue
+    // Collect dead coords
+    if (Array.isArray(replay.dead)) {
+      for (const entry of replay.dead) {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          deathCoords.push([entry[0] as number, entry[1] as number])
+        }
+      }
+    }
+    // Collect down coords
+    if (Array.isArray(replay.down)) {
+      for (const entry of replay.down) {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          deathCoords.push([entry[0] as number, entry[1] as number])
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < numTicks; i++) {
+    const atSec = (i * pollingRate) / 1000
+    const [tx, ty] = tagPositions[i]
+
+    // Compute spread = mean player distance to tag at this tick
+    if (squadNonCmdr.length > 0) {
+      let spreadAtTick = 0
+      let centroidX = 0
+      let centroidY = 0
+      for (const player of squadNonCmdr) {
+        const positions = player.combatReplayData!.positions!
+        const playerStart = Number(player.combatReplayData?.start ?? 0)
+        const playerOffset = Math.floor(playerStart / pollingRate)
+        const pIdx = clamp(i - playerOffset, 0, positions.length - 1)
+        const [px, py] = positions[pIdx]
+        // spread = distance to tag / inchToPixel
+        spreadAtTick += Math.hypot(px - tx, py - ty) / inchToPixel
+        centroidX += px
+        centroidY += py
+      }
+      const avgSpreadAtTick = spreadAtTick / squadNonCmdr.length
+      spreadSum += avgSpreadAtTick
+      if (avgSpreadAtTick > peakSpreadValue) {
+        peakSpreadValue = avgSpreadAtTick
+        peakSpreadAtSec = atSec
+      }
+
+      // Centroid of squad (non-commander)
+      centroidX /= squadNonCmdr.length
+      centroidY /= squadNonCmdr.length
+
+      // Commander overextension: distance from tag to centroid / inchToPixel
+      const tagToCentroidDist = Math.hypot(tx - centroidX, ty - centroidY) / inchToPixel
+      tagToCentroidSum += tagToCentroidDist
+      if (tagToCentroidDist > peakLeadValue) {
+        peakLeadValue = tagToCentroidDist
+        peakLeadAtSec = atSec
+      }
+    }
+  }
+
+  const avgSpread = numTicks > 0 ? spreadSum / numTicks : 0
+  const peakAvgRatio = avgSpread > 0 ? peakSpreadValue / avgSpread : 1
+  const cohesionNote = peakAvgRatio > 2.5 ? 'tight then scattered' : 'held together'
+
+  // v1 squadFollowLag = mean over ticks of distance(tag, centroid) / inchToPixel
+  const squadFollowLag = numTicks > 0 ? tagToCentroidSum / numTicks : 0
+
+  // --- Death clusters ---
+  // Bucket dead/down coords into a 150-inch grid (raw map coords, no inchToPixel division)
+  const CLUSTER_CELL = 150
+  const cellMap = new Map<string, { x: number; y: number; count: number }>()
+  for (const [x, y] of deathCoords) {
+    const cellX = Math.floor(x / CLUSTER_CELL)
+    const cellY = Math.floor(y / CLUSTER_CELL)
+    const key = `${cellX},${cellY}`
+    const existing = cellMap.get(key)
+    if (existing) {
+      existing.count++
+    } else {
+      // Cell centroid = cell center in map coords
+      cellMap.set(key, { x: (cellX + 0.5) * CLUSTER_CELL, y: (cellY + 0.5) * CLUSTER_CELL, count: 1 })
+    }
+  }
+  const deathClusters = Array.from(cellMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+
+  return {
+    degree,
+    perPlayer,
+    outOfPositionDeaths,
+    squad: {
+      avgSpread: Math.round(avgSpread),
+      peakSpread: { value: Math.round(peakSpreadValue), atSec: peakSpreadAtSec },
+      cohesionNote,
+    },
+    commander: {
+      account: commander?.account ?? 'Unknown',
+      peakLeadFromSquad: { value: Math.round(peakLeadValue), atSec: peakLeadAtSec },
+      squadFollowLag: Math.round(squadFollowLag),
+    },
+    deathClusters,
+    figure: undefined,
+  }
 }

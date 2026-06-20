@@ -17,6 +17,30 @@ describe('computePositioning', () => {
   })
 })
 
+describe('squad spread, commander overextension, death clusters', () => {
+  it('computes peak spread, commander overextension, and death clusters', () => {
+    const report = { details: { durationMS: 6000, combatReplayMetaData: { pollingRate: 1000, inchToPixel: 1, sizes: [3000,3000] as [number,number] }, players: [
+      { notInSquad:false, hasCommanderTag:true, account:'Tag.1', combatReplayData:{ positions:[[0,0],[100,0],[1800,0]] as [number,number][] } },
+      { notInSquad:false, account:'A.2', combatReplayData:{ positions:[[0,0],[100,0],[0,0]] as [number,number][], dead:[[0,0]] as [number,number][] } },
+      { notInSquad:false, account:'B.3', combatReplayData:{ positions:[[0,0],[100,0],[0,0]] as [number,number][], dead:[[0,0]] as [number,number][] } },
+    ] } }
+    const s = computePositioning(report)
+    expect(s.squad!.peakSpread!.value).toBeGreaterThan(1000)      // tag bolted at the last tick
+    expect(s.commander!.peakLeadFromSquad!.value).toBeGreaterThan(1000)
+    expect(s.deathClusters[0].count).toBe(2)                      // both died at ~[0,0]
+  })
+
+  it('excludes commander from perPlayer distance ranking', () => {
+    const report = { details: { durationMS: 3000, combatReplayMetaData: { pollingRate: 1000, inchToPixel: 1, sizes: [3000,3000] as [number,number] }, players: [
+      { notInSquad:false, hasCommanderTag:true, account:'Tag.1', combatReplayData:{ positions:[[0,0],[500,0],[1000,0]] as [number,number][] } },
+      { notInSquad:false, account:'A.2', combatReplayData:{ positions:[[0,0],[100,0],[200,0]] as [number,number][] } },
+    ] } }
+    const s = computePositioning(report)
+    expect(s.perPlayer.find(p => p.account === 'Tag.1')).toBeUndefined()
+    expect(s.perPlayer.find(p => p.account === 'A.2')).toBeDefined()
+  })
+})
+
 describe('classifyDegree', () => {
   it('returns "full" when a commander has replay positions', () => {
     const report = { details: { combatReplayMetaData: { pollingRate: 150, inchToPixel: 0.01 }, players: [
