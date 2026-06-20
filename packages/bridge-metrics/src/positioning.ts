@@ -169,27 +169,39 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
   let peakLeadValue = 0
   let peakLeadAtSec = 0
 
-  // Collect dead/down coords for death clusters (raw map coords, no inchToPixel)
+  // Collect death positions for death clusters (raw map coords, no inchToPixel)
+  // dead entries are timestamps: [deathMs, ...]; down entries are [downStartMs, linkedDeathMs]
+  // The death location is the player's position at the down tick.
   const deathCoords: Array<[number, number]> = []
 
   for (const player of squad) {
     const replay = player?.combatReplayData
     if (!replay) continue
-    // Collect dead coords
-    if (Array.isArray(replay.dead)) {
-      for (const entry of replay.dead) {
-        if (Array.isArray(entry) && entry.length >= 2) {
-          deathCoords.push([entry[0] as number, entry[1] as number])
-        }
+    const playerPositions = replay.positions
+    if (!Array.isArray(playerPositions) || playerPositions.length === 0) continue
+    if (!Array.isArray(replay.dead) || !Array.isArray(replay.down)) continue
+
+    const playerStart = Number(replay.start ?? 0)
+    const playerOffset = Math.floor(playerStart / pollingRate)
+
+    const deadSet = new Set<number>()
+    for (const entry of replay.dead) {
+      if (Array.isArray(entry) && Number.isFinite(Number(entry[0])) && Number(entry[0]) >= 0) {
+        deadSet.add(Number(entry[0]))
       }
     }
-    // Collect down coords
-    if (Array.isArray(replay.down)) {
-      for (const entry of replay.down) {
-        if (Array.isArray(entry) && entry.length >= 2) {
-          deathCoords.push([entry[0] as number, entry[1] as number])
-        }
-      }
+
+    for (const entry of replay.down) {
+      if (!Array.isArray(entry)) continue
+      const downStartMs = Number(entry[0])
+      const linkedDeathMs = Number(entry[1])
+      if (!Number.isFinite(downStartMs) || downStartMs < 0) continue
+      if (!deadSet.has(linkedDeathMs)) continue
+
+      const pollIndex = Math.floor(downStartMs / pollingRate)
+      const playerIdx = clamp(pollIndex - playerOffset, 0, playerPositions.length - 1)
+      const [px, py] = playerPositions[playerIdx]
+      deathCoords.push([px, py])
     }
   }
 
@@ -242,22 +254,24 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
   const squadFollowLag = numTicks > 0 ? tagToCentroidSum / numTicks : 0
 
   // --- Death clusters ---
-  // Bucket dead/down coords into a 150-inch grid (raw map coords, no inchToPixel division)
+  // Bucket death positions into a 150-map-unit grid; centroid = mean of points in cell
   const CLUSTER_CELL = 150
-  const cellMap = new Map<string, { x: number; y: number; count: number }>()
+  const cellMap = new Map<string, { sumX: number; sumY: number; count: number }>()
   for (const [x, y] of deathCoords) {
     const cellX = Math.floor(x / CLUSTER_CELL)
     const cellY = Math.floor(y / CLUSTER_CELL)
     const key = `${cellX},${cellY}`
     const existing = cellMap.get(key)
     if (existing) {
+      existing.sumX += x
+      existing.sumY += y
       existing.count++
     } else {
-      // Cell centroid = cell center in map coords
-      cellMap.set(key, { x: (cellX + 0.5) * CLUSTER_CELL, y: (cellY + 0.5) * CLUSTER_CELL, count: 1 })
+      cellMap.set(key, { sumX: x, sumY: y, count: 1 })
     }
   }
   const deathClusters = Array.from(cellMap.values())
+    .map(({ sumX, sumY, count }) => ({ x: sumX / count, y: sumY / count, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 6)
 

@@ -19,15 +19,22 @@ describe('computePositioning', () => {
 
 describe('squad spread, commander overextension, death clusters', () => {
   it('computes peak spread, commander overextension, and death clusters', () => {
+    // pollingRate=1000ms; positions indexed by tick (1 tick = 1000ms)
+    // Player A and B each go down at t=1000ms (tick 1 → position index 1 = [10,10])
+    // down: [[1000, 2000]] means downStartMs=1000, linkedDeathMs=2000
+    // dead: [[2000]] means deathMs=2000, which matches linkedDeathMs → valid death
+    // At tick floor(1000/1000)=1, position[1]=[10,10] → death location near [0,0]
     const report = { details: { durationMS: 6000, combatReplayMetaData: { pollingRate: 1000, inchToPixel: 1, sizes: [3000,3000] as [number,number] }, players: [
       { notInSquad:false, hasCommanderTag:true, account:'Tag.1', combatReplayData:{ positions:[[0,0],[100,0],[1800,0]] as [number,number][] } },
-      { notInSquad:false, account:'A.2', combatReplayData:{ positions:[[0,0],[100,0],[0,0]] as [number,number][], dead:[[0,0]] as [number,number][] } },
-      { notInSquad:false, account:'B.3', combatReplayData:{ positions:[[0,0],[100,0],[0,0]] as [number,number][], dead:[[0,0]] as [number,number][] } },
+      { notInSquad:false, account:'A.2', combatReplayData:{ positions:[[0,0],[10,10],[0,0]] as [number,number][], down:[[1000,2000]] as [number,number][], dead:[[2000]] as [number,number][] } },
+      { notInSquad:false, account:'B.3', combatReplayData:{ positions:[[0,0],[10,10],[0,0]] as [number,number][], down:[[1000,2000]] as [number,number][], dead:[[2000]] as [number,number][] } },
     ] } }
     const s = computePositioning(report)
     expect(s.squad!.peakSpread!.value).toBeGreaterThan(1000)      // tag bolted at the last tick
     expect(s.commander!.peakLeadFromSquad!.value).toBeGreaterThan(1000)
-    expect(s.deathClusters[0].count).toBe(2)                      // both died at ~[0,0]
+    expect(s.deathClusters[0].count).toBe(2)                      // both died at ~[10,10]
+    expect(s.deathClusters[0].x).toBeCloseTo(10)
+    expect(s.deathClusters[0].y).toBeCloseTo(10)
   })
 
   it('excludes commander from perPlayer distance ranking', () => {
