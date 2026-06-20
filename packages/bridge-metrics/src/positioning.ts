@@ -39,6 +39,21 @@ export type DeathCluster = {
   count: number
 }
 
+export type PositioningFigure = {
+  map: { sizes: [number, number]; inchToPixel: number }
+  /** Down-sampled tag path: ~1 point/sec (stride = Math.ceil(1000/pollingRate)) */
+  tagPath: Array<[number, number]>
+  /** Approximate bounding circle of the squad centroid over time */
+  squadMass: { x: number; y: number; r: number }
+  /** Death locations (reused from deathClusters source) */
+  deaths: Array<[number, number]>
+  /** Down positions */
+  downs: Array<[number, number]>
+  /** [[sec, spreadValue]] down-sampled to ~1 point/sec */
+  spread: Array<[number, number]>
+  peakSpread: number
+}
+
 export type PositioningSummary = {
   degree: ReplayDegree
   perPlayer: PerPlayerDistance[]
@@ -46,7 +61,7 @@ export type PositioningSummary = {
   squad: SquadCohesion | null
   commander: CommanderOverextension | null
   deathClusters: DeathCluster[]
-  figure: undefined
+  figure: PositioningFigure | undefined
 }
 
 export const OUT_OF_POSITION = 1200
@@ -167,13 +182,26 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
   }
 
   const perPlayer: PerPlayerDistance[] = []
-  for (const [account, samples] of perPlayerMap) {
-    if (samples.length === 0) continue
-    const avg = samples.reduce((s, v) => s + v, 0) / samples.length
-    const peak = Math.max(...samples)
-    perPlayer.push({ account, avgDistToTag: Math.round(avg), peakDistToTag: Math.round(peak) })
+
+  if (replayUsable) {
+    for (const [account, samples] of perPlayerMap) {
+      if (samples.length === 0) continue
+      const avg = samples.reduce((s, v) => s + v, 0) / samples.length
+      const peak = Math.max(...samples)
+      perPlayer.push({ account, avgDistToTag: Math.round(avg), peakDistToTag: Math.round(peak) })
+    }
+    perPlayer.sort((a, b) => b.peakDistToTag - a.peakDistToTag)
+  } else if (degree === 'coarse') {
+    // Populate from statsAll[0].distToCom (peak = avg in coarse mode)
+    for (const p of squad) {
+      const account = p?.account
+      if (!account) continue
+      const distToCom = p?.statsAll?.[0]?.distToCom
+      if (typeof distToCom !== 'number') continue
+      perPlayer.push({ account, avgDistToTag: distToCom, peakDistToTag: distToCom })
+    }
+    perPlayer.sort((a, b) => b.peakDistToTag - a.peakDistToTag)
   }
-  perPlayer.sort((a, b) => b.peakDistToTag - a.peakDistToTag)
 
   // Only populate squad/commander/deathClusters for 'full' degree
   if (degree !== 'full' || !replayUsable) {
@@ -274,6 +302,88 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
     .sort((a, b) => b.count - a.count)
     .slice(0, 6)
 
+  // --- Figure payload (down-sampled, full degree only) ---
+  // stride = 1 point/sec: e.g. pollingRate=100ms → stride=10, 600 ticks → 60 points
+  const stride = Math.ceil(1000 / pollingRate)
+
+  // Down-sample tagPath
+  const tagPath: Array<[number, number]> = []
+  for (let i = 0; i < tagPositions.length; i += stride) {
+    tagPath.push(tagPositions[i])
+  }
+
+  // Collect downs positions (first player position at down tick)
+  const downCoords: Array<[number, number]> = []
+  for (const player of squad) {
+    const replay = player?.combatReplayData
+    if (!replay || !Array.isArray(replay.down) || !Array.isArray(replay.positions)) continue
+    const playerStart = Number(replay.start ?? 0)
+    const playerOffset = Math.floor(playerStart / pollingRate)
+    for (const entry of replay.down) {
+      if (!Array.isArray(entry)) continue
+      const downStartMs = Number(entry[0])
+      if (!Number.isFinite(downStartMs) || downStartMs < 0) continue
+      const pollIndex = Math.floor(downStartMs / pollingRate)
+      const playerIdx = clamp(pollIndex - playerOffset, 0, replay.positions.length - 1)
+      const [px, py] = replay.positions[playerIdx]
+      downCoords.push([px, py])
+    }
+  }
+
+  // Build spread timeline down-sampled to ~1 point/sec
+  // Re-walk tag positions at stride intervals
+  const spreadTimeline: Array<[number, number]> = []
+  let sumMassX = 0
+  let sumMassY = 0
+  let massCount = 0
+  let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity
+
+  for (let i = 0; i < numTicks; i += stride) {
+    const atSec = (i * pollingRate) / 1000
+    const [tx, ty] = tagPositions[i]
+
+    let spreadAtTick = 0
+    let centroidX = 0
+    let centroidY = 0
+    for (const player of squadNonCmdr) {
+      const positions = player.combatReplayData!.positions!
+      const playerStart = Number(player.combatReplayData?.start ?? 0)
+      const playerOffset = Math.floor(playerStart / pollingRate)
+      const pIdx = clamp(i - playerOffset, 0, positions.length - 1)
+      const [px, py] = positions[pIdx]
+      spreadAtTick += Math.hypot(px - tx, py - ty) / inchToPixel
+      centroidX += px
+      centroidY += py
+    }
+    if (squadNonCmdr.length > 0) {
+      centroidX /= squadNonCmdr.length
+      centroidY /= squadNonCmdr.length
+      spreadTimeline.push([atSec, Math.round(spreadAtTick / squadNonCmdr.length)])
+      sumMassX += centroidX
+      sumMassY += centroidY
+      minX = Math.min(minX, centroidX); maxX = Math.max(maxX, centroidX)
+      minY = Math.min(minY, centroidY); maxY = Math.max(maxY, centroidY)
+      massCount++
+    }
+  }
+
+  // squadMass: centroid of centroids + bounding-circle radius
+  const massX = massCount > 0 ? sumMassX / massCount : 0
+  const massY = massCount > 0 ? sumMassY / massCount : 0
+  const massR = massCount > 0 ? Math.hypot(maxX - minX, maxY - minY) / 2 : 0
+
+  const sizes = (meta.sizes ?? [0, 0]) as [number, number]
+
+  const figure: PositioningFigure = {
+    map: { sizes, inchToPixel },
+    tagPath,
+    squadMass: { x: Math.round(massX), y: Math.round(massY), r: Math.round(massR) },
+    deaths: deathCoords,
+    downs: downCoords,
+    spread: spreadTimeline,
+    peakSpread: Math.round(peakSpreadValue),
+  }
+
   return {
     degree,
     perPlayer,
@@ -289,6 +399,6 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
       squadFollowLag: Math.round(squadFollowLag),
     },
     deathClusters,
-    figure: undefined,
+    figure,
   }
 }

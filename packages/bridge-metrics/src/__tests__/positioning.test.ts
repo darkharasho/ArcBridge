@@ -48,6 +48,22 @@ describe('squad spread, commander overextension, death clusters', () => {
   })
 })
 
+describe('figure payload', () => {
+  it('omits the figure for coarse data but still gives distances', () => {
+    const report = { details: { players: [ { notInSquad:false, account:'A.2', statsAll:[{ distToCom: 800 }] } ] } }
+    const s = computePositioning(report)
+    expect(s.degree).toBe('coarse'); expect(s.figure).toBeUndefined()
+    expect(s.perPlayer.find(p=>p.account==='A.2')!.avgDistToTag).toBe(800)
+  })
+  it('down-samples the figure tag path to <= ~1 point/sec', () => {
+    const positions = Array.from({length: 600}, (_,i)=>[i,0] as [number,number]) // 600 ticks @ 100ms = 60s
+    const report = { details:{ durationMS:60000, combatReplayMetaData:{ pollingRate:100, inchToPixel:1, sizes:[1000,1000] as [number,number] }, players:[
+      { notInSquad:false, hasCommanderTag:true, account:'Tag.1', combatReplayData:{ positions } } ] } }
+    const s = computePositioning(report)
+    expect(s.figure!.tagPath.length).toBeLessThanOrEqual(70)
+  })
+})
+
 describe('classifyDegree', () => {
   it('returns "full" when a commander has replay positions', () => {
     const report = { details: { combatReplayMetaData: { pollingRate: 150, inchToPixel: 0.01 }, players: [
