@@ -55,6 +55,53 @@ const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(
 
 const squadOf = (r: ParsedReport): AnyPlayer[] => (r.details?.players ?? []).filter((p) => !p?.notInSquad)
 
+type LinkedDeathHit = { px: number; py: number; tx: number; ty: number; downStartMs: number }
+
+/**
+ * Walk a single player's linked-death `down` events once and return, per qualifying death,
+ * the player map position [px,py] and the tag map position [tx,ty] at the down tick.
+ * A "linked death" is a down entry whose second value (linkedDeathMs) exists in the
+ * player's dead set (built with the same `entry[0] > 0` threshold as the renderer).
+ */
+function linkedDeathHits(
+  player: AnyPlayer,
+  tagPositions: Array<[number, number]>,
+  pollingRate: number,
+): LinkedDeathHit[] {
+  const replay = player?.combatReplayData
+  if (!replay || !Array.isArray(replay.dead) || !Array.isArray(replay.down)) return []
+  const playerPositions = replay.positions
+  if (!Array.isArray(playerPositions) || playerPositions.length === 0) return []
+
+  const playerStart = Number(replay.start ?? 0)
+  const playerOffset = Math.floor(playerStart / pollingRate)
+
+  const deadSet = new Set<number>()
+  for (const entry of replay.dead) {
+    if (Array.isArray(entry) && Number.isFinite(Number(entry[0])) && Number(entry[0]) > 0) {
+      deadSet.add(Number(entry[0]))
+    }
+  }
+
+  const hits: LinkedDeathHit[] = []
+  for (const entry of replay.down) {
+    if (!Array.isArray(entry)) continue
+    const downStartMs = Number(entry[0])
+    const linkedDeathMs = Number(entry[1])
+    if (!Number.isFinite(downStartMs) || downStartMs < 0) continue
+    if (!deadSet.has(linkedDeathMs)) continue
+
+    const pollIndex = Math.floor(downStartMs / pollingRate)
+    const playerIdx = clamp(pollIndex - playerOffset, 0, playerPositions.length - 1)
+    const tagIdx = clamp(pollIndex, 0, tagPositions.length - 1)
+
+    const [px, py] = playerPositions[playerIdx]
+    const [tx, ty] = tagPositions[tagIdx]
+    hits.push({ px, py, tx, ty, downStartMs })
+  }
+  return hits
+}
+
 export function classifyDegree(report: ParsedReport): ReplayDegree {
   const squad = squadOf(report)
   const meta = report.details?.combatReplayMetaData ?? {}
@@ -110,31 +157,8 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
 
       // Out-of-position downs/deaths (skip commander)
       if (isCommanderPlayer) continue
-      const replay = player?.combatReplayData
-      if (!replay || !Array.isArray(replay.dead) || !Array.isArray(replay.down)) continue
-
-      const deadSet = new Set<number>()
-      for (const entry of replay.dead) {
-        if (Array.isArray(entry) && Number.isFinite(Number(entry[0])) && Number(entry[0]) > 0) {
-          deadSet.add(Number(entry[0]))
-        }
-      }
-
-      for (const entry of replay.down) {
-        if (!Array.isArray(entry)) continue
-        const downStartMs = Number(entry[0])
-        const linkedDeathMs = Number(entry[1])
-        if (!Number.isFinite(downStartMs) || downStartMs < 0) continue
-        if (!deadSet.has(linkedDeathMs)) continue
-
-        const pollIndex = Math.floor(downStartMs / pollingRate)
-        const playerIdx = clamp(pollIndex - playerOffset, 0, playerPositions.length - 1)
-        const tagIdx = clamp(pollIndex, 0, tagPositions.length - 1)
-
-        const [px, py] = playerPositions[playerIdx]
-        const [tx, ty] = tagPositions[tagIdx]
+      for (const { px, py, tx, ty, downStartMs } of linkedDeathHits(player, tagPositions, pollingRate)) {
         const distAtDown = Math.round(Math.hypot(px - tx, py - ty) / inchToPixel)
-
         if (distAtDown > OUT_OF_POSITION) {
           outOfPositionDeaths.push({ account, distAtDown, atSec: Math.round(downStartMs / 1000) })
         }
@@ -175,32 +199,7 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
   const deathCoords: Array<[number, number]> = []
 
   for (const player of squad) {
-    const replay = player?.combatReplayData
-    if (!replay) continue
-    const playerPositions = replay.positions
-    if (!Array.isArray(playerPositions) || playerPositions.length === 0) continue
-    if (!Array.isArray(replay.dead) || !Array.isArray(replay.down)) continue
-
-    const playerStart = Number(replay.start ?? 0)
-    const playerOffset = Math.floor(playerStart / pollingRate)
-
-    const deadSet = new Set<number>()
-    for (const entry of replay.dead) {
-      if (Array.isArray(entry) && Number.isFinite(Number(entry[0])) && Number(entry[0]) >= 0) {
-        deadSet.add(Number(entry[0]))
-      }
-    }
-
-    for (const entry of replay.down) {
-      if (!Array.isArray(entry)) continue
-      const downStartMs = Number(entry[0])
-      const linkedDeathMs = Number(entry[1])
-      if (!Number.isFinite(downStartMs) || downStartMs < 0) continue
-      if (!deadSet.has(linkedDeathMs)) continue
-
-      const pollIndex = Math.floor(downStartMs / pollingRate)
-      const playerIdx = clamp(pollIndex - playerOffset, 0, playerPositions.length - 1)
-      const [px, py] = playerPositions[playerIdx]
+    for (const { px, py } of linkedDeathHits(player, tagPositions, pollingRate)) {
       deathCoords.push([px, py])
     }
   }

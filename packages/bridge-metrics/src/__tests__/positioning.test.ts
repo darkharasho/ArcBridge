@@ -23,7 +23,7 @@ describe('squad spread, commander overextension, death clusters', () => {
     // Player A and B each go down at t=1000ms (tick 1 → position index 1 = [10,10])
     // down: [[1000, 2000]] means downStartMs=1000, linkedDeathMs=2000
     // dead: [[2000]] means deathMs=2000, which matches linkedDeathMs → valid death
-    // At tick floor(1000/1000)=1, position[1]=[10,10] → death location near [0,0]
+    // At tick floor(1000/1000)=1, position[1]=[10,10] → death location near [10,10]
     const report = { details: { durationMS: 6000, combatReplayMetaData: { pollingRate: 1000, inchToPixel: 1, sizes: [3000,3000] as [number,number] }, players: [
       { notInSquad:false, hasCommanderTag:true, account:'Tag.1', combatReplayData:{ positions:[[0,0],[100,0],[1800,0]] as [number,number][] } },
       { notInSquad:false, account:'A.2', combatReplayData:{ positions:[[0,0],[10,10],[0,0]] as [number,number][], down:[[1000,2000]] as [number,number][], dead:[[2000]] as [number,number][] } },
