@@ -7,7 +7,7 @@ describe('computePositioning', () => {
   it('reports per-player distance-to-tag and out-of-position deaths', () => {
     const report = { details: { durationMS: 10000, combatReplayMetaData: { pollingRate: 150, inchToPixel: 0.01, sizes: [1000,1000] as [number,number] }, players: [
       { notInSquad: false, hasCommanderTag: true, account: 'Tag.1', combatReplayData: { positions: [[0,0],[0,0]] as [number,number][] } },
-      { notInSquad: false, account: 'Stray.2', combatReplayData: { positions: [[0,0],[2000,0]] as [number,number][], down: [[2000,0]] as [number,number][], dead: [] as [number,number][] } },
+      { notInSquad: false, account: 'Stray.2', combatReplayData: { positions: [[0,0],[2000,0]] as [number,number][], down: [[150,9000]] as [number,number][], dead: [[9000,99999]] as [number,number][] } },
     ] } }
     const s = computePositioning(report)
     expect(s.degree).toBe('full')

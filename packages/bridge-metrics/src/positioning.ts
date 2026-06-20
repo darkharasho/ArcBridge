@@ -89,12 +89,21 @@ export function computePositioning(report: ParsedReport): PositioningSummary {
       // Out-of-position downs/deaths
       if (isCommanderPlayer) continue
       const replay = player?.combatReplayData
-      if (!replay || !Array.isArray(replay.down)) continue
+      if (!replay || !Array.isArray(replay.dead) || !Array.isArray(replay.down)) continue
+
+      const deadSet = new Set<number>()
+      for (const entry of replay.dead) {
+        if (Array.isArray(entry) && Number.isFinite(Number(entry[0])) && Number(entry[0]) > 0) {
+          deadSet.add(Number(entry[0]))
+        }
+      }
 
       for (const entry of replay.down) {
         if (!Array.isArray(entry)) continue
         const downStartMs = Number(entry[0])
+        const linkedDeathMs = Number(entry[1])
         if (!Number.isFinite(downStartMs) || downStartMs < 0) continue
+        if (!deadSet.has(linkedDeathMs)) continue
 
         const pollIndex = Math.floor(downStartMs / pollingRate)
         const playerIdx = clamp(pollIndex - playerOffset, 0, playerPositions.length - 1)
