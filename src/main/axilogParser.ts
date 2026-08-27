@@ -127,6 +127,14 @@ const toStdTimestamp = (epochMs: number): string => {
  * native start is available the timestamps are now left undefined, so callers
  * fall back to `uploadTime` instead of to a fabricated date.
  */
+/**
+ * Elite Insights' placeholder for a skill it has no art for
+ * (`SkillImages.MonsterSkill`, used as `SkillItem.DefaultIcon`). Kept
+ * byte-identical to EI's own URL so a log parsed by either backend renders the
+ * same image for an unknown id.
+ */
+export const GENERIC_SKILL_ICON = 'https://render.guildwars2.com/file/1D55D34FB4EE20B1962E315245E40CA5E1042D0E/62248.png';
+
 export const applyEiCompatShims = (details: any, _logPath: string): any => {
     if (!details || typeof details !== 'object') return details;
 
@@ -174,13 +182,23 @@ export const applyEiCompatShims = (details: any, _logPath: string): any => {
     // Only ever FILLS a missing icon -- an entry that already has one keeps it,
     // so a real Elite Insights parse (which supplies its own) is untouched.
     // Reaches new parses only; re-parse history to backfill stored logs.
+    // The catalogs do not cover every id: `/v2/skills` 404s for a tail of ids
+    // an arcdps log carries (~17 of 508 on the WvW fixture, 87 across 40 real
+    // logs), and axilog honestly emits no icon for them rather than inventing
+    // one. Elite Insights had the identical gap and never rendered a blank
+    // cell -- `SkillItem` falls back to `SkillImages.MonsterSkill` -- so
+    // removing the EI backend turned "generic placeholder" into "empty
+    // square" for every one of those ids, including named skills like Rend.
+    // Substituting EI's own URL keeps a report parsed by either backend
+    // rendering the same image. Applied only after the catalog lookup, so
+    // real art always wins.
     const backfillIcons = (map: any, prefix: string, catalog: any) => {
-        if (!map || typeof map !== 'object' || !catalog) return;
+        if (!map || typeof map !== 'object') return;
         for (const [key, entry] of Object.entries<any>(map)) {
             if (!entry || typeof entry !== 'object' || entry.icon) continue;
             const id = String(key).replace(new RegExp(`^${prefix}`), '');
-            const icon = catalog[id]?.icon;
-            if (typeof icon === 'string' && icon) entry.icon = icon;
+            const icon = catalog?.[id]?.icon;
+            entry.icon = typeof icon === 'string' && icon ? icon : GENERIC_SKILL_ICON;
         }
     };
     backfillIcons(details.skillMap, 's', details.native?.catalogs?.skills);
