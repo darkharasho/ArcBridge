@@ -18,6 +18,7 @@
 import type { ParserSettings } from './parserSettings';
 import { buildNativeCarrySet } from './nativeCarrySet';
 import { normalizeAccountName } from '@axiapps/bridge-metrics/playerIdentity';
+import { applyLearnedSkillNames, getSkillNameCache, learnSkillNames } from './skillNameCache';
 
 // ─── Settings mapping ─────────────────────────────────────────────────────────
 
@@ -203,6 +204,20 @@ export const applyEiCompatShims = (details: any, _logPath: string): any => {
     };
     backfillIcons(details.skillMap, 's', details.native?.catalogs?.skills);
     backfillIcons(details.buffMap, 'b', details.native?.catalogs?.buffs);
+
+    // Names: a `.zevtc` carries every skill's id but only the names the
+    // capturing client had loaded, so the same id reads "Rend" in one log and
+    // "Skill 80224" in the next -- same build, same parser. axilog cannot close
+    // that from inside one file; AxiBridge holds the whole log history and can.
+    // Learn first, then substitute, so a log that names an id teaches the cache
+    // before it is asked about it. See `skillNameCache.ts` for why this is safe
+    // (placeholder-only substitution, ids immutable in GW2) and for the corpus
+    // measurement behind it. Because this shim also runs on details re-read
+    // from the dps.report cache, names learned today reach logs parsed months
+    // ago on their next read -- no re-parse, no schema bump.
+    const nameCache = getSkillNameCache();
+    learnSkillNames(details, nameCache);
+    applyLearnedSkillNames(details, nameCache);
 
     const encounter = details.native?.encounter;
     const nativeMap = typeof encounter?.map === 'string' ? encounter.map.trim() : '';
